@@ -22,7 +22,13 @@ authRouter.use(
 authRouter.get('/csrf', (req: Request, res: Response) => {
   const token =
     (res.locals as { csrfToken?: string }).csrfToken ?? req.session.csrfToken;
-  res.json({ csrfToken: token ?? '' });
+  req.session.save((err) => {
+    if (err) {
+      res.status(500).json({ error: 'Failed to establish CSRF session' });
+      return;
+    }
+    res.json({ csrfToken: token ?? '' });
+  });
 });
 
 authRouter.get(
