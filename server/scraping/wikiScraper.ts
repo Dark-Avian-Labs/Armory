@@ -395,12 +395,35 @@ async function scrapeWarframePage(wfName: string): Promise<string | null> {
 
   const infobox = $('div.infobox').first();
   if (infobox.length > 0) {
-    const text = infobox.text();
-    const passiveMatch = text.match(
-      /Passive\s*(.+?)(?=Abilities|General Information|1st Ability|Health|Shield)/s,
-    );
-    if (passiveMatch) {
-      return passiveMatch[1].trim();
+    const passiveGroup = infobox
+      .find('div.group')
+      .filter((_, el) => {
+        const header = normalizeText($(el).find('> .header').first().text());
+        return header.toLowerCase() === 'passive';
+      })
+      .first();
+
+    if (passiveGroup.length > 0) {
+      const caption = normalizeText(
+        passiveGroup.find('.row .value.caption').first().text(),
+      );
+      if (caption.length > 0) {
+        return caption;
+      }
+
+      const value = normalizeText(
+        passiveGroup.find('.row .value').first().text(),
+      );
+      if (value.length > 0) {
+        return value;
+      }
+
+      const fallbackGroupText = normalizeText(
+        passiveGroup.text().replace(/^Passive\s*/i, ''),
+      );
+      if (fallbackGroupText.length > 0) {
+        return fallbackGroupText;
+      }
     }
   }
 
@@ -408,7 +431,28 @@ async function scrapeWarframePage(wfName: string): Promise<string | null> {
   if (passiveHeader.length > 0) {
     const nextP = passiveHeader.nextAll('p').first();
     if (nextP.length > 0) {
-      return nextP.text().trim();
+      return normalizeText(nextP.text());
+    }
+  }
+
+  let passiveHeading = $('h2 span#Passive').first().closest('h2').first();
+  if (passiveHeading.length === 0) {
+    passiveHeading = $('h3 span#Passive').first().closest('h3').first();
+  }
+  if (passiveHeading.length > 0) {
+    const nextP = passiveHeading.nextAll('p').first();
+    if (nextP.length > 0) {
+      return normalizeText(nextP.text());
+    }
+  }
+
+  if (infobox.length > 0) {
+    const text = normalizeText(infobox.text());
+    const passiveMatch = text.match(
+      /Passive\s*(.+?)(?=Abilities|General Information|\d+(?:st|nd|rd|th)\s+Ability|Notes|Trivia|Gallery|References|$)/s,
+    );
+    if (passiveMatch) {
+      return normalizeText(passiveMatch[1]);
     }
   }
 

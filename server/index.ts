@@ -239,7 +239,10 @@ app.use(
     const message = err.message || '';
     const isCsrfError =
       err.name === 'CsrfError' ||
-      (err.constructor && err.constructor.name === 'CsrfError');
+      (err.constructor && err.constructor.name === 'CsrfError') ||
+      err.name === 'ForbiddenError' ||
+      (err as { code?: string }).code === 'EBADCSRFTOKEN' ||
+      message.toLowerCase().includes('csrf');
     if (isCsrfError) {
       res.setHeader('X-CSRF-Error', '1');
       res

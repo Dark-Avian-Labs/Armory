@@ -152,6 +152,22 @@ function WarframeStats({
       ]
     : [];
 
+  const passiveText = useMemo(() => {
+    const wiki = warframe.passive_description_wiki?.trim() ?? '';
+    const base = warframe.passive_description?.trim() ?? '';
+    if (wiki && base) {
+      const wikiWordCount = wiki.split(/\s+/).filter(Boolean).length;
+      const baseWordCount = base.split(/\s+/).filter(Boolean).length;
+      const looksTruncated =
+        wikiWordCount <= 3 || wiki.length < Math.max(20, base.length * 0.6);
+      if (looksTruncated && baseWordCount > wikiWordCount) {
+        return base;
+      }
+      return wiki;
+    }
+    return wiki || base;
+  }, [warframe.passive_description, warframe.passive_description_wiki]);
+
   return (
     <div className="space-y-2">
       {warframe.image_path && (
@@ -207,17 +223,13 @@ function WarframeStats({
         </div>
       )}
 
-      {(warframe.passive_description_wiki || warframe.passive_description) && (
+      {passiveText && (
         <div className="mt-3 border-t border-glass-divider pt-2">
           <div className="text-[10px] font-semibold uppercase text-muted">
             Passive
           </div>
           <div className="mt-1 text-xs leading-relaxed text-muted">
-            {warframe.passive_description_wiki ? (
-              warframe.passive_description_wiki
-            ) : (
-              <PassiveText text={warframe.passive_description!} />
-            )}
+            <PassiveText text={passiveText} />
           </div>
         </div>
       )}

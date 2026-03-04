@@ -960,7 +960,7 @@ export function ModBuilder() {
           <StatsPanel
             equipment={selectedEquipment as Warframe | Weapon}
             type={equipmentType}
-            slots={equipmentType !== 'warframe' ? slots : undefined}
+            slots={slots}
             abilities={
               equipmentType === 'warframe' ? (
                 <AbilityBar
@@ -1242,7 +1242,7 @@ export function ModBuilder() {
 
       {showSaveModal && (
         <div
-          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/60"
+          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setShowSaveModal(false)}
         >
           <div

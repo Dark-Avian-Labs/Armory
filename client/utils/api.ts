@@ -93,6 +93,31 @@ function setJsonContentType(headers: Headers, init?: RequestInit): void {
   }
 }
 
+function injectCsrfIntoJsonBody(
+  body: BodyInit | null | undefined,
+  csrfToken: string,
+): BodyInit | null | undefined {
+  if (typeof body !== 'string') {
+    return body;
+  }
+  const trimmed = body.trimStart();
+  if (!trimmed.startsWith('{')) {
+    return body;
+  }
+  try {
+    const parsed = JSON.parse(body) as Record<string, unknown>;
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
+      return body;
+    }
+    if (typeof parsed._csrf === 'string' && parsed._csrf.length > 0) {
+      return body;
+    }
+    return JSON.stringify({ ...parsed, _csrf: csrfToken });
+  } catch {
+    return body;
+  }
+}
+
 export async function apiFetch(
   url: string,
   init?: RequestInit,
@@ -103,6 +128,7 @@ export async function apiFetch(
 
   const headers = new Headers(init?.headers);
   setJsonContentType(headers, init);
+  let requestBody = init?.body;
 
   if (needsCsrf) {
     const csrfToken = await getCsrfToken();
@@ -110,9 +136,10 @@ export async function apiFetch(
       throw new Error('Failed to fetch CSRF token');
     }
     headers.set('X-CSRF-Token', csrfToken);
+    requestBody = injectCsrfIntoJsonBody(requestBody, csrfToken);
   }
 
-  const response = await fetch(url, { ...init, headers });
+  const response = await fetch(url, { ...init, headers, body: requestBody });
   if (response.status === 401) {
     redirectToCentralAuth();
     return response;
@@ -130,5 +157,6 @@ export async function apiFetch(
   const retryHeaders = new Headers(init?.headers);
   setJsonContentType(retryHeaders, init);
   retryHeaders.set('X-CSRF-Token', freshCsrfToken);
-  return fetch(url, { ...init, headers: retryHeaders });
+  const retryBody = injectCsrfIntoJsonBody(init?.body, freshCsrfToken);
+  return fetch(url, { ...init, headers: retryHeaders, body: retryBody });
 }
