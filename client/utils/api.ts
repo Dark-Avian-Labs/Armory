@@ -74,11 +74,22 @@ async function isCsrfFailureResponse(response: Response): Promise<boolean> {
       code?: string;
       errorCode?: string;
       error_code?: string;
+      error?: string;
+      message?: string;
     };
     const code = body.code ?? body.errorCode ?? body.error_code;
-    return response.status === 403 && code === 'CSRF_INVALID';
+    const details = `${body.error ?? ''} ${body.message ?? ''}`.toLowerCase();
+    return (
+      response.status === 403 &&
+      (code === 'CSRF_INVALID' || details.includes('csrf'))
+    );
   } catch {
-    return false;
+    try {
+      const text = (await response.clone().text()).toLowerCase();
+      return response.status === 403 && text.includes('csrf');
+    } catch {
+      return false;
+    }
   }
 }
 

@@ -851,11 +851,13 @@ export function ModBuilder() {
 
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveModalName, setSaveModalName] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [saveToast, setSaveToast] = useState(false);
 
   const openSaveModal = () => {
     if (!selectedEquipment) return;
     setSaveModalName(buildName);
+    setSaveError(null);
     setShowSaveModal(true);
   };
 
@@ -885,45 +887,51 @@ export function ModBuilder() {
 
   const confirmSave = async () => {
     if (!selectedEquipment) return;
+    setSaveError(null);
+    try {
+      const finalName = saveModalName.trim() || buildName;
+      setBuildName(finalName);
 
-    const finalName = saveModalName.trim() || buildName;
-    setBuildName(finalName);
+      const config: BuildConfig = {
+        id: isOwnBuild ? currentBuildId : undefined,
+        name: finalName,
+        equipment_type: equipmentType,
+        equipment_unique_name: selectedEquipment.unique_name,
+        slots,
+        helminth: helminthConfig,
+        arcaneSlots,
+        shardSlots,
+        orokinReactor,
+      };
 
-    const config: BuildConfig = {
-      id: isOwnBuild ? currentBuildId : undefined,
-      name: finalName,
-      equipment_type: equipmentType,
-      equipment_unique_name: selectedEquipment.unique_name,
-      slots,
-      helminth: helminthConfig,
-      arcaneSlots,
-      shardSlots,
-      orokinReactor,
-    };
+      const imagePath = selectedEquipment.image_path
+        ? `/images${selectedEquipment.image_path}`
+        : undefined;
 
-    const imagePath = selectedEquipment.image_path
-      ? `/images${selectedEquipment.image_path}`
-      : undefined;
+      const saveConfig: BuildConfig = isOwnBuild
+        ? config
+        : { ...config, name: `Copy of ${config.name}` };
 
-    const saveConfig: BuildConfig = isOwnBuild
-      ? config
-      : { ...config, name: `Copy of ${config.name}` };
+      const saved = await storageSave(
+        saveConfig,
+        selectedEquipment.name,
+        imagePath,
+      );
+      setCurrentBuildId(saved.id);
+      setIsOwnBuild(true);
+      setShowSaveModal(false);
 
-    const saved = await storageSave(
-      saveConfig,
-      selectedEquipment.name,
-      imagePath,
-    );
-    setCurrentBuildId(saved.id);
-    setIsOwnBuild(true);
-    setShowSaveModal(false);
+      if (!currentBuildId || !isOwnBuild) {
+        navigate(buildEditPath(saved.id), { replace: true });
+      }
 
-    if (!currentBuildId || !isOwnBuild) {
-      navigate(buildEditPath(saved.id), { replace: true });
+      setSaveToast(true);
+      setTimeout(() => setSaveToast(false), 2500);
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : 'Failed to save build',
+      );
     }
-
-    setSaveToast(true);
-    setTimeout(() => setSaveToast(false), 2500);
   };
 
   const arcaneSlotCount = equipmentType === 'warframe' ? 2 : 1;
@@ -1252,6 +1260,11 @@ export function ModBuilder() {
             <h3 className="mb-4 text-lg font-semibold text-foreground">
               Save Build
             </h3>
+            {saveError ? (
+              <p className="mb-3 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+                {saveError}
+              </p>
+            ) : null}
             <label className="mb-1 block text-xs text-muted">Build Name</label>
             <input
               type="text"

@@ -142,7 +142,16 @@ export function useBuildStorage() {
         }),
       });
       if (!response.ok) {
-        throw new Error('Failed to save build');
+        let message = 'Failed to save build';
+        try {
+          const body = (await response.json()) as { error?: string };
+          if (typeof body.error === 'string' && body.error.trim().length > 0) {
+            message = body.error;
+          }
+        } catch {
+          // ignore parse errors and use fallback message
+        }
+        throw new Error(message);
       }
       let savedId = config.id;
       let body: { id?: string | number } | null = null;
