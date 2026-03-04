@@ -6,7 +6,6 @@ import {
   getDamageTypeIconPath,
   sanitizeDisplayTextKeepDamageTokens,
   splitDisplayTextByDamageTokens,
-  truncateDamageTokenText,
 } from '../../utils/damageTypeTokens';
 import { GlassTooltip } from '../GlassTooltip';
 
@@ -34,8 +33,7 @@ export function AbilityBar({
 }: AbilityBarProps) {
   const renderDamageSnippet = (raw: string): React.ReactNode => {
     const cleaned = sanitizeDisplayTextKeepDamageTokens(raw);
-    const snippet = truncateDamageTokenText(cleaned, 120);
-    return splitDisplayTextByDamageTokens(snippet).map(
+    return splitDisplayTextByDamageTokens(cleaned).map(
       (segment, segmentIndex) => {
         if (segment.kind === 'text') {
           return <span key={`t-${segmentIndex}`}>{segment.value}</span>;
@@ -170,7 +168,7 @@ export function AbilityBar({
           return (
             <GlassTooltip
               key={ability.index}
-              width="w-48"
+              width="w-80"
               content={
                 <>
                   <div className="flex items-center justify-between">
@@ -189,12 +187,12 @@ export function AbilityBar({
                     </div>
                   )}
                   {ability.description && !isReplaced && (
-                    <div className="mt-0.5 text-[10px] text-muted">
+                    <div className="mt-0.5 whitespace-normal break-words text-[10px] leading-relaxed text-muted">
                       {renderDamageSnippet(ability.description)}
                     </div>
                   )}
                   {isReplaced && selectedReplacement?.description && (
-                    <div className="mt-0.5 text-[10px] text-muted">
+                    <div className="mt-0.5 whitespace-normal break-words text-[10px] leading-relaxed text-muted">
                       {renderDamageSnippet(selectedReplacement.description)}
                     </div>
                   )}

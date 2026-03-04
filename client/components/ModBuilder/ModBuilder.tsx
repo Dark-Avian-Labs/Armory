@@ -1249,14 +1249,8 @@ export function ModBuilder() {
       </div>
 
       {showSaveModal && (
-        <div
-          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/60"
-          onClick={() => setShowSaveModal(false)}
-        >
-          <div
-            className="w-96 rounded-xl border border-glass-border bg-surface-modal p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-96 rounded-xl border border-glass-border bg-surface-modal p-6 shadow-2xl">
             <h3 className="mb-4 text-lg font-semibold text-foreground">
               Save Build
             </h3>

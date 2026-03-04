@@ -6,7 +6,6 @@ import {
   getDamageTypeIconPath,
   sanitizeDisplayTextKeepDamageTokens,
   splitDisplayTextByDamageTokens,
-  truncateDamageTokenText,
 } from '../../utils/damageTypeTokens';
 
 interface HelminthPickerPanelProps {
@@ -34,8 +33,7 @@ export function HelminthPickerPanel({
 
   const renderDamageSnippet = (raw: string): React.ReactNode => {
     const cleaned = sanitizeDisplayTextKeepDamageTokens(raw);
-    const snippet = truncateDamageTokenText(cleaned, 120);
-    return splitDisplayTextByDamageTokens(snippet).map(
+    return splitDisplayTextByDamageTokens(cleaned).map(
       (segment, segmentIndex) => {
         if (segment.kind === 'text') {
           return <span key={`t-${segmentIndex}`}>{segment.value}</span>;
@@ -139,7 +137,7 @@ export function HelminthPickerPanel({
                     {ability.name}
                   </div>
                   {ability.description && (
-                    <div className="mt-0.5 text-[11px] leading-tight text-muted/60">
+                    <div className="mt-0.5 whitespace-normal break-words text-[11px] leading-relaxed text-muted/60">
                       {renderDamageSnippet(ability.description)}
                     </div>
                   )}
