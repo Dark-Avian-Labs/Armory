@@ -144,19 +144,9 @@ export function useBuildStorage() {
       if (!response.ok) {
         let message = 'Failed to save build';
         try {
-          const body = (await response.json()) as {
-            error?: string;
-            debug?: { debugId?: string };
-          };
+          const body = (await response.json()) as { error?: string };
           if (typeof body.error === 'string' && body.error.trim().length > 0) {
             message = body.error;
-          }
-          if (
-            body.debug &&
-            typeof body.debug.debugId === 'string' &&
-            body.debug.debugId.length > 0
-          ) {
-            message = `${message} (debug ${body.debug.debugId})`;
           }
         } catch {
           // ignore parse errors and use fallback message

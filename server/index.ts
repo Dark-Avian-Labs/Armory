@@ -56,17 +56,6 @@ try {
 }
 
 const app = express();
-const CSRF_DEBUG = process.env.CSRF_DEBUG === '1';
-
-function tokenPreview(value: unknown): string | null {
-  if (typeof value !== 'string' || value.length === 0) {
-    return null;
-  }
-  if (value.length <= 12) {
-    return value;
-  }
-  return `${value.slice(0, 6)}...${value.slice(-4)}(len:${value.length})`;
-}
 
 if (TRUST_PROXY) app.set('trust proxy', 1);
 if (NODE_ENV === 'production' && SECURE_COOKIES && !TRUST_PROXY) {
@@ -106,8 +95,7 @@ const cookieOptions: express.CookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000,
   httpOnly: true,
   secure: SECURE_COOKIES,
-  // Lax is sufficient for top-level auth redirects and more deployment-safe.
-  sameSite: 'lax',
+  sameSite: SECURE_COOKIES ? 'none' : 'lax',
 };
 if (COOKIE_DOMAIN) cookieOptions.domain = COOKIE_DOMAIN;
 
@@ -138,44 +126,6 @@ const { csrfSynchronisedProtection, generateToken } = csrfSync({
       req.session.csrfToken = token as string;
     }
   },
-});
-
-app.use((req, res, next) => {
-  if (!CSRF_DEBUG || !req.path.startsWith('/api')) {
-    next();
-    return;
-  }
-
-  const headerRaw = req.headers['x-csrf-token'] || req.headers['x-xsrf-token'];
-  const headerToken = Array.isArray(headerRaw) ? headerRaw[0] : headerRaw;
-  const bodyToken =
-    req.body && typeof req.body === 'object' && req.body !== null
-      ? (req.body as { _csrf?: unknown })._csrf
-      : undefined;
-  const storedToken = req.session?.csrfToken;
-
-  const debugSnapshot = {
-    method: req.method,
-    path: req.originalUrl || req.url,
-    sessionId: req.sessionID || null,
-    hasSession: Boolean(req.session),
-    hasSessionCookie: Boolean(
-      typeof req.headers.cookie === 'string' &&
-      req.headers.cookie.includes('parametric.sid='),
-    ),
-    headerToken: tokenPreview(headerToken),
-    bodyToken: tokenPreview(bodyToken),
-    storedToken: tokenPreview(storedToken),
-  };
-
-  (res.locals as { csrfDebug?: Record<string, unknown> }).csrfDebug =
-    debugSnapshot;
-
-  if (req.path === '/api/auth/csrf') {
-    console.warn('[CSRF_DEBUG] issuing token', debugSnapshot);
-  }
-
-  next();
 });
 
 app.use(csrfSynchronisedProtection);
@@ -282,7 +232,7 @@ if (NODE_ENV === 'production') {
 app.use(
   (
     err: Error,
-    req: express.Request,
+    _req: express.Request,
     res: express.Response,
     _next: express.NextFunction,
   ) => {
@@ -300,38 +250,10 @@ app.use(
       errorCode === 'EBADCSRFTOKEN' ||
       (isForbiddenError && lowerMessage.includes('csrf'));
     if (isCsrfError) {
-      const debugFromLocals = (
-        res.locals as { csrfDebug?: Record<string, unknown> }
-      ).csrfDebug;
-      const fallbackDebug = {
-        method: req.method,
-        path: req.originalUrl || req.url,
-        sessionId: req.sessionID || null,
-        hasSession: Boolean(req.session),
-        hasSessionCookie: Boolean(
-          typeof req.headers.cookie === 'string' &&
-          req.headers.cookie.includes('parametric.sid='),
-        ),
-        storedToken: tokenPreview(req.session?.csrfToken),
-      };
-      const debug = debugFromLocals ?? fallbackDebug;
-      const debugId = `${Date.now().toString(36)}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`;
-      console.warn('[CSRF_DEBUG] validation failed', {
-        debugId,
-        errorName: err.name,
-        errorCode,
-        message,
-        ...debug,
-      });
       res.setHeader('X-CSRF-Error', '1');
-      res.setHeader('X-CSRF-Debug-Id', debugId);
-      res.status(403).json({
-        error: 'Invalid CSRF token',
-        code: 'CSRF_INVALID',
-        debug: CSRF_DEBUG ? { debugId, ...debug } : undefined,
-      });
+      res
+        .status(403)
+        .json({ error: 'Invalid CSRF token', code: 'CSRF_INVALID' });
       return;
     }
     console.error('[Error]', err.stack ?? message);
