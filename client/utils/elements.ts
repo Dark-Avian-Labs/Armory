@@ -66,15 +66,6 @@ function getPrimaryElementDamageIndex(element: PrimaryElement): number {
   return DAMAGE_TYPES.indexOf(element as DamageType);
 }
 
-/**
- * Expected baseDamage layout:
- * - baseDamage[0..2] are physical damage in DAMAGE_TYPES order (Impact, Puncture, Slash)
- * - primary elemental entries are read via DAMAGE_TYPES index lookup so
- *   baseDamage[indexOf(PRIMARY_ELEMENTS[i] in DAMAGE_TYPES)] maps each element.
- *
- * This avoids hard-coding positional offsets (e.g. 3 + i) and keeps coupling to
- * DAMAGE_TYPES/PRIMARY_ELEMENTS explicit if ordering changes.
- */
 function identifyInnateElements(
   baseDamage: number[],
 ): Array<{ element: PrimaryElement; value: number }> {

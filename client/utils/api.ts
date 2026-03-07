@@ -108,7 +108,7 @@ function setJsonContentType(headers: Headers, init?: RequestInit): void {
         headers.set('Content-Type', 'application/json');
       }
     } catch {
-      // body is not valid JSON; leave Content-Type untouched
+      // ignore
     }
   }
 }

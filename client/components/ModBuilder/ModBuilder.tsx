@@ -53,6 +53,7 @@ import {
   getRivenStatsForType,
   getRivenWeaponType,
   isRivenMod,
+  normalizeRivenConfigMembership,
   RIVEN_PLACEHOLDER_UNIQUE,
 } from '../../utils/riven';
 
@@ -461,8 +462,6 @@ export function ModBuilder() {
     setDefaultPolarities(
       newSlots.map((s) => ({ polarity: s.polarity, type: s.type })),
     );
-    // Only gate initial slot hydration on slot count so user edits
-    // (mod placements/ranks/polarity swaps) do not retrigger this initializer.
     if (!shouldInitializeSlots) {
       return;
     }
@@ -807,15 +806,16 @@ export function ModBuilder() {
   const handleRivenSave = useCallback(
     (config: RivenConfig) => {
       if (editingRivenSlot === null) return;
+      const normalizedConfig = normalizeRivenConfigMembership(config);
       setSlots((prev) =>
         prev.map((slot) => {
           if (slot.index !== editingRivenSlot) return slot;
           if (!slot.mod || !isRivenMod(slot.mod)) return slot;
           return {
             ...slot,
-            riven_config: config,
+            riven_config: normalizedConfig,
             mod: createRivenMod(
-              config,
+              normalizedConfig,
               slot.riven_art_path ?? slot.mod.image_path,
             ),
           };

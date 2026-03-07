@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 import type { StoredBuild, BuildConfig } from '../types/warframe';
 import { apiFetch } from '../utils/api';
+import { normalizeRivenConfigMembership } from '../utils/riven';
 
 const LEGACY_STORAGE_KEY = 'parametric_builds';
 const MIGRATED_KEY = 'parametric_builds_migrated_v1';
@@ -124,8 +125,17 @@ export function useBuildStorage() {
       equipmentName: string,
       equipmentImage?: string,
     ): Promise<StoredBuild> => {
+      const normalizedSlots = config.slots.map((slot) =>
+        slot.riven_config
+          ? {
+              ...slot,
+              riven_config: normalizeRivenConfigMembership(slot.riven_config),
+            }
+          : slot,
+      );
       const configWithMeta = {
         ...config,
+        slots: normalizedSlots,
         equipment_name: equipmentName,
         equipment_image: equipmentImage,
       };
@@ -149,7 +159,7 @@ export function useBuildStorage() {
             message = body.error;
           }
         } catch {
-          // ignore parse errors and use fallback message
+          // ignore
         }
         throw new Error(message);
       }

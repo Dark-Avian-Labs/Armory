@@ -214,12 +214,35 @@ const archonShardTypeUpdateSchema = z.object({
 });
 
 const RivenStatSchema = z.object({
-  // Accept empty stat names to support legacy/placeholder riven payloads.
-  // The client/editor handles enforcing meaningful selections.
   stat: z.string().trim(),
   value: z.number().finite(),
   isNegative: z.boolean(),
 });
+
+const RivenConfigSchema = z
+  .object({
+    polarity: z.enum(['AP_ATTACK', 'AP_TACTIC', 'AP_DEFENSE']).optional(),
+    positive: z.array(RivenStatSchema),
+    negative: RivenStatSchema.optional(),
+  })
+  .superRefine((config, ctx) => {
+    for (const [index, stat] of config.positive.entries()) {
+      if (stat.isNegative) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Positive Riven stats must have isNegative=false',
+          path: ['positive', index, 'isNegative'],
+        });
+      }
+    }
+    if (config.negative && !config.negative.isNegative) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Negative Riven stat must have isNegative=true',
+        path: ['negative', 'isNegative'],
+      });
+    }
+  });
 
 const EquipmentTypeSchema = z.enum([
   'warframe',
@@ -251,15 +274,7 @@ const ModConfigSchema = z.object({
         rank: z.number().int().min(0).optional(),
         setRank: z.number().int().min(0).optional(),
         riven_art_path: z.string().trim().min(1).optional(),
-        riven_config: z
-          .object({
-            polarity: z
-              .enum(['AP_ATTACK', 'AP_TACTIC', 'AP_DEFENSE'])
-              .optional(),
-            positive: z.array(RivenStatSchema),
-            negative: RivenStatSchema.optional(),
-          })
-          .optional(),
+        riven_config: RivenConfigSchema.optional(),
       })
       .passthrough(),
   ),

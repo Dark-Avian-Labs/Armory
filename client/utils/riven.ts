@@ -259,15 +259,36 @@ export function formatRivenLine(stat: RivenStat): string {
 }
 
 export function buildRivenDescription(config: RivenConfig): string {
+  const normalized = normalizeRivenConfigMembership(config);
   const lines: string[] = [];
-  for (const positive of config.positive) {
+  for (const positive of normalized.positive) {
     if (!positive.stat) continue;
     lines.push(formatRivenLine({ ...positive, isNegative: false }));
   }
-  if (config.negative?.stat) {
-    lines.push(formatRivenLine({ ...config.negative, isNegative: true }));
+  if (normalized.negative?.stat) {
+    lines.push(formatRivenLine({ ...normalized.negative, isNegative: true }));
   }
   return lines.join('\n');
+}
+
+export function normalizeRivenConfigMembership(
+  config: RivenConfig,
+): RivenConfig {
+  return {
+    ...config,
+    positive: (config.positive || []).map((stat) => ({
+      ...stat,
+      value: Math.abs(stat.value),
+      isNegative: false,
+    })),
+    negative: config.negative
+      ? {
+          ...config.negative,
+          value: -Math.abs(config.negative.value),
+          isNegative: true,
+        }
+      : undefined,
+  };
 }
 
 export function createRivenPlaceholderMod(imagePath?: string): Mod {
@@ -288,16 +309,17 @@ export function createRivenMod(
   config: RivenConfig,
   imagePath: string | undefined,
 ): Mod {
+  const normalizedConfig = normalizeRivenConfigMembership(config);
   return {
     unique_name: RIVEN_MOD_UNIQUE,
     name: 'Riven Mod',
     rarity: 'LEGENDARY',
     type: 'RIVEN',
     compat_name: 'RIVEN',
-    polarity: config.polarity ?? 'AP_ATTACK',
+    polarity: normalizedConfig.polarity ?? 'AP_ATTACK',
     base_drain: 18,
     fusion_limit: 0,
-    description: JSON.stringify([buildRivenDescription(config)]),
+    description: JSON.stringify([buildRivenDescription(normalizedConfig)]),
     image_path: imagePath,
   };
 }

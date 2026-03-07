@@ -32,7 +32,9 @@ export function ShardPickerPanel({
   const [selectedType, setSelectedType] = useState<string>(
     currentSlot.shard_type_id != null
       ? String(currentSlot.shard_type_id)
-      : (shards[0]?.id != null ? String(shards[0].id) : ''),
+      : shards[0]?.id != null
+        ? String(shards[0].id)
+        : '',
   );
   const [tauforged, setTauforged] = useState(currentSlot.tauforged);
 
@@ -104,7 +106,18 @@ export function ShardPickerPanel({
                 <button
                   key={buff.id}
                   onClick={() => {
-                    if (!Number.isFinite(buffId)) return;
+                    if (!Number.isFinite(buffId)) {
+                      if (import.meta.env.DEV) {
+                        console.warn(
+                          '[ShardPickerPanel] Invalid buff id; selection ignored',
+                          {
+                            selectedType,
+                            rawBuffId: buff.id,
+                          },
+                        );
+                      }
+                      return;
+                    }
                     onSelect(selectedType, buffId, tauforged);
                   }}
                   className="flex w-full items-center justify-between rounded-lg border border-glass-border px-3 py-2 text-left text-sm text-muted transition-all hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground"
