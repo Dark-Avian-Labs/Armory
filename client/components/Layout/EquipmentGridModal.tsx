@@ -14,6 +14,7 @@ interface EquipmentItem {
   image_path?: string;
   mastery_req: number;
   product_category?: string;
+  selection_type?: EquipmentType;
 }
 
 interface EquipmentGridModalProps {
@@ -36,6 +37,83 @@ const CATEGORY_API: Record<EquipmentType, string> = {
   tektolyst: '',
 };
 
+const HIDDEN_EMPTY_TABS = new Set<EquipmentType>([
+  'beast_claws',
+  'kdrive',
+  'tektolyst',
+]);
+
+function normalizeEquipmentName(name: string): string {
+  return name.replace(/^<[^>]+>\s*/i, '').trim();
+}
+
+const SPECIAL_PRIMARY_NAMES = new Set([
+  'Artemis Bow',
+  'Artemis Bow Prime',
+  'Neutralizer',
+]);
+
+const SPECIAL_SECONDARY_NAMES = new Set([
+  'Balefire Charger',
+  'Balefire Charger Prime',
+  'Dex Pixia',
+  'Dex Pixia Prime',
+  'Glory',
+  'Noctua',
+  'Regulators',
+  'Regulators Prime',
+]);
+
+const SPECIAL_MELEE_NAMES = new Set([
+  'Desert Wind',
+  'Desert Wind Prime',
+  'Diwata',
+  'Diwata Prime',
+  'Exalted Blade',
+  'Exalted Prime Blade',
+  'Exalted Umbra Blade',
+  'Garuda Talons',
+  'Garuda Prime Talons',
+  'Iron Staff',
+  'Iron Staff Prime',
+  'Landslide Fists',
+  'Landslide Fists Prime',
+  'Shadow Claws',
+  'Shadow Claws Prime',
+  'Shadow Clones',
+  'Shadow Clones Prime',
+  'Shattered Lash',
+  'Shattered Lash Prime',
+  'Valkyr Talons',
+  'Valkyr Prime Talons',
+  'Whipclaw',
+  'Whipclaw Prime',
+]);
+
+const SPECIAL_NECRAMECH_SELECTION_TYPE: Record<string, EquipmentType> = {
+  Arquebex: 'archgun',
+  Ironbride: 'archmelee',
+};
+
+function getSpecialItemSelectionType(
+  item: EquipmentItem,
+  activeTab: EquipmentType,
+): EquipmentType | null {
+  if (item.product_category !== 'SpecialItems') return null;
+  const name = normalizeEquipmentName(item.name);
+
+  if (activeTab === 'primary' && SPECIAL_PRIMARY_NAMES.has(name))
+    return 'primary';
+  if (activeTab === 'secondary' && SPECIAL_SECONDARY_NAMES.has(name))
+    return 'secondary';
+  if (activeTab === 'melee' && SPECIAL_MELEE_NAMES.has(name)) return 'melee';
+  if (activeTab === 'necramech' && SPECIAL_NECRAMECH_SELECTION_TYPE[name]) {
+    return SPECIAL_NECRAMECH_SELECTION_TYPE[name];
+  }
+
+  return null;
+}
+
 export function EquipmentGridModal({
   onSelect,
   onClose,
@@ -45,6 +123,9 @@ export function EquipmentGridModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const visibleTabs = EQUIPMENT_TYPE_ORDER.filter(
+    (t) => !HIDDEN_EMPTY_TABS.has(t),
+  );
 
   useEffect(() => {
     const url = CATEGORY_API[activeTab];
@@ -57,12 +138,48 @@ export function EquipmentGridModal({
 
     setLoading(true);
     setError(null);
-    void apiFetch(url)
-      .then((r) => {
-        return r.json();
-      })
-      .then((data) => {
-        let list: EquipmentItem[] = data.items || [];
+    void (async () => {
+      try {
+        let list: EquipmentItem[] = [];
+
+        const shouldMergeSpecialItems =
+          activeTab === 'primary' ||
+          activeTab === 'secondary' ||
+          activeTab === 'melee' ||
+          activeTab === 'necramech';
+
+        if (shouldMergeSpecialItems) {
+          const [baseRes, specialRes] = await Promise.all([
+            apiFetch(url),
+            apiFetch('/api/weapons?type=SpecialItems'),
+          ]);
+          const baseData = (await baseRes.json()) as {
+            items?: EquipmentItem[];
+          };
+          const specialData = (await specialRes.json()) as {
+            items?: EquipmentItem[];
+          };
+
+          const mappedSpecials = (specialData.items || [])
+            .map((item) => {
+              const selectionType = getSpecialItemSelectionType(
+                item,
+                activeTab,
+              );
+              if (!selectionType) return null;
+              return { ...item, selection_type: selectionType };
+            })
+            .filter((item): item is EquipmentItem => item !== null);
+
+          const merged = [...(baseData.items || []), ...mappedSpecials];
+          const byUnique = new Map<string, EquipmentItem>();
+          for (const item of merged) byUnique.set(item.unique_name, item);
+          list = Array.from(byUnique.values());
+        } else {
+          const response = await apiFetch(url);
+          const data = (await response.json()) as { items?: EquipmentItem[] };
+          list = data.items || [];
+        }
 
         if (activeTab === 'warframe') {
           list = list.filter((i) => {
@@ -72,23 +189,33 @@ export function EquipmentGridModal({
         } else if (activeTab === 'archwing') {
           list = list.filter((i) => i.product_category === 'SpaceSuits');
         } else if (activeTab === 'necramech') {
-          list = list.filter((i) => i.product_category === 'MechSuits');
+          list = list.filter(
+            (i) =>
+              i.product_category === 'MechSuits' || i.selection_type != null,
+          );
         }
+
+        list = list.sort((a, b) =>
+          normalizeEquipmentName(a.name).localeCompare(
+            normalizeEquipmentName(b.name),
+          ),
+        );
 
         setItems(list);
         setError(null);
-        return undefined;
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : 'Failed to load equipment data.';
         setError(message);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [activeTab]);
 
+  const query = search.trim().toLowerCase();
   const filtered = items.filter((i) =>
-    i.name.toLowerCase().includes(search.toLowerCase()),
+    normalizeEquipmentName(i.name).toLowerCase().includes(query),
   );
 
   return (
@@ -119,24 +246,25 @@ export function EquipmentGridModal({
           </button>
         </div>
 
-        <div className="mb-3 flex flex-wrap gap-1">
-          {EQUIPMENT_TYPE_ORDER.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => {
-                setActiveTab(t);
-                setSearch('');
-              }}
-              className={`rounded-lg px-3 py-1.5 text-xs transition-all ${
-                activeTab === t
-                  ? 'bg-accent-weak text-accent'
-                  : 'text-muted hover:bg-glass-hover hover:text-foreground'
-              }`}
-            >
-              {EQUIPMENT_TYPE_LABELS[t]}
-            </button>
-          ))}
+        <div className="mb-3 rounded-xl border border-glass-border bg-glass p-1">
+          <div className="flex flex-wrap gap-1">
+            {visibleTabs.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => {
+                  setActiveTab(t);
+                }}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-medium tracking-wide transition-all ${
+                  activeTab === t
+                    ? 'border-accent/50 bg-accent-weak text-accent shadow-[0_0_0_1px_rgba(64,180,255,0.18)_inset]'
+                    : 'border-transparent text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground'
+                }`}
+              >
+                {EQUIPMENT_TYPE_LABELS[t]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <input
@@ -173,9 +301,11 @@ export function EquipmentGridModal({
                 <button
                   key={item.unique_name}
                   type="button"
-                  onClick={() => onSelect(activeTab, item.unique_name)}
+                  onClick={() =>
+                    onSelect(item.selection_type ?? activeTab, item.unique_name)
+                  }
                   className="group relative overflow-hidden rounded-lg border border-glass-border p-0 text-center transition-all hover:border-glass-border-hover hover:bg-glass-hover"
-                  aria-label={`Select ${item.name}`}
+                  aria-label={`Select ${normalizeEquipmentName(item.name)}`}
                 >
                   <div className="relative flex h-20 w-full items-center justify-center overflow-hidden bg-glass">
                     {item.image_path ? (
@@ -191,7 +321,7 @@ export function EquipmentGridModal({
                       <span className="text-[10px] text-muted/50">?</span>
                     )}
                     <span className="text-shadow-soft absolute inset-x-0 bottom-0 truncate bg-black/25 px-2 py-1 text-[11px] text-white">
-                      {item.name}
+                      {normalizeEquipmentName(item.name)}
                     </span>
                   </div>
                 </button>

@@ -1,3 +1,4 @@
+import * as cheerio from 'cheerio';
 import { Router, type Request, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
@@ -47,6 +48,55 @@ const WEAPON_CATEGORY_TO_TYPE: Record<string, string> = {
   SpaceGuns: 'archgun',
   SpaceMelee: 'archmelee',
 };
+
+const HELMINTH_WIKI_URL = 'https://warframe.fandom.com/wiki/Helminth';
+const HELMINTH_NAME_CACHE_TTL_MS = 30 * 60 * 1000;
+const HELMINTH_MIN_EXPECTED_COUNT = 30;
+let helminthNameCache: { names: Set<string>; expiresAt: number } | null = null;
+
+function normalizeAbilityName(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+async function fetchHelminthAbilityNameSet(): Promise<Set<string>> {
+  const now = Date.now();
+  if (helminthNameCache && helminthNameCache.expiresAt > now) {
+    return helminthNameCache.names;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(HELMINTH_WIKI_URL, {
+      signal: controller.signal,
+    });
+    if (!response.ok) return new Set<string>();
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const names = new Set<string>();
+
+    $('#mw-content-text a[href^="/w/"]').each((_, el) => {
+      const text = normalizeAbilityName($(el).text());
+      const title = normalizeAbilityName($(el).attr('title') || '');
+      for (const raw of [text, title]) {
+        if (!raw) continue;
+        const cleaned = raw.replace(/\s*\(ability\)$/, '').trim();
+        if (!cleaned || cleaned.length < 3 || cleaned.length > 80) continue;
+        names.add(cleaned);
+      }
+    });
+
+    helminthNameCache = {
+      names,
+      expiresAt: now + HELMINTH_NAME_CACHE_TTL_MS,
+    };
+    return names;
+  } catch {
+    return new Set<string>();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 apiRouter.get('/weapons', (req: Request, res: Response) => {
   try {
@@ -524,15 +574,53 @@ apiRouter.get('/abilities', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/helminth-abilities', (_req: Request, res: Response) => {
+apiRouter.get('/helminth-abilities', async (_req: Request, res: Response) => {
   try {
     const db = getDb();
-    const rows = db
+    const flaggedRows = db
       .prepare(
         'SELECT * FROM abilities WHERE is_helminth_extractable = 1 ORDER BY name',
       )
-      .all();
-    res.json({ items: rows });
+      .all() as Array<Record<string, unknown>>;
+
+    // Fallback for datasets where only intrinsic Helminth abilities are flagged
+    // in exports but subsumable warframe abilities are not.
+    if (flaggedRows.length >= HELMINTH_MIN_EXPECTED_COUNT) {
+      res.json({ items: flaggedRows });
+      return;
+    }
+
+    const wikiNames = await fetchHelminthAbilityNameSet();
+    if (wikiNames.size === 0) {
+      res.json({ items: flaggedRows });
+      return;
+    }
+
+    const allAbilities = db.prepare('SELECT * FROM abilities').all() as Array<
+      Record<string, unknown> & { name?: string; unique_name?: string }
+    >;
+    const inferred = allAbilities
+      .filter((row) => {
+        const name =
+          typeof row.name === 'string' ? normalizeAbilityName(row.name) : '';
+        return !!name && wikiNames.has(name);
+      })
+      .map((row) => ({ ...row, is_helminth_extractable: 1 }));
+
+    const merged = new Map<string, Record<string, unknown>>();
+    for (const row of flaggedRows) {
+      const key = typeof row.unique_name === 'string' ? row.unique_name : '';
+      if (key) merged.set(key, row);
+    }
+    for (const row of inferred) {
+      const key = typeof row.unique_name === 'string' ? row.unique_name : '';
+      if (key) merged.set(key, row);
+    }
+
+    const items = Array.from(merged.values()).sort((a, b) =>
+      String(a.name ?? '').localeCompare(String(b.name ?? '')),
+    );
+    res.json({ items });
   } catch (err) {
     sendInternalError(res, 'helminthAbilities.list', err);
   }

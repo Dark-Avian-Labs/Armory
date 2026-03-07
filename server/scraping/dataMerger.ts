@@ -32,6 +32,9 @@ export function mergeScrapedData(
   const updateAbility = db.prepare(
     'UPDATE abilities SET ability_stats = ? WHERE unique_name = ?',
   );
+  const updateAbilityHelminth = db.prepare(
+    'UPDATE abilities SET is_helminth_extractable = MAX(is_helminth_extractable, ?) WHERE unique_name = ?',
+  );
 
   const findTable = db.prepare(
     `SELECT 'warframes' AS tbl FROM warframes WHERE unique_name = ?
@@ -76,15 +79,23 @@ export function mergeScrapedData(
         if (changes.changes > 0) result.companionsUpdated++;
       }
 
-      if (item.abilities.length > 0 && item.itemData) {
+      if (item.itemData) {
         const abilityTypes = (item.itemData as Record<string, unknown>)
-          .AbilityTypes as { path: string; LocalizeTag: string }[] | undefined;
+          .AbilityTypes as
+          | Array<{ path: string; LocalizeTag: string; IsHelminth?: number }>
+          | undefined;
 
         if (abilityTypes) {
           for (let i = 0; i < abilityTypes.length; i++) {
-            const abilityPath = abilityTypes[i].path;
+            const abilityType = abilityTypes[i];
+            const abilityPath = abilityType.path;
             const scrapedAbility = item.abilities[i];
-            if (!abilityPath || !scrapedAbility) continue;
+            if (!abilityPath) continue;
+
+            const isHelminth = Number(abilityType.IsHelminth) === 1 ? 1 : 0;
+            updateAbilityHelminth.run(isHelminth, abilityPath);
+
+            if (!scrapedAbility) continue;
 
             const statsJson =
               scrapedAbility.stats.length > 0

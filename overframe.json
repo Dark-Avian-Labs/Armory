@@ -1,0 +1,643 @@
+{
+  "props": {
+    "pageProps": {
+      "data": {
+        "id": 14667,
+        "created": "2020-01-02T22:58:04.707862Z",
+        "updated": "2021-11-16T11:56:21.400182Z",
+        "score": 715,
+        "url": "/build/14667/mirage-prime/mirage-eso-farming-fastest-kps-in-the-game-at-2-formas/",
+        "author": {
+          "id": 3956,
+          "username": "Popi",
+          "url": "/user/3956/popi/",
+          "is_staff": false
+        },
+        "formas": 2,
+        "item_data": {
+          "id": 26,
+          "locTag": "/Lotus/Language/Primes/MiragePrimeName",
+          "texture": "/Lotus/Interface/Icons/Store/Primes/MiragePrime.png",
+          "texture_new": "/Lotus/Interface/Icons/StoreIcons/Primes/MiragePrime.png"
+        },
+        "title": "Mirage ESO Farming, fastest KPS in the game at 2 formas",
+        "buildstring": "WzEsMjYsMzAsMSxbWzExOSwzLDBdLFs2OTUsMTAsMF0sWzc5MiwxMCwxXSxbNzkzLDEwLDFdLFs2NzcsNSwwXSxbNzk0LDUsMl0sWzgwNiw1LDNdLFs3OTEsNSwzXSxbMzAzLDUsM10sWzY1LDUsMF0sWzIyMDcsNSwwXSxbMCwwLDBdXV0=",
+        "description": "# Summary :\n\n*This is what i use to farm focus in ESO while reaching 8 waves for a chance at a good reward. *\n\nThe ideal squad for this is Mirage Volt Rhino and Trinity. Trinity is just there to give energy and Rhino to spam his 3 for the damage buff.\n\nVolt is nearly mandatory if you want to farm efficiently : with 4 corrosive projections, his 4 will kill the first wave of ennemies at the start of a round instantly allowing you to start using your 2 and build it up very fast (the more loot drops, the more explosives you have on the ground). Without Volt, it's way too slow to be efficient. However without mirage, the focus per wave is way lower.\n\nIf you're going to play in public without building an optimized squad, you should stick to Volt if you see 4 CP in your squad, otherwise saryn is the safest bet to go 8 waves no matter you squad but you may not reach focus cap because her kps is so much lower.\n\n# Usage :\n\nYour 2 will transform any loot into a damage dealing aura, only use it AFTER a wave of ennemy died, using it at the beginning of a round before Volt has had time to kill anything will just waste your energy. After that, spam it whenever you see a batch of ennemies dying, it's a snowballing process up to the point where everything litteraly gets spawnkilled (if you have the right squad).\n\nUpdate 16/11/2021 : \nI updated the guide replacing augur secrets with fleeting expertise, matching similar ESO mirage guides, it is indeed better, someone in the comment section pointed it out ! (you will need to reforma if you were following the previous version of the build unfortunately) \nI don't think any helminth ability is worth subsuming because the duration is so minimal for any buff however.",
+        "comment_count": 15,
+        "slots": [
+          {
+            "id": 5236448,
+            "slot_id": 1,
+            "build_id": 14667,
+            "mod": 119,
+            "rank": 3,
+            "polarity": 0,
+            "drain": 9,
+            "polarity_match": 1
+          },
+          {
+            "id": 5236449,
+            "slot_id": 2,
+            "build_id": 14667,
+            "mod": 695,
+            "rank": 10,
+            "polarity": 0,
+            "drain": 16,
+            "polarity_match": 1
+          },
+          {
+            "id": 5236450,
+            "slot_id": 3,
+            "build_id": 14667,
+            "mod": 792,
+            "rank": 10,
+            "polarity": 1,
+            "drain": 8,
+            "polarity_match": 2
+          },
+          {
+            "id": 5236451,
+            "slot_id": 4,
+            "build_id": 14667,
+            "mod": 793,
+            "rank": 10,
+            "polarity": 1,
+            "drain": 8,
+            "polarity_match": 2
+          },
+          {
+            "id": 5236452,
+            "slot_id": 5,
+            "build_id": 14667,
+            "mod": 677,
+            "rank": 5,
+            "polarity": 0,
+            "drain": 7,
+            "polarity_match": 1
+          },
+          {
+            "id": 5236453,
+            "slot_id": 6,
+            "build_id": 14667,
+            "mod": 794,
+            "rank": 5,
+            "polarity": 2,
+            "drain": 6,
+            "polarity_match": 2
+          },
+          {
+            "id": 5236454,
+            "slot_id": 7,
+            "build_id": 14667,
+            "mod": 806,
+            "rank": 5,
+            "polarity": 3,
+            "drain": 5,
+            "polarity_match": 2
+          },
+          {
+            "id": 5236455,
+            "slot_id": 8,
+            "build_id": 14667,
+            "mod": 791,
+            "rank": 5,
+            "polarity": 3,
+            "drain": 6,
+            "polarity_match": 2
+          },
+          {
+            "id": 5236456,
+            "slot_id": 9,
+            "build_id": 14667,
+            "mod": 303,
+            "rank": 5,
+            "polarity": 3,
+            "drain": -14,
+            "polarity_match": 2
+          },
+          {
+            "id": 5236457,
+            "slot_id": 10,
+            "build_id": 14667,
+            "mod": 65,
+            "rank": 5,
+            "polarity": 0,
+            "drain": 9,
+            "polarity_match": 1
+          },
+          {
+            "id": 5236458,
+            "slot_id": 11,
+            "build_id": 14667,
+            "mod": 2207,
+            "rank": 5,
+            "polarity": 0,
+            "drain": 0,
+            "polarity_match": 1
+          },
+          {
+            "id": 5236459,
+            "slot_id": 12,
+            "build_id": 14667,
+            "mod": null,
+            "rank": 0,
+            "polarity": 0,
+            "drain": 0,
+            "polarity_match": 1
+          }
+        ],
+        "deleted": null,
+        "item": 26,
+        "platinum_cost": 146,
+        "endo_cost": 107160,
+        "item_rank": 30,
+        "mastery_rank": 8,
+        "stats": {
+          "AVATAR_ARMOUR": 175,
+          "WEAPON_CLIP_MAX": null,
+          "AVATAR_POWER_MAX": 225.0000015,
+          "AVATAR_HEALTH_MAX": 240,
+          "AVATAR_SHIELD_MAX": 330,
+          "AVATAR_SLIDE_BOOST": 0,
+          "AVATAR_SPRINT_SPEED": 1.2,
+          "AVATAR_ABILITY_RANGE": 2.800000084,
+          "AVATAR_SLIDE_FRICTION": 0,
+          "AVATAR_ABILITY_DURATION": 0.12499999999999989,
+          "AVATAR_ABILITY_STRENGTH": 2.380000044,
+          "AVATAR_ABILITY_EFFICIENCY": 1.049999989,
+          "AVATAR_DAMAGE_TAKEN,DT_SENTIENT": 0,
+          "AVATAR_ABILITY_ENERGY_TO_OVERSHIELD": 0
+        },
+        "total_damage": 0,
+        "parent_build": null,
+        "child_builds": [],
+        "loadouts": []
+      },
+      "id": 14667,
+      "item": {
+        "categories": ["warframe"],
+        "data": {
+          "AbilityTypes": [
+            {
+              "Icon": "/Lotus/Interface/Icons/Abilities/HarlequinReflection.png",
+              "LocalizeDescTag": "/Lotus/Language/Suits/IllusionAbilityDesc",
+              "LocalizeTag": "/Lotus/Language/Suits/IllusionAbilityName",
+              "path": "/Lotus/Powersuits/PowersuitAbilities/IllusionAbility"
+            },
+            {
+              "Icon": "/Lotus/Interface/Icons/Abilities/HarlequinDeadlyTrap.png",
+              "LocalizeDescTag": "/Lotus/Language/Suits/SleightOfHandAbilityDesc",
+              "LocalizeTag": "/Lotus/Language/Suits/SleightOfHandAbilityName",
+              "path": "/Lotus/Powersuits/PowersuitAbilities/HarlequinObjectChangeAbility"
+            },
+            {
+              "Icon": "/Lotus/Interface/Icons/Abilities/HarlequinLightDark.png",
+              "IsHelminth": 1,
+              "LocalizeDescTag": "/Lotus/Language/Suits/EclipseAbilityDesc",
+              "LocalizeTag": "/Lotus/Language/Suits/EclipseAbilityName",
+              "path": "/Lotus/Powersuits/PowersuitAbilities/LightAbility"
+            },
+            {
+              "Icon": "/Lotus/Interface/Icons/Abilities/HarlequinPrism.png",
+              "LocalizeDescTag": "/Lotus/Language/Suits/GrandFinaleDesc",
+              "LocalizeTag": "/Lotus/Language/Suits/GrandFinaleName",
+              "path": "/Lotus/Powersuits/PowersuitAbilities/Prism"
+            }
+          ],
+          "AdditionalItems": [
+            "/Lotus/Upgrades/Skins/Harlequin/MiragePrimeHelmet"
+          ],
+          "ArmourRatingOverride": 185,
+          "ArtifactSlots": [
+            "AP_UNIVERSAL",
+            "AP_UNIVERSAL",
+            "AP_UNIVERSAL",
+            "AP_ATTACK",
+            "AP_UNIVERSAL",
+            "AP_DEFENSE",
+            "AP_TACTIC",
+            "AP_DEFENSE",
+            "AP_TACTIC",
+            "AP_UNIVERSAL",
+            "AP_UNIVERSAL",
+            "AP_UNIVERSAL"
+          ],
+          "Icon": "/Lotus/Interface/Icons/StoreIcons/Primes/MiragePrime.png",
+          "InventorySlot": "SLOT_4",
+          "IsPrime": 1,
+          "LevelUpgrades": [
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "NONE",
+              "Value": 0
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_HEALTH_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_SHIELD_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_POWER_MAX",
+              "Value": 5
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_HEALTH_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_SHIELD_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_POWER_MAX",
+              "Value": 5
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_HEALTH_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_SHIELD_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_POWER_MAX",
+              "Value": 5
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_HEALTH_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_SHIELD_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_POWER_MAX",
+              "Value": 5
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_HEALTH_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_SHIELD_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_POWER_MAX",
+              "Value": 5
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_HEALTH_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_SHIELD_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_POWER_MAX",
+              "Value": 5
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_HEALTH_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_SHIELD_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_POWER_MAX",
+              "Value": 5
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_HEALTH_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_SHIELD_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_POWER_MAX",
+              "Value": 5
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_HEALTH_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_SHIELD_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_POWER_MAX",
+              "Value": 5
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_HEALTH_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_SHIELD_MAX",
+              "Value": 10
+            },
+            {
+              "AutoType": 0,
+              "DamageType": "DT_ANY",
+              "OperationType": "ADD_BASE",
+              "UpgradeType": "AVATAR_POWER_MAX",
+              "Value": 5
+            }
+          ],
+          "LocalizeDescTag": "/Lotus/Language/Primes/MiragePrimeDesc",
+          "LocalizeTag": "/Lotus/Language/Primes/MiragePrimeName",
+          "MarketMode": "MM_HIDDEN",
+          "MaxEnergy": 175,
+          "MaxHealthOverride": 200,
+          "MaxShieldOverride": 310,
+          "MovementSpeedMultiplier": 1.2,
+          "PassiveAbilityLocTag": "/Lotus/Language/Primes/MiragePrimePassiveAbility",
+          "PremiumPrice": 275,
+          "ProductCategory": "Suits",
+          "RecipeHelpText": "/Lotus/Language/Menu/DetailedPurchase_MirageRecipeHelpText",
+          "SearchTags": ["/Lotus/Language/Loadout/LoadoutCat_Assassin"],
+          "SellingPrice": 10000,
+          "StoreItemSpecialization": "/Lotus/Types/Game/StoreItemSpecializations/PowerSuitStoreItem"
+        },
+        "id": 26,
+        "name": "Mirage Prime",
+        "parent": "/Lotus/Powersuits/Harlequin/HarlequinBaseSuit",
+        "parents": [
+          "/Lotus/Powersuits/Harlequin/HarlequinBaseSuit",
+          "/Lotus/Types/Game/PowerSuits/PlayerPowerSuit",
+          "/Lotus/Types/Game/PowerSuit"
+        ],
+        "path": "/Lotus/Powersuits/Harlequin/MiragePrime",
+        "storeData": {
+          "AvailableOnPvp": 1,
+          "DisplayRecipe": "/Lotus/Types/Recipes/WarframeRecipes/MiragePrimeBlueprint",
+          "PremiumPrice": 275,
+          "ProductCategory": "Suits",
+          "RecipeHelpText": "/Lotus/Language/Menu/DetailedPurchase_MirageRecipeHelpText",
+          "SearchTags": [
+            "/Lotus/Language/Loadout/LoadoutCat_Assassin",
+            "/Lotus/Language/Menu/Loadout_Warframe"
+          ],
+          "SellingPrice": 10000,
+          "ShowInMarket": 0
+        },
+        "storeItemType": "/Lotus/StoreItems/Powersuits/Harlequin/MiragePrime",
+        "tag": "Warframe",
+        "texture": "/Lotus/Interface/Icons/Store/Primes/MiragePrime.png",
+        "texture_new": "/Lotus/Interface/Icons/StoreIcons/Primes/MiragePrime.png"
+      },
+      "buildState": {
+        "item": "/Lotus/Powersuits/Harlequin/MiragePrime",
+        "itemRank": 30,
+        "orokin": true,
+        "mods": [
+          { "modId": 119, "rank": 3, "polarity": 0 },
+          { "modId": 695, "rank": 10, "polarity": 0 },
+          { "modId": 792, "rank": 10, "polarity": 1 },
+          { "modId": 793, "rank": 10, "polarity": 1 },
+          { "modId": 677, "rank": 5, "polarity": 0 },
+          { "modId": 794, "rank": 5, "polarity": 2 },
+          { "modId": 806, "rank": 5, "polarity": 3 },
+          { "modId": 791, "rank": 5, "polarity": 3 },
+          { "modId": 303, "rank": 5, "polarity": 3 },
+          { "modId": 65, "rank": 5, "polarity": 0 },
+          { "modId": 2207, "rank": 5, "polarity": 0 },
+          { "polarity": 0 }
+        ]
+      },
+      "image": "https://media.overframe.gg/128x/Lotus/Interface/Icons/StoreIcons/Primes/MiragePrime.png.webp",
+      "pageDescription": "Mirage ESO Farming, fastest KPS in the game at 2 formas - 2 Forma Mirage Prime build by Popi - Updated for Warframe 30.9",
+      "itemBuilds": [
+        {
+          "id": 191180,
+          "created": "2021-07-29T03:56:02.124298Z",
+          "updated": "2026-02-18T10:41:35.150388Z",
+          "score": 1726,
+          "url": "/build/191180/mirage-prime/total-malevolence-mirage-dual-augment-max-dps-weapon-platform-solo-steel-path/",
+          "author": {
+            "id": 2890,
+            "username": "ninjase",
+            "url": "/user/2890/ninjase/",
+            "is_staff": false
+          },
+          "formas": 1,
+          "guide_wordcount": 1675,
+          "item_data": {
+            "id": 26,
+            "locTag": "/Lotus/Language/Primes/MiragePrimeName",
+            "texture": "/Lotus/Interface/Icons/Store/Primes/MiragePrime.png",
+            "texture_new": "/Lotus/Interface/Icons/StoreIcons/Primes/MiragePrime.png"
+          },
+          "title": "Total Malevolence Mirage | Dual Augment Max DPS Weapon Platform | Solo Steel Path"
+        },
+        {
+          "id": 14667,
+          "created": "2020-01-02T22:58:04.707862Z",
+          "updated": "2021-11-16T11:56:21.400182Z",
+          "score": 715,
+          "url": "/build/14667/mirage-prime/mirage-eso-farming-fastest-kps-in-the-game-at-2-formas/",
+          "author": {
+            "id": 3956,
+            "username": "Popi",
+            "url": "/user/3956/popi/",
+            "is_staff": false
+          },
+          "formas": 2,
+          "guide_wordcount": 315,
+          "item_data": {
+            "id": 26,
+            "locTag": "/Lotus/Language/Primes/MiragePrimeName",
+            "texture": "/Lotus/Interface/Icons/Store/Primes/MiragePrime.png",
+            "texture_new": "/Lotus/Interface/Icons/StoreIcons/Primes/MiragePrime.png"
+          },
+          "title": "Mirage ESO Farming, fastest KPS in the game at 2 formas"
+        },
+        {
+          "id": 234415,
+          "created": "2021-10-19T02:00:58.065552Z",
+          "updated": "2026-02-18T10:42:34.751738Z",
+          "score": 447,
+          "url": "/build/234415/mirage-prime/disco-ball-of-death-prism-guard-nuke-mirage/",
+          "author": {
+            "id": 2890,
+            "username": "ninjase",
+            "url": "/user/2890/ninjase/",
+            "is_staff": false
+          },
+          "formas": 4,
+          "guide_wordcount": 640,
+          "item_data": {
+            "id": 26,
+            "locTag": "/Lotus/Language/Primes/MiragePrimeName",
+            "texture": "/Lotus/Interface/Icons/Store/Primes/MiragePrime.png",
+            "texture_new": "/Lotus/Interface/Icons/StoreIcons/Primes/MiragePrime.png"
+          },
+          "title": "Disco Ball of Death | Prism Guard Nuke Mirage"
+        },
+        {
+          "id": 1669,
+          "created": "2019-06-20T07:11:57.211670Z",
+          "updated": "2019-08-20T09:43:26.935586Z",
+          "score": 447,
+          "url": "/build/1669/mirage-prime/mirage-prime-2x-umbra-build-hall-of-malevolence-great-survivability-and-damage/",
+          "author": {
+            "id": 495,
+            "username": "Cuajoneta",
+            "url": "/user/495/cuajoneta/",
+            "is_staff": false
+          },
+          "formas": 4,
+          "guide_wordcount": 39,
+          "item_data": {
+            "id": 26,
+            "locTag": "/Lotus/Language/Primes/MiragePrimeName",
+            "texture": "/Lotus/Interface/Icons/Store/Primes/MiragePrime.png",
+            "texture_new": "/Lotus/Interface/Icons/StoreIcons/Primes/MiragePrime.png"
+          },
+          "title": "MIRAGE PRIME 2x Umbra Build. Hall of Malevolence. Great survivability and damage"
+        }
+      ],
+      "authorBuilds": [
+        {
+          "id": 14667,
+          "created": "2020-01-02T22:58:04.707862Z",
+          "updated": "2021-11-16T11:56:21.400182Z",
+          "score": 715,
+          "url": "/build/14667/mirage-prime/mirage-eso-farming-fastest-kps-in-the-game-at-2-formas/",
+          "author": {
+            "id": 3956,
+            "username": "Popi",
+            "url": "/user/3956/popi/",
+            "is_staff": false
+          },
+          "formas": 2,
+          "guide_wordcount": 315,
+          "item_data": {
+            "id": 26,
+            "locTag": "/Lotus/Language/Primes/MiragePrimeName",
+            "texture": "/Lotus/Interface/Icons/Store/Primes/MiragePrime.png",
+            "texture_new": "/Lotus/Interface/Icons/StoreIcons/Primes/MiragePrime.png"
+          },
+          "title": "Mirage ESO Farming, fastest KPS in the game at 2 formas"
+        }
+      ],
+      "guideMarkdown": "# Summary :\n\n*This is what i use to farm focus in ESO while reaching 8 waves for a chance at a good reward. *\n\nThe ideal squad for this is [\\[Mirage\\]](/items/arsenal/25/mirage/) [\\[Volt\\]](/items/arsenal/60/volt/) [\\[Rhino\\]](/items/arsenal/49/rhino/) and [\\[Trinity\\]](/items/arsenal/58/trinity/). [\\[Trinity\\]](/items/arsenal/58/trinity/) is just there to give energy and [\\[Rhino\\]](/items/arsenal/49/rhino/) to spam his 3 for the damage buff.\n\n[\\[Volt\\]](/items/arsenal/60/volt/) is nearly mandatory if you want to farm efficiently : with 4 corrosive projections, his 4 will kill the first wave of ennemies at the start of a round instantly allowing you to start using your 2 and build it up very fast (the more loot drops, the more explosives you have on the ground). Without [\\[Volt\\]](/items/arsenal/60/volt/), it's way too slow to be efficient. However without [\\[Mirage\\]](/items/arsenal/25/mirage/), the focus per wave is way lower.\n\nIf you're going to play in public without building an optimized squad, you should stick to [\\[Volt\\]](/items/arsenal/60/volt/) if you see 4 CP in your squad, otherwise [\\[Saryn\\]](/items/arsenal/52/saryn/) is the safest bet to go 8 waves no matter you squad but you may not [\\[Reach\\]](/items/arsenal/384/reach/) focus cap because her kps is so much lower.\n\n# Usage :\n\nYour 2 will transform any loot into a damage dealing aura, only use it AFTER a wave of ennemy died, using it at the beginning of a round before [\\[Volt\\]](/items/arsenal/60/volt/) has had time to kill anything will just waste your energy. After that, spam it whenever you see a batch of ennemies dying, it's a snowballing process up to the point where everything litteraly gets spawnkilled (if you have the right squad).\n\nUpdate 16/11/2021 : \nI updated the guide replacing [\\[Augur Secrets\\]](/items/arsenal/678/augur-secrets/) with [\\[Fleeting Expertise\\]](/items/arsenal/791/fleeting-expertise/), matching similar ESO [\\[Mirage\\]](/items/arsenal/25/mirage/) guides, it is indeed better, someone in the comment section pointed it out ! (you will need to reforma if you were following the previous version of the build unfortunately) \nI don't think any helminth ability is worth subsuming because the duration is so minimal for any buff however."
+    },
+    "isOverframeApp": false,
+    "__N_SSP": true
+  },
+  "page": "/build/[id]/[[...slug]]",
+  "query": {
+    "id": "14667",
+    "slug": [
+      "mirage-prime",
+      "mirage-eso-farming-fastest-kps-in-the-game-at-2-formas"
+    ]
+  },
+  "buildId": "next-6f61d5fe28eea4f00ac60341a77be7e673c028a7",
+  "assetPrefix": "https://static.overframe.gg",
+  "isFallback": false,
+  "gssp": true,
+  "appGip": true,
+  "scriptLoader": []
+}

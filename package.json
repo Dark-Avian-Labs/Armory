@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.server.json && vite build",
     "start": "node --env-file=.env dist/server/index.js",
+    "import": "node --env-file=.env dist/server/import/runManualImport.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
