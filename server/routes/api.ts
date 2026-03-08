@@ -359,8 +359,8 @@ const ModConfigSchema = z.object({
   shardSlots: z
     .array(
       z.object({
-        shard_type_id: z.string().trim().min(1).optional(),
-        buff_id: z.number().int().positive().optional(),
+        shard_type_id: z.coerce.string().trim().min(1).optional(),
+        buff_id: z.coerce.number().int().positive().optional(),
         tauforged: z.boolean(),
       }),
     )
