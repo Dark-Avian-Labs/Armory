@@ -134,8 +134,13 @@ export function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div className="glass-shell p-6">
-        <h1 className="text-2xl font-semibold text-foreground">Profile</h1>
+      <div className="glass-shell page-hero">
+        <div className="page-hero__eyebrow">Profile</div>
+        <h1 className="page-hero__title text-[2.2rem]">Account settings</h1>
+        <p className="page-hero__body">
+          Keep your profile details current and your authentication settings
+          under control.
+        </p>
       </div>
       <div className="glass-shell p-6">
         <h2 className="sr-only">Profile details</h2>
@@ -233,9 +238,7 @@ export function ProfilePage() {
         </div>
         {saveStatus && (
           <p
-            className={`mt-3 text-sm ${
-              saveStatus.type === 'success' ? 'text-success' : 'text-danger'
-            }`}
+            className={`mt-4 ${saveStatus.type === 'success' ? 'success-msg' : 'error-msg'}`}
             role="status"
             aria-live="polite"
           >
@@ -249,6 +252,7 @@ export function ProfilePage() {
         ariaLabelledBy="change-password-title"
         onClose={resetPasswordModalState}
       >
+        <p className="panel-header__meta">Security</p>
         <h3
           id="change-password-title"
           className="mb-3 text-lg font-semibold text-foreground"
@@ -295,9 +299,7 @@ export function ProfilePage() {
         </div>
         {passwordStatus && (
           <p
-            className={`mt-3 text-sm ${
-              passwordStatus.type === 'ok' ? 'text-success' : 'text-danger'
-            }`}
+            className={`mt-4 ${passwordStatus.type === 'ok' ? 'success-msg' : 'error-msg'}`}
             role={passwordStatus.type === 'ok' ? 'status' : 'alert'}
             aria-live={passwordStatus.type === 'ok' ? 'polite' : 'assertive'}
           >

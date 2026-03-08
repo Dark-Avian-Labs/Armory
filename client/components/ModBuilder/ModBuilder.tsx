@@ -39,6 +39,10 @@ import {
 } from '../../types/warframe';
 import { apiFetch } from '../../utils/api';
 import { getMaxRank } from '../../utils/arcaneUtils';
+import {
+  getCompanionWeaponSelectionType,
+  isCompanionWeapon,
+} from '../../utils/companionWeapons';
 import { calculateBuildDamage } from '../../utils/damage';
 import { calculateWeaponDps } from '../../utils/damageCalc';
 import { calculateTotalCapacity } from '../../utils/drain';
@@ -57,6 +61,7 @@ import {
   RIVEN_PLACEHOLDER_UNIQUE,
 } from '../../utils/riven';
 import { matchesSpecialItemType } from '../../utils/specialItems';
+import { Modal } from '../ui/Modal';
 
 type RightPanelMode = 'mods' | 'helminth' | 'arcanes' | 'shards';
 
@@ -92,6 +97,8 @@ function getEquipmentListUrl(type: EquipmentType): string {
       return '/api/weapons?type=SpaceMelee';
     case 'companion':
       return '/api/companions';
+    case 'beast_claws':
+      return '/api/weapons?type=SentinelWeapons';
     case 'archwing':
       return '/api/warframes';
     case 'necramech':
@@ -271,6 +278,7 @@ export function ModBuilder() {
         equipmentType !== 'primary' &&
         equipmentType !== 'secondary' &&
         equipmentType !== 'melee' &&
+        equipmentType !== 'beast_claws' &&
         equipmentType !== 'necramech' &&
         equipmentType !== 'archgun' &&
         equipmentType !== 'archmelee'
@@ -278,6 +286,9 @@ export function ModBuilder() {
         return null;
       }
 
+      const companionPromise = apiFetch(
+        '/api/weapons?type=SentinelWeapons',
+      ).catch(() => null);
       const response = await apiFetch('/api/weapons?type=SpecialItems');
       if (!response.ok) return null;
       const data = (await response.json()) as { items?: Weapon[] };
@@ -286,7 +297,19 @@ export function ModBuilder() {
           item.unique_name === targetUniqueName &&
           matchesSpecialItemType(item.name, equipmentType),
       );
-      return specialItem ?? null;
+      if (specialItem) return specialItem;
+
+      const companionResponse = await companionPromise;
+      if (!companionResponse || !companionResponse.ok) return null;
+      const companionData = (await companionResponse.json()) as {
+        items?: Weapon[];
+      };
+      const companionWeapon = (companionData.items ?? []).find(
+        (item) =>
+          item.unique_name === targetUniqueName &&
+          getCompanionWeaponSelectionType(item) === equipmentType,
+      );
+      return companionWeapon ?? null;
     },
     [equipmentType],
   );
@@ -1045,7 +1068,23 @@ export function ModBuilder() {
   };
 
   const arcaneSlotCount = equipmentType === 'warframe' ? 2 : 1;
+  const selectedWeaponTypes: EquipmentType[] = [
+    'primary',
+    'secondary',
+    'melee',
+    'archgun',
+    'archmelee',
+    'beast_claws',
+  ];
+  const selectedWeapon =
+    selectedEquipment && selectedWeaponTypes.includes(equipmentType)
+      ? (selectedEquipment as Weapon)
+      : null;
+  const selectedIsCompanionWeapon =
+    selectedWeapon != null && isCompanionWeapon(selectedWeapon);
+  const totalCapacity = capacity.baseCapacity + capacity.capacityBonus;
   const supportsArcanes =
+    !selectedIsCompanionWeapon &&
     equipmentType !== 'archgun' &&
     equipmentType !== 'archmelee' &&
     equipmentType !== 'archwing' &&
@@ -1056,6 +1095,15 @@ export function ModBuilder() {
     activeArcaneSlot !== null ||
     activeShardSlot !== null ||
     activeAbilityIndex !== null;
+
+  const activePanelLabel =
+    rightPanelMode === 'mods'
+      ? 'Mod selection'
+      : rightPanelMode === 'helminth'
+        ? 'Helminth swap'
+        : rightPanelMode === 'arcanes'
+          ? 'Arcane tuning'
+          : 'Shard tuning';
 
   const handleBackgroundClick = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -1075,354 +1123,472 @@ export function ModBuilder() {
 
   return (
     <div
-      className="mx-auto flex max-w-[2000px] gap-6"
+      className="mx-auto max-w-[2000px] space-y-6"
       onClick={hasSelection ? handleBackgroundClick : undefined}
     >
-      <div className="w-72 shrink-0 space-y-4">
-        {selectedEquipment && (
-          <StatsPanel
-            equipment={selectedEquipment as Warframe | Weapon}
-            type={equipmentType}
-            slots={slots}
-            shardSlots={equipmentType === 'warframe' ? shardSlots : undefined}
-            shardTypes={equipmentType === 'warframe' ? shardTypes : undefined}
-            abilities={
-              equipmentType === 'warframe' ? (
-                <AbilityBar
-                  warframe={selectedEquipment as Warframe}
-                  helminthConfig={helminthConfig}
-                  onHelminthChange={setHelminthConfig}
-                  activeAbilityIndex={activeAbilityIndex}
-                  onAbilityClick={(index) => {
-                    if (
-                      activeAbilityIndex === index &&
-                      rightPanelMode === 'helminth'
-                    ) {
-                      setActiveAbilityIndex(null);
-                      setRightPanelMode('mods');
-                    } else {
-                      setActiveAbilityIndex(index);
-                      setActiveArcaneSlot(null);
-                      setActiveShardSlot(null);
-                      setActiveSlotIndex(undefined);
-                      setActiveSlotType(undefined);
-                      setRightPanelMode('helminth');
-                    }
-                  }}
-                />
-              ) : undefined
-            }
-          />
-        )}
-        {selectedEquipment && equipmentType !== 'warframe' && (
-          <ElementOutput weapon={selectedEquipment as Weapon} slots={slots} />
-        )}
-      </div>
-
-      <div className="w-[820px] shrink-0 space-y-4">
-        <div className="glass-panel flex items-center justify-between p-4">
-          <div className="flex items-center gap-3">
-            <span className="text-lg font-semibold text-foreground">
-              {buildName}
-            </span>
-            {!isOwnBuild ? (
-              <span className="rounded border border-border px-2 py-1 text-xs font-semibold text-muted">
-                Read-only shared build
-              </span>
-            ) : null}
-            {selectedEquipment && (
-              <span className="text-sm text-muted">
-                {selectedEquipment.name}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setOrokinReactor((v) => !v)}
-              aria-pressed={orokinReactor}
-              className="inline-flex items-center gap-2 rounded-lg border border-glass-border px-2.5 py-1.5 text-sm text-muted transition-all hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground"
-              title="Toggle Orokin Reactor"
-            >
-              <span
-                className={`inline-flex h-5 w-5 items-center justify-center rounded text-xs font-bold transition-colors ${
-                  orokinReactor
-                    ? 'bg-success/20 text-success hover:bg-success/30'
-                    : 'bg-muted/10 text-muted/40 hover:bg-muted/20'
-                }`}
-                aria-hidden="true"
-              >
-                {orokinReactor ? '\u2713' : '\u2715'}
-              </span>
-              Orokin Reactor
-            </button>
-            {equipmentType !== 'warframe' && (
-              <button
-                className="btn border border-glass-border text-sm text-muted hover:border-accent hover:text-accent disabled:opacity-40"
-                onClick={addToCompare}
-                disabled={compareSnapshots.length >= 3}
-                title={
-                  compareSnapshots.length >= 3
-                    ? 'Max 3 snapshots'
-                    : 'Add current build to comparison'
-                }
-              >
-                Compare
-              </button>
-            )}
-            <button className="btn btn-accent" onClick={openSaveModal}>
-              {isOwnBuild ? 'Save' : 'Copy Build'}
-            </button>
-          </div>
+      <section className="glass-shell page-hero">
+        <div className="space-y-3">
+          <div className="page-hero__eyebrow">Builder</div>
+          <h1 className="page-hero__title">
+            Shape the build with less friction.
+          </h1>
+          <p className="page-hero__body">
+            Stronger hierarchy up top, calmer detail density through the middle,
+            and a cleaner selector experience on the right. The goal is faster
+            decision-making without losing the tactical feel.
+          </p>
         </div>
-
-        <CapacityBar
-          capacity={capacity}
-          formaCost={formaCost}
-          formaMode={formaMode}
-          onFormaToggle={() => setFormaMode((p) => !p)}
-        />
-
-        {selectedEquipment ? (
-          <ModSlotGrid
-            slots={slots}
-            onDrop={handleModDrop}
-            onSwap={handleModSwap}
-            onRemove={handleModRemove}
-            onRankChange={handleRankChange}
-            onSetRankChange={handleSetRankChange}
-            onEditRiven={(slotIndex) => {
-              const slot = slots.find((s) => s.index === slotIndex);
-              if (!slot?.mod || !isRivenMod(slot.mod)) return;
-              setEditingRivenSlot(slotIndex);
-              setDraftRivenSlot(null);
-            }}
-            activeSlotIndex={activeSlotIndex}
-            onSlotClick={(slotIndex, slotType) => {
-              if (activeSlotIndex === slotIndex) {
-                setActiveSlotType(undefined);
-                setActiveSlotIndex(undefined);
-              } else {
-                setActiveSlotType(slotType);
-                setActiveSlotIndex(slotIndex);
-              }
-              setRightPanelMode('mods');
-              setActiveAbilityIndex(null);
-              setActiveArcaneSlot(null);
-              setActiveShardSlot(null);
-            }}
-            formaMode={formaMode}
-            onPolarityChange={handlePolarityChange}
-            equipmentType={equipmentType}
-          />
-        ) : (
-          <div className="glass-panel flex h-64 items-center justify-center">
-            <p className="text-muted">
-              {equipmentLoadError
-                ? `Failed to load equipment: ${equipmentLoadError}`
-                : 'Loading equipment...'}
-            </p>
+        <div className="page-hero__metrics">
+          <div className="metric-card">
+            <div className="metric-card__label">Equipment</div>
+            <div className="metric-card__value text-[1.2rem]">
+              {selectedEquipment?.name ?? 'Loading'}
+            </div>
+            <div className="metric-card__detail">{equipmentType}</div>
           </div>
-        )}
-
-        {selectedEquipment && (
-          <div className="glass-panel flex h-[136px] items-start justify-between overflow-visible p-3">
-            {supportsArcanes && (
-              <ArcaneSlots
-                slotCount={arcaneSlotCount}
-                slots={arcaneSlots}
-                activeSlot={activeArcaneSlot}
-                onSlotClick={handleArcaneSlotClick}
-                onRankChange={handleArcaneRankChange}
-                onRemove={handleArcaneRemove}
-                onDrop={(slotIndex, arcane) => {
-                  setArcaneSlots((prev) => {
-                    const next = [...prev];
-                    next[slotIndex] = { arcane, rank: getMaxRank(arcane) };
-                    return next;
-                  });
-                }}
-              />
-            )}
-            {equipmentType === 'warframe' && (
-              <ArchonShardSlots
-                slots={shardSlots}
-                shards={shardTypes}
-                activeSlot={activeShardSlot}
-                onSlotClick={handleShardSlotClick}
-                onRemove={handleShardRemove}
-              />
-            )}
+          <div className="metric-card">
+            <div className="metric-card__label">Panel focus</div>
+            <div className="metric-card__value text-[1.2rem]">
+              {activePanelLabel}
+            </div>
+            <div className="metric-card__detail">
+              {hasSelection ? 'Selection pinned' : 'Browsing freely'}
+            </div>
           </div>
-        )}
-      </div>
-
-      <div className="min-w-[440px] flex-1">
-        <div className={rightPanelMode !== 'mods' ? 'hidden' : ''}>
-          <FilterPanel
-            active={rightPanelMode === 'mods'}
-            searchResetKey={searchResetKey}
-            equipmentType={equipmentType}
-            equipment={
-              selectedEquipment
-                ? {
-                    unique_name: selectedEquipment.unique_name,
-                    name: selectedEquipment.name,
-                    product_category: (selectedEquipment as Weapon)
-                      .product_category,
-                  }
-                : undefined
-            }
-            equippedMods={equippedMods}
-            targetSlotType={activeSlotType}
-            onModRemove={() => {
-              if (activeSlotIndex !== undefined) {
-                handleModRemove(activeSlotIndex);
-              }
-            }}
-            onModSelect={(mod) => {
-              const modType = (mod.type || '').toUpperCase();
-              const isRivenPlaceholder =
-                mod.unique_name === RIVEN_PLACEHOLDER_UNIQUE;
-              let emptySlot;
-
-              if (activeSlotType) {
-                const targetType = isRivenPlaceholder
-                  ? 'general'
-                  : activeSlotType;
-                emptySlot = slots.find((s) => !s.mod && s.type === targetType);
-              } else if (modType === 'AURA') {
-                emptySlot = slots.find((s) => !s.mod && s.type === 'aura');
-              } else if (modType === 'STANCE') {
-                emptySlot = slots.find((s) => !s.mod && s.type === 'stance');
-              } else if (mod.is_utility === 1) {
-                emptySlot = slots.find((s) => !s.mod && s.type === 'exilus');
-                if (!emptySlot) {
-                  emptySlot = slots.find((s) => !s.mod && s.type === 'general');
-                }
-              } else {
-                emptySlot = slots.find((s) => !s.mod && s.type === 'general');
-              }
-
-              if (emptySlot) {
-                handleModDrop(emptySlot.index, mod);
-              }
-            }}
-          />
-        </div>
-
-        {rightPanelMode === 'helminth' && activeAbilityIndex !== null && (
-          <HelminthPickerPanel
-            replacingAbilityName={getAbilityName(
-              selectedEquipment as Warframe,
-              activeAbilityIndex,
-            )}
-            onSelect={(ability: Ability) => {
-              setHelminthConfig({
-                replaced_ability_index: activeAbilityIndex,
-                replacement_ability_unique_name: ability.unique_name,
-              });
-              setActiveAbilityIndex(null);
-              setRightPanelMode('mods');
-            }}
-            onRestore={() => {
-              setHelminthConfig(undefined);
-              setActiveAbilityIndex(null);
-              setRightPanelMode('mods');
-            }}
-            onClose={() => {
-              setActiveAbilityIndex(null);
-              setRightPanelMode('mods');
-            }}
-          />
-        )}
-
-        {rightPanelMode === 'arcanes' && activeArcaneSlot !== null && (
-          <ArcanePickerPanel
-            equipmentType={equipmentType}
-            currentArcaneName={arcaneSlots[activeArcaneSlot]?.arcane?.name}
-            onSelect={handleArcaneSelect}
-            onRemove={() => {
-              handleArcaneRemove(activeArcaneSlot);
-              setActiveArcaneSlot(null);
-              setRightPanelMode('mods');
-            }}
-            onClose={() => {
-              setActiveArcaneSlot(null);
-              setRightPanelMode('mods');
-            }}
-          />
-        )}
-
-        {rightPanelMode === 'shards' && activeShardSlot !== null && (
-          <ShardPickerPanel
-            shards={shardTypes}
-            currentSlot={shardSlots[activeShardSlot] || { tauforged: false }}
-            onSelect={handleShardSelect}
-            onRemove={() => {
-              handleShardRemove(activeShardSlot);
-              setActiveShardSlot(null);
-              setRightPanelMode('mods');
-            }}
-            onClose={() => {
-              setActiveShardSlot(null);
-              setRightPanelMode('mods');
-            }}
-          />
-        )}
-      </div>
-
-      {showSaveModal && (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-96 rounded-xl border border-glass-border bg-surface-modal p-6 shadow-2xl">
-            <h3 className="mb-4 text-lg font-semibold text-foreground">
-              Save Build
-            </h3>
-            {saveError ? (
-              <p className="mb-3 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
-                {saveError}
-              </p>
-            ) : null}
-            <label className="mb-1 block text-xs text-muted">Build Name</label>
-            <input
-              type="text"
-              value={saveModalName}
-              onChange={(e) => setSaveModalName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  void confirmSave();
-                }
-              }}
-              className="form-input mb-4 w-full"
-              autoFocus
-            />
-            <div className="flex justify-end gap-2">
-              <button className="btn" onClick={() => setShowSaveModal(false)}>
-                Cancel
-              </button>
-              <button
-                className="btn btn-accent"
-                onClick={() => {
-                  void confirmSave();
-                }}
-              >
-                Save
-              </button>
+          <div className="metric-card">
+            <div className="metric-card__label">Capacity</div>
+            <div className="metric-card__value">
+              {capacity.totalDrain}/{totalCapacity}
+            </div>
+            <div className="metric-card__detail">
+              {formaMode ? 'Forma edit mode enabled' : 'Live capacity view'}
+            </div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-card__label">Compare</div>
+            <div className="metric-card__value">
+              {compareSnapshots.length}/3
+            </div>
+            <div className="metric-card__detail">
+              Snapshots ready for side-by-side review
             </div>
           </div>
         </div>
+      </section>
+
+      <div className="flex flex-col gap-6 2xl:flex-row">
+        <div className="w-full shrink-0 space-y-4 2xl:w-72">
+          {selectedEquipment && (
+            <StatsPanel
+              equipment={selectedEquipment as Warframe | Weapon}
+              type={equipmentType}
+              slots={slots}
+              shardSlots={equipmentType === 'warframe' ? shardSlots : undefined}
+              shardTypes={equipmentType === 'warframe' ? shardTypes : undefined}
+              abilities={
+                equipmentType === 'warframe' ? (
+                  <AbilityBar
+                    warframe={selectedEquipment as Warframe}
+                    helminthConfig={helminthConfig}
+                    onHelminthChange={setHelminthConfig}
+                    activeAbilityIndex={activeAbilityIndex}
+                    onAbilityClick={(index) => {
+                      if (
+                        activeAbilityIndex === index &&
+                        rightPanelMode === 'helminth'
+                      ) {
+                        setActiveAbilityIndex(null);
+                        setRightPanelMode('mods');
+                      } else {
+                        setActiveAbilityIndex(index);
+                        setActiveArcaneSlot(null);
+                        setActiveShardSlot(null);
+                        setActiveSlotIndex(undefined);
+                        setActiveSlotType(undefined);
+                        setRightPanelMode('helminth');
+                      }
+                    }}
+                  />
+                ) : undefined
+              }
+            />
+          )}
+          {selectedEquipment && equipmentType !== 'warframe' && (
+            <ElementOutput weapon={selectedEquipment as Weapon} slots={slots} />
+          )}
+        </div>
+
+        <div className="w-full shrink-0 space-y-4 2xl:w-[820px]">
+          <div className="glass-shell p-4 sm:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="status-pill status-pill--accent">
+                    {equipmentType}
+                  </span>
+                  {!isOwnBuild ? (
+                    <span className="status-pill">Read-only shared build</span>
+                  ) : (
+                    <span className="status-pill status-pill--success">
+                      Editable
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                  <span className="display-title text-[2rem] text-foreground">
+                    {buildName}
+                  </span>
+                  {selectedEquipment && (
+                    <span className="text-sm text-muted">
+                      {selectedEquipment.name}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOrokinReactor((v) => !v)}
+                  aria-pressed={orokinReactor}
+                  className="btn btn-secondary"
+                  title="Toggle Orokin Reactor"
+                >
+                  <span
+                    className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
+                      orokinReactor
+                        ? 'bg-success/20 text-success'
+                        : 'bg-muted/10 text-muted/50'
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {orokinReactor ? '\u2713' : '\u2715'}
+                  </span>
+                  Orokin Reactor
+                </button>
+                {equipmentType !== 'warframe' && (
+                  <button
+                    className="btn btn-secondary text-sm"
+                    onClick={addToCompare}
+                    disabled={compareSnapshots.length >= 3}
+                    title={
+                      compareSnapshots.length >= 3
+                        ? 'Max 3 snapshots'
+                        : 'Add current build to comparison'
+                    }
+                  >
+                    Compare
+                  </button>
+                )}
+                <button className="btn btn-accent" onClick={openSaveModal}>
+                  {isOwnBuild ? 'Save Build' : 'Copy Build'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <CapacityBar
+            capacity={capacity}
+            formaCost={formaCost}
+            formaMode={formaMode}
+            onFormaToggle={() => setFormaMode((p) => !p)}
+          />
+
+          {selectedEquipment ? (
+            <ModSlotGrid
+              slots={slots}
+              onDrop={handleModDrop}
+              onSwap={handleModSwap}
+              onRemove={handleModRemove}
+              onRankChange={handleRankChange}
+              onSetRankChange={handleSetRankChange}
+              onEditRiven={(slotIndex) => {
+                const slot = slots.find((s) => s.index === slotIndex);
+                if (!slot?.mod || !isRivenMod(slot.mod)) return;
+                setEditingRivenSlot(slotIndex);
+                setDraftRivenSlot(null);
+              }}
+              activeSlotIndex={activeSlotIndex}
+              onSlotClick={(slotIndex, slotType) => {
+                if (activeSlotIndex === slotIndex) {
+                  setActiveSlotType(undefined);
+                  setActiveSlotIndex(undefined);
+                } else {
+                  setActiveSlotType(slotType);
+                  setActiveSlotIndex(slotIndex);
+                }
+                setRightPanelMode('mods');
+                setActiveAbilityIndex(null);
+                setActiveArcaneSlot(null);
+                setActiveShardSlot(null);
+              }}
+              formaMode={formaMode}
+              onPolarityChange={handlePolarityChange}
+              equipmentType={equipmentType}
+            />
+          ) : (
+            <div className="glass-shell empty-state">
+              <h2 className="empty-state__title">Preparing equipment</h2>
+              <p className="empty-state__body">
+                {equipmentLoadError
+                  ? `Failed to load equipment: ${equipmentLoadError}`
+                  : 'Loading equipment and assembling the builder surface.'}
+              </p>
+            </div>
+          )}
+
+          {selectedEquipment && (
+            <div className="glass-shell p-4">
+              <div className="panel-header panel-header--soft px-0 pt-0">
+                <div className="panel-header__copy">
+                  <p className="panel-header__meta">Advanced Slots</p>
+                  <h2 className="panel-header__title">Arcanes and shards</h2>
+                </div>
+                <span className="status-pill">
+                  {supportsArcanes
+                    ? `${arcaneSlotCount} arcane slot${arcaneSlotCount > 1 ? 's' : ''}`
+                    : 'No arcanes'}
+                </span>
+              </div>
+              <div className="mt-3 flex min-h-[136px] items-start justify-between gap-3 overflow-visible">
+                {supportsArcanes && (
+                  <ArcaneSlots
+                    slotCount={arcaneSlotCount}
+                    slots={arcaneSlots}
+                    activeSlot={activeArcaneSlot}
+                    onSlotClick={handleArcaneSlotClick}
+                    onRankChange={handleArcaneRankChange}
+                    onRemove={handleArcaneRemove}
+                    onDrop={(slotIndex, arcane) => {
+                      setArcaneSlots((prev) => {
+                        const next = [...prev];
+                        next[slotIndex] = { arcane, rank: getMaxRank(arcane) };
+                        return next;
+                      });
+                    }}
+                  />
+                )}
+                {equipmentType === 'warframe' && (
+                  <ArchonShardSlots
+                    slots={shardSlots}
+                    shards={shardTypes}
+                    activeSlot={activeShardSlot}
+                    onSlotClick={handleShardSlotClick}
+                    onRemove={handleShardRemove}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="glass-shell p-4 sm:p-5">
+            <div className="panel-header panel-header--soft px-0 pt-0">
+              <div className="panel-header__copy">
+                <p className="panel-header__meta">Selector Panel</p>
+                <h2 className="panel-header__title">{activePanelLabel}</h2>
+              </div>
+              <span className="status-pill">
+                {hasSelection ? 'Focused' : 'Browsing'}
+              </span>
+            </div>
+
+            <div className="mt-4">
+              <div className={rightPanelMode !== 'mods' ? 'hidden' : ''}>
+                <FilterPanel
+                  active={rightPanelMode === 'mods'}
+                  searchResetKey={searchResetKey}
+                  equipmentType={equipmentType}
+                  equipment={
+                    selectedEquipment
+                      ? {
+                          unique_name: selectedEquipment.unique_name,
+                          name: selectedEquipment.name,
+                          product_category: (selectedEquipment as Weapon)
+                            .product_category,
+                        }
+                      : undefined
+                  }
+                  equippedMods={equippedMods}
+                  targetSlotType={activeSlotType}
+                  onModRemove={() => {
+                    if (activeSlotIndex !== undefined) {
+                      handleModRemove(activeSlotIndex);
+                    }
+                  }}
+                  onModSelect={(mod) => {
+                    const modType = (mod.type || '').toUpperCase();
+                    const isRivenPlaceholder =
+                      mod.unique_name === RIVEN_PLACEHOLDER_UNIQUE;
+                    let emptySlot;
+
+                    if (activeSlotType) {
+                      const targetType = isRivenPlaceholder
+                        ? 'general'
+                        : activeSlotType;
+                      emptySlot = slots.find(
+                        (s) => !s.mod && s.type === targetType,
+                      );
+                    } else if (modType === 'AURA') {
+                      emptySlot = slots.find(
+                        (s) => !s.mod && s.type === 'aura',
+                      );
+                    } else if (modType === 'STANCE') {
+                      emptySlot = slots.find(
+                        (s) => !s.mod && s.type === 'stance',
+                      );
+                    } else if (mod.is_utility === 1) {
+                      emptySlot = slots.find(
+                        (s) => !s.mod && s.type === 'exilus',
+                      );
+                      if (!emptySlot) {
+                        emptySlot = slots.find(
+                          (s) => !s.mod && s.type === 'general',
+                        );
+                      }
+                    } else {
+                      emptySlot = slots.find(
+                        (s) => !s.mod && s.type === 'general',
+                      );
+                    }
+
+                    if (emptySlot) {
+                      handleModDrop(emptySlot.index, mod);
+                    }
+                  }}
+                />
+              </div>
+
+              {rightPanelMode === 'helminth' && activeAbilityIndex !== null && (
+                <HelminthPickerPanel
+                  replacingAbilityName={getAbilityName(
+                    selectedEquipment as Warframe,
+                    activeAbilityIndex,
+                  )}
+                  onSelect={(ability: Ability) => {
+                    setHelminthConfig({
+                      replaced_ability_index: activeAbilityIndex,
+                      replacement_ability_unique_name: ability.unique_name,
+                    });
+                    setActiveAbilityIndex(null);
+                    setRightPanelMode('mods');
+                  }}
+                  onRestore={() => {
+                    setHelminthConfig(undefined);
+                    setActiveAbilityIndex(null);
+                    setRightPanelMode('mods');
+                  }}
+                  onClose={() => {
+                    setActiveAbilityIndex(null);
+                    setRightPanelMode('mods');
+                  }}
+                />
+              )}
+
+              {rightPanelMode === 'arcanes' && activeArcaneSlot !== null && (
+                <ArcanePickerPanel
+                  equipmentType={equipmentType}
+                  currentArcaneName={
+                    arcaneSlots[activeArcaneSlot]?.arcane?.name
+                  }
+                  onSelect={handleArcaneSelect}
+                  onRemove={() => {
+                    handleArcaneRemove(activeArcaneSlot);
+                    setActiveArcaneSlot(null);
+                    setRightPanelMode('mods');
+                  }}
+                  onClose={() => {
+                    setActiveArcaneSlot(null);
+                    setRightPanelMode('mods');
+                  }}
+                />
+              )}
+
+              {rightPanelMode === 'shards' && activeShardSlot !== null && (
+                <ShardPickerPanel
+                  shards={shardTypes}
+                  currentSlot={
+                    shardSlots[activeShardSlot] || { tauforged: false }
+                  }
+                  onSelect={handleShardSelect}
+                  onRemove={() => {
+                    handleShardRemove(activeShardSlot);
+                    setActiveShardSlot(null);
+                    setRightPanelMode('mods');
+                  }}
+                  onClose={() => {
+                    setActiveShardSlot(null);
+                    setRightPanelMode('mods');
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showSaveModal && (
+        <Modal
+          open
+          onClose={() => setShowSaveModal(false)}
+          ariaLabelledBy="save-build-title"
+          className="max-w-md"
+        >
+          <p className="panel-header__meta">Persistence</p>
+          <h3
+            id="save-build-title"
+            className="mb-4 text-lg font-semibold text-foreground"
+          >
+            Save Build
+          </h3>
+          {saveError ? <p className="error-msg mb-3">{saveError}</p> : null}
+          <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-muted">
+            Build Name
+          </label>
+          <input
+            type="text"
+            value={saveModalName}
+            onChange={(e) => setSaveModalName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                void confirmSave();
+              }
+            }}
+            className="form-input mb-4 w-full"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowSaveModal(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-accent"
+              onClick={() => {
+                void confirmSave();
+              }}
+              type="button"
+            >
+              Save
+            </button>
+          </div>
+        </Modal>
       )}
 
       {saveToast && (
         <div
-          className={`fixed left-1/2 z-[9999] -translate-x-1/2 rounded-lg border border-accent/30 bg-accent-weak/90 px-5 py-2.5 text-sm font-medium text-accent shadow-lg backdrop-blur transition-all ${compareSnapshots.length > 0 ? 'bottom-24' : 'bottom-6'}`}
+          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-all ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
+          data-tone="success"
         >
           Build saved successfully
         </div>
       )}
       {compareToast && (
         <div
-          className={`fixed left-1/2 z-[9999] -translate-x-1/2 rounded-lg border border-accent/30 bg-accent-weak/90 px-5 py-2.5 text-sm font-medium text-accent shadow-lg backdrop-blur transition-all ${compareSnapshots.length > 0 ? 'bottom-24' : 'bottom-6'}`}
+          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-all ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
         >
           Added to comparison ({compareSnapshots.length}/3)
         </div>
@@ -1438,7 +1604,8 @@ export function ModBuilder() {
       )}
       {rivenToastMessage && (
         <div
-          className={`fixed left-1/2 z-[9999] -translate-x-1/2 rounded-lg border border-warning/30 bg-warning/10 px-5 py-2.5 text-sm font-medium text-warning shadow-lg backdrop-blur transition-all ${compareSnapshots.length > 0 ? 'bottom-24' : 'bottom-6'}`}
+          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-all ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
+          data-tone="warning"
         >
           {rivenToastMessage}
         </div>

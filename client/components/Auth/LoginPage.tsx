@@ -50,12 +50,15 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="auth-card">
-          <h1 className="mb-2 text-center text-2xl font-bold text-foreground">
-            Parametric
-          </h1>
-          <p className="mb-6 text-center text-sm text-muted">
-            Warframe Mod Builder
-          </p>
+          <div className="mb-6 text-center">
+            <p className="page-hero__eyebrow">Authentication</p>
+            <h1 className="display-title text-[2.1rem] text-foreground">
+              Parametric
+            </h1>
+            <p className="mt-2 text-sm text-muted">
+              Warframe mod planning with a calmer cinematic surface.
+            </p>
+          </div>
           <p
             className="text-center text-sm text-muted"
             role="status"
@@ -66,13 +69,13 @@ export function LoginPage() {
           {showFallback && authUrl ? (
             <p className="mt-4 text-center text-sm text-muted">
               If you are not redirected,{' '}
-              <a className="underline" href={authUrl}>
+              <a className="text-foreground underline" href={authUrl}>
                 continue to sign in
               </a>
               .
             </p>
           ) : showFallback && !authUrl ? (
-            <p className="mt-4 text-center text-sm text-danger" role="alert">
+            <p className="error-msg mt-4 text-center" role="alert">
               Unable to load sign-in link due to configuration error — contact
               support or try again.
             </p>

@@ -138,7 +138,7 @@ export function Layout() {
   const avatarSrc = getProfileIconSrc(profile?.avatarId ?? 1);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="page-frame flex min-h-screen flex-col">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-black focus:px-3 focus:py-2 focus:text-white"
@@ -148,119 +148,157 @@ export function Layout() {
       <div className="bg-art" aria-hidden="true">
         {bgArt}
       </div>
-      <header className="relative z-30 h-[100px] px-6">
-        <div className="mx-auto grid h-full w-full max-w-[2000px] grid-cols-[1fr_auto_1fr] items-center gap-4">
-          <Link to={APP_PATHS.home} className="brand-lockup w-fit">
-            <img
-              src={feathers}
-              alt="Dark Avian Labs feather mark"
-              className="brand-lockup__icon"
-            />
-            <span className="brand-lockup__title brand-lockup--fx">
-              {APP_DISPLAY_NAME}
-            </span>
-          </Link>
+      <header className="relative z-30 px-4 pt-4 sm:px-6 sm:pt-6">
+        <div className="mx-auto w-full max-w-[2000px]">
+          <div className="glass-shell px-5 py-4 sm:px-6">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex min-w-0 flex-1 items-center gap-4">
+                <Link to={APP_PATHS.home} className="brand-lockup w-fit">
+                  <img
+                    src={feathers}
+                    alt="Dark Avian Labs feather mark"
+                    className="brand-lockup__icon"
+                  />
+                  <span className="brand-lockup__copy">
+                    <span className="brand-lockup__eyebrow">
+                      Dark Avian Labs
+                    </span>
+                    <span className="brand-lockup__title brand-lockup--fx">
+                      {APP_DISPLAY_NAME}
+                    </span>
+                    <span className="brand-lockup__subtitle">
+                      Precision planning for refined Warframe builds
+                    </span>
+                  </span>
+                </Link>
+              </div>
 
-          <div className="justify-self-center">
-            {isLoggedIn ? <SearchBar /> : null}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <nav className="flex gap-2">
-              <NavLink
-                to={APP_PATHS.buildOverview}
-                end
-                className={({ isActive }) =>
-                  `inline-flex items-center rounded-2xl border px-4 py-2 text-sm transition-all ${
-                    isActive
-                      ? 'border-accent bg-accent-weak text-accent'
-                      : 'border-glass-border text-muted hover:border-glass-border-hover hover:text-foreground'
-                  }`
-                }
-              >
-                Builds
-              </NavLink>
-            </nav>
-            <button
-              className="btn btn-accent text-sm"
-              type="button"
-              onClick={() => setShowAddBuild(true)}
-            >
-              + Add Build
-            </button>
-
-            <button
-              type="button"
-              className="icon-toggle-btn"
-              onClick={toggleMode}
-              aria-label={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
-              title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
-            >
-              <span aria-hidden="true">{mode === 'dark' ? '☀' : '☾'}</span>
-            </button>
-            <div ref={menuRef} className="relative">
-              <button
-                type="button"
-                className="icon-toggle-btn profile-avatar-btn"
-                ref={menuButtonRef}
-                aria-haspopup="menu"
-                aria-expanded={userMenuOpen}
-                aria-controls={userMenuOpen ? userMenuId : undefined}
-                aria-label="Open user menu"
-                onClick={() => setUserMenuOpen((prev) => !prev)}
-                onKeyDown={(event) => {
-                  if (
-                    event.key === 'ArrowDown' ||
-                    event.key === 'Enter' ||
-                    event.key === ' '
-                  ) {
-                    event.preventDefault();
-                    setUserMenuOpen(true);
-                  }
-                }}
-              >
-                <img src={avatarSrc} alt="" className="profile-avatar-image" />
-              </button>
-              {userMenuOpen && (
-                <Menu baseClass="user-menu" className="focus:outline-none">
-                  <div
-                    id={userMenuId}
-                    role="menu"
-                    aria-orientation="vertical"
-                    onKeyDown={handleUserMenuKeyDown}
-                  >
-                    {isAdmin ? (
-                      <Link
-                        to={APP_PATHS.admin}
-                        className="user-menu-item"
-                        role="menuitem"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        Admin
-                      </Link>
-                    ) : null}
-                    <Link
-                      to="/auth/profile"
-                      className="user-menu-item"
-                      role="menuitem"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      Profile
-                    </Link>
-                    <button
-                      type="button"
-                      className="user-menu-item text-left"
-                      role="menuitem"
-                      onClick={() => {
-                        setUserMenuOpen(false);
-                        void handleLogout();
-                      }}
-                    >
-                      Logout
-                    </button>
+              <div className="flex min-w-0 flex-1 items-center justify-center">
+                {isLoggedIn ? (
+                  <div className="w-full max-w-xl">
+                    <SearchBar />
                   </div>
-                </Menu>
-              )}
+                ) : null}
+              </div>
+
+              <div className="flex flex-1 flex-wrap items-center justify-end gap-3">
+                <nav className="flex flex-wrap gap-2">
+                  <NavLink
+                    to={APP_PATHS.buildOverview}
+                    end
+                    className={({ isActive }) =>
+                      `shell-nav-link ${
+                        isActive
+                          ? 'border-accent/30 bg-accent/10 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                          : ''
+                      }`
+                    }
+                  >
+                    Builds
+                  </NavLink>
+                </nav>
+                <button
+                  className="btn btn-accent text-sm"
+                  type="button"
+                  onClick={() => setShowAddBuild(true)}
+                >
+                  <span aria-hidden="true">+</span>
+                  Add Build
+                </button>
+                <button
+                  type="button"
+                  className="icon-toggle-btn"
+                  onClick={toggleMode}
+                  aria-label={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
+                  title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
+                >
+                  <span aria-hidden="true">{mode === 'dark' ? '☀' : '☾'}</span>
+                </button>
+                <div ref={menuRef} className="relative">
+                  <button
+                    type="button"
+                    className="icon-toggle-btn profile-avatar-btn"
+                    ref={menuButtonRef}
+                    aria-haspopup="menu"
+                    aria-expanded={userMenuOpen}
+                    aria-controls={userMenuOpen ? userMenuId : undefined}
+                    aria-label="Open user menu"
+                    onClick={() => setUserMenuOpen((prev) => !prev)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === 'ArrowDown' ||
+                        event.key === 'Enter' ||
+                        event.key === ' '
+                      ) {
+                        event.preventDefault();
+                        setUserMenuOpen(true);
+                      }
+                    }}
+                  >
+                    <img
+                      src={avatarSrc}
+                      alt=""
+                      className="profile-avatar-image"
+                    />
+                  </button>
+                  {userMenuOpen && (
+                    <Menu baseClass="user-menu" className="focus:outline-none">
+                      <div
+                        id={userMenuId}
+                        role="menu"
+                        aria-orientation="vertical"
+                        onKeyDown={handleUserMenuKeyDown}
+                      >
+                        {isAdmin ? (
+                          <Link
+                            to={APP_PATHS.admin}
+                            className="user-menu-item"
+                            role="menuitem"
+                            onClick={() => setUserMenuOpen(false)}
+                          >
+                            Admin
+                          </Link>
+                        ) : null}
+                        <Link
+                          to={APP_PATHS.profile}
+                          className="user-menu-item"
+                          role="menuitem"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          Profile
+                        </Link>
+                        <button
+                          type="button"
+                          className="user-menu-item text-left"
+                          role="menuitem"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            void handleLogout();
+                          }}
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    </Menu>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-col gap-3 border-t border-glass-divider pt-4 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="status-pill status-pill--accent">
+                  Refined Cinematic
+                </span>
+                <span className="status-pill">
+                  {compareBarVisible
+                    ? `${snapshots.length} in compare`
+                    : 'Comparison queue idle'}
+                </span>
+              </div>
+              <p className="max-w-2xl text-sm text-muted">
+                Cleaner hierarchy, calmer controls, and deeper glass surfaces
+                without losing the tactical feel.
+              </p>
             </div>
           </div>
         </div>
@@ -268,7 +306,7 @@ export function Layout() {
       <main
         id="main-content"
         tabIndex={-1}
-        className={`relative z-10 flex-1 px-6 pb-6 ${compareBarVisible ? 'pb-24' : ''}`}
+        className={`relative z-10 flex-1 px-4 pb-6 pt-6 sm:px-6 ${compareBarVisible ? 'pb-28' : ''}`}
       >
         <Outlet />
       </main>
@@ -281,16 +319,21 @@ export function Layout() {
           onClose={() => setShowAddBuild(false)}
         />
       )}
-      <footer className="relative z-10 flex h-[50px] items-center justify-center px-6">
-        <div className="mx-auto w-full max-w-[2000px] text-center">
-          <a
-            href={LEGAL_PAGE_URL}
-            className="text-sm text-muted hover:text-foreground"
-            target={LEGAL_PAGE_URL.startsWith('http') ? '_blank' : undefined}
-            rel={LEGAL_PAGE_URL.startsWith('http') ? 'noreferrer' : undefined}
-          >
-            ©{currentYear} {LEGAL_ENTITY_NAME}
-          </a>
+      <footer className="relative z-10 px-4 pb-5 sm:px-6 sm:pb-6">
+        <div className="mx-auto w-full max-w-[2000px]">
+          <div className="glass-surface flex flex-col gap-2 px-5 py-4 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+            <p className="m-0">
+              Deliberate buildcraft, faster comparisons, and less visual noise.
+            </p>
+            <a
+              href={LEGAL_PAGE_URL}
+              className="transition-colors hover:text-foreground"
+              target={LEGAL_PAGE_URL.startsWith('http') ? '_blank' : undefined}
+              rel={LEGAL_PAGE_URL.startsWith('http') ? 'noreferrer' : undefined}
+            >
+              ©{currentYear} {LEGAL_ENTITY_NAME}
+            </a>
+          </div>
         </div>
       </footer>
     </div>

@@ -1,11 +1,15 @@
 export function LegalPage() {
   return (
-    <section className="mx-auto max-w-[900px] rounded-2xl border border-[var(--color-glass-border)] bg-[var(--color-glass)] p-6">
-      <h1 className="mb-3 text-2xl font-semibold">Legal</h1>
-      <p className="text-sm text-muted">
-        Parametric is a Dark Avian Labs application. Use of this service is
-        subject to organization policies and access controls.
-      </p>
+    <section className="mx-auto max-w-[900px] space-y-6">
+      <div className="glass-shell page-hero">
+        <div className="page-hero__eyebrow">Legal</div>
+        <h1 className="page-hero__title">Usage and access.</h1>
+        <p className="page-hero__body">
+          Parametric is a Dark Avian Labs application. Use of this service is
+          subject to organization policies, access controls, and internal
+          governance.
+        </p>
+      </div>
     </section>
   );
 }

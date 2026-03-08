@@ -17,36 +17,33 @@ export function CompareBar() {
 
   return (
     <>
-      <div className="fixed inset-x-0 bottom-0 z-[200] border-t border-glass-border bg-surface/95 backdrop-blur-md animate-slide-up">
-        <div className="mx-auto flex max-w-[2000px] items-center gap-4 px-6 py-3">
-          <span className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted">
+      <div className="animate-slide-up fixed inset-x-0 bottom-0 z-[200] px-4 pb-4 sm:px-6 sm:pb-6">
+        <div className="glass-shell mx-auto flex max-w-[2000px] flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center">
+          <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.24em] text-muted">
             Compare
           </span>
 
-          <div className="flex flex-1 items-center gap-3">
+          <div className="flex flex-1 flex-wrap items-center gap-3">
             {snapshots.map((snap) => (
               <div
                 key={snap.id}
-                className="flex items-center gap-2 rounded-lg border border-glass-border bg-surface-modal px-3 py-2"
+                className="flex items-center gap-3 rounded-2xl border border-glass-border bg-glass px-3 py-3"
               >
                 {snap.weaponImage && (
                   <img
                     src={`/images${snap.weaponImage}`}
                     alt={snap.weaponName}
-                    className="h-8 w-8 rounded object-cover"
+                    className="h-10 w-10 rounded-xl object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
                 )}
                 <div className="min-w-0">
-                  <div
-                    className="truncate text-xs font-medium text-foreground"
-                    style={{ maxWidth: 140 }}
-                  >
+                  <div className="truncate text-sm font-medium text-foreground">
                     {snap.label}
                   </div>
-                  <div className="text-[10px] text-muted">
+                  <div className="text-[11px] text-muted">
                     {snap.weaponName} ·{' '}
                     <span className="text-accent">
                       {formatDps(snap.calc.burstDps)} DPS
@@ -54,9 +51,10 @@ export function CompareBar() {
                   </div>
                 </div>
                 <button
-                  className="ml-1 shrink-0 rounded p-0.5 text-muted hover:text-red-400 transition-colors"
+                  className="ml-1 shrink-0 rounded-full p-1 text-muted transition-colors hover:text-danger"
                   onClick={() => removeSnapshot(snap.id)}
                   title="Remove from comparison"
+                  type="button"
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path
@@ -73,25 +71,29 @@ export function CompareBar() {
             {Array.from({ length: 3 - snapshots.length }).map((_, i) => (
               <div
                 key={`empty-${i}`}
-                className="flex h-[52px] w-32 items-center justify-center rounded-lg border border-dashed border-glass-border/50"
+                className="flex h-[58px] w-36 items-center justify-center rounded-2xl border border-dashed border-glass-border/60 bg-glass/40"
               >
-                <span className="text-[10px] text-muted/40">Empty</span>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-muted/40">
+                  Empty slot
+                </span>
               </div>
             ))}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 self-end lg:self-auto">
             {snapshots.length >= 2 && (
               <button
                 className="btn btn-accent text-sm"
                 onClick={() => setShowModal(true)}
+                type="button"
               >
                 Compare {snapshots.length}
               </button>
             )}
             <button
-              className="text-xs text-muted hover:text-red-400 transition-colors"
+              className="btn btn-secondary btn-sm"
               onClick={clearAll}
+              type="button"
             >
               Clear all
             </button>

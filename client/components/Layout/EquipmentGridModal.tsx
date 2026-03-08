@@ -6,6 +6,7 @@ import {
   type EquipmentType,
 } from '../../types/warframe';
 import { apiFetch } from '../../utils/api';
+import { getCompanionWeaponSelectionType } from '../../utils/companionWeapons';
 import {
   getSpecialItemSelectionType as getSpecialItemSelectionTypeByName,
   normalizeEquipmentName,
@@ -18,19 +19,24 @@ interface EquipmentItem {
   image_path?: string;
   mastery_req: number;
   product_category?: string;
+  slot?: number | null;
+  sentinel?: number;
   selection_type?: EquipmentType;
 }
+
+type EquipmentPickerTab = EquipmentType | 'companion_weapon';
 
 interface EquipmentGridModalProps {
   onSelect: (equipmentType: string, uniqueName: string) => void;
   onClose: () => void;
 }
 
-const CATEGORY_API: Record<EquipmentType, string> = {
+const CATEGORY_API: Record<EquipmentPickerTab, string> = {
   warframe: '/api/warframes',
   primary: '/api/weapons?type=LongGuns',
   secondary: '/api/weapons?type=Pistols',
   melee: '/api/weapons?type=Melee',
+  companion_weapon: '/api/weapons?type=SentinelWeapons',
   archgun: '/api/weapons?type=SpaceGuns',
   archmelee: '/api/weapons?type=SpaceMelee',
   companion: '/api/companions',
@@ -47,6 +53,26 @@ const HIDDEN_EMPTY_TABS = new Set<EquipmentType>([
   'tektolyst',
 ]);
 
+const TAB_ORDER: EquipmentPickerTab[] = (() => {
+  const INSERT_INDEX = 5;
+  if (EQUIPMENT_TYPE_ORDER.length < INSERT_INDEX) {
+    console.warn(
+      `[EquipmentGridModal] EQUIPMENT_TYPE_ORDER has only ${EQUIPMENT_TYPE_ORDER.length} entries; appending companion tab as fallback.`,
+    );
+    return [...EQUIPMENT_TYPE_ORDER, 'companion_weapon'];
+  }
+  return [
+    ...EQUIPMENT_TYPE_ORDER.slice(0, INSERT_INDEX),
+    'companion_weapon',
+    ...EQUIPMENT_TYPE_ORDER.slice(INSERT_INDEX),
+  ];
+})();
+
+const TAB_LABELS: Record<EquipmentPickerTab, string> = {
+  ...EQUIPMENT_TYPE_LABELS,
+  companion_weapon: 'Companion Weapons',
+};
+
 function getSpecialItemSelectionTypeForItem(
   item: EquipmentItem,
   equipmentType: EquipmentType,
@@ -59,13 +85,13 @@ export function EquipmentGridModal({
   onSelect,
   onClose,
 }: EquipmentGridModalProps) {
-  const [activeTab, setActiveTab] = useState<EquipmentType>('warframe');
+  const [activeTab, setActiveTab] = useState<EquipmentPickerTab>('warframe');
   const [items, setItems] = useState<EquipmentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const visibleTabs = EQUIPMENT_TYPE_ORDER.filter(
-    (t) => !HIDDEN_EMPTY_TABS.has(t),
+  const visibleTabs = TAB_ORDER.filter(
+    (tab) => tab === 'companion_weapon' || !HIDDEN_EMPTY_TABS.has(tab),
   );
 
   useEffect(() => {
@@ -126,6 +152,16 @@ export function EquipmentGridModal({
             const cat = i.product_category;
             return !cat || cat === 'Suits';
           });
+        } else if (activeTab === 'secondary') {
+          list = list.filter((i) => i.slot === 0);
+        } else if (activeTab === 'companion_weapon') {
+          list = list
+            .map((item) => ({
+              ...item,
+              selection_type:
+                getCompanionWeaponSelectionType(item) ?? undefined,
+            }))
+            .filter((item) => item.selection_type != null);
         } else if (activeTab === 'archwing') {
           list = list.filter((i) => i.product_category === 'SpaceSuits');
         } else if (activeTab === 'necramech') {
@@ -170,15 +206,18 @@ export function EquipmentGridModal({
         className="overflow-y-auto"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2
-            id="equipment-grid-title"
-            className="text-lg font-semibold text-foreground"
-          >
-            Select Equipment
-          </h2>
+          <div>
+            <p className="panel-header__meta">Quick Start</p>
+            <h2
+              id="equipment-grid-title"
+              className="text-lg font-semibold text-foreground"
+            >
+              Select equipment
+            </h2>
+          </div>
           <button
             type="button"
-            className="text-xl text-muted hover:text-foreground"
+            className="icon-toggle-btn h-10 w-10 text-lg"
             onClick={onClose}
             aria-label="Close equipment picker"
           >
@@ -186,7 +225,7 @@ export function EquipmentGridModal({
           </button>
         </div>
 
-        <div className="mb-3 rounded-xl border border-glass-border bg-glass p-1">
+        <div className="mb-3 rounded-2xl border border-glass-border bg-glass p-1.5">
           <div className="flex flex-wrap gap-1">
             {visibleTabs.map((t) => (
               <button
@@ -195,13 +234,13 @@ export function EquipmentGridModal({
                 onClick={() => {
                   setActiveTab(t);
                 }}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-medium tracking-wide transition-all ${
+                className={`rounded-full border px-3 py-2 text-xs font-medium uppercase tracking-[0.18em] transition-all ${
                   activeTab === t
-                    ? 'border-accent/50 bg-accent-weak text-accent shadow-[0_0_0_1px_rgba(64,180,255,0.18)_inset]'
+                    ? 'border-accent/40 bg-accent/10 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
                     : 'border-transparent text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground'
                 }`}
               >
-                {EQUIPMENT_TYPE_LABELS[t]}
+                {TAB_LABELS[t]}
               </button>
             ))}
           </div>
@@ -236,7 +275,7 @@ export function EquipmentGridModal({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
               {filtered.map((item) => (
                 <button
                   key={item.unique_name}
@@ -244,15 +283,15 @@ export function EquipmentGridModal({
                   onClick={() =>
                     onSelect(item.selection_type ?? activeTab, item.unique_name)
                   }
-                  className="group relative overflow-hidden rounded-lg border border-glass-border p-0 text-center transition-all hover:border-glass-border-hover hover:bg-glass-hover"
+                  className="group relative overflow-hidden rounded-2xl border border-glass-border bg-glass/40 p-0 text-center transition-all hover:-translate-y-0.5 hover:border-glass-border-hover hover:bg-glass-hover"
                   aria-label={`Select ${normalizeEquipmentName(item.name)}`}
                 >
-                  <div className="relative flex h-20 w-full items-center justify-center overflow-hidden bg-glass">
+                  <div className="relative flex h-24 w-full items-center justify-center overflow-hidden bg-glass">
                     {item.image_path ? (
                       <img
                         src={`/images${item.image_path}`}
                         alt=""
-                        className="h-full w-full object-contain p-1 transition-transform duration-200 group-hover:scale-105"
+                        className="h-full w-full object-contain p-2 transition-transform duration-200 group-hover:scale-105"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
                         }}
@@ -260,7 +299,7 @@ export function EquipmentGridModal({
                     ) : (
                       <span className="text-[10px] text-muted/50">?</span>
                     )}
-                    <span className="text-shadow-soft absolute inset-x-0 bottom-0 truncate bg-black/25 px-2 py-1 text-[11px] text-white">
+                    <span className="text-shadow-soft absolute inset-x-0 bottom-0 truncate bg-black/35 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-white">
                       {normalizeEquipmentName(item.name)}
                     </span>
                   </div>

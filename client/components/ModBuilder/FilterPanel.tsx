@@ -38,6 +38,8 @@ function getModTypes(eqType: EquipmentType): string {
       return 'SECONDARY';
     case 'melee':
       return 'MELEE,STANCE';
+    case 'beast_claws':
+      return 'MELEE,STANCE';
     case 'companion':
       return 'SENTINEL,KAVAT,KUBROW,HELMINTH CHARGER';
     case 'archgun':

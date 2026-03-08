@@ -84,6 +84,9 @@ function isModCompatible(
     case 'melee':
       return isMeleeModCompatible(mod, modType, compat, equipment);
 
+    case 'beast_claws':
+      return isBeastClawModCompatible(modType, compat);
+
     case 'companion':
       return isCompanionModCompatible(mod, modType, compat, equipment);
 
@@ -228,4 +231,22 @@ function isCompanionModCompatible(
   }
 
   return false;
+}
+
+function isBeastClawModCompatible(modType: string, compat: string): boolean {
+  const compatUpper = compat.toUpperCase();
+
+  if (modType === 'STANCE') {
+    return compatUpper === 'CLAWS';
+  }
+
+  if (modType !== 'MELEE') return false;
+
+  return (
+    compatUpper === 'MELEE' ||
+    compatUpper === 'CLAWS' ||
+    compatUpper === 'KAVAT CLAWS' ||
+    compatUpper === 'KUBROW CLAWS' ||
+    compatUpper === 'HELMINTH CLAWS'
+  );
 }

@@ -24,10 +24,12 @@ interface ShardType {
 export function AdminPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div className="glass-shell p-6">
-        <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
-        <p className="mt-1 text-sm text-muted">
-          Archon Shard configuration for Parametric.
+      <div className="glass-shell page-hero">
+        <div className="page-hero__eyebrow">Admin</div>
+        <h1 className="page-hero__title text-[2.2rem]">Control panel</h1>
+        <p className="page-hero__body">
+          Manage shard configuration and keep tuning data aligned with the
+          builder experience.
         </p>
       </div>
       <ArchonShardAdmin />
@@ -130,27 +132,22 @@ function ArchonShardAdmin() {
   return (
     <>
       <div className="glass-surface p-6">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">
-          Archon Shards
-        </h2>
-        <p className="mb-3 text-xs text-muted">
+        <div className="panel-header panel-header--soft px-0 pt-0">
+          <div className="panel-header__copy">
+            <p className="panel-header__meta">Configuration</p>
+            <h2 className="panel-header__title">Archon Shards</h2>
+          </div>
+        </div>
+        <p className="surface-note mb-4">
           Edit shard types and their buff values.
         </p>
         {statusMessage ? (
-          <p
-            className="mb-3 text-sm text-success"
-            role="status"
-            aria-live="polite"
-          >
+          <p className="success-msg mb-3" role="status" aria-live="polite">
             {statusMessage}
           </p>
         ) : null}
         {errorMessage || error ? (
-          <p
-            className="mb-3 text-sm text-danger"
-            role="alert"
-            aria-live="assertive"
-          >
+          <p className="error-msg mb-3" role="alert" aria-live="assertive">
             {errorMessage || error}
           </p>
         ) : null}
@@ -166,14 +163,14 @@ function ArchonShardAdmin() {
 
         <div className="space-y-4">
           {shards.map((shard) => (
-            <div key={shard.id} className="glass-surface rounded-lg p-3">
-              <div className="mb-2 flex items-center gap-2">
+            <div key={shard.id} className="glass-shell p-4">
+              <div className="mb-3 flex items-center gap-3">
                 <img
                   src={shard.icon_path}
                   alt=""
-                  className="h-5 w-5 object-contain"
+                  className="h-6 w-6 object-contain"
                 />
-                <span className="text-sm font-semibold text-foreground">
+                <span className="text-base font-semibold text-foreground">
                   {shard.name}
                 </span>
               </div>

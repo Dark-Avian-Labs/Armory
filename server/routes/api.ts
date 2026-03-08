@@ -568,7 +568,6 @@ apiRouter.get('/arcanes', (req: Request, res: Response) => {
 
     const normalized = rows.map((row) => ({
       ...row,
-      // Recompute from source fields so stale historical tags cannot leak.
       compat_tags: classifyArcaneCompatTags(row.unique_name, row.name),
     }));
 

@@ -118,11 +118,22 @@ export function SearchBar() {
 
   return (
     <div ref={wrapperRef} className="relative">
-      <div className="search-wrapper relative">
+      <div className="search-wrapper">
+        <span className="search-icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M11.5 11.5L14 14M7 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"
+              stroke="currentColor"
+              strokeWidth="1.35"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
         <input
           type="text"
-          className="search-box w-52"
-          placeholder="Search…"
+          className="search-box w-full"
+          placeholder="Search equipment and start a new build"
           aria-label="Search equipment"
           value={query}
           onChange={(e) => {
@@ -135,8 +146,9 @@ export function SearchBar() {
         />
         {query && (
           <button
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-lg text-muted hover:text-foreground"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-lg text-muted transition-colors hover:text-foreground"
             aria-label="Clear search"
+            type="button"
             onClick={() => {
               setQuery('');
               setResults([]);
@@ -150,7 +162,7 @@ export function SearchBar() {
       </div>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-80 overflow-hidden rounded-xl border border-glass-border bg-surface-modal shadow-lg backdrop-blur-xl">
+        <div className="search-results-panel absolute right-0 top-full z-50 mt-3 w-full min-w-[22rem] overflow-hidden">
           {loading ? (
             <div className="p-3 text-center text-sm text-muted">Searching…</div>
           ) : searchError ? (
@@ -161,27 +173,35 @@ export function SearchBar() {
             <div className="max-h-80 overflow-y-auto custom-scroll">
               {Object.entries(grouped).map(([category, items]) => (
                 <div key={category}>
-                  <div className="sticky top-0 bg-surface-modal/95 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted/60 backdrop-blur">
+                  <div className="sticky top-0 bg-surface-modal/95 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-muted/70 backdrop-blur">
                     {category}
                   </div>
                   {items.map((item) => (
                     <button
                       key={item.unique_name}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-muted transition-colors hover:bg-glass-hover hover:text-foreground"
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-muted transition-colors hover:bg-glass-hover hover:text-foreground"
+                      type="button"
                       onClick={() => handleSelect(item)}
                     >
                       {item.image_path && (
                         <img
                           src={`/images${item.image_path}`}
                           alt=""
-                          className="h-7 w-7 rounded object-cover"
+                          className="h-9 w-9 rounded-xl object-cover"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display =
                               'none';
                           }}
                         />
                       )}
-                      <span className="truncate">{item.name}</span>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-foreground">
+                          {item.name}
+                        </div>
+                        <div className="truncate text-[11px] uppercase tracking-[0.18em] text-muted/60">
+                          {category}
+                        </div>
+                      </div>
                     </button>
                   ))}
                 </div>
