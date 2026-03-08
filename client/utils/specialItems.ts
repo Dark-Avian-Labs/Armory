@@ -52,9 +52,6 @@ export function normalizeEquipmentName(name: string): string {
   return name.replace(/^<[^>]+>\s*/i, '').trim();
 }
 
-/**
- * Returns the equipment type bucket a SpecialItems weapon belongs to for a given EquipmentType context.
- */
 export function getSpecialItemSelectionType(
   name: string,
   equipmentType: EquipmentType,
@@ -83,9 +80,6 @@ export function getSpecialItemSelectionType(
   return null;
 }
 
-/**
- * True when the named SpecialItems weapon is valid for the provided EquipmentType.
- */
 export function matchesSpecialItemType(
   name: string,
   equipmentType: EquipmentType,

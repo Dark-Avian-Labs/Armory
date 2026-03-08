@@ -89,6 +89,8 @@ export function dbRarityToCardRarity(
   modName?: string,
 ): Rarity {
   if (modName && isArchonMod(modName)) return 'Archon';
+  if (modName && isGalvanizedMod(modName)) return 'Galvanized';
+  if (modName && isAmalgamMod(modName)) return 'Amalgam';
   switch (dbRarity?.toUpperCase()) {
     case 'COMMON':
       return 'Common';
@@ -107,6 +109,20 @@ export function isArchonMod(nameOrUniqueName: string): boolean {
   return (
     nameOrUniqueName.startsWith('Archon ') ||
     nameOrUniqueName.includes('/Archon/')
+  );
+}
+
+export function isGalvanizedMod(nameOrUniqueName: string): boolean {
+  return (
+    nameOrUniqueName.startsWith('Galvanized ') ||
+    nameOrUniqueName.includes('/Galvanized/')
+  );
+}
+
+export function isAmalgamMod(nameOrUniqueName: string): boolean {
+  return (
+    nameOrUniqueName.startsWith('Amalgam ') ||
+    nameOrUniqueName.includes('/Amalgam/')
   );
 }
 

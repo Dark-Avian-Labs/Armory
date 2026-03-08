@@ -11,6 +11,7 @@ const results = [];
 const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
 const color = {
   green: useColor ? '\x1b[32m' : '',
+  yellow: useColor ? '\x1b[33m' : '',
   red: useColor ? '\x1b[31m' : '',
   reset: useColor ? '\x1b[0m' : '',
 };
@@ -20,23 +21,36 @@ for (const step of steps) {
   const startedAt = process.hrtime.bigint();
 
   const run = spawnSync(step.command, {
-    stdio: 'inherit',
+    stdio: 'pipe',
     shell: true,
+    encoding: 'utf8',
   });
+  process.stdout.write(run.stdout ?? '');
+  process.stderr.write(run.stderr ?? '');
   const finishedAt = process.hrtime.bigint();
   const elapsedMs = Number(finishedAt - startedAt) / 1_000_000;
   const elapsedSeconds = elapsedMs / 1000;
 
   const success = run.status === 0;
-  results.push({ name: step.name, success, elapsedSeconds });
+  const output = `${run.stdout ?? ''}\n${run.stderr ?? ''}`;
+  const hasWarnings =
+    step.name === 'Lint' &&
+    success &&
+    /(^|\s)(\d+)?\s*warnings?\b/i.test(output) &&
+    !/\b0 warnings?\b/i.test(output);
+  results.push({ name: step.name, success, hasWarnings, elapsedSeconds });
   console.log(
-    `--- ${step.name} completed in ${elapsedSeconds.toFixed(2)}s (${success ? 'PASS' : 'FAIL'}) ---`,
+    `--- ${step.name} completed in ${elapsedSeconds.toFixed(2)}s (${success ? (hasWarnings ? 'WARN' : 'PASS') : 'FAIL'}) ---`,
   );
 }
 
 console.log('\n=== Summary ===');
 for (const result of results) {
-  if (result.success) {
+  if (result.success && result.hasWarnings) {
+    console.log(
+      `[${color.yellow}!${color.reset}] ${result.name} Warnings (${result.elapsedSeconds.toFixed(2)}s)`,
+    );
+  } else if (result.success) {
     console.log(
       `[${color.green}✓${color.reset}] ${result.name} (${result.elapsedSeconds.toFixed(2)}s)`,
     );

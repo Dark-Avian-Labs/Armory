@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { buildEditPath } from '../../app/paths';
@@ -14,11 +14,45 @@ import {
   type StoredBuild,
   type EquipmentType,
 } from '../../types/warframe';
+import { matchesSpecialItemType } from '../../utils/specialItems';
 
 interface BuildsByCategory {
   type: EquipmentType;
   label: string;
   builds: StoredBuild[];
+}
+
+function getSlotTypeForBuild(build: StoredBuild): string | null {
+  if (matchesSpecialItemType(build.equipment_name, build.equipment_type)) {
+    if (build.equipment_type === 'primary') return 'special_primary';
+    if (build.equipment_type === 'secondary') return 'special_secondary';
+    if (build.equipment_type === 'melee') return 'special_melee';
+  }
+
+  const equipmentType = build.equipment_type;
+  switch (equipmentType) {
+    case 'warframe':
+    case 'primary':
+    case 'secondary':
+    case 'melee':
+    case 'companion':
+    case 'archwing':
+    case 'archgun':
+    case 'archmelee':
+      return equipmentType;
+    default:
+      return null;
+  }
+}
+
+function getSlotLabel(slotType: string): string {
+  if (slotType === 'special_primary') return 'Primary (Special)';
+  if (slotType === 'special_secondary') return 'Secondary (Special)';
+  if (slotType === 'special_melee') return 'Melee (Special)';
+
+  return (
+    LOADOUT_SLOT_TYPES.find((slot) => slot.key === slotType)?.label ?? slotType
+  );
 }
 
 export function BuildOverview() {
@@ -30,6 +64,7 @@ export function BuildOverview() {
   const [newLoadoutName, setNewLoadoutName] = useState('');
   const [newLoadoutError, setNewLoadoutError] = useState<string | null>(null);
   const [linkingBuild, setLinkingBuild] = useState<StoredBuild | null>(null);
+  const [linkingLoadout, setLinkingLoadout] = useState<Loadout | null>(null);
 
   const grouped = useMemo<BuildsByCategory[]>(() => {
     const map = new Map<EquipmentType, StoredBuild[]>();
@@ -68,7 +103,27 @@ export function BuildOverview() {
     }
   };
 
-  const getBuildById = (id: string) => builds.find((b) => b.id === id);
+  const getBuildById = useCallback(
+    (id: string) => builds.find((b) => b.id === id),
+    [builds],
+  );
+
+  const loadoutCompatibleBuilds = useMemo(() => {
+    if (!linkingLoadout) return [] as StoredBuild[];
+    const usedSlotTypes = new Set(
+      linkingLoadout.builds.map((b) => b.slot_type),
+    );
+    return builds
+      .filter((build) => {
+        const slotType = getSlotTypeForBuild(build);
+        if (!slotType) return false;
+        return !usedSlotTypes.has(slotType);
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+      );
+  }, [builds, linkingLoadout]);
 
   const handleLinkBuildToLoadout = async (loadoutId: string) => {
     if (!linkingBuild) return;
@@ -145,6 +200,9 @@ export function BuildOverview() {
                       );
                       window.alert(message);
                     }
+                  }}
+                  onAddBuild={() => {
+                    setLinkingLoadout(loadout);
                   }}
                 />
               ))}
@@ -295,6 +353,84 @@ export function BuildOverview() {
           </div>
         </div>
       )}
+
+      {linkingLoadout && (
+        <div className="modal-overlay" onClick={() => setLinkingLoadout(null)}>
+          <div
+            className="glass-modal-surface w-[90%] max-w-lg max-h-[90vh] overflow-y-auto p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">
+                Add Build to "{linkingLoadout.name}"
+              </h3>
+              <button
+                className="text-lg text-muted hover:text-foreground"
+                onClick={() => setLinkingLoadout(null)}
+                aria-label="Close add build dialog"
+              >
+                &times;
+              </button>
+            </div>
+            {loadoutCompatibleBuilds.length === 0 ? (
+              <p className="text-sm text-muted">
+                No compatible builds available. This loadout already has all
+                supported categories filled.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {loadoutCompatibleBuilds.map((build) => (
+                  <button
+                    key={build.id}
+                    onClick={() => {
+                      void (async () => {
+                        try {
+                          const slotType = getSlotTypeForBuild(build);
+                          if (!slotType) {
+                            window.alert(
+                              'This build type is not supported in loadouts yet.',
+                            );
+                            return;
+                          }
+                          await linkBuild(
+                            linkingLoadout.id,
+                            build.id,
+                            slotType,
+                          );
+                          setLinkingLoadout(null);
+                        } catch (error) {
+                          const message =
+                            error instanceof Error
+                              ? error.message
+                              : 'Failed to link build to loadout slot';
+                          console.error(
+                            'Failed to link build to loadout slot',
+                            error,
+                          );
+                          window.alert(message);
+                        }
+                      })();
+                    }}
+                    className="flex w-full items-center justify-between rounded-lg border border-glass-border px-3 py-2 text-left text-sm text-muted transition-all hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-foreground">
+                        {build.name}
+                      </div>
+                      <div className="truncate text-xs text-muted">
+                        {build.equipment_name}
+                      </div>
+                    </div>
+                    <span className="ml-3 shrink-0 text-[10px] text-muted/50">
+                      {getSlotLabel(getSlotTypeForBuild(build) ?? '')}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -389,14 +525,33 @@ function LoadoutRow({
   onDelete,
   onNavigate,
   onUnlink,
+  onAddBuild,
 }: {
   loadout: Loadout;
   getBuildById: (id: string) => StoredBuild | undefined;
   onDelete: () => void;
   onNavigate: (buildId: string) => void;
   onUnlink: (slotType: string) => void;
+  onAddBuild: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const linkedBuildRows = useMemo(() => {
+    const rows = loadout.builds
+      .map((linked) => {
+        const build = getBuildById(linked.build_id);
+        if (!build) return null;
+        return { build, slotType: linked.slot_type };
+      })
+      .filter((entry): entry is { build: StoredBuild; slotType: string } =>
+        Boolean(entry),
+      );
+
+    return rows.sort(
+      (a, b) =>
+        new Date(b.build.updated_at).getTime() -
+        new Date(a.build.updated_at).getTime(),
+    );
+  }, [loadout.builds, getBuildById]);
 
   return (
     <div>
@@ -436,38 +591,62 @@ function LoadoutRow({
 
       {expanded && (
         <div className="border-t border-glass-divider bg-glass/30 px-6 py-2">
-          {LOADOUT_SLOT_TYPES.map(({ key, label }) => {
-            const linked = loadout.builds.find((b) => b.slot_type === key);
-            const build = linked ? getBuildById(linked.build_id) : undefined;
-
-            return (
+          {linkedBuildRows.length === 0 ? (
+            <div className="py-2 text-xs text-muted/40">
+              No builds added yet.
+            </div>
+          ) : (
+            linkedBuildRows.map(({ build, slotType }) => (
               <div
-                key={key}
-                className="flex items-center justify-between py-1 text-xs"
+                key={`${slotType}:${build.id}`}
+                className="group flex items-center gap-3 rounded px-2 py-2 transition-all hover:bg-glass-hover"
               >
-                <span className="text-muted/60">{label}</span>
-                {build ? (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => onNavigate(build.id)}
-                      className="text-accent hover:underline"
-                    >
-                      {build.name}
-                    </button>
-                    <button
-                      onClick={() => onUnlink(key)}
-                      className="text-muted/40 hover:text-danger"
-                      aria-label={`Unlink ${label}`}
-                    >
-                      &times;
-                    </button>
+                <button
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  onClick={() => onNavigate(build.id)}
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-glass">
+                    {build.equipment_image ? (
+                      <img
+                        src={build.equipment_image}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        draggable={false}
+                      />
+                    ) : (
+                      <span className="text-[10px] text-muted/50">?</span>
+                    )}
                   </div>
-                ) : (
-                  <span className="text-muted/30">-</span>
-                )}
+                  <div className="min-w-0">
+                    <div className="truncate text-xs font-medium text-foreground">
+                      {build.name}
+                    </div>
+                    <div className="truncate text-[11px] text-muted">
+                      {build.equipment_name}
+                    </div>
+                  </div>
+                </button>
+                <span className="shrink-0 rounded border border-glass-border px-1.5 py-0.5 text-[10px] text-muted/60">
+                  {getSlotLabel(slotType)}
+                </span>
+                <button
+                  onClick={() => onUnlink(slotType)}
+                  className="text-muted/40 opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+                  aria-label={`Unlink ${getSlotLabel(slotType)}`}
+                >
+                  &times;
+                </button>
               </div>
-            );
-          })}
+            ))
+          )}
+          <div className="pt-2">
+            <button
+              onClick={onAddBuild}
+              className="rounded px-2 py-1 text-xs text-accent hover:bg-accent/10"
+            >
+              + Add Build
+            </button>
+          </div>
         </div>
       )}
     </div>

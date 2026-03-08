@@ -48,7 +48,6 @@ import {
   type SlotPolarity,
 } from '../../utils/formaCounter';
 import { isModLockedOut } from '../../utils/modFiltering';
-import { matchesSpecialItemType } from '../../utils/specialItems';
 import {
   createRivenMod,
   getRivenStatsForType,
@@ -57,6 +56,7 @@ import {
   normalizeRivenConfigMembership,
   RIVEN_PLACEHOLDER_UNIQUE,
 } from '../../utils/riven';
+import { matchesSpecialItemType } from '../../utils/specialItems';
 
 type RightPanelMode = 'mods' | 'helminth' | 'arcanes' | 'shards';
 

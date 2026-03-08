@@ -5,11 +5,11 @@ import {
   EQUIPMENT_TYPE_ORDER,
   type EquipmentType,
 } from '../../types/warframe';
+import { apiFetch } from '../../utils/api';
 import {
   getSpecialItemSelectionType as getSpecialItemSelectionTypeByName,
   normalizeEquipmentName,
 } from '../../utils/specialItems';
-import { apiFetch } from '../../utils/api';
 import { Modal } from '../ui/Modal';
 
 interface EquipmentItem {
