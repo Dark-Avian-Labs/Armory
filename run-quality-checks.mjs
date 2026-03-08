@@ -8,6 +8,12 @@ const steps = [
 ];
 
 const results = [];
+const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
+const color = {
+  green: useColor ? '\x1b[32m' : '',
+  red: useColor ? '\x1b[31m' : '',
+  reset: useColor ? '\x1b[0m' : '',
+};
 
 for (const step of steps) {
   console.log(`\n=== ${step.name}: ${step.command} ===`);
@@ -24,13 +30,9 @@ for (const step of steps) {
 console.log('\n=== Summary ===');
 for (const result of results) {
   if (result.success) {
-    console.log(`[%c✓%c] ${result.name}`, 'color: green;', 'color: default;');
+    console.log(`[${color.green}✓${color.reset}] ${result.name}`);
   } else {
-    console.log(
-      `[%c✗%c] ${result.name} Failed`,
-      'color: red;',
-      'color: default;',
-    );
+    console.log(`[${color.red}✗${color.reset}] ${result.name} Failed`);
   }
 }
 
