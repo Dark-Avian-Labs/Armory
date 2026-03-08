@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 
 import {
   authLoginRedirect,
-  requireAuth,
+  requireAuthApiJson,
   requireGameAccess,
   requirePageGameAccess,
 } from './auth/middleware.js';
@@ -161,7 +161,7 @@ app.use('/api/auth', authRouter);
 app.use(
   '/api',
   appApiLimiter,
-  requireAuth,
+  requireAuthApiJson,
   requireGameAccess(GAME_ID),
   apiRouter,
 );
