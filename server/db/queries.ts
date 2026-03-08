@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { getDb } from './connection.js';
 import { EXPORTS_DIR } from '../config.js';
 
@@ -675,17 +676,19 @@ function processArcanes(data: Record<string, unknown[]>): number {
 
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO arcanes
-    (unique_name, name, rarity, level_stats, codex_secret, exclude_from_codex)
-    VALUES (?, ?, ?, ?, ?, ?)
+    (unique_name, name, rarity, level_stats, compat_tags, codex_secret, exclude_from_codex)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
   const tx = db.transaction(() => {
     for (const item of arcanes) {
+      const compatTags = classifyArcaneCompatTags(item.uniqueName, item.name);
       stmt.run(
         item.uniqueName,
         item.name,
         item.rarity ?? null,
         item.levelStats ? JSON.stringify(item.levelStats) : null,
+        JSON.stringify(compatTags),
         item.codexSecret ? 1 : 0,
         item.excludeFromCodex ? 1 : 0,
       );

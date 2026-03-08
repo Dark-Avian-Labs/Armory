@@ -8,6 +8,7 @@ import {
 
 import type { Arcane } from './ArcaneSlots';
 import { useApi } from '../../hooks/useApi';
+import type { EquipmentType } from '../../types/warframe';
 import { getMaxRank, getArcaneDescription } from '../../utils/arcaneUtils';
 import { GlassTooltip } from '../GlassTooltip';
 import { ArcaneCardPreview } from '../ModCard/ArcaneCardPreview';
@@ -17,6 +18,7 @@ import {
 } from '../ModCard/cardLayout';
 
 interface ArcanePickerPanelProps {
+  equipmentType: EquipmentType;
   currentArcaneName?: string;
   onSelect: (arcane: Arcane) => void;
   onRemove: () => void;
@@ -26,13 +28,16 @@ interface ArcanePickerPanelProps {
 const COLS = 4;
 
 export function ArcanePickerPanel({
+  equipmentType,
   currentArcaneName,
   onSelect,
   onRemove,
   onClose,
 }: ArcanePickerPanelProps) {
   const [search, setSearch] = useState('');
-  const { data, loading } = useApi<{ items: Arcane[] }>('/api/arcanes');
+  const { data, loading } = useApi<{ items: Arcane[] }>(
+    `/api/arcanes?equipment_type=${encodeURIComponent(equipmentType)}`,
+  );
   const arcanes = data?.items || [];
 
   const filtered = arcanes.filter((a) =>

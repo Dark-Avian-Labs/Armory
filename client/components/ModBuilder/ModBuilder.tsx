@@ -1330,6 +1330,7 @@ export function ModBuilder() {
 
         {rightPanelMode === 'arcanes' && activeArcaneSlot !== null && (
           <ArcanePickerPanel
+            equipmentType={equipmentType}
             currentArcaneName={arcaneSlots[activeArcaneSlot]?.arcane?.name}
             onSelect={handleArcaneSelect}
             onRemove={() => {

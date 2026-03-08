@@ -3,6 +3,7 @@ import { Router, type Request, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 
+import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { requireAdmin } from '../auth/middleware.js';
 import { getDb } from '../db/connection.js';
 
@@ -421,6 +422,40 @@ function sendInternalError(res: Response, context: string, err: unknown): void {
   res.status(500).json({ error: 'Internal server error' });
 }
 
+function parseArcaneCompatTags(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((value): value is string => typeof value === 'string');
+  }
+  if (typeof raw !== 'string' || raw.trim().length === 0) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((value): value is string => typeof value === 'string');
+  } catch {
+    return [];
+  }
+}
+
+function getAllowedArcaneTags(equipmentType: string | undefined): Set<string> {
+  switch (equipmentType) {
+    case 'warframe':
+      return new Set(['warframe']);
+    case 'primary':
+      return new Set(['primary', 'weapon']);
+    case 'secondary':
+      return new Set(['secondary', 'weapon', 'kitgun']);
+    case 'melee':
+      return new Set(['melee', 'weapon', 'zaw']);
+    case 'archgun':
+    case 'archmelee':
+      return new Set(['weapon']);
+    default:
+      return new Set();
+  }
+}
+
 apiRouter.get('/mods', (req: Request, res: Response) => {
   try {
     const db = getDb();
@@ -527,15 +562,37 @@ apiRouter.get('/mods/:uniqueName', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/arcanes', (_req: Request, res: Response) => {
+apiRouter.get('/arcanes', (req: Request, res: Response) => {
   try {
     const db = getDb();
+    const equipmentType =
+      typeof req.query.equipment_type === 'string'
+        ? req.query.equipment_type
+        : undefined;
     const rows = db
       .prepare(
         "SELECT * FROM arcanes WHERE unique_name NOT LIKE '%Sub' ORDER BY name",
       )
-      .all();
-    res.json({ items: rows });
+      .all() as Array<Record<string, unknown>>;
+
+    const normalized = rows.map((row) => ({
+      ...row,
+      compat_tags: (() => {
+        const parsed = parseArcaneCompatTags(row.compat_tags);
+        if (parsed.length > 0) return parsed;
+        return classifyArcaneCompatTags(row.unique_name, row.name);
+      })(),
+    }));
+
+    const allowedTags = getAllowedArcaneTags(equipmentType);
+    const items =
+      allowedTags.size === 0
+        ? normalized
+        : normalized.filter((row) =>
+            (row.compat_tags as string[]).some((tag) => allowedTags.has(tag)),
+          );
+
+    res.json({ items });
   } catch (err) {
     sendInternalError(res, 'arcanes.list', err);
   }
