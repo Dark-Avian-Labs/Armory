@@ -51,7 +51,6 @@ const WEAPON_CATEGORY_TO_TYPE: Record<string, string> = {
 
 const HELMINTH_WIKI_URL = 'https://warframe.fandom.com/wiki/Helminth';
 const HELMINTH_NAME_CACHE_TTL_MS = 30 * 60 * 1000;
-const HELMINTH_MIN_EXPECTED_COUNT = 30;
 const HELMINTH_WIKI_USER_AGENT =
   process.env.HELMINTH_WIKI_USER_AGENT?.trim() ||
   'Parametric/2.0 (manual-import; +https://warframe.fandom.com/wiki/Helminth)';
@@ -588,11 +587,6 @@ apiRouter.get('/helminth-abilities', async (_req: Request, res: Response) => {
         'SELECT * FROM abilities WHERE is_helminth_extractable = 1 ORDER BY name',
       )
       .all() as Array<Record<string, unknown>>;
-
-    if (flaggedRows.length >= HELMINTH_MIN_EXPECTED_COUNT) {
-      res.json({ items: flaggedRows });
-      return;
-    }
 
     const wikiNames = await fetchHelminthAbilityNameSet();
     if (wikiNames.size === 0) {
