@@ -49,6 +49,9 @@ import {
 } from '../../utils/formaCounter';
 import { isModLockedOut } from '../../utils/modFiltering';
 import {
+  matchesSpecialItemType,
+} from '../../utils/specialItems';
+import {
   createRivenMod,
   getRivenStatsForType,
   getRivenWeaponType,
@@ -260,6 +263,30 @@ export function ModBuilder() {
 
   const { addSnapshot, snapshots: compareSnapshots } = useCompare();
 
+  const resolveSpecialItem = useCallback(
+    async (targetUniqueName: string): Promise<Equipment | null> => {
+      if (
+        equipmentType !== 'primary' &&
+        equipmentType !== 'secondary' &&
+        equipmentType !== 'melee' &&
+        equipmentType !== 'necramech'
+      ) {
+        return null;
+      }
+
+      const response = await apiFetch('/api/weapons?type=SpecialItems');
+      if (!response.ok) return null;
+      const data = (await response.json()) as { items?: Weapon[] };
+      const specialItem = (data.items ?? []).find(
+        (item) =>
+          item.unique_name === targetUniqueName &&
+          matchesSpecialItemType(item.name, equipmentType),
+      );
+      return specialItem ?? null;
+    },
+    [equipmentType],
+  );
+
   useEffect(() => {
     if (loaded) return;
 
@@ -332,6 +359,17 @@ export function ModBuilder() {
   useEffect(() => {
     if (!equipmentData?.items?.length) return;
 
+    async function setSpecialItemSelection(
+      targetUniqueName: string,
+    ): Promise<void> {
+      if (selectedEquipment || loaded) return;
+      const specialItem = await resolveSpecialItem(targetUniqueName);
+      if (specialItem) {
+        setSelectedEquipment(specialItem);
+        setLoaded(true);
+      }
+    }
+
     if (buildId && !loaded) {
       const targetUniqueName =
         targetEquipmentUniqueName ??
@@ -343,6 +381,8 @@ export function ModBuilder() {
         if (item) {
           setSelectedEquipment(item);
           setLoaded(true);
+        } else {
+          void setSpecialItemSelection(targetUniqueName);
         }
       }
     } else if (equipmentId && !loaded) {
@@ -351,6 +391,8 @@ export function ModBuilder() {
       if (item) {
         setSelectedEquipment(item);
         setLoaded(true);
+      } else {
+        void setSpecialItemSelection(decodedId);
       }
     }
   }, [
@@ -361,6 +403,8 @@ export function ModBuilder() {
     isOwnBuild,
     loaded,
     targetEquipmentUniqueName,
+    resolveSpecialItem,
+    selectedEquipment,
   ]);
 
   useEffect(() => {
