@@ -10,7 +10,11 @@ function CentralAuthRedirect({ message }: { message: string }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6 text-center">
-      <p className="text-sm text-muted">{message}</p>
+      <div className="glass-shell page-hero w-full max-w-lg">
+        <div className="page-hero__eyebrow">Authentication</div>
+        <h2 className="page-hero__title text-[1.9rem]">Redirecting securely</h2>
+        <p className="text-sm text-muted">{message}</p>
+      </div>
     </div>
   );
 }
@@ -20,8 +24,12 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (status === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted">Checking session...</p>
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="glass-shell page-hero w-full max-w-lg text-center">
+          <div className="page-hero__eyebrow">Session</div>
+          <h2 className="page-hero__title text-[1.9rem]">Checking access</h2>
+          <p className="text-muted">Checking session...</p>
+        </div>
       </div>
     );
   }
@@ -35,10 +43,9 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (status === 'forbidden') {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
-        <div className="glass-panel max-w-md p-6 text-center">
-          <h1 className="mb-2 text-xl font-semibold text-foreground">
-            Access denied
-          </h1>
+        <div className="glass-shell page-hero max-w-md text-center">
+          <div className="page-hero__eyebrow">Permissions</div>
+          <h1 className="page-hero__title text-[2rem]">Access denied</h1>
           <p className="mb-4 text-sm text-muted">
             Your account is authenticated but does not have access to this
             application.

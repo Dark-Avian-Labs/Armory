@@ -8,6 +8,7 @@ import { getDb } from '../db/connection.js';
 import { processExports, backfillModDescriptions } from '../db/queries.js';
 import { createAppSchema } from '../db/schema.js';
 import { mergeScrapedData } from '../scraping/dataMerger.js';
+import { syncHiddenCompanionWeaponsFromOverframe } from '../scraping/hiddenCompanionWeapons.js';
 import { scrapeIndex } from '../scraping/indexScraper.js';
 import { scrapeItems } from '../scraping/itemScraper.js';
 import { runWikiScrape } from '../scraping/wikiScraper.js';
@@ -87,7 +88,13 @@ function hasDbData(): boolean {
   }
 }
 
-export async function runStartupPipeline(): Promise<void> {
+interface StartupPipelineOptions {
+  includeHiddenCompanionWeapons?: boolean;
+}
+
+export async function runStartupPipeline(
+  options: StartupPipelineOptions = {},
+): Promise<void> {
   const startTime = Date.now();
   console.log(`${TAG} Starting data pipeline...`);
 
@@ -169,6 +176,23 @@ export async function runStartupPipeline(): Promise<void> {
       `${TAG} Image download failed:`,
       err instanceof Error ? err.message : err,
     );
+  }
+
+  if (options.includeHiddenCompanionWeapons) {
+    try {
+      const hiddenCompanionResult =
+        await syncHiddenCompanionWeaponsFromOverframe((msg) => {
+          console.log(`${TAG} ${msg}`);
+        });
+      console.log(
+        `${TAG} Hidden companion claws: ${hiddenCompanionResult.found} found, ${hiddenCompanionResult.insertedOrUpdated} updated`,
+      );
+    } catch (err) {
+      console.error(
+        `${TAG} Hidden companion claw sync failed:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
 
   try {
