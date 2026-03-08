@@ -72,6 +72,18 @@ export function clearCsrfToken(): void {
   inFlightPromise = null;
 }
 
+export class UnauthorizedError extends Error {
+  readonly response: Response;
+  readonly url: string;
+
+  constructor(url: string, response: Response) {
+    super('Unauthorized');
+    this.name = 'UnauthorizedError';
+    this.url = url;
+    this.response = response;
+  }
+}
+
 async function isCsrfFailureResponse(response: Response): Promise<boolean> {
   const csrfErrorHeader = response.headers.get('X-CSRF-Error');
   if (response.status === 403 && csrfErrorHeader === '1') {
@@ -176,7 +188,7 @@ export async function apiFetch(
   });
   if (response.status === 401) {
     emitUnauthorized(url);
-    return response;
+    throw new UnauthorizedError(url, response);
   }
   if (!needsCsrf || !(await isCsrfFailureResponse(response))) {
     return response;
