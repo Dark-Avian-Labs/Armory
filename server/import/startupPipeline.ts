@@ -1,3 +1,7 @@
+import fs from 'fs';
+import path from 'path';
+
+import { EXPORTS_DIR, REQUIRED_EXPORTS } from '../config.js';
 import { downloadImages } from './images.js';
 import { runImportPipeline, listExportFiles } from './pipeline.js';
 import { getDb } from '../db/connection.js';
@@ -9,6 +13,58 @@ import { scrapeItems } from '../scraping/itemScraper.js';
 import { runWikiScrape } from '../scraping/wikiScraper.js';
 
 const TAG = '[Startup]';
+const EXPORT_HASH_STATE_FILE = path.join(
+  EXPORTS_DIR,
+  '.processed-export-hashes.json',
+);
+
+function getCurrentExportHashes(): Record<string, string> {
+  const files = listExportFiles();
+  const required = files.filter((f) =>
+    REQUIRED_EXPORTS.some((prefix) => f.category.startsWith(prefix)),
+  );
+  const map: Record<string, string> = {};
+  for (const file of required) {
+    map[file.category] = file.hash || '';
+  }
+  return map;
+}
+
+function readProcessedExportHashes(): Record<string, string> | null {
+  try {
+    if (!fs.existsSync(EXPORT_HASH_STATE_FILE)) return null;
+    const raw = fs.readFileSync(EXPORT_HASH_STATE_FILE, 'utf-8');
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as Record<string, string>;
+  } catch {
+    return null;
+  }
+}
+
+function writeProcessedExportHashes(hashes: Record<string, string>): void {
+  fs.writeFileSync(
+    EXPORT_HASH_STATE_FILE,
+    JSON.stringify(hashes, null, 2),
+    'utf-8',
+  );
+}
+
+function hashesChanged(
+  current: Record<string, string>,
+  previous: Record<string, string> | null,
+): boolean {
+  if (!previous) return true;
+  const currentKeys = Object.keys(current).sort();
+  const previousKeys = Object.keys(previous).sort();
+  if (currentKeys.length !== previousKeys.length) return true;
+  for (let i = 0; i < currentKeys.length; i++) {
+    if (currentKeys[i] !== previousKeys[i]) return true;
+    const key = currentKeys[i];
+    if ((previous[key] || '') !== (current[key] || '')) return true;
+  }
+  return false;
+}
 
 function hasExportFiles(): boolean {
   try {
@@ -62,13 +118,28 @@ export async function runStartupPipeline(): Promise<void> {
   }
 
   try {
-    console.log(`${TAG} Processing exports into database...`);
-    const counts = processExports();
-    console.log(
-      `${TAG} Processed: ${counts.warframes} warframes, ${counts.weapons} weapons, ` +
-        `${counts.mods} mods, ${counts.abilities} abilities`,
+    const currentExportHashes = getCurrentExportHashes();
+    const previousExportHashes = readProcessedExportHashes();
+    const shouldProcess = hashesChanged(
+      currentExportHashes,
+      previousExportHashes,
     );
-    backfillModDescriptions();
+
+    if (shouldProcess) {
+      console.log(`${TAG} Processing exports into database...`);
+      const counts = processExports();
+      console.log(
+        `${TAG} Processed: ${counts.warframes} warframes, ${counts.weapons} weapons, ` +
+          `${counts.mods} mods, ${counts.abilities} abilities`,
+      );
+      backfillModDescriptions();
+      writeProcessedExportHashes(currentExportHashes);
+      console.log(`${TAG} Export hashes updated after successful processing.`);
+    } else {
+      console.log(
+        `${TAG} Export hashes unchanged. Skipping export DB processing.`,
+      );
+    }
   } catch (err) {
     console.error(
       `${TAG} Export processing failed:`,

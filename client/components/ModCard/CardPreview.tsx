@@ -432,6 +432,7 @@ export function CardPreview({
                 width: (L.cardWidth - L.textPaddingX * 2) * s,
                 fontSize: L.collapsedNameFontSize * s,
                 fontWeight: 400,
+                lineHeight: '100%',
                 color: primaryTextColor,
                 textShadow: '0 1px 4px rgba(0,0,0,0.9)',
               }}

@@ -43,7 +43,13 @@ export function RequireAuth({ children }: { children: ReactNode }) {
             Your account is authenticated but does not have access to this
             application.
           </p>
-          <button className="btn btn-accent" type="button" onClick={logout}>
+          <button
+            className="btn btn-accent"
+            type="button"
+            onClick={() => {
+              void logout();
+            }}
+          >
             Logout
           </button>
         </div>

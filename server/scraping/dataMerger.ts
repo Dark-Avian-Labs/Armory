@@ -1,11 +1,18 @@
 import type { ScrapedItemData } from './itemScraper.js';
 import { getDb } from '../db/connection.js';
 
+interface AbilityTypeEntry {
+  path?: string;
+  LocalizeTag: string;
+  IsHelminth?: number;
+}
+
 export interface MergeResult {
   warframesUpdated: number;
   weaponsUpdated: number;
   companionsUpdated: number;
   abilitiesUpdated: number;
+  helminthUpdated: number;
 }
 
 export function mergeScrapedData(
@@ -18,6 +25,7 @@ export function mergeScrapedData(
     weaponsUpdated: 0,
     companionsUpdated: 0,
     abilitiesUpdated: 0,
+    helminthUpdated: 0,
   };
 
   const updateWarframe = db.prepare(
@@ -31,6 +39,9 @@ export function mergeScrapedData(
   );
   const updateAbility = db.prepare(
     'UPDATE abilities SET ability_stats = ? WHERE unique_name = ?',
+  );
+  const updateAbilityHelminth = db.prepare(
+    'UPDATE abilities SET is_helminth_extractable = MAX(is_helminth_extractable, ?) WHERE unique_name = ?',
   );
 
   const findTable = db.prepare(
@@ -76,15 +87,25 @@ export function mergeScrapedData(
         if (changes.changes > 0) result.companionsUpdated++;
       }
 
-      if (item.abilities.length > 0 && item.itemData) {
+      if (item.itemData) {
         const abilityTypes = (item.itemData as Record<string, unknown>)
-          .AbilityTypes as { path: string; LocalizeTag: string }[] | undefined;
+          .AbilityTypes as AbilityTypeEntry[] | undefined;
 
         if (abilityTypes) {
           for (let i = 0; i < abilityTypes.length; i++) {
-            const abilityPath = abilityTypes[i].path;
+            const abilityType = abilityTypes[i];
+            const abilityPath = abilityType.path;
             const scrapedAbility = item.abilities[i];
-            if (!abilityPath || !scrapedAbility) continue;
+            if (!abilityPath) continue;
+
+            const isHelminth = Number(abilityType.IsHelminth) === 1 ? 1 : 0;
+            const helminthChanges = updateAbilityHelminth.run(
+              isHelminth,
+              abilityPath,
+            );
+            if (helminthChanges.changes > 0) result.helminthUpdated++;
+
+            if (!scrapedAbility) continue;
 
             const statsJson =
               scrapedAbility.stats.length > 0

@@ -173,8 +173,8 @@ export interface BuildConfig {
     rank: number;
   }[];
   shardSlots?: {
-    shard_type_id?: string;
-    buff_id?: number;
+    shard_type_id?: string | number;
+    buff_id?: string | number;
     tauforged: boolean;
   }[];
   orokinReactor?: boolean;

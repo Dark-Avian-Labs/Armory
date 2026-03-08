@@ -1,4 +1,5 @@
 import type { FormaCount } from '../../utils/formaCounter';
+import { GlassTooltip } from '../GlassTooltip';
 
 interface CapacityBarProps {
   capacity: {
@@ -45,52 +46,108 @@ export function CapacityBar({
           {formaCost && formaCost.total > 0 && (
             <div className="flex items-center gap-2">
               {formaCost.regular > 0 && (
-                <span className="flex items-center gap-0.5">
-                  <img
-                    src="/icons/forma.png"
-                    alt="Forma"
-                    className="h-4 w-4 object-contain"
-                  />
-                  <span className="text-xs font-medium text-foreground">
-                    {formaCost.regular}
+                <GlassTooltip
+                  width="w-72"
+                  content={
+                    <>
+                      <div className="text-xs font-semibold text-foreground">
+                        Forma
+                      </div>
+                      <div className="mt-0.5 text-[10px] text-muted">
+                        Standard Forma used for polarity changes.
+                      </div>
+                    </>
+                  }
+                >
+                  <span className="flex items-center gap-0.5">
+                    <img
+                      src="/icons/forma.png"
+                      alt="Forma"
+                      className="h-4 w-4 object-contain"
+                    />
+                    <span className="text-xs font-medium text-foreground">
+                      {formaCost.regular}
+                    </span>
                   </span>
-                </span>
+                </GlassTooltip>
               )}
               {formaCost.universal > 0 && (
-                <span className="flex items-center gap-0.5">
-                  <img
-                    src="/icons/forma-omni.png"
-                    alt="Omni Forma"
-                    className="h-4 w-4 object-contain"
-                  />
-                  <span className="text-xs font-medium text-foreground">
-                    {formaCost.universal}
+                <GlassTooltip
+                  width="w-72"
+                  content={
+                    <>
+                      <div className="text-xs font-semibold text-foreground">
+                        Omni Forma
+                      </div>
+                      <div className="mt-0.5 text-[10px] text-muted">
+                        Universal polarity Forma.
+                      </div>
+                    </>
+                  }
+                >
+                  <span className="flex items-center gap-0.5">
+                    <img
+                      src="/icons/forma-omni.png"
+                      alt="Omni Forma"
+                      className="h-4 w-4 object-contain"
+                    />
+                    <span className="text-xs font-medium text-foreground">
+                      {formaCost.universal}
+                    </span>
                   </span>
-                </span>
+                </GlassTooltip>
               )}
               {formaCost.umbra > 0 && (
-                <span className="flex items-center gap-0.5">
-                  <img
-                    src="/icons/forma-umbra.png"
-                    alt="Umbra Forma"
-                    className="h-4 w-4 object-contain"
-                  />
-                  <span className="text-xs font-medium text-foreground">
-                    {formaCost.umbra}
+                <GlassTooltip
+                  width="w-72"
+                  content={
+                    <>
+                      <div className="text-xs font-semibold text-foreground">
+                        Umbral Forma
+                      </div>
+                      <div className="mt-0.5 text-[10px] text-muted">
+                        Required for Umbral polarity slots.
+                      </div>
+                    </>
+                  }
+                >
+                  <span className="flex items-center gap-0.5">
+                    <img
+                      src="/icons/forma-umbra.png"
+                      alt="Umbra Forma"
+                      className="h-4 w-4 object-contain"
+                    />
+                    <span className="text-xs font-medium text-foreground">
+                      {formaCost.umbra}
+                    </span>
                   </span>
-                </span>
+                </GlassTooltip>
               )}
               {formaCost.stance > 0 && (
-                <span className="flex items-center gap-0.5">
-                  <img
-                    src="/icons/forma-stance.png"
-                    alt="Stance Forma"
-                    className="h-4 w-4 object-contain"
-                  />
-                  <span className="text-xs font-medium text-foreground">
-                    {formaCost.stance}
+                <GlassTooltip
+                  width="w-72"
+                  content={
+                    <>
+                      <div className="text-xs font-semibold text-foreground">
+                        Stance / Aura Forma
+                      </div>
+                      <div className="mt-0.5 text-[10px] text-muted">
+                        Used for universal capacity-slot polarity.
+                      </div>
+                    </>
+                  }
+                >
+                  <span className="flex items-center gap-0.5">
+                    <img
+                      src="/icons/forma-stance.png"
+                      alt="Stance Forma"
+                      className="h-4 w-4 object-contain"
+                    />
+                    <span className="text-xs font-medium text-foreground">
+                      {formaCost.stance}
+                    </span>
                   </span>
-                </span>
+                </GlassTooltip>
               )}
             </div>
           )}

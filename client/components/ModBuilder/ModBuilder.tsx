@@ -1134,7 +1134,7 @@ export function ModBuilder() {
         )}
 
         {selectedEquipment && (
-          <div className="glass-panel flex items-start justify-between overflow-visible p-3">
+          <div className="glass-panel flex h-[136px] items-start justify-between overflow-visible p-3">
             <ArcaneSlots
               slotCount={arcaneSlotCount}
               slots={arcaneSlots}

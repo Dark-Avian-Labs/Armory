@@ -42,7 +42,7 @@ function buildProfile(user: RemoteAuthUser): AppAccountProfile {
     username: user.username,
     isAdmin: user.is_admin,
     displayName: stored?.displayName || user.display_name || user.username,
-    email: stored?.email || user.email || '',
+    email: user.email || '',
     avatarId: normalizeAvatarId(user.avatar),
   };
 }
