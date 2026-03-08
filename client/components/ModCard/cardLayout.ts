@@ -115,14 +115,14 @@ export function isArchonMod(nameOrUniqueName: string): boolean {
 export function isGalvanizedMod(nameOrUniqueName: string): boolean {
   return (
     nameOrUniqueName.startsWith('Galvanized ') ||
-    nameOrUniqueName.includes('/Galvanized')
+    nameOrUniqueName.includes('/Galvanized/')
   );
 }
 
 export function isAmalgamMod(nameOrUniqueName: string): boolean {
   return (
     nameOrUniqueName.startsWith('Amalgam ') ||
-    nameOrUniqueName.includes('/Amalgam')
+    nameOrUniqueName.includes('/Amalgam/')
   );
 }
 

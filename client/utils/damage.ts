@@ -1,5 +1,5 @@
 import { calculateFinalDamage, type DamageEntry } from './elements';
-import { aggregateAllMods } from './modStatParser';
+import { aggregateAllMods, type StatEffects } from './modStatParser';
 import { isRivenMod } from './riven';
 import {
   DAMAGE_TYPES,
@@ -121,6 +121,7 @@ export function extractElementMods(slots: ModSlot[]): Array<{
 export function calculateBuildDamage(
   weapon: Weapon,
   slots: ModSlot[],
+  precomputedEffects?: StatEffects,
 ): {
   totalDamage: number;
   damageBreakdown: DamageEntry[];
@@ -141,9 +142,11 @@ export function calculateBuildDamage(
   });
   const innateSecondary = getInnateSecondaryElements(baseDamage);
 
-  const effects = aggregateAllMods(slots, {
-    rivenDispositionMultiplier: disposition,
-  });
+  const effects =
+    precomputedEffects ??
+    aggregateAllMods(slots, {
+      rivenDispositionMultiplier: disposition,
+    });
 
   const damageMultipliers: Partial<Record<DamageType, number>> = {};
   for (const dt of DAMAGE_TYPES) {

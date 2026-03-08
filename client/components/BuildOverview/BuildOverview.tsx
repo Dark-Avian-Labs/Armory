@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { buildEditPath } from '../../app/paths';
@@ -55,31 +55,6 @@ function getSlotLabel(slotType: string): string {
   );
 }
 
-function getCompatibleEquipmentTypes(slotType: string): EquipmentType[] {
-  switch (slotType) {
-    case 'warframe':
-      return ['warframe'];
-    case 'primary':
-      return ['primary'];
-    case 'secondary':
-      return ['secondary'];
-    case 'melee':
-      return ['melee'];
-    case 'companion':
-      return ['companion'];
-    case 'archwing':
-      return ['archwing'];
-    case 'archgun':
-      return ['archgun'];
-    case 'archmelee':
-      return ['archmelee'];
-    case 'companion_weapon':
-      return [];
-    default:
-      return [];
-  }
-}
-
 export function BuildOverview() {
   const { builds, loading, deleteBuild } = useBuildStorage();
   const { loadouts, createLoadout, deleteLoadout, linkBuild, unlinkBuild } =
@@ -128,7 +103,10 @@ export function BuildOverview() {
     }
   };
 
-  const getBuildById = (id: string) => builds.find((b) => b.id === id);
+  const getBuildById = useCallback(
+    (id: string) => builds.find((b) => b.id === id),
+    [builds],
+  );
 
   const loadoutCompatibleBuilds = useMemo(() => {
     if (!linkingLoadout) return [] as StoredBuild[];
@@ -387,6 +365,7 @@ export function BuildOverview() {
               <button
                 className="text-lg text-muted hover:text-foreground"
                 onClick={() => setLinkingLoadout(null)}
+                aria-label="Close add build dialog"
               >
                 &times;
               </button>
