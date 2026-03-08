@@ -22,6 +22,14 @@ interface BuildsByCategory {
   builds: StoredBuild[];
 }
 
+function getUsedFormaCount(build: StoredBuild): number {
+  const slots = Array.isArray(build.slots) ? build.slots : [];
+  return slots.reduce(
+    (count, slot) => count + (typeof slot.polarity === 'string' ? 1 : 0),
+    0,
+  );
+}
+
 function getSlotTypeForBuild(build: StoredBuild): string | null {
   if (matchesSpecialItemType(build.equipment_name, build.equipment_type)) {
     if (build.equipment_type === 'primary') return 'special_primary';
@@ -449,6 +457,8 @@ function BuildRow({
   onLink: () => void;
   hasLoadouts: boolean;
 }) {
+  const usedFormaCount = getUsedFormaCount(build);
+
   return (
     <div
       className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-all hover:bg-glass-hover"
@@ -487,6 +497,20 @@ function BuildRow({
           </span>
           <span className="text-[10px] text-muted/40">
             {new Date(build.updated_at).toLocaleDateString()}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <div className="flex h-10 min-w-14 items-center justify-center gap-1.5 rounded-lg bg-glass px-2">
+          <img
+            src="/icons/forma.png"
+            alt="Forma used"
+            className="h-6 w-6 object-contain"
+            draggable={false}
+          />
+          <span className="text-sm font-semibold text-foreground">
+            {usedFormaCount}
           </span>
         </div>
       </div>
