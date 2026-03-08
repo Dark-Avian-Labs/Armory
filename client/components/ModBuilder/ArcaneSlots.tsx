@@ -18,6 +18,7 @@ export interface Arcane {
   rarity?: string;
   image_path?: string;
   level_stats?: string;
+  compat_tags?: string[];
 }
 
 export interface ArcaneSlot {

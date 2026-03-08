@@ -421,6 +421,115 @@ function sendInternalError(res: Response, context: string, err: unknown): void {
   res.status(500).json({ error: 'Internal server error' });
 }
 
+function parseArcaneCompatTags(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((value): value is string => typeof value === 'string');
+  }
+  if (typeof raw !== 'string' || raw.trim().length === 0) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((value): value is string => typeof value === 'string');
+  } catch {
+    return [];
+  }
+}
+
+function inferArcaneCompatTags(
+  uniqueNameRaw: unknown,
+  nameRaw: unknown,
+): string[] {
+  const uniqueName = String(uniqueNameRaw ?? '').toLowerCase();
+  const name = String(nameRaw ?? '').toLowerCase();
+  const tags = new Set<string>();
+
+  if (uniqueName.includes('/operatoramps/') || name.startsWith('virtuos ')) {
+    tags.add('amp');
+  }
+  if (uniqueName.includes('/operatorarmour/') || name.startsWith('magus ')) {
+    tags.add('operator');
+  }
+  if (name.startsWith('pax ')) {
+    tags.add('kitgun');
+    tags.add('secondary');
+    tags.add('weapon');
+  }
+  if (name.startsWith('exodia ')) {
+    tags.add('zaw');
+    tags.add('melee');
+    tags.add('weapon');
+  }
+  if (name.startsWith('primary ') || name.includes(' primary ')) {
+    tags.add('primary');
+    tags.add('weapon');
+  }
+  if (name.startsWith('secondary ') || name.includes(' secondary ')) {
+    tags.add('secondary');
+    tags.add('weapon');
+  }
+  if (name.startsWith('melee ') || name.includes(' melee ')) {
+    tags.add('melee');
+    tags.add('weapon');
+  }
+  if (
+    name.startsWith('residual ') ||
+    name.startsWith('theorem ') ||
+    name.includes('merciless') ||
+    name.includes('dexterity') ||
+    name.includes('deadhead')
+  ) {
+    tags.add('weapon');
+  }
+  if (uniqueName.includes('/zariman/')) {
+    if (name.includes('amp ')) tags.add('amp');
+    if (name.includes('operator ')) tags.add('operator');
+    if (name.includes('primary')) tags.add('primary');
+    if (name.includes('secondary')) tags.add('secondary');
+    if (name.includes('melee')) tags.add('melee');
+  }
+  if (
+    !tags.has('amp') &&
+    !tags.has('operator') &&
+    !tags.has('kitgun') &&
+    !tags.has('zaw') &&
+    !tags.has('primary') &&
+    !tags.has('secondary') &&
+    !tags.has('melee')
+  ) {
+    tags.add('warframe');
+  }
+  if (
+    tags.has('primary') ||
+    tags.has('secondary') ||
+    tags.has('melee') ||
+    tags.has('kitgun') ||
+    tags.has('zaw')
+  ) {
+    tags.add('weapon');
+  }
+  return Array.from(tags).sort();
+}
+
+function getAllowedArcaneTags(equipmentType: string | undefined): Set<string> {
+  switch (equipmentType) {
+    case 'warframe':
+      return new Set(['warframe']);
+    case 'primary':
+      return new Set(['primary', 'weapon']);
+    case 'secondary':
+      return new Set(['secondary', 'weapon', 'kitgun']);
+    case 'melee':
+      return new Set(['melee', 'weapon', 'zaw']);
+    case 'archgun':
+    case 'archmelee':
+      return new Set(['weapon']);
+    default:
+      return new Set();
+  }
+}
+
 apiRouter.get('/mods', (req: Request, res: Response) => {
   try {
     const db = getDb();
@@ -527,15 +636,37 @@ apiRouter.get('/mods/:uniqueName', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/arcanes', (_req: Request, res: Response) => {
+apiRouter.get('/arcanes', (req: Request, res: Response) => {
   try {
     const db = getDb();
+    const equipmentType =
+      typeof req.query.equipment_type === 'string'
+        ? req.query.equipment_type
+        : undefined;
     const rows = db
       .prepare(
         "SELECT * FROM arcanes WHERE unique_name NOT LIKE '%Sub' ORDER BY name",
       )
-      .all();
-    res.json({ items: rows });
+      .all() as Array<Record<string, unknown>>;
+
+    const normalized = rows.map((row) => ({
+      ...row,
+      compat_tags: (() => {
+        const parsed = parseArcaneCompatTags(row.compat_tags);
+        if (parsed.length > 0) return parsed;
+        return inferArcaneCompatTags(row.unique_name, row.name);
+      })(),
+    }));
+
+    const allowedTags = getAllowedArcaneTags(equipmentType);
+    const items =
+      allowedTags.size === 0
+        ? normalized
+        : normalized.filter((row) =>
+            (row.compat_tags as string[]).some((tag) => allowedTags.has(tag)),
+          );
+
+    res.json({ items });
   } catch (err) {
     sendInternalError(res, 'arcanes.list', err);
   }

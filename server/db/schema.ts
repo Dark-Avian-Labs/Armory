@@ -163,6 +163,7 @@ export function createAppSchema(): void {
       name TEXT NOT NULL,
       rarity TEXT,
       level_stats TEXT,            -- JSON array of level stat objects
+      compat_tags TEXT,            -- JSON array of compatibility tags
       image_path TEXT,
       codex_secret INTEGER DEFAULT 0,
       exclude_from_codex INTEGER DEFAULT 0
@@ -335,6 +336,12 @@ export function createAppSchema(): void {
       table: 'loadouts',
       column: 'share_token',
       sql: 'ALTER TABLE loadouts ADD COLUMN share_token TEXT',
+    },
+    {
+      id: '20260308_arcanes_compat_tags',
+      table: 'arcanes',
+      column: 'compat_tags',
+      sql: 'ALTER TABLE arcanes ADD COLUMN compat_tags TEXT',
     },
   ];
   const ALLOWED_MIGRATION_TABLES = new Set(
