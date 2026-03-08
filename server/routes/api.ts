@@ -3,6 +3,7 @@ import { Router, type Request, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 
+import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { requireAdmin } from '../auth/middleware.js';
 import { getDb } from '../db/connection.js';
 
@@ -437,81 +438,6 @@ function parseArcaneCompatTags(raw: unknown): string[] {
   }
 }
 
-function inferArcaneCompatTags(
-  uniqueNameRaw: unknown,
-  nameRaw: unknown,
-): string[] {
-  const uniqueName = String(uniqueNameRaw ?? '').toLowerCase();
-  const name = String(nameRaw ?? '').toLowerCase();
-  const tags = new Set<string>();
-
-  if (uniqueName.includes('/operatoramps/') || name.startsWith('virtuos ')) {
-    tags.add('amp');
-  }
-  if (uniqueName.includes('/operatorarmour/') || name.startsWith('magus ')) {
-    tags.add('operator');
-  }
-  if (name.startsWith('pax ')) {
-    tags.add('kitgun');
-    tags.add('secondary');
-    tags.add('weapon');
-  }
-  if (name.startsWith('exodia ')) {
-    tags.add('zaw');
-    tags.add('melee');
-    tags.add('weapon');
-  }
-  if (name.startsWith('primary ') || name.includes(' primary ')) {
-    tags.add('primary');
-    tags.add('weapon');
-  }
-  if (name.startsWith('secondary ') || name.includes(' secondary ')) {
-    tags.add('secondary');
-    tags.add('weapon');
-  }
-  if (name.startsWith('melee ') || name.includes(' melee ')) {
-    tags.add('melee');
-    tags.add('weapon');
-  }
-  if (
-    name.startsWith('residual ') ||
-    name.startsWith('theorem ') ||
-    name.includes('merciless') ||
-    name.includes('dexterity') ||
-    name.includes('deadhead')
-  ) {
-    tags.add('weapon');
-  }
-  if (uniqueName.includes('/zariman/')) {
-    if (name.includes('amp ')) tags.add('amp');
-    if (name.includes('operator ')) tags.add('operator');
-    if (name.includes('primary')) tags.add('primary');
-    if (name.includes('secondary')) tags.add('secondary');
-    if (name.includes('melee')) tags.add('melee');
-  }
-  if (
-    !tags.has('amp') &&
-    !tags.has('operator') &&
-    !tags.has('kitgun') &&
-    !tags.has('zaw') &&
-    !tags.has('primary') &&
-    !tags.has('secondary') &&
-    !tags.has('melee')
-  ) {
-    tags.add('warframe');
-  }
-  if (
-    tags.has('primary') ||
-    tags.has('secondary') ||
-    tags.has('melee') ||
-    tags.has('kitgun') ||
-    tags.has('zaw')
-  ) {
-    tags.add('weapon');
-  }
-  return Array.from(tags).sort();
-}
-
 function getAllowedArcaneTags(equipmentType: string | undefined): Set<string> {
   switch (equipmentType) {
     case 'warframe':
@@ -654,7 +580,7 @@ apiRouter.get('/arcanes', (req: Request, res: Response) => {
       compat_tags: (() => {
         const parsed = parseArcaneCompatTags(row.compat_tags);
         if (parsed.length > 0) return parsed;
-        return inferArcaneCompatTags(row.unique_name, row.name);
+        return classifyArcaneCompatTags(row.unique_name, row.name);
       })(),
     }));
 
