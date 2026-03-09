@@ -91,29 +91,41 @@ async function fetchOverframeStance(
   seed: ExaltedStanceSeed,
 ): Promise<OverframeStanceData | null> {
   const url = `${OVERFRAME_BASE_URL}/items/arsenal/${seed.id}/${seed.slug}/`;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await fetch(url, { signal: controller.signal });
-      if (!response.ok) return null;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) return null;
 
-      const html = await response.text();
-      const marker = '<script id="__NEXT_DATA__" type="application/json">';
-      const markerStart = html.indexOf(marker);
-      if (markerStart < 0) return null;
-      const scriptEnd = html.indexOf('</script>', markerStart);
-      if (scriptEnd < 0) return null;
+        const html = await response.text();
+        const marker = '<script id="__NEXT_DATA__" type="application/json">';
+        const markerStart = html.indexOf(marker);
+        if (markerStart < 0) return null;
+        const scriptEnd = html.indexOf('</script>', markerStart);
+        if (scriptEnd < 0) return null;
 
-      const json = html.slice(markerStart + marker.length, scriptEnd);
-      const parsed = JSON.parse(json) as unknown;
-      return extractOverframeStanceData(parsed);
-    } finally {
-      clearTimeout(timeout);
+        const json = html.slice(markerStart + marker.length, scriptEnd);
+        const parsed = JSON.parse(json) as unknown;
+        return extractOverframeStanceData(parsed);
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (error) {
+      console.warn(
+        `[exaltedStanceMods] fetch attempt ${attempt}/${maxAttempts} failed for ${seed.id}/${seed.slug}:`,
+        error,
+      );
+      if (attempt < maxAttempts) {
+        const backoffMs = attempt * 400;
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        continue;
+      }
     }
-  } catch {
-    return null;
   }
+  return null;
 }
 
 export async function syncExaltedStanceModsFromOverframe(
@@ -138,7 +150,23 @@ export async function syncExaltedStanceModsFromOverframe(
       codex_secret,
       exclude_from_codex
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (
+      :unique_name,
+      :name,
+      :polarity,
+      :rarity,
+      :type,
+      :compat_name,
+      :base_drain,
+      :fusion_limit,
+      :is_utility,
+      :is_augment,
+      :subtype,
+      :description,
+      :image_path,
+      :codex_secret,
+      :exclude_from_codex
+    )
     ON CONFLICT(unique_name) DO UPDATE SET
       name = excluded.name,
       polarity = excluded.polarity,
@@ -167,23 +195,23 @@ export async function syncExaltedStanceModsFromOverframe(
     if (!scraped) continue;
 
     found += 1;
-    const result = upsert.run(
-      scraped.uniqueName,
-      seed.name,
-      'AP_TACTIC',
-      seed.rarity,
-      'STANCE',
-      seed.compatName,
-      -2,
-      3,
-      0,
-      0,
-      null,
-      JSON.stringify([seed.description]),
-      scraped.imagePath,
-      0,
-      0,
-    );
+    const result = upsert.run({
+      unique_name: scraped.uniqueName,
+      name: seed.name,
+      polarity: 'AP_TACTIC',
+      rarity: seed.rarity,
+      type: 'STANCE',
+      compat_name: seed.compatName,
+      base_drain: -2,
+      fusion_limit: 3,
+      is_utility: 0,
+      is_augment: 0,
+      subtype: null,
+      description: JSON.stringify([seed.description]),
+      image_path: scraped.imagePath,
+      codex_secret: 0,
+      exclude_from_codex: 0,
+    });
     if (result.changes > 0) {
       insertedOrUpdated += result.changes;
     }

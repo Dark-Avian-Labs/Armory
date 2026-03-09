@@ -68,6 +68,40 @@ export function isPostureMod(mod: Mod): boolean {
   );
 }
 
+type CompanionSubtype = 'helminth' | 'kavat' | 'kubrow' | 'sentinel';
+
+export function getCompanionSubtype(equipment?: {
+  unique_name: string;
+  name: string;
+}): CompanionSubtype | null {
+  if (!equipment) return null;
+  const unique = equipment.unique_name.toUpperCase();
+  const name = equipment.name.replace(/\s+/g, ' ').toUpperCase();
+
+  if (name === 'HELMINTH CHARGER' || unique.includes('CHARGERKUBROW')) {
+    return 'helminth';
+  }
+  if (
+    name.includes('KAVAT') ||
+    name.includes('VULPAPHYLA') ||
+    name.includes('VENARI') ||
+    unique.includes('CATBROW')
+  ) {
+    return 'kavat';
+  }
+  if (
+    name.includes('KUBROW') ||
+    name.includes('PREDASITE') ||
+    unique.includes('KUBROWPET')
+  ) {
+    return 'kubrow';
+  }
+  if (unique.includes('/SENTINELS/')) {
+    return 'sentinel';
+  }
+  return null;
+}
+
 function isModCompatible(
   mod: Mod,
   equipmentType: EquipmentType,
@@ -238,34 +272,7 @@ function isCompanionModCompatible(
   const compatUpper = compat.toUpperCase();
   const normalizedName =
     equipment?.name.replace(/\s+/g, ' ').toUpperCase() || '';
-  const companionSubtype = (() => {
-    if (!equipment) return null;
-    const unique = equipment.unique_name.toUpperCase();
-    const name = normalizedName;
-
-    if (name === 'HELMINTH CHARGER' || unique.includes('CHARGERKUBROW')) {
-      return 'helminth';
-    }
-    if (
-      name.includes('KAVAT') ||
-      name.includes('VULPAPHYLA') ||
-      name.includes('VENARI') ||
-      unique.includes('CATBROW')
-    ) {
-      return 'kavat';
-    }
-    if (
-      name.includes('KUBROW') ||
-      name.includes('PREDASITE') ||
-      unique.includes('KUBROWPET')
-    ) {
-      return 'kubrow';
-    }
-    if (unique.includes('/SENTINELS/')) {
-      return 'sentinel';
-    }
-    return null;
-  })();
+  const companionSubtype = getCompanionSubtype(equipment);
 
   if (
     modType === 'SENTINEL' ||

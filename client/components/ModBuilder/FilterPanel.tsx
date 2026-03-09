@@ -71,7 +71,7 @@ function getSyntheticSpecialItemStanceMods(
       compat_name: equipment.name,
       rarity: 'COMMON',
       base_drain: 0,
-      fusion_limit: 0,
+      fusion_limit: 5,
     },
   ];
 }

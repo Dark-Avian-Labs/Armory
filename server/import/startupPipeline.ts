@@ -160,8 +160,8 @@ export async function runStartupPipeline(
     return;
   }
 
-  try {
-    if (options.includeExaltedStanceMods) {
+  if (options.includeExaltedStanceMods) {
+    try {
       const exaltedStanceResult = await syncExaltedStanceModsFromOverframe(
         (msg) => {
           console.log(`${TAG} ${msg}`);
@@ -170,8 +170,15 @@ export async function runStartupPipeline(
       console.log(
         `${TAG} Exalted stances: ${exaltedStanceResult.found} found, ${exaltedStanceResult.insertedOrUpdated} updated`,
       );
+    } catch (err) {
+      console.error(
+        `${TAG} Exalted stance sync failed:`,
+        err instanceof Error ? err.message : err,
+      );
     }
+  }
 
+  try {
     const imgResult = await downloadImages((done, total, current) => {
       if (done === 1 || done % 500 === 0 || done === total) {
         console.log(`${TAG} Images: ${done}/${total} (${current})`);
