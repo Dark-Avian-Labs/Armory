@@ -32,6 +32,50 @@ interface FilterPanelProps {
   searchResetKey?: number;
 }
 
+const SPECIAL_ITEM_STANCE_FALLBACKS: Record<string, string> = {
+  'valkyr talons': 'Hysteria',
+  'valkyr prime talons': 'Hysteria',
+};
+
+function getSyntheticSpecialItemStanceMods(
+  equipmentType: EquipmentType,
+  equipment: FilterPanelProps['equipment'],
+  mods: Mod[],
+): Mod[] {
+  if (equipmentType !== 'melee' || !equipment?.name) {
+    return [];
+  }
+
+  const normalizedEquipmentName = equipment.name.trim().toLowerCase();
+  const stanceName = SPECIAL_ITEM_STANCE_FALLBACKS[normalizedEquipmentName];
+  if (!stanceName) {
+    return [];
+  }
+
+  const hasExistingStance = mods.some((mod) => {
+    return (
+      (mod.type || '').toUpperCase() === 'STANCE' &&
+      mod.name.trim().toLowerCase() === stanceName.toLowerCase()
+    );
+  });
+  if (hasExistingStance) {
+    return [];
+  }
+
+  const syntheticUniqueName = `/Synthetic/SpecialItems/Stances/${normalizedEquipmentName.replace(/\s+/g, '-')}`;
+  return [
+    {
+      unique_name: syntheticUniqueName,
+      name: stanceName,
+      type: 'STANCE',
+      compat_name: equipment.name,
+      rarity: 'COMMON',
+      base_drain: 0,
+      fusion_limit: 0,
+    },
+  ];
+}
+
 function getModTypes(eqType: EquipmentType): string {
   switch (eqType) {
     case 'warframe':
@@ -164,10 +208,21 @@ export function FilterPanel({
     () => rawMods.filter(isImportedRivenPlaceholder),
     [rawMods],
   );
-  const allMods = useMemo(
+  const baseMods = useMemo(
     () => rawMods.filter((mod) => !isImportedRivenPlaceholder(mod)),
     [rawMods],
   );
+  const allMods = useMemo(() => {
+    const syntheticStanceMods = getSyntheticSpecialItemStanceMods(
+      equipmentType,
+      equipment,
+      baseMods,
+    );
+    if (syntheticStanceMods.length === 0) {
+      return baseMods;
+    }
+    return [...baseMods, ...syntheticStanceMods];
+  }, [baseMods, equipmentType, equipment]);
 
   const { compatible, lockedOut } = useMemo(() => {
     const compatMods = filterCompatibleMods(allMods, equipmentType, equipment);

@@ -8,6 +8,7 @@ import { getDb } from '../db/connection.js';
 import { processExports, backfillModDescriptions } from '../db/queries.js';
 import { createAppSchema } from '../db/schema.js';
 import { mergeScrapedData } from '../scraping/dataMerger.js';
+import { syncExaltedStanceModsFromOverframe } from '../scraping/exaltedStanceMods.js';
 import { syncHiddenCompanionWeaponsFromOverframe } from '../scraping/hiddenCompanionWeapons.js';
 import { scrapeIndex } from '../scraping/indexScraper.js';
 import { scrapeItems } from '../scraping/itemScraper.js';
@@ -90,6 +91,7 @@ function hasDbData(): boolean {
 
 interface StartupPipelineOptions {
   includeHiddenCompanionWeapons?: boolean;
+  includeExaltedStanceMods?: boolean;
 }
 
 export async function runStartupPipeline(
@@ -159,6 +161,17 @@ export async function runStartupPipeline(
   }
 
   try {
+    if (options.includeExaltedStanceMods) {
+      const exaltedStanceResult = await syncExaltedStanceModsFromOverframe(
+        (msg) => {
+          console.log(`${TAG} ${msg}`);
+        },
+      );
+      console.log(
+        `${TAG} Exalted stances: ${exaltedStanceResult.found} found, ${exaltedStanceResult.insertedOrUpdated} updated`,
+      );
+    }
+
     const imgResult = await downloadImages((done, total, current) => {
       if (done === 1 || done % 500 === 0 || done === total) {
         console.log(`${TAG} Images: ${done}/${total} (${current})`);

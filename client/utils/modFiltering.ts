@@ -158,6 +158,15 @@ function isPrimaryModCompatible(
   if (compatUpper === 'PRIMARY') return true;
 
   const category = equipment?.product_category || '';
+  if (category === 'SentinelWeapons') {
+    if (
+      compatUpper === 'RIFLE' ||
+      compatUpper === 'ASSAULT RIFLE' ||
+      compatUpper === 'SHOTGUN'
+    ) {
+      return true;
+    }
+  }
 
   const validCompats = WEAPON_CATEGORY_TO_MOD_COMPAT[category] || [];
   if (validCompats.some((c) => c.toUpperCase() === compatUpper)) return true;
@@ -224,9 +233,39 @@ function isCompanionModCompatible(
   _mod: Mod,
   modType: string,
   compat: string,
-  _equipment?: { unique_name: string; name: string },
+  equipment?: { unique_name: string; name: string },
 ): boolean {
   const compatUpper = compat.toUpperCase();
+  const normalizedName =
+    equipment?.name.replace(/\s+/g, ' ').toUpperCase() || '';
+  const companionSubtype = (() => {
+    if (!equipment) return null;
+    const unique = equipment.unique_name.toUpperCase();
+    const name = normalizedName;
+
+    if (name === 'HELMINTH CHARGER' || unique.includes('CHARGERKUBROW')) {
+      return 'helminth';
+    }
+    if (
+      name.includes('KAVAT') ||
+      name.includes('VULPAPHYLA') ||
+      name.includes('VENARI') ||
+      unique.includes('CATBROW')
+    ) {
+      return 'kavat';
+    }
+    if (
+      name.includes('KUBROW') ||
+      name.includes('PREDASITE') ||
+      unique.includes('KUBROWPET')
+    ) {
+      return 'kubrow';
+    }
+    if (unique.includes('/SENTINELS/')) {
+      return 'sentinel';
+    }
+    return null;
+  })();
 
   if (
     modType === 'SENTINEL' ||
@@ -234,7 +273,51 @@ function isCompanionModCompatible(
     modType === 'KUBROW' ||
     modType === 'HELMINTH CHARGER'
   ) {
-    return ['COMPANION', 'BEAST', 'ROBOTIC'].includes(compatUpper);
+    if (!equipment || !companionSubtype) return false;
+    if (compatUpper === normalizedName) return true;
+
+    if (modType === 'HELMINTH CHARGER') {
+      return (
+        companionSubtype === 'helminth' && compatUpper === 'HELMINTH CHARGER'
+      );
+    }
+
+    if (modType === 'KAVAT') {
+      return (
+        companionSubtype === 'kavat' &&
+        (compatUpper === 'KAVAT' || compatUpper === 'VULPAPHYLA')
+      );
+    }
+
+    if (modType === 'KUBROW') {
+      return (
+        companionSubtype === 'kubrow' &&
+        (compatUpper === 'KUBROW' || compatUpper === 'PREDASITE')
+      );
+    }
+
+    // Sentinel-typed mods include both robotic precepts and generic companion/bond mods.
+    if (companionSubtype === 'sentinel') {
+      return (
+        compatUpper === 'COMPANION' ||
+        compatUpper === 'ROBOTIC' ||
+        compatUpper === 'SENTINEL' ||
+        compatUpper === 'MOA' ||
+        compatUpper === 'HOUND'
+      );
+    }
+    if (companionSubtype === 'kavat' || companionSubtype === 'kubrow') {
+      return compatUpper === 'COMPANION' || compatUpper === 'BEAST';
+    }
+    if (companionSubtype === 'helminth') {
+      return (
+        compatUpper === 'COMPANION' ||
+        compatUpper === 'BEAST' ||
+        compatUpper === 'HELMINTH CHARGER'
+      );
+    }
+
+    return false;
   }
 
   return false;

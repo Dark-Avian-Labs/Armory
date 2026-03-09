@@ -497,6 +497,15 @@ export function ModBuilder() {
 
     const config =
       EQUIPMENT_SLOT_CONFIGS[equipmentType] || EQUIPMENT_SLOT_CONFIGS.warframe;
+    const companionWeaponSelectionTypes: EquipmentType[] = [
+      'primary',
+      'secondary',
+      'melee',
+      'beast_claws',
+    ];
+    const isSelectedCompanionWeapon =
+      companionWeaponSelectionTypes.includes(equipmentType) &&
+      isCompanionWeapon(selectedEquipment as Weapon);
     const newSlots: ModSlot[] = [];
     let idx = 0;
 
@@ -557,7 +566,7 @@ export function ModBuilder() {
       });
     }
 
-    if (config.hasExilus) {
+    if (config.hasExilus && !isSelectedCompanionWeapon) {
       const warframe = selectedEquipment as Warframe;
       const pol = hasArtifactSlots
         ? polarityFromAP(artifactSlots[9])
@@ -1092,10 +1101,23 @@ export function ModBuilder() {
     selectedWeapon != null && isCompanionWeapon(selectedWeapon);
   const supportsArcanes =
     !selectedIsCompanionWeapon &&
+    equipmentType !== 'companion' &&
     equipmentType !== 'archgun' &&
     equipmentType !== 'archmelee' &&
     equipmentType !== 'archwing' &&
     equipmentType !== 'necramech';
+
+  useEffect(() => {
+    if (!selectedIsCompanionWeapon) return;
+    setSlots((prev) => {
+      if (!prev.some((slot) => slot.type === 'exilus')) {
+        return prev;
+      }
+      return prev
+        .filter((slot) => slot.type !== 'exilus')
+        .map((slot, index) => ({ ...slot, index }));
+    });
+  }, [selectedIsCompanionWeapon]);
 
   const hasSelection =
     activeSlotIndex !== undefined ||
@@ -1174,11 +1196,6 @@ export function ModBuilder() {
                   <span className="display-title text-[2rem] text-foreground">
                     {buildName}
                   </span>
-                  {selectedEquipment && (
-                    <span className="text-sm text-muted">
-                      {selectedEquipment.name}
-                    </span>
-                  )}
                   {!isOwnBuild && (
                     <span className="text-xs text-muted/70">
                       Read-only shared build
