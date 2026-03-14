@@ -1,5 +1,6 @@
 # Config
 .env
+.env.keys
 .env.local
 .env.*.local
 
