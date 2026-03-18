@@ -111,6 +111,8 @@ export const TRUST_PROXY = parseBooleanEnv(process.env.TRUST_PROXY) ?? false;
 export const SECURE_COOKIES =
   parseBooleanEnv(process.env.SECURE_COOKIES) ?? NODE_ENV === 'production';
 export const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN;
+export const SESSION_COOKIE_NAME =
+  process.env.SESSION_COOKIE_NAME?.trim() || 'darkavianlabs.parametric.sid';
 export const GAME_ID = 'parametric';
 
 export function ensureDataDirs(): void {

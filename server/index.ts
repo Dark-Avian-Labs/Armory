@@ -23,6 +23,7 @@ import {
   TRUST_PROXY,
   SECURE_COOKIES,
   COOKIE_DOMAIN,
+  SESSION_COOKIE_NAME,
   GAME_ID,
   APP_NAME,
   PROJECT_ROOT,
@@ -101,7 +102,7 @@ if (COOKIE_DOMAIN) cookieOptions.domain = COOKIE_DOMAIN;
 
 app.use(
   session({
-    name: 'parametric.sid',
+    name: SESSION_COOKIE_NAME,
     store: sessionStore,
     secret: SESSION_SECRET,
     resave: false,
