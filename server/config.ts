@@ -39,6 +39,10 @@ if (envPath) {
     );
     throw error;
   }
+} else {
+  console.debug(
+    `[Config] No env file resolved (envPath is null); skipping loadEnv for cwd "${process.cwd()}".`,
+  );
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
