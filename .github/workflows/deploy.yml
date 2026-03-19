@@ -11,7 +11,8 @@ on:
       - 'server/**'
       - 'icons/**'
       - 'index.html'
-      - 'package*.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
       - 'tsconfig*.json'
       - 'vite.config.ts'
       - '.env.production'
@@ -33,14 +34,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '25'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build project
         run: |
@@ -48,7 +52,7 @@ jobs:
             echo "ERROR: DOTENV_PRIVATE_KEY_PRODUCTION secret is missing or empty."
             exit 1
           fi
-          npx dotenvx run --strict -f .env.production -- npm run build
+          pnpm exec dotenvx run --strict -f .env.production -- pnpm run build
 
       - name: Setup SSH
         run: |
@@ -95,10 +99,10 @@ jobs:
           mkdir -p /tmp/deploy
           cp -r dist/ /tmp/deploy/
           cp -r icons/ /tmp/deploy/
-          cp package*.json /tmp/deploy/
+          cp package.json pnpm-lock.yaml /tmp/deploy/
           if [ -f .env.production ]; then cp .env.production /tmp/deploy/; fi
           if [ -f favicon.ico ]; then cp favicon.ico /tmp/deploy/; fi
-          cd /tmp/deploy && npm ci --omit=dev
+          cd /tmp/deploy && pnpm install --frozen-lockfile --prod
 
       - name: Deploy to server
         run: |

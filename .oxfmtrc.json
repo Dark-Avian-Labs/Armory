@@ -42,10 +42,7 @@
     ".vite/**",
     "tmp/**",
     "out/**",
-    "pnpm-lock.yaml",
-    "yarn.lock",
-    "package-lock.json",
-    "bun.lockb"
+    "pnpm-lock.yaml"
   ],
 
   "overrides": [
