@@ -1,11 +1,21 @@
 import { toPng } from 'html-to-image';
 import { useMemo, useRef, useState } from 'react';
 
-import type { EquipmentType, ModSlot, Warframe, Weapon } from '../../types/warframe';
+import feathers from '../../assets/feathers.png';
+import type {
+  Ability,
+  BuildConfig,
+  EquipmentType,
+  ModSlot,
+  Warframe,
+  Weapon,
+} from '../../types/warframe';
 import { getMaxRank } from '../../utils/arcaneUtils';
 import { extractArchonShardBonuses } from '../../utils/archonShardBonuses';
-import { formatPercent } from '../../utils/damage';
+import { calculateBuildDamage, formatDamage } from '../../utils/damage';
 import { calculateWeaponDps } from '../../utils/damageCalc';
+import { getElementColor } from '../../utils/elements';
+import type { FormaCount } from '../../utils/formaCounter';
 import { formatShardBuffDescription } from '../../utils/shardBuffFormat';
 import { calculateWarframeStats } from '../../utils/warframeCalc';
 import type { ArcaneSlot } from '../ModBuilder/ArcaneSlots';
@@ -14,6 +24,12 @@ import { ArcaneCardPreview } from '../ModCard/ArcaneCardPreview';
 import { DEFAULT_ARCANE_LAYOUT, normalizeArcaneRarity } from '../ModCard/cardLayout';
 import { ModCard } from '../ModCard/ModCard';
 import { Modal } from '../ui/Modal';
+import { ShareRadarChart } from './ShareRadarChart';
+import {
+  getShareAbilityDbIcon,
+  type ParsedShareAbility,
+  useWarframeShareAbilities,
+} from './useWarframeShareAbilities';
 
 type ShareAspect = 'wide' | 'portrait';
 
@@ -30,17 +46,31 @@ interface BuildShareModalProps {
   shardSlots: ShardSlotConfig[];
   shardTypes: ShardType[];
   orokinReactor: boolean;
+  formaCost?: FormaCount;
+  helminthConfig?: BuildConfig['helminth'];
 }
 
 function formatEquipmentType(type: EquipmentType): string {
   return type.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
-function sanitizeFileBaseName(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+/** Readable download name: keeps spaces; strips characters illegal on Windows file names. */
+function sanitizeDownloadSegment(value: string, fallback: string, maxLen: number): string {
+  let t = value
+    .trim()
+    .replace(/["*/:<>?\\|]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t) t = fallback;
+  t = t.replace(/^\.+|\.+$/g, '').trim() || fallback;
+  if (t.length > maxLen) t = t.slice(0, maxLen).trim();
+  return t;
+}
+
+function buildShareDownloadFileName(equipmentName: string, buildName: string): string {
+  const itemPart = sanitizeDownloadSegment(equipmentName, 'item', 96);
+  const buildPart = sanitizeDownloadSegment(buildName, 'build', 96);
+  return `parametric-${itemPart}-${buildPart}.png`;
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -52,55 +82,121 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-function formatCompactNumber(n: number): string {
-  if (!Number.isFinite(n)) return '—';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 10_000) return `${(n / 1000).toFixed(1)}k`;
-  if (n >= 1000) return `${(n / 1000).toFixed(2)}k`;
-  if (n >= 100) return n.toFixed(1);
-  return n.toFixed(2);
+const SHARE_ELEMENT_ICONS: Record<string, string> = {
+  Impact: '01_impact',
+  Puncture: '02_puncture',
+  Slash: '03_slash',
+  Heat: '04_heat',
+  Cold: '05_cold',
+  Electricity: '06_electricity',
+  Toxin: '07_toxin',
+  Blast: '08_blast',
+  Radiation: '09_radiation',
+  Gas: '10_gas',
+  Magnetic: '11_magnetic',
+  Viral: '12_viral',
+  Corrosive: '13_corrosive',
+  Void: '14_void',
+  Tau: '15_tau',
+  True: '20_true',
+};
+
+function chunkEquippedModsForLayout(slots: ModSlot[]): ModSlot[][] {
+  const n = slots.length;
+  if (n === 0) return [];
+  if (n <= 2) return [slots];
+  if (n <= 6) return [slots.slice(0, 2), slots.slice(2)];
+  if (n <= 10) return [slots.slice(0, 2), slots.slice(2, 6), slots.slice(6, 10)];
+  const rows: ModSlot[][] = [slots.slice(0, 2)];
+  let i = 2;
+  while (i < n) {
+    rows.push(slots.slice(i, i + 4));
+    i += 4;
+  }
+  return rows;
 }
 
-function abilityBarPct(modded: number): number {
-  return Math.min(100, Math.max(4, (modded / 280) * 100));
-}
-
-function ratioBarPct(base: number, modded: number): number {
-  if (!Number.isFinite(base) || base <= 0) return Math.min(100, Math.max(4, modded > 0 ? 60 : 4));
-  const r = modded / base;
-  return Math.min(100, Math.max(4, (r / 2.5) * 100));
-}
-
-function ShareStatBar({
-  label,
-  display,
-  fillPct,
-}: {
-  label: string;
-  display: string;
-  fillPct: number;
-}) {
-  const w = Math.round(Math.min(100, Math.max(0, fillPct)));
+function ModShareGrid({ slots, modScale }: { slots: ModSlot[]; modScale: number }) {
+  const rows = chunkEquippedModsForLayout(slots);
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between gap-2 text-[11px]">
-        <span className="text-[#a8b8e8]">{label}</span>
-        <span className="shrink-0 font-medium text-[#f0f4ff]">{display}</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+    <div className="flex flex-col gap-2">
+      {rows.map((row, ri) => (
         <div
-          className="h-full rounded-full bg-gradient-to-r from-[#5b7cff] to-[#46d6be]"
-          style={{ width: `${w}%` }}
-        />
-      </div>
+          key={ri}
+          className={`flex flex-wrap gap-x-2 gap-y-2 ${ri === 0 ? 'justify-center' : 'justify-start'}`}
+        >
+          {row.map((slot) => (
+            <ModCard
+              key={`${slot.index}-${slot.mod?.unique_name ?? 'm'}`}
+              mod={slot.mod!}
+              rank={slot.rank ?? 0}
+              setRank={slot.setRank}
+              slotType={slot.type}
+              slotPolarity={slot.polarity}
+              collapsed
+              scale={modScale}
+            />
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
 
-function ShareShardStrip({ slots, shards }: { slots: ShardSlotConfig[]; shards: ShardType[] }) {
-  const V_OFFSETS = [0, 10, 20, 10, 0];
+function ShareFormaHeader({ forma }: { forma?: FormaCount }) {
+  if (!forma || forma.total <= 0) return null;
+  return (
+    <div className="flex items-end gap-3 pr-1">
+      {forma.regular > 0 ? (
+        <div className="flex flex-col items-center gap-0.5">
+          <img
+            src="/icons/forma.png"
+            alt=""
+            className="h-7 w-7 object-contain"
+            draggable={false}
+          />
+          <span className="text-[11px] font-semibold text-[#e8edff]">{forma.regular}</span>
+        </div>
+      ) : null}
+      {forma.universal > 0 ? (
+        <div className="flex flex-col items-center gap-0.5">
+          <img
+            src="/icons/forma-omni.png"
+            alt=""
+            className="h-7 w-7 object-contain"
+            draggable={false}
+          />
+          <span className="text-[11px] font-semibold text-[#e8edff]">{forma.universal}</span>
+        </div>
+      ) : null}
+      {forma.umbra > 0 ? (
+        <div className="flex flex-col items-center gap-0.5">
+          <img
+            src="/icons/forma-umbra.png"
+            alt=""
+            className="h-7 w-7 object-contain"
+            draggable={false}
+          />
+          <span className="text-[11px] font-semibold text-[#e8edff]">{forma.umbra}</span>
+        </div>
+      ) : null}
+      {forma.stance > 0 ? (
+        <div className="flex flex-col items-center gap-0.5">
+          <img
+            src="/icons/forma-stance.png"
+            alt=""
+            className="h-7 w-7 object-contain"
+            draggable={false}
+          />
+          <span className="text-[11px] font-semibold text-[#e8edff]">{forma.stance}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
-  const buffLines: { key: string; name: string; tau: boolean; buff: string }[] = [];
+function ShareShardColumn({ slots, shards }: { slots: ShardSlotConfig[]; shards: ShardType[] }) {
+  const lines: { key: string; name: string; tau: boolean; buff: string }[] = [];
   for (let i = 0; i < 5; i++) {
     const slot = slots[i] ?? { tauforged: false };
     if (!slot.shard_type_id) continue;
@@ -108,7 +204,7 @@ function ShareShardStrip({ slots, shards }: { slots: ShardSlotConfig[]; shards: 
     if (!shard) continue;
     const buff = shard.buffs.find((b) => String(b.id) === String(slot.buff_id));
     const buffText = formatShardBuffDescription(buff, slot.tauforged === true);
-    buffLines.push({
+    lines.push({
       key: `shard-${i}-${String(slot.shard_type_id)}`,
       name: shard.name,
       tau: slot.tauforged === true,
@@ -117,18 +213,13 @@ function ShareShardStrip({ slots, shards }: { slots: ShardSlotConfig[]; shards: 
   }
 
   return (
-    <div>
-      <div className="flex items-start justify-end gap-0.5">
-        {Array.from({ length: 5 }, (_, i) => {
-          const slot = slots[i] ?? { tauforged: false };
-          const vOffset = V_OFFSETS[i];
-          if (!slot.shard_type_id) {
-            return (
-              <div
-                key={i}
-                className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg"
-                style={{ marginTop: vOffset }}
-              >
+    <ul className="space-y-2">
+      {Array.from({ length: 5 }, (_, i) => {
+        const slot = slots[i] ?? { tauforged: false };
+        if (!slot.shard_type_id) {
+          return (
+            <li key={i} className="flex items-center gap-2">
+              <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md">
                 <img
                   src="/icons/shards/emptyBackground.png"
                   alt=""
@@ -136,58 +227,197 @@ function ShareShardStrip({ slots, shards }: { slots: ShardSlotConfig[]; shards: 
                   draggable={false}
                 />
               </div>
-            );
-          }
-          const shard = shards.find((s) => String(s.id) === String(slot.shard_type_id));
-          if (!shard) {
-            return (
-              <div
-                key={i}
-                className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/10"
-                style={{ marginTop: vOffset }}
+              <span className="text-[10px] text-[#8fa4d4]">Empty</span>
+            </li>
+          );
+        }
+        const shard = shards.find((s) => String(s.id) === String(slot.shard_type_id));
+        if (!shard) {
+          return (
+            <li key={i} className="flex items-center gap-2">
+              <div className="h-9 w-9 shrink-0 rounded-md bg-white/10" />
+              <span className="text-[10px] text-[#8fa4d4]">—</span>
+            </li>
+          );
+        }
+        const iconPath = slot.tauforged ? shard.tauforged_icon_path : shard.icon_path;
+        const line = lines.find((l) => l.key.startsWith(`shard-${i}`));
+        return (
+          <li key={i} className="flex items-start gap-2">
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md">
+              <img
+                src="/icons/shards/filledBackground.png"
+                alt=""
+                className={`absolute inset-0 h-full w-full object-cover ${slot.tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
+                draggable={false}
               />
-            );
-          }
-          const iconPath = slot.tauforged ? shard.tauforged_icon_path : shard.icon_path;
+              <img
+                src={iconPath}
+                alt=""
+                className="invert-on-light absolute inset-0 h-full w-full object-cover"
+                draggable={false}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-semibold text-[#eef2ff]">
+                {shard.name}
+                {line?.tau ? (
+                  <span className="ml-1 text-[8px] tracking-wide text-cyan-200/90 uppercase">
+                    Tau
+                  </span>
+                ) : null}
+              </div>
+              {line?.buff ? (
+                <div className="text-[9px] leading-snug text-[#a8b8e0]">{line.buff}</div>
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function ShareSkillsPanel({
+  ownAbilities,
+  dbAbilities,
+  selectedReplacement,
+  helminthConfig,
+  iconPx,
+}: {
+  ownAbilities: ParsedShareAbility[];
+  dbAbilities: Ability[];
+  selectedReplacement: Ability | null;
+  helminthConfig?: BuildConfig['helminth'];
+  iconPx: number;
+}) {
+  const desc =
+    helminthConfig && selectedReplacement?.description
+      ? selectedReplacement.description
+      : ownAbilities.find((a) => a.description)?.description;
+
+  const shortDesc = desc
+    ? desc.length > 220
+      ? `${desc.slice(0, 217)}…`
+      : desc
+    : null;
+
+  return (
+    <div className="flex min-h-0 flex-col gap-2">
+      <div className="flex justify-center gap-1.5">
+        {ownAbilities.map((ability) => {
+          const isReplaced = helminthConfig?.replaced_ability_index === ability.index;
+          const icon =
+            isReplaced && selectedReplacement?.image_path
+              ? `/images${selectedReplacement.image_path}`
+              : getShareAbilityDbIcon(ability, dbAbilities);
+          const initial = (
+            isReplaced && selectedReplacement ? selectedReplacement.name : ability.name
+          )
+            .charAt(0)
+            .toUpperCase();
           return (
             <div
-              key={i}
-              className="relative flex h-11 w-11 shrink-0 flex-col items-center"
-              style={{ marginTop: vOffset }}
+              key={ability.index}
+              className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-black/25 ${
+                isReplaced ? 'border-red-400/70 ring-1 ring-red-400/50' : 'border-white/15'
+              }`}
+              style={{ width: iconPx, height: iconPx }}
             >
-              <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg">
+              {icon ? (
                 <img
-                  src="/icons/shards/filledBackground.png"
+                  src={icon}
                   alt=""
-                  className={`absolute inset-0 h-full w-full object-cover ${slot.tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
+                  className="invert-on-light max-h-[88%] max-w-[88%] rounded object-cover"
                   draggable={false}
                 />
-                <img
-                  src={iconPath}
-                  alt=""
-                  className="invert-on-light absolute inset-0 h-full w-full object-cover"
-                  draggable={false}
-                />
-              </div>
+              ) : (
+                <span
+                  className={`text-sm font-bold ${isReplaced ? 'text-red-300/90' : 'text-white/45'}`}
+                >
+                  {initial}
+                </span>
+              )}
+              <span
+                className={`absolute -top-0.5 -left-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full px-0.5 text-[8px] font-bold ${
+                  isReplaced ? 'bg-red-500 text-white' : 'bg-white/20 text-[#dbe4ff]'
+                }`}
+              >
+                {ability.index + 1}
+              </span>
             </div>
           );
         })}
       </div>
-      {buffLines.length > 0 ? (
-        <ul className="mt-2.5 space-y-1 border-t border-white/10 pt-2.5 text-left">
-          {buffLines.map((line) => (
-            <li key={line.key} className="text-[10px] leading-snug text-[#d6e0ff]">
-              <span className="font-semibold text-[#f0f4ff]">{line.name}</span>
-              {line.tau ? (
-                <span className="ml-1 text-[9px] tracking-wide text-cyan-200/90 uppercase">
-                  Tau
-                </span>
-              ) : null}
-              {line.buff ? <span className="text-[#b6c5ed]"> — {line.buff}</span> : null}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {shortDesc ? (
+        <p className="text-[9px] leading-relaxed text-[#b8c8ec]">{shortDesc}</p>
+      ) : (
+        <p className="text-[9px] text-[#7e8fb8]">No ability description loaded.</p>
+      )}
+    </div>
+  );
+}
+
+function ShareDamageBreakdownBars({
+  weapon,
+  slots,
+}: {
+  weapon: Weapon;
+  slots: ModSlot[];
+}) {
+  const { totalDamage, damageBreakdown } = calculateBuildDamage(weapon, slots);
+  if (damageBreakdown.length === 0) return null;
+  const maxValue = Math.max(...damageBreakdown.map((e) => e.value));
+
+  return (
+    <div className="space-y-1">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="text-[10px] tracking-[0.16em] text-[#c7d5ff] uppercase">Damage</span>
+        <span className="text-[12px] font-bold text-[#f0f4ff]">{formatDamage(totalDamage)}</span>
+      </div>
+      {damageBreakdown.map((entry) => {
+        const color = getElementColor(entry.type);
+        const pct = totalDamage > 0 ? (entry.value / totalDamage) * 100 : 0;
+        const barWidth = maxValue > 0 ? (entry.value / maxValue) * 100 : 0;
+        const iconFile = SHARE_ELEMENT_ICONS[entry.type];
+        return (
+          <div
+            key={entry.type}
+            className="relative flex items-center gap-1.5 overflow-hidden rounded py-0.5 pr-1.5 pl-0.5"
+          >
+            <div
+              className="absolute inset-y-0 left-0 rounded"
+              style={{
+                width: `${barWidth}%`,
+                backgroundColor: color,
+                opacity: 0.14,
+              }}
+            />
+            <div className="relative z-10 flex h-4 w-4 shrink-0 items-center justify-center">
+              {iconFile ? (
+                <img
+                  src={`/icons/elements/${iconFile}.png`}
+                  alt=""
+                  className="h-3.5 w-3.5 object-contain"
+                  draggable={false}
+                />
+              ) : (
+                <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+              )}
+            </div>
+            <span className="relative z-10 min-w-[52px] text-[9px] font-medium" style={{ color }}>
+              {entry.type}
+            </span>
+            <div className="relative z-10 flex-1" />
+            <span className="relative z-10 text-[8px] tabular-nums text-[#9fb0d8]">
+              {pct.toFixed(1)}%
+            </span>
+            <span className="relative z-10 min-w-[40px] text-right text-[9px] font-semibold tabular-nums text-[#f0f4ff]">
+              {formatDamage(entry.value)}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -205,6 +435,8 @@ export function BuildShareModal({
   shardSlots,
   shardTypes,
   orokinReactor,
+  formaCost,
+  helminthConfig,
 }: BuildShareModalProps) {
   const exportRef = useRef<HTMLDivElement | null>(null);
   const [bgDataUrl, setBgDataUrl] = useState<string | null>(null);
@@ -216,6 +448,10 @@ export function BuildShareModal({
   const [error, setError] = useState<string | null>(null);
 
   const isWarframe = equipmentType === 'warframe';
+  const shareAbilities = useWarframeShareAbilities(
+    isWarframe ? (equipment as Warframe) : null,
+    helminthConfig,
+  );
   const warframeCalc = useMemo(() => {
     if (!isWarframe) return null;
     try {
@@ -238,6 +474,17 @@ export function BuildShareModal({
 
   const equippedSlots = useMemo(() => slots.filter((s) => s.mod), [slots]);
   const filledArcanes = useMemo(() => arcaneSlots.filter((s) => s.arcane), [arcaneSlots]);
+
+  const weaponRadarValues = useMemo(() => {
+    if (!weaponCalc) return null;
+    const b = weaponCalc.base;
+    const m = weaponCalc.modded;
+    const reloadScore =
+      b.reloadTime > 0.05
+        ? b.reloadTime / Math.max(m.reloadTime, 0.001)
+        : m.fireRate / Math.max(b.fireRate, 0.001);
+    return [m.critChance, m.critMultiplier, m.statusChance, m.fireRate, m.multishot, reloadScore];
+  }, [weaponCalc]);
 
   async function handleUploadChange(file: File | null): Promise<void> {
     if (!file) return;
@@ -268,9 +515,8 @@ export function BuildShareModal({
         backgroundColor: '#090d18',
       });
       const a = document.createElement('a');
-      const fileBase = sanitizeFileBaseName(`${equipmentName}-${buildName || 'build'}-${aspect}`);
       a.href = dataUrl;
-      a.download = `${fileBase || 'parametric-build-share'}.png`;
+      a.download = buildShareDownloadFileName(equipmentName, buildName || 'build');
       a.click();
     } catch (renderError) {
       console.error('[BuildShareModal] Failed to render share image', renderError);
@@ -283,10 +529,13 @@ export function BuildShareModal({
   if (!open) return null;
 
   const isWide = aspect === 'wide';
-  const canvasWidth = isWide ? 1600 : 1080;
-  const canvasHeight = isWide ? 900 : 1350;
-  const modScale = isWide ? 0.36 : 0.42;
-  const arcaneScale = isWide ? 0.42 : 0.48;
+  const canvasWidth = isWide ? 1280 : 720;
+  const canvasHeight = isWide ? 720 : 1280;
+  const modScale = isWide ? 0.27 : 0.21;
+  const arcaneScale = isWide ? 0.36 : 0.32;
+  const radarMain = isWide ? 188 : 148;
+  const radarSecondary = isWide ? 168 : 132;
+  const skillIconPx = isWide ? 40 : 36;
 
   const shardSummary = {
     filled: shardSlots.filter((s) => s.shard_type_id != null).length,
@@ -425,212 +674,84 @@ export function BuildShareModal({
               ) : null}
               <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,transparent_25%,transparent_70%,rgba(0,0,0,0.44)_100%)]" />
 
-              <div className="relative z-10 flex min-h-0 flex-1 flex-col px-8 pt-8 pb-5">
-                <div className="flex shrink-0 items-start justify-between gap-6">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] tracking-[0.22em] text-[#b7c7ff]/90 uppercase">
-                      Parametric Build Export
-                    </p>
-                    <h4 className="mt-1 text-[40px] leading-[1.05] font-semibold tracking-tight">
-                      {buildName}
-                    </h4>
-                    <p className="mt-2 text-[17px] text-[#c9d6ff]">
-                      {equipmentName} · {formatEquipmentType(equipmentType)}
-                    </p>
+              <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 pt-4 pb-2.5">
+                <div className="flex shrink-0 items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <img
+                      src={feathers}
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="mt-0.5 h-10 w-10 shrink-0 object-contain opacity-95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]"
+                      draggable={false}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] tracking-[0.2em] text-[#9fb2e8]/95 uppercase">
+                        Parametric
+                      </p>
+                      <h4 className="mt-0.5 text-[26px] font-semibold leading-[1.08] tracking-tight text-[#f6f8ff]">
+                        {buildName}
+                      </h4>
+                      <p className="mt-1 text-[13px] font-medium text-[#d0ddf8]">{equipmentName}</p>
+                      <p className="mt-0.5 text-[10px] text-[#7d92c0]">
+                        {formatEquipmentType(equipmentType)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="glass-panel shrink-0 overflow-hidden rounded-2xl border border-white/18 bg-white/5 p-1">
-                    <div
-                      className={`flex items-center justify-center overflow-hidden rounded-xl bg-black/30 ${isWide ? 'h-36 w-36' : 'h-40 w-40'}`}
-                    >
-                      {equipmentImagePath ? (
-                        <img
-                          src={equipmentImagePath}
-                          alt=""
-                          className="max-h-full max-w-full object-contain"
-                          draggable={false}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center px-2 text-center text-sm text-white/60">
-                          No Art
-                        </div>
-                      )}
+                  <div className="flex shrink-0 items-start gap-2">
+                    <ShareFormaHeader forma={formaCost} />
+                    <div className="glass-panel shrink-0 overflow-hidden rounded-2xl p-1">
+                      <div
+                        className={`flex items-center justify-center overflow-hidden rounded-xl bg-black/35 ${
+                          isWide ? 'h-[100px] w-[100px]' : 'h-[92px] w-[92px]'
+                        }`}
+                      >
+                        {equipmentImagePath ? (
+                          <img
+                            src={equipmentImagePath}
+                            alt=""
+                            className="max-h-full max-w-full object-contain"
+                            draggable={false}
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center px-2 text-center text-[10px] text-white/55">
+                            No Art
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {isWide ? (
-                  <div className="mt-6 grid min-h-0 flex-1 grid-cols-12 gap-5">
-                    <div className="glass-panel col-span-7 flex min-h-0 flex-col rounded-2xl border border-white/12 bg-black/22 p-4">
-                      <p className="mb-3 shrink-0 text-[11px] tracking-[0.2em] text-[#c7d5ff] uppercase">
-                        Equipped Mods ({equippedSlots.length})
-                      </p>
-                      <div className="flex min-h-0 flex-wrap content-start gap-x-2 gap-y-2">
-                        {equippedSlots.map((slot) => (
-                          <ModCard
-                            key={`${slot.index}-${slot.mod?.unique_name ?? 'm'}`}
-                            mod={slot.mod!}
-                            rank={slot.rank ?? 0}
-                            setRank={slot.setRank}
-                            slotType={slot.type}
-                            slotPolarity={slot.polarity}
-                            collapsed
-                            scale={modScale}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="col-span-5 flex min-h-0 flex-col gap-4">
-                      <div className="glass-panel rounded-2xl border border-white/12 bg-black/22 p-4">
-                        <p className="mb-3 text-[11px] tracking-[0.2em] text-[#c7d5ff] uppercase">
-                          {isWarframe ? 'Frame & ability stats' : 'Weapon stats'}
+                  <div className="mt-3 grid min-h-0 flex-1 grid-cols-12 gap-2.5">
+                    <div className="col-span-8 flex min-h-0 flex-col gap-2.5">
+                      <div className="glass-panel flex min-h-0 flex-1 flex-col rounded-2xl p-3">
+                        <p className="mb-2 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
+                          Mods ({equippedSlots.length})
                         </p>
-                        <div className="space-y-2.5">
-                          {isWarframe && warframeCalc ? (
-                            <>
-                              <ShareStatBar
-                                label="Health"
-                                display={`${warframeCalc.health.modded.toFixed(0)}`}
-                                fillPct={ratioBarPct(
-                                  warframeCalc.health.base,
-                                  warframeCalc.health.modded,
-                                )}
-                              />
-                              <ShareStatBar
-                                label="Armor"
-                                display={`${warframeCalc.armor.modded.toFixed(0)}`}
-                                fillPct={ratioBarPct(
-                                  warframeCalc.armor.base,
-                                  warframeCalc.armor.modded,
-                                )}
-                              />
-                              <ShareStatBar
-                                label="Energy"
-                                display={`${warframeCalc.energy.modded.toFixed(0)}`}
-                                fillPct={ratioBarPct(
-                                  warframeCalc.energy.base,
-                                  warframeCalc.energy.modded,
-                                )}
-                              />
-                              <ShareStatBar
-                                label="Strength"
-                                display={`${warframeCalc.abilityStrength.modded.toFixed(0)}%`}
-                                fillPct={abilityBarPct(warframeCalc.abilityStrength.modded)}
-                              />
-                              <ShareStatBar
-                                label="Duration"
-                                display={`${warframeCalc.abilityDuration.modded.toFixed(0)}%`}
-                                fillPct={abilityBarPct(warframeCalc.abilityDuration.modded)}
-                              />
-                              <ShareStatBar
-                                label="Efficiency"
-                                display={`${warframeCalc.abilityEfficiency.modded.toFixed(0)}%`}
-                                fillPct={abilityBarPct(warframeCalc.abilityEfficiency.modded)}
-                              />
-                              <ShareStatBar
-                                label="Range"
-                                display={`${warframeCalc.abilityRange.modded.toFixed(0)}%`}
-                                fillPct={abilityBarPct(warframeCalc.abilityRange.modded)}
-                              />
-                            </>
-                          ) : null}
-                          {!isWarframe && weaponCalc ? (
-                            <>
-                              <ShareStatBar
-                                label="Damage"
-                                display={weaponCalc.modded.totalDamage.toFixed(1)}
-                                fillPct={ratioBarPct(
-                                  weaponCalc.base.totalDamage,
-                                  weaponCalc.modded.totalDamage,
-                                )}
-                              />
-                              <ShareStatBar
-                                label="Crit chance"
-                                display={formatPercent(weaponCalc.modded.critChance)}
-                                fillPct={ratioBarPct(
-                                  weaponCalc.base.critChance,
-                                  weaponCalc.modded.critChance,
-                                )}
-                              />
-                              <ShareStatBar
-                                label="Crit mult"
-                                display={`${weaponCalc.modded.critMultiplier.toFixed(2)}×`}
-                                fillPct={ratioBarPct(
-                                  weaponCalc.base.critMultiplier,
-                                  weaponCalc.modded.critMultiplier,
-                                )}
-                              />
-                              <ShareStatBar
-                                label="Status"
-                                display={formatPercent(weaponCalc.modded.statusChance)}
-                                fillPct={ratioBarPct(
-                                  weaponCalc.base.statusChance,
-                                  weaponCalc.modded.statusChance,
-                                )}
-                              />
-                              <ShareStatBar
-                                label={weaponCalc.isMelee ? 'Attack speed' : 'Fire rate'}
-                                display={weaponCalc.modded.fireRate.toFixed(2)}
-                                fillPct={ratioBarPct(
-                                  weaponCalc.base.fireRate,
-                                  weaponCalc.modded.fireRate,
-                                )}
-                              />
-                              <ShareStatBar
-                                label="Sustained DPS"
-                                display={formatCompactNumber(weaponCalc.sustainedDps)}
-                                fillPct={Math.min(
-                                  100,
-                                  Math.max(8, (weaponCalc.sustainedDps / 50000) * 100),
-                                )}
-                              />
-                            </>
-                          ) : null}
-                          {!isWarframe && !weaponCalc ? (
-                            <p className="text-[12px] text-[#b6c5ed]">Stats unavailable.</p>
-                          ) : null}
+                        <div className="min-h-0 overflow-hidden">
+                          <ModShareGrid slots={equippedSlots} modScale={modScale} />
                         </div>
                       </div>
-
-                      <div className="glass-panel rounded-2xl border border-white/12 bg-black/22 p-4">
-                        <p className="mb-2 text-[11px] tracking-[0.2em] text-[#c7d5ff] uppercase">
-                          Build Summary
-                        </p>
-                        <div className="space-y-1.5 text-[12px]">
-                          <div className="flex justify-between gap-2">
-                            <span className="text-[#b6c5ed]">Reactor/Catalyst</span>
-                            <span>{orokinReactor ? 'Yes' : 'No'}</span>
-                          </div>
-                          <div className="flex justify-between gap-2">
-                            <span className="text-[#b6c5ed]">Arcanes</span>
-                            <span>{filledArcanes.length}</span>
-                          </div>
-                          <div className="flex justify-between gap-2">
-                            <span className="text-[#b6c5ed]">Archon Shards</span>
-                            <span>
-                              {shardSummary.filled}
-                              {shardSummary.tau > 0 ? ` (${shardSummary.tau} tau)` : ''}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {isWarframe && (filledArcanes.length > 0 || shardSummary.filled > 0) ? (
-                        <div className="glass-panel rounded-2xl border border-white/12 bg-black/22 p-4">
-                          {filledArcanes.length > 0 ? (
-                            <>
-                              <p className="mb-2 text-[11px] tracking-[0.2em] text-[#c7d5ff] uppercase">
-                                Arcanes
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {filledArcanes.map((slot, i) => {
+                      {isWarframe ? (
+                        <div className="grid shrink-0 grid-cols-12 gap-2">
+                          <div className="glass-panel col-span-3 rounded-xl p-2">
+                            <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
+                              Arcane
+                            </p>
+                            <div className="flex flex-col gap-2">
+                              {filledArcanes.length === 0 ? (
+                                <span className="text-[9px] text-[#7e8fb8]">None</span>
+                              ) : (
+                                filledArcanes.map((slot, i) => {
                                   const a = slot.arcane!;
                                   const maxRank = getMaxRank(a);
                                   const art = a.image_path ? `/images${a.image_path}` : '';
                                   return (
                                     <ArcaneCardPreview
                                       key={`${a.unique_name}-${i}`}
-                                      layout={{ ...DEFAULT_ARCANE_LAYOUT, scale: arcaneScale }}
+                                      layout={{ ...DEFAULT_ARCANE_LAYOUT, scale: arcaneScale * 0.85 }}
                                       rarity={normalizeArcaneRarity(a.rarity)}
                                       arcaneArt={art}
                                       arcaneName={a.name}
@@ -638,173 +759,37 @@ export function BuildShareModal({
                                       maxRank={maxRank}
                                     />
                                   );
-                                })}
-                              </div>
-                            </>
-                          ) : null}
-                          {shardSummary.filled > 0 ? (
-                            <div className={filledArcanes.length > 0 ? 'mt-4' : ''}>
-                              <p className="mb-2 text-[11px] tracking-[0.2em] text-[#c7d5ff] uppercase">
-                                Archon Shards
-                              </p>
-                              <ShareShardStrip slots={shardSlots} shards={shardTypes} />
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-
-                      {!isWarframe && filledArcanes.length > 0 ? (
-                        <div className="glass-panel rounded-2xl border border-white/12 bg-black/22 p-4">
-                          <p className="mb-2 text-[11px] tracking-[0.2em] text-[#c7d5ff] uppercase">
-                            Arcanes
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {filledArcanes.map((slot, i) => {
-                              const a = slot.arcane!;
-                              const maxRank = getMaxRank(a);
-                              const art = a.image_path ? `/images${a.image_path}` : '';
-                              return (
-                                <ArcaneCardPreview
-                                  key={`${a.unique_name}-${i}`}
-                                  layout={{ ...DEFAULT_ARCANE_LAYOUT, scale: arcaneScale }}
-                                  rarity={normalizeArcaneRarity(a.rarity)}
-                                  arcaneArt={art}
-                                  arcaneName={a.name}
-                                  rank={slot.rank}
-                                  maxRank={maxRank}
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-6 flex min-h-0 flex-1 flex-col gap-4">
-                    <div className="glass-panel rounded-2xl border border-white/12 bg-black/22 p-4">
-                      <p className="mb-3 text-[11px] tracking-[0.2em] text-[#c7d5ff] uppercase">
-                        Equipped Mods ({equippedSlots.length})
-                      </p>
-                      <div className="flex flex-wrap content-start gap-x-2 gap-y-2">
-                        {equippedSlots.map((slot) => (
-                          <ModCard
-                            key={`${slot.index}-${slot.mod?.unique_name ?? 'm'}`}
-                            mod={slot.mod!}
-                            rank={slot.rank ?? 0}
-                            setRank={slot.setRank}
-                            slotType={slot.type}
-                            slotPolarity={slot.polarity}
-                            collapsed
-                            scale={modScale}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="grid flex-1 grid-cols-2 gap-4">
-                      <div className="glass-panel rounded-2xl border border-white/12 bg-black/22 p-4">
-                        <p className="mb-3 text-[11px] tracking-[0.2em] text-[#c7d5ff] uppercase">
-                          {isWarframe ? 'Stats' : 'Weapon Stats'}
-                        </p>
-                        <div className="space-y-2">
-                          {isWarframe && warframeCalc ? (
-                            <>
-                              <ShareStatBar
-                                label="Strength"
-                                display={`${warframeCalc.abilityStrength.modded.toFixed(0)}%`}
-                                fillPct={abilityBarPct(warframeCalc.abilityStrength.modded)}
-                              />
-                              <ShareStatBar
-                                label="Duration"
-                                display={`${warframeCalc.abilityDuration.modded.toFixed(0)}%`}
-                                fillPct={abilityBarPct(warframeCalc.abilityDuration.modded)}
-                              />
-                              <ShareStatBar
-                                label="Efficiency"
-                                display={`${warframeCalc.abilityEfficiency.modded.toFixed(0)}%`}
-                                fillPct={abilityBarPct(warframeCalc.abilityEfficiency.modded)}
-                              />
-                              <ShareStatBar
-                                label="Range"
-                                display={`${warframeCalc.abilityRange.modded.toFixed(0)}%`}
-                                fillPct={abilityBarPct(warframeCalc.abilityRange.modded)}
-                              />
-                              <ShareStatBar
-                                label="Health"
-                                display={`${warframeCalc.health.modded.toFixed(0)}`}
-                                fillPct={ratioBarPct(
-                                  warframeCalc.health.base,
-                                  warframeCalc.health.modded,
-                                )}
-                              />
-                              <ShareStatBar
-                                label="Energy"
-                                display={`${warframeCalc.energy.modded.toFixed(0)}`}
-                                fillPct={ratioBarPct(
-                                  warframeCalc.energy.base,
-                                  warframeCalc.energy.modded,
-                                )}
-                              />
-                            </>
-                          ) : null}
-                          {!isWarframe && weaponCalc ? (
-                            <>
-                              <ShareStatBar
-                                label="Damage"
-                                display={weaponCalc.modded.totalDamage.toFixed(1)}
-                                fillPct={ratioBarPct(
-                                  weaponCalc.base.totalDamage,
-                                  weaponCalc.modded.totalDamage,
-                                )}
-                              />
-                              <ShareStatBar
-                                label="Crit"
-                                display={formatPercent(weaponCalc.modded.critChance)}
-                                fillPct={ratioBarPct(
-                                  weaponCalc.base.critChance,
-                                  weaponCalc.modded.critChance,
-                                )}
-                              />
-                              <ShareStatBar
-                                label="DPS"
-                                display={formatCompactNumber(weaponCalc.sustainedDps)}
-                                fillPct={Math.min(
-                                  100,
-                                  Math.max(8, (weaponCalc.sustainedDps / 50000) * 100),
-                                )}
-                              />
-                            </>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="glass-panel rounded-2xl border border-white/12 bg-black/22 p-4">
-                          <p className="mb-2 text-[11px] tracking-[0.2em] text-[#c7d5ff] uppercase">
-                            Build Summary
-                          </p>
-                          <div className="space-y-1.5 text-[12px]">
-                            <div className="flex justify-between">
-                              <span className="text-[#b6c5ed]">Reactor</span>
-                              <span>{orokinReactor ? 'Yes' : 'No'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-[#b6c5ed]">Arcanes</span>
-                              <span>{filledArcanes.length}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-[#b6c5ed]">Shards</span>
-                              <span>{shardSummary.filled}</span>
+                                })
+                              )}
                             </div>
                           </div>
-                        </div>
-
-                        {filledArcanes.length > 0 ? (
-                          <div className="glass-panel rounded-2xl border border-white/12 bg-black/22 p-4">
-                            <p className="mb-2 text-[11px] tracking-[0.2em] text-[#c7d5ff] uppercase">
-                              Arcanes
+                          <div className="glass-panel col-span-4 rounded-xl p-2">
+                            <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
+                              Shards
                             </p>
+                            <ShareShardColumn slots={shardSlots} shards={shardTypes} />
+                          </div>
+                          <div className="glass-panel col-span-5 rounded-xl p-2">
+                            <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
+                              Skills
+                            </p>
+                            <ShareSkillsPanel
+                              ownAbilities={shareAbilities.ownAbilities}
+                              dbAbilities={shareAbilities.dbAbilities}
+                              selectedReplacement={shareAbilities.selectedReplacement}
+                              helminthConfig={helminthConfig}
+                              iconPx={skillIconPx}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="glass-panel shrink-0 rounded-xl p-2">
+                          <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
+                            Arcane
+                          </p>
+                          {filledArcanes.length === 0 ? (
+                            <span className="text-[9px] text-[#7e8fb8]">None</span>
+                          ) : (
                             <div className="flex flex-wrap gap-2">
                               {filledArcanes.map((slot, i) => {
                                 const a = slot.arcane!;
@@ -823,22 +808,260 @@ export function BuildShareModal({
                                 );
                               })}
                             </div>
-                          </div>
-                        ) : null}
-
-                        {isWarframe && shardSummary.filled > 0 ? (
-                          <div className="glass-panel rounded-2xl border border-white/12 bg-black/22 p-4">
-                            <p className="mb-2 text-[11px] tracking-[0.2em] text-[#c7d5ff] uppercase">
-                              Archon Shards
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-span-4 flex min-h-0 flex-col gap-2.5">
+                      {isWarframe && warframeCalc ? (
+                        <>
+                          <div className="glass-panel flex flex-col items-center rounded-2xl p-2.5">
+                            <p className="mb-0.5 w-full text-left text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
+                              Stats
                             </p>
-                            <ShareShardStrip slots={shardSlots} shards={shardTypes} />
+                            <ShareRadarChart
+                              size={radarMain}
+                              labels={['Health', 'Shield', 'Armor', 'Energy', 'Speed']}
+                              values={[
+                                warframeCalc.health.modded,
+                                warframeCalc.shield.modded,
+                                warframeCalc.armor.modded,
+                                warframeCalc.energy.modded,
+                                warframeCalc.sprintSpeed.modded,
+                              ]}
+                            />
+                          </div>
+                          <div className="glass-panel flex flex-col items-center rounded-2xl p-2.5">
+                            <p className="mb-0.5 w-full text-left text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
+                              Abilities
+                            </p>
+                            <ShareRadarChart
+                              size={radarSecondary}
+                              labels={['Str', 'Dur', 'Eff', 'Range']}
+                              values={[
+                                warframeCalc.abilityStrength.modded,
+                                warframeCalc.abilityDuration.modded,
+                                warframeCalc.abilityEfficiency.modded,
+                                warframeCalc.abilityRange.modded,
+                              ]}
+                              fill="rgba(70, 214, 190, 0.28)"
+                              stroke="rgba(120, 230, 210, 0.95)"
+                            />
+                          </div>
+                        </>
+                      ) : null}
+                      {!isWarframe && weaponCalc && weaponRadarValues ? (
+                        <>
+                          <div className="glass-panel flex flex-col items-center rounded-2xl p-2.5">
+                            <p className="mb-0.5 w-full text-left text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
+                              Stats
+                            </p>
+                            <ShareRadarChart
+                              size={radarMain}
+                              labels={['Crit', 'Mult', 'Status', 'Rate', 'Multi', 'Reload']}
+                              values={weaponRadarValues}
+                            />
+                          </div>
+                          <div className="glass-panel min-h-0 flex-1 rounded-2xl p-2.5">
+                            <ShareDamageBreakdownBars weapon={equipment as Weapon} slots={slots} />
+                          </div>
+                        </>
+                      ) : null}
+                      {!isWarframe && !weaponCalc ? (
+                        <div className="glass-panel rounded-2xl p-3 text-[11px] text-[#b6c5ed]">
+                          Stats unavailable.
+                        </div>
+                      ) : null}
+                      <div className="glass-panel rounded-2xl p-2.5">
+                        <p className="mb-1.5 text-[9px] tracking-[0.16em] text-[#c7d5ff] uppercase">
+                          Build
+                        </p>
+                        <div className="space-y-1 text-[10px]">
+                          <div className="flex justify-between gap-2">
+                            <span className="text-[#9fb0d8]">Reactor</span>
+                            <span className="font-medium">{orokinReactor ? 'Yes' : 'No'}</span>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <span className="text-[#9fb0d8]">Arcanes</span>
+                            <span className="font-medium">{filledArcanes.length}</span>
+                          </div>
+                          {isWarframe ? (
+                            <div className="flex justify-between gap-2">
+                              <span className="text-[#9fb0d8]">Shards</span>
+                              <span className="font-medium">
+                                {shardSummary.filled}
+                                {shardSummary.tau > 0 ? ` (${shardSummary.tau} τ)` : ''}
+                              </span>
+                            </div>
+                          ) : null}
+                          {formaCost && formaCost.total > 0 ? (
+                            <div className="flex justify-between gap-2">
+                              <span className="text-[#9fb0d8]">Forma</span>
+                              <span className="font-medium">{formaCost.total}</span>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex min-h-0 flex-1 flex-col gap-2.5">
+                    <div className="glass-panel min-h-0 flex-1 rounded-2xl p-3">
+                      <p className="mb-2 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
+                        Mods ({equippedSlots.length})
+                      </p>
+                      <ModShareGrid slots={equippedSlots} modScale={modScale} />
+                    </div>
+                    {isWarframe && warframeCalc ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="glass-panel flex flex-col items-center rounded-xl p-2">
+                          <p className="mb-0.5 w-full text-left text-[9px] uppercase tracking-wide text-[#c7d5ff]">
+                            Stats
+                          </p>
+                          <ShareRadarChart
+                            size={radarMain}
+                            labels={['HP', 'Shd', 'Arm', 'En', 'Spd']}
+                            values={[
+                              warframeCalc.health.modded,
+                              warframeCalc.shield.modded,
+                              warframeCalc.armor.modded,
+                              warframeCalc.energy.modded,
+                              warframeCalc.sprintSpeed.modded,
+                            ]}
+                          />
+                        </div>
+                        <div className="glass-panel flex flex-col items-center rounded-xl p-2">
+                          <p className="mb-0.5 w-full text-left text-[9px] uppercase tracking-wide text-[#c7d5ff]">
+                            Abilities
+                          </p>
+                          <ShareRadarChart
+                            size={radarSecondary}
+                            labels={['Str', 'Dur', 'Eff', 'Rg']}
+                            values={[
+                              warframeCalc.abilityStrength.modded,
+                              warframeCalc.abilityDuration.modded,
+                              warframeCalc.abilityEfficiency.modded,
+                              warframeCalc.abilityRange.modded,
+                            ]}
+                            fill="rgba(70, 214, 190, 0.28)"
+                            stroke="rgba(120, 230, 210, 0.95)"
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                    {!isWarframe && weaponCalc && weaponRadarValues ? (
+                      <>
+                        <div className="glass-panel flex flex-col items-center rounded-xl p-2">
+                          <p className="mb-0.5 w-full text-left text-[9px] uppercase tracking-wide text-[#c7d5ff]">
+                            Stats
+                          </p>
+                          <ShareRadarChart
+                            size={radarMain + 8}
+                            labels={['Crit', 'Mult', 'Stat', 'Rate', 'Multi', 'Rld']}
+                            values={weaponRadarValues}
+                          />
+                        </div>
+                        <div className="glass-panel rounded-xl p-2.5">
+                          <ShareDamageBreakdownBars weapon={equipment as Weapon} slots={slots} />
+                        </div>
+                      </>
+                    ) : null}
+                    {isWarframe ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="glass-panel rounded-xl p-2">
+                          <p className="mb-1 text-[9px] uppercase tracking-wide text-[#c7d5ff]">
+                            Arcane
+                          </p>
+                          {filledArcanes.length === 0 ? (
+                            <span className="text-[9px] text-[#7e8fb8]">None</span>
+                          ) : (
+                            <div className="flex flex-col gap-1.5">
+                              {filledArcanes.map((slot, i) => {
+                                const a = slot.arcane!;
+                                const maxRank = getMaxRank(a);
+                                const art = a.image_path ? `/images${a.image_path}` : '';
+                                return (
+                                  <ArcaneCardPreview
+                                    key={`${a.unique_name}-${i}`}
+                                    layout={{ ...DEFAULT_ARCANE_LAYOUT, scale: arcaneScale * 0.82 }}
+                                    rarity={normalizeArcaneRarity(a.rarity)}
+                                    arcaneArt={art}
+                                    arcaneName={a.name}
+                                    rank={slot.rank}
+                                    maxRank={maxRank}
+                                  />
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                        <div className="glass-panel rounded-xl p-2">
+                          <p className="mb-1 text-[9px] uppercase tracking-wide text-[#c7d5ff]">
+                            Shards
+                          </p>
+                          <ShareShardColumn slots={shardSlots} shards={shardTypes} />
+                        </div>
+                      </div>
+                    ) : filledArcanes.length > 0 ? (
+                      <div className="glass-panel rounded-xl p-2">
+                        <p className="mb-1 text-[9px] uppercase tracking-wide text-[#c7d5ff]">
+                          Arcane
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {filledArcanes.map((slot, i) => {
+                            const a = slot.arcane!;
+                            const maxRank = getMaxRank(a);
+                            const art = a.image_path ? `/images${a.image_path}` : '';
+                            return (
+                              <ArcaneCardPreview
+                                key={`${a.unique_name}-${i}`}
+                                layout={{ ...DEFAULT_ARCANE_LAYOUT, scale: arcaneScale * 0.9 }}
+                                rarity={normalizeArcaneRarity(a.rarity)}
+                                arcaneArt={art}
+                                arcaneName={a.name}
+                                rank={slot.rank}
+                                maxRank={maxRank}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+                    {isWarframe ? (
+                      <div className="glass-panel rounded-xl p-2">
+                        <p className="mb-1 text-[9px] uppercase tracking-wide text-[#c7d5ff]">
+                          Skills
+                        </p>
+                        <ShareSkillsPanel
+                          ownAbilities={shareAbilities.ownAbilities}
+                          dbAbilities={shareAbilities.dbAbilities}
+                          selectedReplacement={shareAbilities.selectedReplacement}
+                          helminthConfig={helminthConfig}
+                          iconPx={skillIconPx}
+                        />
+                      </div>
+                    ) : null}
+                    <div className="glass-panel rounded-xl p-2">
+                      <p className="mb-1 text-[9px] uppercase tracking-wide text-[#c7d5ff]">Build</p>
+                      <div className="space-y-0.5 text-[9px]">
+                        <div className="flex justify-between">
+                          <span className="text-[#9fb0d8]">Reactor</span>
+                          <span>{orokinReactor ? 'Yes' : 'No'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[#9fb0d8]">Arcanes</span>
+                          <span>{filledArcanes.length}</span>
+                        </div>
+                        {isWarframe ? (
+                          <div className="flex justify-between">
+                            <span className="text-[#9fb0d8]">Shards</span>
+                            <span>{shardSummary.filled}</span>
                           </div>
                         ) : null}
                       </div>
                     </div>
                   </div>
                 )}
-
                 <div className="mt-auto flex shrink-0 items-center justify-between border-t border-white/10 pt-3 text-[11px] text-[#c4d2f8]">
                   <span>darkavianlabs.com/parametric</span>
                   <span>Generated in Parametric</span>

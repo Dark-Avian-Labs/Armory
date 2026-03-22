@@ -1492,6 +1492,8 @@ export function ModBuilder() {
           shardSlots={shardSlots}
           shardTypes={equipmentType === 'warframe' ? shardTypes : []}
           orokinReactor={orokinReactor}
+          formaCost={formaCost}
+          helminthConfig={equipmentType === 'warframe' ? helminthConfig : undefined}
         />
       )}
 
