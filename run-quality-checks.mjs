@@ -2,7 +2,15 @@ import { spawnSync } from 'node:child_process';
 
 const steps = [
   { name: 'Formatting', command: 'pnpm run check-format' },
-  { name: 'Lint', command: 'pnpm run lint' },
+  {
+    name: 'Lint',
+    command: 'pnpm run lint',
+    // Configure warning detection for this step. The patterns below are
+    // designed to match typical "N warnings" output while excluding "0 warnings".
+    detectWarnings: true,
+    warningPattern: /(^|\s)(\d+)?\s*warnings?\b/i,
+    warningZeroPattern: /\b0 warnings?\b/i,
+  },
   { name: 'Typecheck', command: 'pnpm run typecheck' },
   { name: 'Tests', command: 'pnpm run test' },
 ];
@@ -34,10 +42,11 @@ for (const step of steps) {
   const success = run.status === 0;
   const output = `${run.stdout ?? ''}\n${run.stderr ?? ''}`;
   const hasWarnings =
-    step.name === 'Lint' &&
     success &&
-    /(^|\s)(\d+)?\s*warnings?\b/i.test(output) &&
-    !/\b0 warnings?\b/i.test(output);
+    step.detectWarnings === true &&
+    step.warningPattern instanceof RegExp &&
+    step.warningPattern.test(output) &&
+    (!step.warningZeroPattern || !step.warningZeroPattern.test(output));
   results.push({ name: step.name, success, hasWarnings, elapsedSeconds });
   console.log(
     `--- ${step.name} completed in ${elapsedSeconds.toFixed(2)}s (${success ? (hasWarnings ? 'WARN' : 'PASS') : 'FAIL'}) ---`,
