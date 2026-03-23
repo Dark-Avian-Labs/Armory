@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@dotenvx/dotenvx':
-        specifier: ^1.57.1
-        version: 1.57.1
+        specifier: ^1.57.2
+        version: 1.57.2
       '@fontsource-variable/inter':
         specifier: ^5.2.8
         version: 5.2.8
@@ -117,8 +117,8 @@ importers:
 
 packages:
 
-  '@dotenvx/dotenvx@1.57.1':
-    resolution: {integrity: sha512-iKXuo8Nes9Ft4zF3AZOT4FHkl6OV8bHqn61a67qHokkBzSEurnKZAlOkT0FYrRNVGvE6nCfZMtYswyjfXCR1MQ==}
+  '@dotenvx/dotenvx@1.57.2':
+    resolution: {integrity: sha512-lv9+UZPnl/KOvShepevLWm3+/wc1It5kgO5Q580evnvOFMZcgKVEYFwxlL7Ohl9my1yjTsWo28N3PJYUEO8wFQ==}
     hasBin: true
 
   '@ecies/ciphers@0.2.5':
@@ -1679,7 +1679,7 @@ packages:
 
 snapshots:
 
-  '@dotenvx/dotenvx@1.57.1':
+  '@dotenvx/dotenvx@1.57.2':
     dependencies:
       commander: 11.1.0
       dotenv: 17.3.1
