@@ -346,17 +346,16 @@ export function FilterPanel({
         ))}
       </div>
 
-      <div className="text-muted mb-2 text-xs">
-        {compatible.length} available
-        {lockedOut.length > 0 && (
-          <span className="text-warning ml-1">({lockedOut.length} locked out)</span>
-        )}
-        {(search || rarity !== 'ALL') && ' (filtered)'}
-      </div>
-
-      <div className="mb-2 min-h-7">
+      <div className="text-muted mb-2 space-y-1.5 text-xs">
+        <div>
+          {compatible.length} available
+          {lockedOut.length > 0 && (
+            <span className="text-warning ml-1">({lockedOut.length} locked out)</span>
+          )}
+          {(search || rarity !== 'ALL') && ' (filtered)'}
+        </div>
         {targetSlotType && targetSlotType !== 'general' ? (
-          <div className="bg-accent-weak/20 text-accent rounded-md px-2 py-1 text-xs">
+          <div className="bg-accent-weak/20 text-accent rounded-md px-2 py-1">
             Showing {targetSlotType} mods
           </div>
         ) : null}
