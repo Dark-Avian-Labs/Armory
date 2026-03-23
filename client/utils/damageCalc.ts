@@ -48,10 +48,7 @@ function parseAmmoCost(weapon: Weapon): number {
 }
 
 export function calculateWeaponDps(weapon: Weapon, slots: ModSlot[]): WeaponCalcResult {
-  const disposition = weapon.riven_disposition ?? weapon.omega_attenuation ?? 1;
-  const effects = aggregateAllMods(slots, {
-    rivenDispositionMultiplier: disposition,
-  });
+  const effects = aggregateAllMods(slots);
   const { totalDamage: buildTotalDamage } = calculateBuildDamage(weapon, slots, effects);
   const isMelee = weapon.range != null;
 

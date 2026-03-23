@@ -99,6 +99,50 @@ export function getCompanionSubtype(equipment?: {
   return null;
 }
 
+function normalizeCompatText(value: string | undefined): string {
+  if (!value) return '';
+  return value
+    .toLowerCase()
+    .replace(/[_/\\-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getCompatTokens(value: string | undefined): string[] {
+  const normalized = normalizeCompatText(value);
+  if (!normalized) return [];
+  return normalized.split(' ').filter((token) => token.length >= 3);
+}
+
+function doesCompatMatchEquipment(
+  compat: string,
+  equipment?: { unique_name: string; name: string; product_category?: string },
+): boolean {
+  const compatNorm = normalizeCompatText(compat);
+  if (!compatNorm || compatNorm === 'any') {
+    return true;
+  }
+  if (!equipment) {
+    return false;
+  }
+
+  const nameNorm = normalizeCompatText(equipment.name);
+  const uniqueNorm = normalizeCompatText(equipment.unique_name);
+  const searchable = `${nameNorm} ${uniqueNorm}`.trim();
+  if (!searchable) {
+    return false;
+  }
+
+  if (searchable.includes(compatNorm) || (nameNorm && compatNorm.includes(nameNorm))) {
+    return true;
+  }
+
+  const compatTokens = getCompatTokens(compatNorm);
+  return compatTokens.some((token) => searchable.includes(token));
+}
+
 function isModCompatible(
   mod: Mod,
   equipmentType: EquipmentType,
@@ -235,7 +279,7 @@ function isMeleeModCompatible(
   mod: Mod,
   modType: string,
   compat: string,
-  equipment?: { unique_name: string; name: string },
+  equipment?: { unique_name: string; name: string; product_category?: string },
 ): boolean {
   const compatUpper = compat.toUpperCase();
 
@@ -256,12 +300,7 @@ function isMeleeModCompatible(
 
   if (compatUpper === 'MELEE') return true;
 
-  if (equipment) {
-    const weaponName = equipment.name.replace(/\s+/g, ' ').toUpperCase();
-    if (compatUpper === weaponName) return true;
-  }
-
-  return true;
+  return doesCompatMatchEquipment(compat, equipment);
 }
 
 function isCompanionModCompatible(

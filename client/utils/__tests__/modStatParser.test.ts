@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import type { Mod, ModSlot } from '../../types/warframe';
 import { parseModEffects, aggregateAllMods } from '../modStatParser';
+import { RIVEN_MOD_UNIQUE } from '../riven';
 
 function makeMod(descriptions: string[], overrides?: Partial<Mod>): Mod {
   return {
@@ -111,6 +112,15 @@ describe('parseModEffects', () => {
     mod.description = 'not json';
     const effects = parseModEffects(mod, 0);
     expect(effects.baseDamage).toBe(0);
+  });
+
+  it('scales riven mod text by slot rank (stored max-rank values)', () => {
+    const mod = makeMod(['+90% Damage'], {
+      unique_name: RIVEN_MOD_UNIQUE,
+      fusion_limit: 8,
+    });
+    expect(parseModEffects(mod, 0).baseDamage).toBeCloseTo(0.9 / 9);
+    expect(parseModEffects(mod, 8).baseDamage).toBeCloseTo(0.9);
   });
 });
 

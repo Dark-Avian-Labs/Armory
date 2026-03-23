@@ -27,6 +27,7 @@ const PRIMARY_BASELINES = {
   'Reload Speed': 59.9,
   'Ammo Maximum': 99.9,
   'Flight Speed': 89.9,
+  'Punch Through': 2.7,
   Recoil: 89.9,
   Zoom: 44.9,
   Impact: 119.9,
@@ -50,6 +51,7 @@ const SECONDARY_BASELINES = {
   'Reload Speed': 60,
   'Ammo Maximum': 120,
   'Flight Speed': 100,
+  'Punch Through': 2.7,
   Recoil: 90,
   Zoom: 44.9,
   Impact: 120,
@@ -62,17 +64,18 @@ const SECONDARY_BASELINES = {
 } as const satisfies BaselineMap;
 
 const MELEE_BASELINES = {
-  Damage: 120,
+  Damage: 164.7,
   'Critical Chance': 180,
-  'Critical Damage': 120,
-  'Status Chance': 120,
-  'Status Duration': 120,
-  'Attack Speed': 60,
-  Range: 1.5,
-  'Combo Duration': 30,
-  'Initial Combo': 20,
+  'Critical Damage': 90,
+  'Status Chance': 90,
+  'Status Duration': 99,
+  'Attack Speed': 54.9,
+  Range: 1.94,
+  'Combo Duration': 8.1,
+  'Initial Combo': 24.5,
   'Slide Critical Chance': 120,
   'Finisher Damage': 120,
+  'Heavy Attack Efficiency': 73.44,
   Impact: 120,
   Puncture: 120,
   Slash: 120,
@@ -143,77 +146,203 @@ function getRollRule(positiveCount: number, hasNegative: boolean): RivenRollRule
   return RIVEN_ROLL_RULES[key] ?? null;
 }
 
-export function normalizeRivenValue(
-  value: number,
-  stat: string,
-  weaponType: RivenWeaponType,
-  isNegative: boolean,
-): number {
-  const baseline = getRivenBaselineValue(stat, weaponType);
-  const absInput = Math.abs(value);
-  const absNormalized = baseline == null ? absInput : baseline;
-  const signed = isNegative ? -absNormalized : absNormalized;
-  return toOneDecimal(signed);
+export const RIVEN_DISPOSITION_MIN = 0.5;
+export const RIVEN_DISPOSITION_MAX = 1.55;
+
+export function clampDisposition(disposition: number): number {
+  return clamp(disposition, RIVEN_DISPOSITION_MIN, RIVEN_DISPOSITION_MAX);
 }
 
-export function verifyAndAdjustRivenConfig(
-  config: RivenConfig,
+function isFlatRivenStat(stat: string): boolean {
+  return stat === 'Range' || stat === 'Initial Combo' || stat === 'Punch Through';
+}
+
+export function getRivenStatBounds(
+  stat: string,
   weaponType: RivenWeaponType,
-): { config: RivenConfig; adjusted: boolean } {
-  const positives = config.positive.filter((s) => s.stat.trim() !== '');
-  const hasNegative = Boolean(config.negative?.stat);
+  disposition: number,
+  isNegative: boolean,
+  rollRule: RivenRollRule,
+): { min: number; max: number } | null {
+  const base = getRivenBaselineValue(stat, weaponType);
+  if (base == null) return null;
+  const d = clampDisposition(disposition);
+
+  if (isNegative) {
+    if (rollRule.negativeMultiplier <= 0) return null;
+    const mag = rollRule.negativeMultiplier;
+    const maxAbs = base * d * 1.1 * mag;
+    const minAbs = base * d * 0.9 * mag;
+    return { min: -maxAbs, max: -minAbs };
+  }
+
+  const pos = rollRule.positiveMultiplier;
+  const max = base * d * 1.1 * pos;
+  const min = base * d * 0.9 * pos;
+  if (!isFlatRivenStat(stat)) {
+    return { min, max };
+  }
+  return { min, max };
+}
+
+export interface RivenResolveContext {
+  weaponType: RivenWeaponType;
+  disposition: number;
+  manualRank?: number | null;
+  assumeValuesAreMaxRank?: boolean;
+}
+
+export interface RivenResolveResult {
+  config: RivenConfig;
+  rank: number;
+  adjusted: boolean;
+  warnings: string[];
+  needsManualRank: boolean;
+}
+
+export function resolveRivenConfig(
+  config: RivenConfig,
+  ctx: RivenResolveContext,
+): RivenResolveResult {
+  const warnings: string[] = [];
+  const normalized = normalizeRivenConfigMembership(config);
+  const positives = normalized.positive.filter((s) => s.stat.trim() !== '');
+  const hasNegative = Boolean(normalized.negative?.stat);
   const rollRule = getRollRule(positives.length, hasNegative);
 
+  if (!rollRule) {
+    warnings.push(
+      'Could not determine riven roll type (need 2–3 positives and valid curse layout).',
+    );
+    return {
+      config: normalized,
+      rank: normalized.rivenRank ?? 8,
+      adjusted: false,
+      warnings,
+      needsManualRank: false,
+    };
+  }
+
+  const disp = Number.isFinite(ctx.disposition) ? ctx.disposition : 1;
+  const assumeMax = ctx.assumeValuesAreMaxRank !== false;
   let adjusted = false;
+
+  const toMaxRankMag = (absInput: number): number => {
+    if (assumeMax) return absInput;
+    const r = ctx.manualRank ?? normalized.rivenRank ?? 8;
+    const slotR = clamp(Math.round(r), 0, 8);
+    return absInput * (9 / (slotR + 1));
+  };
+
   const adjustedPositives = positives.map((stat) => {
-    const baseline = getRivenBaselineValue(stat.stat, weaponType);
     const originalAbs = Math.abs(stat.value);
-    let nextAbs = originalAbs;
-
-    if (baseline != null && rollRule) {
-      const target = baseline * rollRule.positiveMultiplier;
-      const min = target * 0.9;
-      const max = target * 1.1;
-      nextAbs = clamp(originalAbs, min, max);
+    const scaled = toMaxRankMag(originalAbs);
+    const bounds = getRivenStatBounds(stat.stat, ctx.weaponType, disp, false, rollRule);
+    let nextAbs = scaled;
+    if (bounds) {
+      nextAbs = clamp(scaled, bounds.min, bounds.max);
     }
-
     const nextValue = toOneDecimal(nextAbs);
     if (nextValue !== toOneDecimal(originalAbs) || stat.value < 0) adjusted = true;
     return { ...stat, value: nextValue, isNegative: false };
   });
 
-  let adjustedNegative: RivenStat | undefined = undefined;
-  if (config.negative?.stat) {
-    const baseline = getRivenBaselineValue(config.negative.stat, weaponType);
-    const originalAbs = Math.abs(config.negative.value);
-    let nextAbs = originalAbs;
-
-    if (baseline != null && rollRule && rollRule.negativeMultiplier > 0) {
-      const target = baseline * rollRule.negativeMultiplier;
-      const min = target * 0.9;
-      const max = target * 1.1;
-      nextAbs = clamp(originalAbs, min, max);
+  let adjustedNegative: RivenStat | undefined;
+  if (normalized.negative?.stat) {
+    const originalAbs = Math.abs(normalized.negative.value);
+    const scaled = toMaxRankMag(originalAbs);
+    const bounds = getRivenStatBounds(
+      normalized.negative.stat,
+      ctx.weaponType,
+      disp,
+      true,
+      rollRule,
+    );
+    let nextAbs = scaled;
+    if (bounds) {
+      const a = Math.abs(bounds.min);
+      const b = Math.abs(bounds.max);
+      const lo = Math.min(a, b);
+      const hi = Math.max(a, b);
+      nextAbs = clamp(scaled, lo, hi);
     }
-
     const nextValue = -toOneDecimal(nextAbs);
-    if (nextValue !== -toOneDecimal(originalAbs) || config.negative.value > 0) {
-      adjusted = true;
-    }
+    if (nextValue !== -toOneDecimal(originalAbs) || normalized.negative.value > 0) adjusted = true;
     adjustedNegative = {
-      ...config.negative,
+      ...normalized.negative,
       value: nextValue,
       isNegative: true,
     };
   }
 
-  return {
-    config: {
-      ...config,
-      positive: adjustedPositives,
-      negative: adjustedNegative,
-    },
-    adjusted,
+  let rank = 8;
+  if (!assumeMax) {
+    const mr = ctx.manualRank ?? normalized.rivenRank;
+    if (mr != null && !Number.isNaN(mr)) {
+      rank = clamp(Math.round(mr), 0, 8);
+    } else {
+      warnings.push('Choose mod rank (0–8) when entering values at less than max rank.');
+      rank = 8;
+    }
+  } else if (normalized.rivenRank != null) {
+    rank = clamp(Math.round(normalized.rivenRank), 0, 8);
+  }
+
+  const inferredRanks: number[] = [];
+  for (const s of adjustedPositives) {
+    const bounds = getRivenStatBounds(s.stat, ctx.weaponType, disp, false, rollRule);
+    if (!bounds || bounds.max <= 0) continue;
+    inferredRanks.push(9 * (Math.abs(s.value) / bounds.max) - 1);
+  }
+  if (adjustedNegative?.stat) {
+    const bounds = getRivenStatBounds(adjustedNegative.stat, ctx.weaponType, disp, true, rollRule);
+    if (bounds && bounds.min < 0) {
+      const maxAbs = Math.abs(bounds.min);
+      if (maxAbs > 0) {
+        inferredRanks.push(9 * (Math.abs(adjustedNegative.value) / maxAbs) - 1);
+      }
+    }
+  }
+
+  let needsManualRank = false;
+  if (assumeMax && inferredRanks.length >= 2) {
+    const spread = Math.max(...inferredRanks) - Math.min(...inferredRanks);
+    if (spread > 1.5) {
+      warnings.push(
+        'These values do not match a single mod rank at this disposition (spread > 1.5 ranks).',
+      );
+    }
+  }
+
+  const outConfig: RivenConfig = {
+    ...config,
+    polarity: normalized.polarity,
+    positive: adjustedPositives,
+    negative: adjustedNegative,
+    rivenRank: rank,
   };
+
+  return {
+    config: outConfig,
+    rank,
+    adjusted,
+    warnings,
+    needsManualRank,
+  };
+}
+
+export function verifyAndAdjustRivenConfig(
+  config: RivenConfig,
+  weaponType: RivenWeaponType,
+  disposition: number = 1,
+): { config: RivenConfig; adjusted: boolean } {
+  const { config: resolved, adjusted } = resolveRivenConfig(config, {
+    weaponType,
+    disposition,
+    assumeValuesAreMaxRank: true,
+    manualRank: 8,
+  });
+  return { config: resolved, adjusted };
 }
 
 export function validateRivenConfig(config: RivenConfig): string | null {
@@ -245,7 +374,8 @@ export function validateRivenConfig(config: RivenConfig): string | null {
 export function formatRivenLine(stat: RivenStat): string {
   const magnitude = Math.abs(stat.value).toFixed(1).replace(/\.0$/, '');
   const sign = stat.isNegative ? '-' : '+';
-  const isFlat = stat.stat === 'Range' || stat.stat === 'Initial Combo';
+  const isFlat =
+    stat.stat === 'Range' || stat.stat === 'Initial Combo' || stat.stat === 'Punch Through';
   return `${sign}${magnitude}${isFlat ? '' : '%'} ${stat.stat}`;
 }
 
@@ -304,7 +434,7 @@ export function createRivenMod(config: RivenConfig, imagePath: string | undefine
     compat_name: 'RIVEN',
     polarity: normalizedConfig.polarity ?? 'AP_ATTACK',
     base_drain: 18,
-    fusion_limit: 0,
+    fusion_limit: 8,
     description: JSON.stringify([buildRivenDescription(normalizedConfig)]),
     image_path: imagePath,
   };

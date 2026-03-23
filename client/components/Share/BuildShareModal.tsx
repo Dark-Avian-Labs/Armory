@@ -55,7 +55,6 @@ function formatEquipmentType(type: EquipmentType): string {
   return type.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
-/** Readable download name: keeps spaces; strips characters illegal on Windows file names. */
 function sanitizeDownloadSegment(value: string, fallback: string, maxLen: number): string {
   let t = value
     .trim()
@@ -211,7 +210,6 @@ function ShareFormaCounts({ forma }: { forma?: FormaCount }) {
   );
 }
 
-/** Orokin Reactor / Catalyst — replace `client/assets/orokin-reactor.png` with final art. */
 function ShareReactorStamp({ active }: { active: boolean }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
@@ -554,7 +552,8 @@ export function BuildShareModal({
   const isWide = aspect === 'wide';
   const canvasWidth = isWide ? 1280 : 720;
   const canvasHeight = isWide ? 720 : 1280;
-  const modScale = isWide ? 0.44 : 0.36;
+  /* Wide: larger scale now that mods sit in a dedicated full-height row above arcane/shards/skills */
+  const modScale = isWide ? 0.56 : 0.36;
   const arcaneScale = isWide ? 0.64 : 0.54;
   const radarMain = isWide ? 200 : 156;
   const radarSecondary = isWide ? 178 : 140;
@@ -745,69 +744,71 @@ export function BuildShareModal({
                 </div>
 
                 {isWide ? (
-                  <div className="mt-3 grid min-h-0 flex-1 grid-cols-12 gap-2.5">
-                    <div className="col-span-8 flex min-h-0 flex-col gap-2.5">
-                      <div className="glass-panel flex min-h-0 flex-1 flex-col rounded-2xl p-3">
-                        <p className="mb-2 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
+                  <div className="mt-3 grid min-h-0 flex-1 grid-cols-12 grid-rows-[minmax(0,1fr)_auto] gap-x-2.5 gap-y-2.5">
+                    <div className="col-span-8 row-start-1 min-h-0">
+                      <div className="glass-panel flex h-full min-h-0 flex-col rounded-2xl p-2.5">
+                        <p className="mb-1.5 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
                           Mods ({equippedSlots.length})
                         </p>
                         <div className="flex min-h-0 flex-1 flex-col">
                           <ModShareGrid slots={equippedSlots} modScale={modScale} fillSpace />
                         </div>
                       </div>
-                      {isWarframe ? (
-                        <div className="grid shrink-0 grid-cols-12 gap-2">
-                          <div className="glass-panel col-span-3 flex min-h-0 flex-col rounded-xl p-2">
-                            <p className="mb-1.5 shrink-0 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
-                              Arcane
-                            </p>
-                            <div className="flex min-h-0 flex-1 flex-col items-center justify-evenly gap-3 py-1">
-                              {filledArcanes.length === 0 ? (
-                                <span className="text-[9px] text-[#7e8fb8]">None</span>
-                              ) : (
-                                filledArcanes.map((slot, i) => {
-                                  const a = slot.arcane!;
-                                  const maxRank = getMaxRank(a);
-                                  const art = a.image_path ? `/images${a.image_path}` : '';
-                                  return (
-                                    <ArcaneCardPreview
-                                      key={`${a.unique_name}-${i}`}
-                                      layout={{
-                                        ...DEFAULT_ARCANE_LAYOUT,
-                                        scale: arcaneScale,
-                                      }}
-                                      rarity={normalizeArcaneRarity(a.rarity)}
-                                      arcaneArt={art}
-                                      arcaneName={a.name}
-                                      rank={slot.rank}
-                                      maxRank={maxRank}
-                                    />
-                                  );
-                                })
-                              )}
-                            </div>
-                          </div>
-                          <div className="glass-panel col-span-4 rounded-xl p-2">
-                            <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
-                              Shards
-                            </p>
-                            <ShareShardColumn slots={shardSlots} shards={shardTypes} />
-                          </div>
-                          <div className="glass-panel col-span-5 rounded-xl p-2">
-                            <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
-                              Skills
-                            </p>
-                            <ShareSkillsPanel
-                              ownAbilities={shareAbilities.ownAbilities}
-                              dbAbilities={shareAbilities.dbAbilities}
-                              selectedReplacement={shareAbilities.selectedReplacement}
-                              helminthConfig={helminthConfig}
-                              iconPx={skillIconPx}
-                            />
+                    </div>
+                    {isWarframe ? (
+                      <div className="col-span-8 row-start-2 grid grid-cols-12 gap-2">
+                        <div className="glass-panel col-span-3 flex min-h-0 flex-col rounded-xl p-2">
+                          <p className="mb-1.5 shrink-0 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
+                            Arcane
+                          </p>
+                          <div className="flex min-h-0 flex-1 flex-col items-center justify-evenly gap-3 py-1">
+                            {filledArcanes.length === 0 ? (
+                              <span className="text-[9px] text-[#7e8fb8]">None</span>
+                            ) : (
+                              filledArcanes.map((slot, i) => {
+                                const a = slot.arcane!;
+                                const maxRank = getMaxRank(a);
+                                const art = a.image_path ? `/images${a.image_path}` : '';
+                                return (
+                                  <ArcaneCardPreview
+                                    key={`${a.unique_name}-${i}`}
+                                    layout={{
+                                      ...DEFAULT_ARCANE_LAYOUT,
+                                      scale: arcaneScale,
+                                    }}
+                                    rarity={normalizeArcaneRarity(a.rarity)}
+                                    arcaneArt={art}
+                                    arcaneName={a.name}
+                                    rank={slot.rank}
+                                    maxRank={maxRank}
+                                  />
+                                );
+                              })
+                            )}
                           </div>
                         </div>
-                      ) : (
-                        <div className="glass-panel shrink-0 rounded-xl p-2">
+                        <div className="glass-panel col-span-4 rounded-xl p-2">
+                          <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
+                            Shards
+                          </p>
+                          <ShareShardColumn slots={shardSlots} shards={shardTypes} />
+                        </div>
+                        <div className="glass-panel col-span-5 rounded-xl p-2">
+                          <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
+                            Skills
+                          </p>
+                          <ShareSkillsPanel
+                            ownAbilities={shareAbilities.ownAbilities}
+                            dbAbilities={shareAbilities.dbAbilities}
+                            selectedReplacement={shareAbilities.selectedReplacement}
+                            helminthConfig={helminthConfig}
+                            iconPx={skillIconPx}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="col-span-8 row-start-2">
+                        <div className="glass-panel rounded-xl p-2">
                           <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
                             Arcane
                           </p>
@@ -834,9 +835,9 @@ export function BuildShareModal({
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                    <div className="col-span-4 flex min-h-0 flex-1 flex-col gap-2.5">
+                      </div>
+                    )}
+                    <div className="col-span-4 col-start-9 row-span-2 row-start-1 flex min-h-0 flex-col gap-2.5">
                       {isWarframe && warframeCalc ? (
                         <>
                           <div className="glass-panel flex min-h-0 flex-1 flex-col items-center rounded-2xl p-2.5">

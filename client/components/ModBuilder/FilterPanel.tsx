@@ -18,6 +18,45 @@ interface FilterPanelProps {
   searchResetKey?: number;
 }
 
+function normalizeMatchText(value: string | undefined): string {
+  if (!value) return '';
+  return value
+    .toLowerCase()
+    .replace(/[_/\\-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getSearchTokens(value: string | undefined): string[] {
+  const normalized = normalizeMatchText(value);
+  if (!normalized) return [];
+  return normalized.split(' ').filter((token) => token.length >= 3);
+}
+
+function stanceMatchesEquipment(mod: Mod, equipment: FilterPanelProps['equipment']): boolean {
+  const compat = normalizeMatchText(mod.compat_name);
+  if (!compat || compat === 'any' || compat === 'melee') {
+    return true;
+  }
+  if (!equipment) {
+    return true;
+  }
+
+  const searchable = `${normalizeMatchText(equipment.name)} ${normalizeMatchText(equipment.unique_name)}`;
+  if (!searchable) {
+    return true;
+  }
+
+  if (searchable.includes(compat) || compat.includes(normalizeMatchText(equipment.name))) {
+    return true;
+  }
+
+  const compatTokens = getSearchTokens(compat);
+  return compatTokens.some((token) => searchable.includes(token));
+}
+
 function getSyntheticSpecialItemStanceMods(
   equipmentType: EquipmentType,
   equipment: FilterPanelProps['equipment'],
@@ -214,6 +253,7 @@ export function FilterPanel({
         (m) =>
           (m.type || '').toUpperCase() === 'STANCE' &&
           !isPostureMod(m) &&
+          stanceMatchesEquipment(m, equipment) &&
           (!requiredExaltedStanceName ||
             m.name.trim().toLowerCase() === requiredExaltedStanceName.toLowerCase()),
       );
@@ -373,11 +413,13 @@ export function FilterPanel({
         {(search || rarity !== 'ALL') && ' (filtered)'}
       </div>
 
-      {targetSlotType && targetSlotType !== 'general' && (
-        <div className="bg-accent-weak/20 text-accent mb-2 rounded-md px-2 py-1 text-xs">
-          Showing {targetSlotType} mods
-        </div>
-      )}
+      <div className="mb-2 min-h-7">
+        {targetSlotType && targetSlotType !== 'general' ? (
+          <div className="bg-accent-weak/20 text-accent rounded-md px-2 py-1 text-xs">
+            Showing {targetSlotType} mods
+          </div>
+        ) : null}
+      </div>
 
       <div className="custom-scroll max-h-[calc(100vh-420px)] overflow-y-auto">
         {loading && <p className="text-muted text-sm">Loading mods...</p>}

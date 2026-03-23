@@ -100,6 +100,7 @@ export interface RivenConfig {
   polarity?: 'AP_ATTACK' | 'AP_TACTIC' | 'AP_DEFENSE';
   positive: RivenStat[];
   negative?: RivenStat;
+  rivenRank?: number;
 }
 
 export interface ModLevelStat {

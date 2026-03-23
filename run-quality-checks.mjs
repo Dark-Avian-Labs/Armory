@@ -5,8 +5,6 @@ const steps = [
   {
     name: 'Lint',
     command: 'pnpm run lint',
-    // Configure warning detection for this step. The patterns below are
-    // designed to match typical "N warnings" output while excluding "0 warnings".
     detectWarnings: true,
     warningPattern: /(^|\s)(\d+)?\s*warnings?\b/i,
     warningZeroPattern: /\b0 warnings?\b/i,

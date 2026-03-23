@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { verifyAndAdjustRivenConfig } from '../riven';
+import { resolveRivenConfig, verifyAndAdjustRivenConfig } from '../riven';
 
 describe('verifyAndAdjustRivenConfig', () => {
   it('clamps 3 positive no negative values to valid range', () => {
@@ -37,5 +37,28 @@ describe('verifyAndAdjustRivenConfig', () => {
 
     expect(result.adjusted).toBe(true);
     expect(result.config.negative?.value).toBeCloseTo(-26.7, 1);
+  });
+});
+
+describe('resolveRivenConfig', () => {
+  it('scales displayed stats to max-rank when not assume max', () => {
+    const { config, rank } = resolveRivenConfig(
+      {
+        polarity: 'AP_ATTACK',
+        positive: [
+          { stat: 'Damage', value: 50, isNegative: false },
+          { stat: 'Multishot', value: 30, isNegative: false },
+        ],
+      },
+      {
+        weaponType: 'primary',
+        disposition: 1,
+        assumeValuesAreMaxRank: false,
+        manualRank: 3,
+      },
+    );
+    expect(rank).toBe(3);
+    expect(config.positive[0]!.value).toBeGreaterThan(50);
+    expect(config.rivenRank).toBe(3);
   });
 });

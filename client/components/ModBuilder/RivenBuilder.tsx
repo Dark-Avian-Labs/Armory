@@ -11,13 +11,15 @@ import {
 } from '../../types/warframe';
 import {
   buildRivenDescription,
+  clampDisposition,
+  resolveRivenConfig,
   validateRivenConfig,
-  verifyAndAdjustRivenConfig,
 } from '../../utils/riven';
 
 interface RivenBuilderProps {
   availableStats: string[];
   weaponType: RivenWeaponType;
+  weaponDisposition?: number;
   config?: RivenConfig;
   onSave: (config: RivenConfig) => void;
   onClose: () => void;
@@ -26,6 +28,7 @@ interface RivenBuilderProps {
 export function RivenBuilder({
   availableStats,
   weaponType,
+  weaponDisposition = 1,
   config,
   onSave,
   onClose,
@@ -43,8 +46,10 @@ export function RivenBuilder({
 
   const [rows, setRows] = useState<RivenStat[]>(initialRows);
   const [polarity, setPolarity] = useState<RivenConfig['polarity']>(config?.polarity ?? AP_ATTACK);
+  const [assumeMaxRankStats, setAssumeMaxRankStats] = useState(true);
+  const [manualModRank, setManualModRank] = useState(config?.rivenRank ?? 8);
   const [error, setError] = useState<string>('');
-  const [adjustNotice, setAdjustNotice] = useState<string>('');
+  const [info, setInfo] = useState<string>('');
   const isMounted = useRef(false);
 
   useEffect(() => {
@@ -53,7 +58,8 @@ export function RivenBuilder({
       return;
     }
     setRows(initialRows);
-  }, [initialRows]);
+    setManualModRank(config?.rivenRank ?? 8);
+  }, [initialRows, config?.rivenRank]);
 
   const selectedStats = rows.map((r) => r.stat).filter(Boolean);
 
@@ -86,35 +92,24 @@ export function RivenBuilder({
     const validationError = validateRivenConfig(configToSave);
     if (validationError) {
       setError(validationError);
+      setInfo('');
       return;
     }
 
-    const verified = verifyAndAdjustRivenConfig(configToSave, weaponType);
-    setRows([
-      {
-        stat: verified.config.positive[0]?.stat ?? '',
-        value: verified.config.positive[0]?.value ?? 0,
-        isNegative: false,
-      },
-      {
-        stat: verified.config.positive[1]?.stat ?? '',
-        value: verified.config.positive[1]?.value ?? 0,
-        isNegative: false,
-      },
-      {
-        stat: verified.config.positive[2]?.stat ?? '',
-        value: verified.config.positive[2]?.value ?? 0,
-        isNegative: false,
-      },
-      {
-        stat: verified.config.negative?.stat ?? '',
-        value: verified.config.negative?.value ?? 0,
-        isNegative: true,
-      },
-    ]);
+    const resolved = resolveRivenConfig(configToSave, {
+      weaponType,
+      disposition: clampDisposition(weaponDisposition),
+      assumeValuesAreMaxRank: assumeMaxRankStats,
+      manualRank: assumeMaxRankStats ? 8 : manualModRank,
+    });
+
+    const warn = [...resolved.warnings];
+    if (resolved.adjusted) {
+      warn.push('Some values were clamped to the wiki legal min/max for this disposition.');
+    }
+    setInfo(warn.length ? warn.join(' ') : '');
     setError('');
-    setAdjustNotice(verified.adjusted ? 'Some values were adjusted to valid roll ranges.' : '');
-    onSave(verified.config);
+    onSave(resolved.config);
   };
 
   return (
@@ -129,6 +124,22 @@ export function RivenBuilder({
 
         <div className="border-riven bg-glass mb-4 rounded-lg border p-4">
           <div className="text-riven-light mb-2 text-center text-sm font-semibold">Riven Mod</div>
+          <p className="text-muted mb-2 text-center text-[10px]">
+            Disposition:{' '}
+            <span className="text-foreground font-semibold">
+              {clampDisposition(weaponDisposition).toFixed(2)}
+            </span>{' '}
+            (from selected weapon; drives stat min/max per{' '}
+            <a
+              href="https://wiki.warframe.com/w/Riven_Mods"
+              target="_blank"
+              rel="noreferrer"
+              className="text-accent underline"
+            >
+              wiki
+            </a>
+            )
+          </p>
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className="text-muted text-xs font-semibold">Polarity</span>
             <div className="flex items-center gap-1.5">
@@ -191,6 +202,38 @@ export function RivenBuilder({
           </div>
         </div>
 
+        <div className="mb-3 space-y-2">
+          <label className="flex cursor-pointer items-center gap-2 text-[11px]">
+            <input
+              type="checkbox"
+              checked={assumeMaxRankStats}
+              onChange={(e) => setAssumeMaxRankStats(e.target.checked)}
+            />
+            <span>
+              Values are <strong>max-rank</strong> (fully ranked) — matches in-game stats at mod
+              rank 8
+            </span>
+          </label>
+          {!assumeMaxRankStats && (
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="text-muted w-32 shrink-0">Mod rank (0–8)</span>
+              <input
+                type="number"
+                min={0}
+                max={8}
+                value={manualModRank}
+                onChange={(e) =>
+                  setManualModRank(Math.min(8, Math.max(0, parseInt(e.target.value, 10) || 0)))
+                }
+                className="form-input w-16 text-xs"
+              />
+              <span className="text-muted">
+                Values you entered are scaled to max-rank storage (see wiki).
+              </span>
+            </div>
+          )}
+        </div>
+
         <div className="mb-4">
           <div className="space-y-2">
             {rows.map((stat, i) => (
@@ -226,8 +269,15 @@ export function RivenBuilder({
           </div>
         </div>
 
-        <p className="text-muted mb-2 text-[11px]">Values will be verified and adjusted on save.</p>
-        {adjustNotice && <p className="text-muted mb-2 text-xs">{adjustNotice}</p>}
+        <p className="text-muted mb-2 text-[11px]">
+          On save, stats are clamped to legal ranges for your weapon disposition (see wiki). Mod
+          rank on the slot scales the displayed bonus.
+        </p>
+        {info && (
+          <p className="text-muted mb-2 text-[11px] whitespace-pre-wrap" data-tone="info">
+            {info}
+          </p>
+        )}
         {error && <p className="text-danger mb-4 text-xs">{error}</p>}
 
         <div className="flex justify-end gap-2">

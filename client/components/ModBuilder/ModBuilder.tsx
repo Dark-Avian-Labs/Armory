@@ -34,7 +34,6 @@ import {
   getRivenStatsForType,
   getRivenWeaponType,
   isRivenMod,
-  normalizeRivenConfigMembership,
   RIVEN_PLACEHOLDER_UNIQUE,
 } from '../../utils/riven';
 import { getRequiredExaltedStanceName, matchesSpecialItemType } from '../../utils/specialItems';
@@ -934,15 +933,16 @@ export function ModBuilder() {
   const handleRivenSave = useCallback(
     (config: RivenConfig) => {
       if (editingRivenSlot === null) return;
-      const normalizedConfig = normalizeRivenConfigMembership(config);
+      const rank = config.rivenRank ?? 8;
       setSlots((prev) =>
         prev.map((slot) => {
           if (slot.index !== editingRivenSlot) return slot;
           if (!slot.mod || !isRivenMod(slot.mod)) return slot;
           return {
             ...slot,
-            riven_config: normalizedConfig,
-            mod: createRivenMod(normalizedConfig, slot.riven_art_path ?? slot.mod.image_path),
+            rank,
+            riven_config: config,
+            mod: createRivenMod(config, slot.riven_art_path ?? slot.mod.image_path),
           };
         }),
       );
@@ -1087,6 +1087,8 @@ export function ModBuilder() {
     selectedEquipment && selectedWeaponTypes.includes(equipmentType)
       ? (selectedEquipment as Weapon)
       : null;
+  const rivenDisposition =
+    selectedWeapon?.riven_disposition ?? selectedWeapon?.omega_attenuation ?? 1;
   const selectedIsCompanionWeapon = selectedWeapon != null && isCompanionWeapon(selectedWeapon);
   const supportsArcanes =
     !selectedIsCompanionWeapon &&
@@ -1516,6 +1518,7 @@ export function ModBuilder() {
         <RivenBuilder
           availableStats={getRivenStatsForType(equipmentType)}
           weaponType={rivenWeaponType}
+          weaponDisposition={rivenDisposition}
           config={slots.find((s) => s.index === editingRivenSlot)?.riven_config}
           onSave={handleRivenSave}
           onClose={handleRivenClose}

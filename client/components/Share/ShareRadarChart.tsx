@@ -1,5 +1,3 @@
-/** SVG radar / spider chart: values are normalized relative to the largest value in the set. */
-
 interface ShareRadarChartProps {
   size: number;
   labels: string[];
@@ -10,7 +8,6 @@ interface ShareRadarChartProps {
   className?: string;
 }
 
-/** Word-wrap for corner labels (narrower when more vertices). */
 function wrapRadarLabelLines(label: string, maxCharsPerLine: number): string[] {
   const words = label.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return [label];
