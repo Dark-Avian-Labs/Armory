@@ -89,7 +89,7 @@ export function extractElementMods(slots: ModSlot[]): Array<{
         });
       }
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production') {
+      if (import.meta.env.DEV) {
         console.warn('[extractElementMods] Failed to parse mod description', {
           error: err,
           modDesc,

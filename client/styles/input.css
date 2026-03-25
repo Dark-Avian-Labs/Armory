@@ -215,10 +215,6 @@ html.theme-dark {
     border-radius: 1rem;
   }
 
-  /*
-   * PNG export (html-to-image): backdrop-filter is rasterized poorly (banding / JPEG-like noise).
-   * Inside .share-export-root only: drop blur and use opaque “glass” fills so captures stay clean.
-   */
   .share-export-root * {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;

@@ -2,13 +2,7 @@ import { spawnSync } from 'node:child_process';
 
 const steps = [
   { name: 'Formatting', command: 'pnpm run check-format' },
-  {
-    name: 'Lint',
-    command: 'pnpm run lint',
-    detectWarnings: true,
-    warningPattern: /(^|\s)(\d+)?\s*warnings?\b/i,
-    warningZeroPattern: /\b0 warnings?\b/i,
-  },
+  { name: 'Lint', command: 'pnpm run lint' },
   { name: 'Typecheck', command: 'pnpm run typecheck' },
   { name: 'Tests', command: 'pnpm run test' },
 ];
@@ -42,7 +36,14 @@ for (const step of steps) {
 
   const success = run.status === 0;
   const output = `${run.stdout ?? ''}\n${run.stderr ?? ''}`;
-  const hasWarnings = success && WARNING_PATTERN.test(output) && !ZERO_WARNING_PATTERN.test(output);
+  const shouldDetectWarnings = step.detectWarnings !== false;
+  const warningPattern = step.warningPattern ?? WARNING_PATTERN;
+  const zeroWarningPattern = step.warningZeroPattern ?? ZERO_WARNING_PATTERN;
+  const hasWarnings =
+    success &&
+    shouldDetectWarnings &&
+    warningPattern.test(output) &&
+    !zeroWarningPattern.test(output);
   results.push({ name: step.name, success, hasWarnings, elapsedSeconds });
   console.log(
     `--- ${step.name} completed in ${elapsedSeconds.toFixed(2)}s (${success ? (hasWarnings ? 'WARN' : 'PASS') : 'FAIL'}) ---`,
