@@ -6,6 +6,11 @@ import { z } from 'zod';
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { requireAdmin } from '../auth/middleware.js';
 import { getDb } from '../db/connection.js';
+import {
+  getAdminImportSnapshot,
+  startAdminImportJob,
+  subscribeAdminImportSnapshot,
+} from '../import/adminImportJob.js';
 
 export const apiRouter = Router();
 
@@ -683,6 +688,95 @@ apiRouter.get('/archon-shards', (_req: Request, res: Response) => {
   } catch (err) {
     sendInternalError(res, 'archonShards.list', err);
   }
+});
+
+apiRouter.get('/admin/import/state', requireAdmin, (_req: Request, res: Response) => {
+  try {
+    res.json(getAdminImportSnapshot());
+  } catch (err) {
+    sendInternalError(res, 'admin.import.state', err);
+  }
+});
+
+apiRouter.post('/admin/import/run', requireAdmin, (req: Request, res: Response) => {
+  try {
+    const userId = req.session.user_id;
+    if (!userId) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const result = startAdminImportJob(userId);
+    if (!result.started) {
+      res.status(409).json({
+        error: result.reason ?? 'Import job is already running.',
+        snapshot: result.snapshot,
+      });
+      return;
+    }
+    res.status(202).json({
+      started: true,
+      snapshot: result.snapshot,
+    });
+  } catch (err) {
+    sendInternalError(res, 'admin.import.run', err);
+  }
+});
+
+apiRouter.get('/admin/import/stream', requireAdmin, (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  let closed = false;
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
+
+  const cleanup = () => {
+    if (closed) return;
+    closed = true;
+    if (heartbeat) {
+      clearInterval(heartbeat);
+      heartbeat = null;
+    }
+    unsubscribe();
+  };
+
+  const canWrite = () => !closed && !res.writableEnded && !res.writableFinished && res.writable;
+
+  const sendSnapshot = () => {
+    if (!canWrite()) {
+      cleanup();
+      return;
+    }
+    try {
+      const payload = JSON.stringify(getAdminImportSnapshot());
+      res.write(`event: snapshot\n`);
+      res.write(`data: ${payload}\n\n`);
+    } catch {
+      cleanup();
+    }
+  };
+
+  const unsubscribe = subscribeAdminImportSnapshot(() => {
+    sendSnapshot();
+  });
+
+  sendSnapshot();
+  heartbeat = setInterval(() => {
+    if (!canWrite()) {
+      cleanup();
+      return;
+    }
+    try {
+      res.write(': ping\n\n');
+    } catch {
+      cleanup();
+    }
+  }, 15_000);
+
+  req.on('close', () => {
+    cleanup();
+  });
 });
 
 apiRouter.put('/archon-shards/types/:id', requireAdmin, (req: Request, res: Response) => {

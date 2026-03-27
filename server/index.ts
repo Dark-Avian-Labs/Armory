@@ -35,7 +35,6 @@ import { createCentralSchema } from './db/centralSchema.js';
 import { closeAll, getCentralDb } from './db/connection.js';
 import { createAppSchema } from './db/schema.js';
 import { seedArchonShards } from './db/seedArchonShards.js';
-import { runStartupPipeline } from './import/startupPipeline.js';
 import { apiRouter } from './routes/api.js';
 import { authRouter } from './routes/auth.js';
 
@@ -241,10 +240,6 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`[${APP_NAME}] Server running on http://${HOST}:${PORT} (${NODE_ENV})`);
-
-  runStartupPipeline().catch((err: unknown) => {
-    console.error('[Startup] Pipeline failed:', err);
-  });
 });
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;

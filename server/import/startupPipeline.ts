@@ -109,6 +109,7 @@ export interface StartupPipelineOptions {
    * Server startup omits this for quieter logs.
    */
   cliReport?: boolean;
+  reporter?: (line: string, level: 'info' | 'error') => void;
 }
 
 export async function runStartupPipeline(
@@ -116,17 +117,22 @@ export async function runStartupPipeline(
 ): Promise<StartupPipelineSummary> {
   const startTime = Date.now();
   const cli = options.cliReport === true;
-  const log = (msg: string) => console.log(`${cli ? CLI_TAG : TAG} ${msg}`);
-  const err = (msg: string, e?: unknown) =>
-    console.error(
-      `${cli ? CLI_TAG : TAG} ${msg}`,
-      e !== undefined ? (e instanceof Error ? e.message : e) : '',
-    );
+  const emit = (level: 'info' | 'error', msg: string): void => {
+    const line = `${cli ? CLI_TAG : TAG} ${msg}`;
+    options.reporter?.(line, level);
+    if (level === 'error') console.error(line);
+    else console.log(line);
+  };
+  const log = (msg: string) => emit('info', msg);
+  const err = (msg: string, e?: unknown) => {
+    const detail = e !== undefined ? (e instanceof Error ? e.message : String(e)) : '';
+    emit('error', detail ? `${msg} ${detail}` : msg);
+  };
 
   const summary = emptySummary(startTime);
 
   const phase = (title: string) => {
-    if (cli) console.log(`\n── ${title} ──`);
+    if (cli) emit('info', `\n── ${title} ──`);
   };
 
   phase('Schema');
