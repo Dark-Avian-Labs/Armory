@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   open: boolean;
@@ -81,7 +82,7 @@ export function Modal({ open, onClose, children, className, ariaLabelledBy }: Mo
     event.stopPropagation();
   };
 
-  return (
+  const modalContent = (
     <div className="modal-overlay" onClick={onClose}>
       <div
         className={modalClass}
@@ -96,4 +97,10 @@ export function Modal({ open, onClose, children, className, ariaLabelledBy }: Mo
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined' || !document.body) {
+    return null;
+  }
+
+  return createPortal(modalContent, document.body);
 }
