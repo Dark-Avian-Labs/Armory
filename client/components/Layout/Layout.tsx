@@ -19,6 +19,7 @@ import { CompareBar } from '../Compare/CompareBar';
 import { Menu } from '../ui/Menu';
 import { EquipmentGridModal } from './EquipmentGridModal';
 import { SearchBar } from './SearchBar';
+import { ThemeRadioGroup } from './ThemeRadioGroup';
 
 export function Layout() {
   const [showAddBuild, setShowAddBuild] = useState(false);
@@ -29,7 +30,7 @@ export function Layout() {
   const userMenuId = 'parametric-user-menu';
   const navigate = useNavigate();
   const { snapshots } = useCompare();
-  const { mode, toggleMode } = useTheme();
+  const { mode, toggleMode, uiStyle, setUiStyle } = useTheme();
   const { account, logout } = useAuth();
   const compareBarVisible = snapshots.length > 0;
   const currentYear = new Date().getFullYear();
@@ -69,7 +70,9 @@ export function Layout() {
   useEffect(() => {
     const container = menuRef.current;
     if (!container) return;
-    const items = container.querySelectorAll<HTMLElement>('[role="menuitem"]');
+    const items = container.querySelectorAll<HTMLElement>(
+      '[role="menuitem"], [role="menuitemradio"]',
+    );
     if (userMenuOpen && items.length > 0) {
       items[0].focus();
     }
@@ -82,7 +85,9 @@ export function Layout() {
   const handleUserMenuKeyDown = useCallback(
     (event: ReactKeyboardEvent) => {
       if (!userMenuOpen || !menuRef.current) return;
-      const items = Array.from(menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+      const items = Array.from(
+        menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]'),
+      );
       if (items.length === 0) return;
       const activeIndex = items.findIndex((item) => item === document.activeElement);
       const first = items[0];
@@ -225,6 +230,7 @@ export function Layout() {
                     >
                       Profile
                     </Link>
+                    <ThemeRadioGroup uiStyle={uiStyle} setUiStyle={setUiStyle} />
                     <button
                       type="button"
                       className="user-menu-item text-left"
