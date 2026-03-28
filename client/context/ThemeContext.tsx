@@ -25,7 +25,6 @@ const SHARED_THEME_STORAGE_KEY = 'dal.theme.mode';
 const SHARED_THEME_COOKIE = 'dal.theme.mode';
 const SHARED_THEME_COOKIE_DOMAIN =
   (import.meta.env.VITE_SHARED_THEME_COOKIE_DOMAIN as string | undefined) ?? '';
-const PREFER_SHARED_THEME_COOKIE = SHARED_THEME_COOKIE_DOMAIN.trim().length > 0;
 const UI_STYLE_STORAGE_KEY = 'dal.ui.style';
 const UI_STYLE_COOKIE = 'dal.ui.style';
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
@@ -58,33 +57,21 @@ function parseUiStyleCookie(): UiStyle | null {
 
 function resolveInitialMode(): ThemeMode {
   if (typeof window === 'undefined') return 'dark';
-  if (PREFER_SHARED_THEME_COOKIE) {
-    const fromCookie = parseThemeCookie();
-    if (fromCookie) return fromCookie;
-  }
-  const stored =
-    window.localStorage.getItem(SHARED_THEME_STORAGE_KEY) ??
-    window.localStorage.getItem(THEME_STORAGE_KEY);
-  if (stored === 'light' || stored === 'dark') return stored;
-  if (!PREFER_SHARED_THEME_COOKIE) {
-    const fromCookie = parseThemeCookie();
-    if (fromCookie) return fromCookie;
-  }
+  const fromCookie = parseThemeCookie();
+  if (fromCookie) return fromCookie;
+  const shared = window.localStorage.getItem(SHARED_THEME_STORAGE_KEY);
+  if (shared === 'light' || shared === 'dark') return shared;
+  const legacy = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (legacy === 'light' || legacy === 'dark') return legacy;
   return 'dark';
 }
 
 function resolveInitialUiStyle(): UiStyle {
   if (typeof window === 'undefined') return 'prism';
-  if (PREFER_SHARED_THEME_COOKIE) {
-    const fromCookie = parseUiStyleCookie();
-    if (fromCookie) return fromCookie;
-  }
+  const fromCookie = parseUiStyleCookie();
+  if (fromCookie) return fromCookie;
   const stored = window.localStorage.getItem(UI_STYLE_STORAGE_KEY);
   if (stored === 'prism' || stored === 'shadow') return stored;
-  if (!PREFER_SHARED_THEME_COOKIE) {
-    const fromCookie = parseUiStyleCookie();
-    if (fromCookie) return fromCookie;
-  }
   return 'prism';
 }
 
