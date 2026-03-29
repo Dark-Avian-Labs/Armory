@@ -310,7 +310,7 @@ export function BuildOverview() {
     return (
       <div className="mx-auto max-w-[2000px]">
         <div className="glass-shell flex h-64 items-center justify-center">
-          <p className="text-muted">Loading builds…</p>
+          <p className="text-muted">Loading builds...</p>
         </div>
       </div>
     );
@@ -505,7 +505,7 @@ export function BuildOverview() {
                   onClick={() => {
                     void handleLinkBuildToLoadout(loadout.id);
                   }}
-                  className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-all"
+                  className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-[color,background-color,border-color] duration-200"
                 >
                   <span>{loadout.name}</span>
                   <span className="text-muted/50 text-xs">{loadout.builds.length} builds</span>
@@ -547,7 +547,7 @@ export function BuildOverview() {
                     onClick={() => {
                       void handleLinkCompatibleBuildClick(build);
                     }}
-                    className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-all"
+                    className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-[color,background-color,border-color] duration-200"
                   >
                     <div className="min-w-0">
                       <div className="text-foreground truncate text-sm font-medium">
@@ -610,7 +610,7 @@ function BuildRow({
 
   return (
     <div
-      className="group hover:bg-glass-hover flex cursor-pointer items-center gap-3 px-4 py-3 transition-all"
+      className="group hover:bg-glass-hover flex cursor-pointer items-center gap-3 px-4 py-3 transition-[background-color,color] duration-200"
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -725,7 +725,7 @@ function LoadoutRow({
   return (
     <div>
       <div
-        className="group hover:bg-glass-hover flex cursor-pointer items-center gap-3 px-4 py-3 transition-all"
+        className="group hover:bg-glass-hover flex cursor-pointer items-center gap-3 px-4 py-3 transition-[background-color,color] duration-200"
         onClick={() => setExpanded(!expanded)}
         role="button"
         aria-expanded={expanded}
@@ -762,7 +762,7 @@ function LoadoutRow({
             linkedBuildRows.map(({ build, slotType }) => (
               <div
                 key={`${slotType}:${build.id}`}
-                className="group hover:bg-glass-hover flex items-center gap-3 rounded px-2 py-2 transition-all"
+                className="group hover:bg-glass-hover flex items-center gap-3 rounded px-2 py-2 transition-[background-color,color] duration-200"
               >
                 <button
                   className="flex min-w-0 flex-1 items-center gap-3 text-left"

@@ -68,7 +68,7 @@ export function ArcanePickerPanel({
         </div>
         <button
           onClick={onClose}
-          className="border-glass-border text-muted hover:bg-glass-hover hover:text-foreground rounded-lg border px-2.5 py-1 text-xs transition-all"
+          className="border-glass-border text-muted hover:bg-glass-hover hover:text-foreground rounded-lg border px-2.5 py-1 text-xs transition-[color,background-color,border-color] duration-200"
         >
           Back to Mods
         </button>

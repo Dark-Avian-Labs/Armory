@@ -115,7 +115,7 @@ export function SearchBar() {
         <input
           type="text"
           className="search-box w-52"
-          placeholder="Search…"
+          placeholder="Search..."
           aria-label="Search equipment"
           value={query}
           onChange={(e) => {
@@ -146,7 +146,7 @@ export function SearchBar() {
       {open && (
         <div className="border-glass-border bg-surface-modal absolute top-full right-0 z-50 mt-1 w-80 overflow-hidden rounded-xl border shadow-lg backdrop-blur-xl">
           {loading ? (
-            <div className="text-muted p-3 text-center text-sm">Searching…</div>
+            <div className="text-muted p-3 text-center text-sm">Searching...</div>
           ) : searchError ? (
             <div className="text-muted p-3 text-center text-sm">{searchError}</div>
           ) : (

@@ -43,7 +43,7 @@ export function ShardPickerPanel({
         <h2 className="text-foreground text-lg font-semibold">Archon Shards</h2>
         <button
           onClick={onClose}
-          className="border-glass-border text-muted hover:bg-glass-hover hover:text-foreground rounded-lg border px-2.5 py-1 text-xs transition-all"
+          className="border-glass-border text-muted hover:bg-glass-hover hover:text-foreground rounded-lg border px-2.5 py-1 text-xs transition-[color,background-color,border-color] duration-200"
         >
           Back to Mods
         </button>
@@ -57,7 +57,7 @@ export function ShardPickerPanel({
             <button
               key={shard.id}
               onClick={() => setSelectedType(shardId)}
-              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition-[color,background-color,border-color] duration-200 ${
                 selectedType === shardId
                   ? 'border-accent bg-accent-weak text-accent'
                   : 'border-glass-border text-muted hover:border-glass-border-hover'
@@ -84,7 +84,7 @@ export function ShardPickerPanel({
         <div className="space-y-1">
           <button
             onClick={onRemove}
-            className="border-danger/40 text-danger/70 hover:border-danger hover:bg-danger/10 flex w-full items-center justify-between rounded-lg border border-dashed px-3 py-2 text-left text-sm transition-all"
+            className="border-danger/40 text-danger/70 hover:border-danger hover:bg-danger/10 flex w-full items-center justify-between rounded-lg border border-dashed px-3 py-2 text-left text-sm transition-[color,background-color,border-color] duration-200"
           >
             <span>Remove Shard</span>
             <span className="text-xs">&times;</span>
@@ -108,7 +108,7 @@ export function ShardPickerPanel({
                     }
                     onSelect(selectedType, buffId, tauforged);
                   }}
-                  className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-all"
+                  className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-[color,background-color,border-color] duration-200"
                 >
                   <span>{buff.description}</span>
                   <span className="text-accent text-xs">{formattedValue}</span>

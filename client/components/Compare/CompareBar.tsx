@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 
 import { useCompare } from '../../context/CompareContext';
-import { CompareModal } from './CompareModal';
+import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
+
+const CompareModal = lazy(() =>
+  import('./CompareModal').then((m) => ({ default: m.CompareModal })),
+);
 
 function formatDps(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -91,7 +95,11 @@ export function CompareBar() {
         </div>
       </div>
 
-      {showModal && <CompareModal onClose={() => setShowModal(false)} />}
+      {showModal ? (
+        <Suspense fallback={<LazySuspenseFallback />}>
+          <CompareModal onClose={() => setShowModal(false)} />
+        </Suspense>
+      ) : null}
     </>
   );
 }

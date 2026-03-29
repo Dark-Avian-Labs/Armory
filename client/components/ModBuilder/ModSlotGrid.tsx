@@ -511,7 +511,7 @@ function SlotCell({
             </div>
           )}
           {formaMode && (
-            <div className="border-warning/60 bg-warning/15 hover:bg-warning/25 absolute inset-0 z-20 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all">
+            <div className="border-warning/60 bg-warning/15 hover:bg-warning/25 absolute inset-0 z-20 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-[background-color,border-color] duration-200">
               {slot.polarity ? (
                 <PolarityIcon polarity={slot.polarity} size={20} />
               ) : (
@@ -541,7 +541,7 @@ function SlotCell({
 
           {formaMode ? (
             <>
-              <div className="border-warning/50 bg-warning/10 hover:bg-warning/20 absolute inset-0 z-20 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-all">
+              <div className="border-warning/50 bg-warning/10 hover:bg-warning/20 absolute inset-0 z-20 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-[background-color,border-color] duration-200">
                 {slot.polarity ? (
                   <PolarityIcon polarity={slot.polarity} size={24} />
                 ) : (

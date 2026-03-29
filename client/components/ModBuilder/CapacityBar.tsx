@@ -127,7 +127,7 @@ export function CapacityBar({ capacity, formaCost, formaMode, onFormaToggle }: C
           {onFormaToggle && (
             <button
               onClick={onFormaToggle}
-              className={`flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] transition-all ${
+              className={`flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] transition-[color,background-color,border-color] duration-200 ${
                 formaMode
                   ? 'border-warning bg-warning/10 text-warning'
                   : 'border-glass-border text-muted hover:border-glass-border-hover hover:text-foreground'
@@ -146,7 +146,7 @@ export function CapacityBar({ capacity, formaCost, formaMode, onFormaToggle }: C
 
       <div className="bg-glass-active h-2 overflow-hidden rounded-full">
         <div
-          className={`h-full rounded-full transition-all duration-300 ${
+          className={`h-full rounded-full transition-[width,background-color] duration-300 ${
             isOverCapacity ? 'bg-danger' : percentage > 80 ? 'bg-warning' : 'bg-accent'
           }`}
           style={{ width: `${Math.min(percentage, 100)}%` }}

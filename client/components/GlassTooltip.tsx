@@ -8,6 +8,8 @@ interface GlassTooltipProps {
   disabled?: boolean;
 }
 
+const WINDOW_REPOSITION_LISTENERS: AddEventListenerOptions = { capture: true, passive: true };
+
 export function GlassTooltip({ children, content, width = 'w-56', disabled }: GlassTooltipProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -26,12 +28,12 @@ export function GlassTooltip({ children, content, width = 'w-56', disabled }: Gl
     };
 
     updatePosition();
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition, { passive: true });
+    window.addEventListener('scroll', updatePosition, WINDOW_REPOSITION_LISTENERS);
 
     return () => {
       window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('scroll', updatePosition, WINDOW_REPOSITION_LISTENERS);
     };
   }, [hovered, disabled]);
 

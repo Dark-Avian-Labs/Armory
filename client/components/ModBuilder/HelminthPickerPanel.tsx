@@ -66,7 +66,7 @@ export function HelminthPickerPanel({
         </div>
         <button
           onClick={onClose}
-          className="border-glass-border text-muted hover:bg-glass-hover hover:text-foreground rounded-lg border px-2.5 py-1 text-xs transition-all"
+          className="border-glass-border text-muted hover:bg-glass-hover hover:text-foreground rounded-lg border px-2.5 py-1 text-xs transition-[color,background-color,border-color] duration-200"
         >
           Back to Mods
         </button>
@@ -92,7 +92,7 @@ export function HelminthPickerPanel({
           <div className="space-y-1.5">
             <button
               onClick={onRestore}
-              className="border-danger/40 hover:border-danger hover:bg-danger/10 flex w-full items-start gap-3 rounded-lg border border-dashed p-3 text-left transition-all"
+              className="border-danger/40 hover:border-danger hover:bg-danger/10 flex w-full items-start gap-3 rounded-lg border border-dashed p-3 text-left transition-[color,background-color,border-color] duration-200"
             >
               <div className="bg-danger/10 text-danger/60 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
                 &times;
@@ -108,7 +108,7 @@ export function HelminthPickerPanel({
               <button
                 key={ability.unique_name}
                 onClick={() => onSelect(ability)}
-                className="border-glass-border hover:border-glass-border-hover hover:bg-glass-hover flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-all"
+                className="border-glass-border hover:border-glass-border-hover hover:bg-glass-hover flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-[color,background-color,border-color] duration-200"
               >
                 {ability.image_path ? (
                   <img

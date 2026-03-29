@@ -55,7 +55,7 @@ export function ElementOutput({ weapon, slots }: ElementOutputProps) {
               className="relative flex items-center gap-2 overflow-hidden rounded py-1 pr-2 pl-1"
             >
               <div
-                className="absolute inset-y-0 left-0 rounded transition-all duration-300"
+                className="absolute inset-y-0 left-0 rounded transition-[width,opacity] duration-300"
                 style={{
                   width: `${barWidth}%`,
                   backgroundColor: color,

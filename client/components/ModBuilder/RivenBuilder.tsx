@@ -166,7 +166,7 @@ export function RivenBuilder({
                     key={p.key}
                     type="button"
                     onClick={() => setPolarity(p.key)}
-                    className={`flex h-8 w-8 items-center justify-center rounded-md border transition-all ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-md border transition-[color,background-color,border-color] duration-200 ${
                       active
                         ? 'border-accent bg-accent-weak'
                         : 'border-glass-border bg-glass-hover hover:border-glass-border-hover'

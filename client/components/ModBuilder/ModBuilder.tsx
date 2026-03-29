@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { lazy, Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { buildEditPath } from '../../app/paths';
@@ -37,20 +37,38 @@ import {
   RIVEN_PLACEHOLDER_UNIQUE,
 } from '../../utils/riven';
 import { getRequiredExaltedStanceName, matchesSpecialItemType } from '../../utils/specialItems';
-import { BuildShareModal } from '../Share/BuildShareModal';
+import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { Modal } from '../ui/Modal';
 import { AbilityBar } from './AbilityBar';
-import { ArcanePickerPanel } from './ArcanePickerPanel';
 import { ArcaneSlots, type ArcaneSlot, type Arcane } from './ArcaneSlots';
 import { ArchonShardSlots, type ShardSlotConfig, type ShardType } from './ArchonShardSlots';
 import { CapacityBar } from './CapacityBar';
 import { ElementOutput } from './ElementOutput';
-import { FilterPanel } from './FilterPanel';
-import { HelminthPickerPanel } from './HelminthPickerPanel';
 import { ModSlotGrid } from './ModSlotGrid';
-import { RivenBuilder } from './RivenBuilder';
-import { ShardPickerPanel } from './ShardPickerPanel';
 import { StatsPanel } from './StatsPanel';
+
+/** Max wait before loading mod picker even if the browser stays busy (slow devices). */
+const FILTER_PANEL_IDLE_TIMEOUT_MS = 2000;
+
+const FilterPanelLazy = lazy(() =>
+  import('./FilterPanel').then((m) => ({ default: m.FilterPanel })),
+);
+
+const BuildShareModal = lazy(() =>
+  import('../Share/BuildShareModal').then((m) => ({ default: m.BuildShareModal })),
+);
+const HelminthPickerPanel = lazy(() =>
+  import('./HelminthPickerPanel').then((m) => ({ default: m.HelminthPickerPanel })),
+);
+const ArcanePickerPanel = lazy(() =>
+  import('./ArcanePickerPanel').then((m) => ({ default: m.ArcanePickerPanel })),
+);
+const ShardPickerPanel = lazy(() =>
+  import('./ShardPickerPanel').then((m) => ({ default: m.ShardPickerPanel })),
+);
+const RivenBuilder = lazy(() =>
+  import('./RivenBuilder').then((m) => ({ default: m.RivenBuilder })),
+);
 
 type RightPanelMode = 'mods' | 'helminth' | 'arcanes' | 'shards';
 
@@ -195,12 +213,14 @@ export function ModBuilder() {
   const [formaMode, setFormaMode] = useState(false);
   const [defaultPolarities, setDefaultPolarities] = useState<SlotPolarity[]>([]);
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('mods');
+  const [mountFilterPanel, setMountFilterPanel] = useState(false);
   const [activeAbilityIndex, setActiveAbilityIndex] = useState<number | null>(null);
   const [activeArcaneSlot, setActiveArcaneSlot] = useState<number | null>(null);
   const [activeShardSlot, setActiveShardSlot] = useState<number | null>(null);
   const [editingRivenSlot, setEditingRivenSlot] = useState<number | null>(null);
   const [draftRivenSlot, setDraftRivenSlot] = useState<number | null>(null);
   const autoInstalledStanceKeyRef = useRef<string | null>(null);
+  const prevRightPanelModeRef = useRef<RightPanelMode | null>(null);
 
   const routeKey = `${buildId ?? ''}|${routeEqType ?? ''}|${equipmentId ?? ''}`;
   const prevRouteKey = useRef(routeKey);
@@ -230,8 +250,38 @@ export function ModBuilder() {
     setEditingRivenSlot(null);
     setDraftRivenSlot(null);
     setEquipmentLoadError(null);
+    prevRightPanelModeRef.current = null;
     if (routeEqType) setEquipmentType(routeEqType as EquipmentType);
   }, [routeKey, buildId, routeEqType]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const kick = () => {
+      void import('./FilterPanel').then(() => {
+        if (!cancelled) setMountFilterPanel(true);
+      });
+    };
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (typeof requestIdleCallback === 'function') {
+      idleId = requestIdleCallback(kick, { timeout: FILTER_PANEL_IDLE_TIMEOUT_MS });
+    } else {
+      timeoutId = setTimeout(kick, 1);
+    }
+    return () => {
+      cancelled = true;
+      if (idleId !== undefined) cancelIdleCallback(idleId);
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+    };
+  }, []);
+
+  useEffect(() => {
+    const prev = prevRightPanelModeRef.current;
+    prevRightPanelModeRef.current = rightPanelMode;
+    if (rightPanelMode === 'mods' && prev !== null && prev !== 'mods') {
+      setMountFilterPanel(true);
+    }
+  }, [rightPanelMode]);
 
   const apiUrl = getEquipmentListUrl(equipmentType);
   const { data: equipmentData } = useApi<{ items: Equipment[] }>(apiUrl);
@@ -1326,114 +1376,126 @@ export function ModBuilder() {
           <div className="glass-shell p-4 sm:p-5">
             <div>
               <div className={rightPanelMode !== 'mods' ? 'hidden' : ''}>
-                <FilterPanel
-                  active={rightPanelMode === 'mods'}
-                  searchResetKey={searchResetKey}
-                  equipmentType={equipmentType}
-                  equipment={
-                    selectedEquipment
-                      ? {
-                          unique_name: selectedEquipment.unique_name,
-                          name: selectedEquipment.name,
-                          product_category: (selectedEquipment as Weapon).product_category,
-                        }
-                      : undefined
-                  }
-                  equippedMods={equippedMods}
-                  targetSlotType={activeSlotType}
-                  onModRemove={() => {
-                    if (activeSlotIndex !== undefined) {
-                      handleModRemove(activeSlotIndex);
-                    }
-                  }}
-                  onModSelect={(mod) => {
-                    const modType = (mod.type || '').toUpperCase();
-                    const isRivenPlaceholder = mod.unique_name === RIVEN_PLACEHOLDER_UNIQUE;
-                    let emptySlot;
-
-                    if (activeSlotType) {
-                      const targetType = isRivenPlaceholder ? 'general' : activeSlotType;
-                      emptySlot = slots.find((s) => !s.mod && s.type === targetType);
-                    } else if (modType === 'AURA') {
-                      emptySlot = slots.find((s) => !s.mod && s.type === 'aura');
-                    } else if (modType === 'STANCE') {
-                      const stanceSlotType = isPostureMod(mod) ? 'posture' : 'stance';
-                      emptySlot = slots.find((s) => !s.mod && s.type === stanceSlotType);
-                    } else if (mod.is_utility === 1) {
-                      emptySlot = slots.find((s) => !s.mod && s.type === 'exilus');
-                      if (!emptySlot) {
-                        emptySlot = slots.find((s) => !s.mod && s.type === 'general');
+                {mountFilterPanel ? (
+                  <Suspense fallback={<LazySuspenseFallback />}>
+                    <FilterPanelLazy
+                      active={rightPanelMode === 'mods'}
+                      searchResetKey={searchResetKey}
+                      equipmentType={equipmentType}
+                      equipment={
+                        selectedEquipment
+                          ? {
+                              unique_name: selectedEquipment.unique_name,
+                              name: selectedEquipment.name,
+                              product_category: (selectedEquipment as Weapon).product_category,
+                            }
+                          : undefined
                       }
-                    } else {
-                      emptySlot = slots.find((s) => !s.mod && s.type === 'general');
-                    }
+                      equippedMods={equippedMods}
+                      targetSlotType={activeSlotType}
+                      onModRemove={() => {
+                        if (activeSlotIndex !== undefined) {
+                          handleModRemove(activeSlotIndex);
+                        }
+                      }}
+                      onModSelect={(mod) => {
+                        const modType = (mod.type || '').toUpperCase();
+                        const isRivenPlaceholder = mod.unique_name === RIVEN_PLACEHOLDER_UNIQUE;
+                        let emptySlot;
 
-                    if (emptySlot) {
-                      handleModDrop(emptySlot.index, mod);
-                    }
-                  }}
-                />
+                        if (activeSlotType) {
+                          const targetType = isRivenPlaceholder ? 'general' : activeSlotType;
+                          emptySlot = slots.find((s) => !s.mod && s.type === targetType);
+                        } else if (modType === 'AURA') {
+                          emptySlot = slots.find((s) => !s.mod && s.type === 'aura');
+                        } else if (modType === 'STANCE') {
+                          const stanceSlotType = isPostureMod(mod) ? 'posture' : 'stance';
+                          emptySlot = slots.find((s) => !s.mod && s.type === stanceSlotType);
+                        } else if (mod.is_utility === 1) {
+                          emptySlot = slots.find((s) => !s.mod && s.type === 'exilus');
+                          if (!emptySlot) {
+                            emptySlot = slots.find((s) => !s.mod && s.type === 'general');
+                          }
+                        } else {
+                          emptySlot = slots.find((s) => !s.mod && s.type === 'general');
+                        }
+
+                        if (emptySlot) {
+                          handleModDrop(emptySlot.index, mod);
+                        }
+                      }}
+                    />
+                  </Suspense>
+                ) : (
+                  <LazySuspenseFallback />
+                )}
               </div>
 
-              {rightPanelMode === 'helminth' && activeAbilityIndex !== null && (
-                <HelminthPickerPanel
-                  replacingAbilityName={getAbilityName(
-                    selectedEquipment as Warframe,
-                    activeAbilityIndex,
-                  )}
-                  onSelect={(ability: Ability) => {
-                    setHelminthConfig({
-                      replaced_ability_index: activeAbilityIndex,
-                      replacement_ability_unique_name: ability.unique_name,
-                    });
-                    setActiveAbilityIndex(null);
-                    setRightPanelMode('mods');
-                  }}
-                  onRestore={() => {
-                    setHelminthConfig(undefined);
-                    setActiveAbilityIndex(null);
-                    setRightPanelMode('mods');
-                  }}
-                  onClose={() => {
-                    setActiveAbilityIndex(null);
-                    setRightPanelMode('mods');
-                  }}
-                />
-              )}
+              {rightPanelMode === 'helminth' && activeAbilityIndex !== null ? (
+                <Suspense fallback={<LazySuspenseFallback />}>
+                  <HelminthPickerPanel
+                    replacingAbilityName={getAbilityName(
+                      selectedEquipment as Warframe,
+                      activeAbilityIndex,
+                    )}
+                    onSelect={(ability: Ability) => {
+                      setHelminthConfig({
+                        replaced_ability_index: activeAbilityIndex,
+                        replacement_ability_unique_name: ability.unique_name,
+                      });
+                      setActiveAbilityIndex(null);
+                      setRightPanelMode('mods');
+                    }}
+                    onRestore={() => {
+                      setHelminthConfig(undefined);
+                      setActiveAbilityIndex(null);
+                      setRightPanelMode('mods');
+                    }}
+                    onClose={() => {
+                      setActiveAbilityIndex(null);
+                      setRightPanelMode('mods');
+                    }}
+                  />
+                </Suspense>
+              ) : null}
 
-              {rightPanelMode === 'arcanes' && activeArcaneSlot !== null && (
-                <ArcanePickerPanel
-                  equipmentType={equipmentType}
-                  currentArcaneName={arcaneSlots[activeArcaneSlot]?.arcane?.name}
-                  onSelect={handleArcaneSelect}
-                  onRemove={() => {
-                    handleArcaneRemove(activeArcaneSlot);
-                    setActiveArcaneSlot(null);
-                    setRightPanelMode('mods');
-                  }}
-                  onClose={() => {
-                    setActiveArcaneSlot(null);
-                    setRightPanelMode('mods');
-                  }}
-                />
-              )}
+              {rightPanelMode === 'arcanes' && activeArcaneSlot !== null ? (
+                <Suspense fallback={<LazySuspenseFallback />}>
+                  <ArcanePickerPanel
+                    equipmentType={equipmentType}
+                    currentArcaneName={arcaneSlots[activeArcaneSlot]?.arcane?.name}
+                    onSelect={handleArcaneSelect}
+                    onRemove={() => {
+                      handleArcaneRemove(activeArcaneSlot);
+                      setActiveArcaneSlot(null);
+                      setRightPanelMode('mods');
+                    }}
+                    onClose={() => {
+                      setActiveArcaneSlot(null);
+                      setRightPanelMode('mods');
+                    }}
+                  />
+                </Suspense>
+              ) : null}
 
-              {rightPanelMode === 'shards' && activeShardSlot !== null && (
-                <ShardPickerPanel
-                  shards={shardTypes}
-                  currentSlot={shardSlots[activeShardSlot] || { tauforged: false }}
-                  onSelect={handleShardSelect}
-                  onRemove={() => {
-                    handleShardRemove(activeShardSlot);
-                    setActiveShardSlot(null);
-                    setRightPanelMode('mods');
-                  }}
-                  onClose={() => {
-                    setActiveShardSlot(null);
-                    setRightPanelMode('mods');
-                  }}
-                />
-              )}
+              {rightPanelMode === 'shards' && activeShardSlot !== null ? (
+                <Suspense fallback={<LazySuspenseFallback />}>
+                  <ShardPickerPanel
+                    shards={shardTypes}
+                    currentSlot={shardSlots[activeShardSlot] || { tauforged: false }}
+                    onSelect={handleShardSelect}
+                    onRemove={() => {
+                      handleShardRemove(activeShardSlot);
+                      setActiveShardSlot(null);
+                      setRightPanelMode('mods');
+                    }}
+                    onClose={() => {
+                      setActiveShardSlot(null);
+                      setRightPanelMode('mods');
+                    }}
+                  />
+                </Suspense>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1485,28 +1547,30 @@ export function ModBuilder() {
           </div>
         </Modal>
       )}
-      {showShareModal && selectedEquipment && (
-        <BuildShareModal
-          open
-          onClose={() => setShowShareModal(false)}
-          buildName={buildName}
-          equipment={selectedEquipment as Warframe | Weapon}
-          equipmentName={selectedEquipment.name}
-          equipmentType={equipmentType}
-          equipmentImagePath={selectedEquipmentImagePath}
-          slots={slots}
-          arcaneSlots={arcaneSlots}
-          shardSlots={shardSlots}
-          shardTypes={equipmentType === 'warframe' ? shardTypes : []}
-          orokinReactor={orokinReactor}
-          formaCost={formaCost}
-          helminthConfig={equipmentType === 'warframe' ? helminthConfig : undefined}
-        />
-      )}
+      {showShareModal && selectedEquipment ? (
+        <Suspense fallback={<LazySuspenseFallback />}>
+          <BuildShareModal
+            open
+            onClose={() => setShowShareModal(false)}
+            buildName={buildName}
+            equipment={selectedEquipment as Warframe | Weapon}
+            equipmentName={selectedEquipment.name}
+            equipmentType={equipmentType}
+            equipmentImagePath={selectedEquipmentImagePath}
+            slots={slots}
+            arcaneSlots={arcaneSlots}
+            shardSlots={shardSlots}
+            shardTypes={equipmentType === 'warframe' ? shardTypes : []}
+            orokinReactor={orokinReactor}
+            formaCost={formaCost}
+            helminthConfig={equipmentType === 'warframe' ? helminthConfig : undefined}
+          />
+        </Suspense>
+      ) : null}
 
       {saveToast && (
         <div
-          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-all ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
+          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-[bottom,transform,opacity] duration-300 ease-out ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
           data-tone="success"
         >
           Build saved successfully
@@ -1514,24 +1578,26 @@ export function ModBuilder() {
       )}
       {compareToast && (
         <div
-          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-all ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
+          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-[bottom,transform,opacity] duration-300 ease-out ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
         >
           Added to comparison ({compareSnapshots.length}/3)
         </div>
       )}
-      {editingRivenSlot !== null && rivenWeaponType && (
-        <RivenBuilder
-          availableStats={getRivenStatsForType(equipmentType)}
-          weaponType={rivenWeaponType}
-          weaponDisposition={rivenDisposition}
-          config={slots.find((s) => s.index === editingRivenSlot)?.riven_config}
-          onSave={handleRivenSave}
-          onClose={handleRivenClose}
-        />
-      )}
+      {editingRivenSlot !== null && rivenWeaponType ? (
+        <Suspense fallback={<LazySuspenseFallback />}>
+          <RivenBuilder
+            availableStats={getRivenStatsForType(equipmentType)}
+            weaponType={rivenWeaponType}
+            weaponDisposition={rivenDisposition}
+            config={slots.find((s) => s.index === editingRivenSlot)?.riven_config}
+            onSave={handleRivenSave}
+            onClose={handleRivenClose}
+          />
+        </Suspense>
+      ) : null}
       {rivenToastMessage && (
         <div
-          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-all ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
+          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-[bottom,transform,opacity] duration-300 ease-out ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
           data-tone="warning"
         >
           {rivenToastMessage}

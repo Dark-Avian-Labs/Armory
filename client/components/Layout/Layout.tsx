@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useState,
   useCallback,
   useEffect,
@@ -21,9 +23,13 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getProfileIconSrc } from '../../utils/profileIcons';
 import { CompareBar } from '../Compare/CompareBar';
+import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { Menu } from '../ui/Menu';
-import { EquipmentGridModal } from './EquipmentGridModal';
 import { SearchBar } from './SearchBar';
+
+const EquipmentGridModal = lazy(() =>
+  import('./EquipmentGridModal').then((m) => ({ default: m.EquipmentGridModal })),
+);
 export function Layout() {
   const [showAddBuild, setShowAddBuild] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -133,10 +139,7 @@ export function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:rounded-md focus:bg-black focus:px-3 focus:py-2 focus:text-white"
-      >
+      <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
       <div className="bg-art" aria-hidden="true">
@@ -157,7 +160,7 @@ export function Layout() {
                 to={APP_PATHS.buildOverview}
                 end
                 className={({ isActive }) =>
-                  `inline-flex items-center rounded-2xl border px-4 py-2 text-sm transition-all ${
+                  `inline-flex items-center rounded-2xl border px-4 py-2 text-sm transition-[color,background-color,border-color,box-shadow] duration-200 ${
                     isActive
                       ? 'border-accent bg-accent-weak text-accent'
                       : 'border-glass-border text-muted hover:border-glass-border-hover hover:text-foreground'
@@ -204,7 +207,7 @@ export function Layout() {
                 <img src={avatarSrc} alt="" className="profile-avatar-image" />
               </button>
               {userMenuOpen && (
-                <Menu baseClass="user-menu" className="focus:outline-none">
+                <Menu baseClass="user-menu">
                   <div
                     id={userMenuId}
                     role="menu"
@@ -257,12 +260,14 @@ export function Layout() {
 
       <CompareBar />
 
-      {showAddBuild && (
-        <EquipmentGridModal
-          onSelect={handleEquipmentSelect}
-          onClose={() => setShowAddBuild(false)}
-        />
-      )}
+      {showAddBuild ? (
+        <Suspense fallback={<LazySuspenseFallback />}>
+          <EquipmentGridModal
+            onSelect={handleEquipmentSelect}
+            onClose={() => setShowAddBuild(false)}
+          />
+        </Suspense>
+      ) : null}
       <footer className="relative z-10 flex h-[50px] items-center justify-center px-6">
         <div className="mx-auto w-full max-w-[2000px] text-center">
           <a

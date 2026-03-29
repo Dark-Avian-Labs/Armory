@@ -86,7 +86,7 @@ export function ArchonShardSlots({
                       e.preventDefault();
                       onRemove(i);
                     }}
-                    className={`relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg transition-all ${
+                    className={`relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg transition-[color,background-color,border-color,box-shadow] duration-200 ${
                       isActive ? 'ring-accent ring-1' : ''
                     }`}
                   >
@@ -122,7 +122,7 @@ export function ArchonShardSlots({
             <button
               key={i}
               onClick={() => onSlotClick(i)}
-              className={`relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg transition-all ${
+              className={`relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg transition-[color,background-color,border-color,box-shadow] duration-200 ${
                 isActive ? 'ring-accent ring-1' : ''
               }`}
               style={{ marginTop: vOffset }}

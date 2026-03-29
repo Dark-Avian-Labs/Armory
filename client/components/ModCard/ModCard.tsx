@@ -9,6 +9,8 @@ import { isRivenMod } from '../../utils/riven';
 import { DEFAULT_LAYOUT, dbRarityToCardRarity, dbPolarityToIconName } from './cardLayout';
 import { CardPreview } from './CardPreview';
 
+const WINDOW_REPOSITION_LISTENERS: AddEventListenerOptions = { capture: true, passive: true };
+
 interface ModCardProps {
   mod: Mod;
   rank?: number;
@@ -314,8 +316,8 @@ function CollapsedHoverExpand({
     };
 
     updatePos();
-    window.addEventListener('scroll', updatePos, true);
-    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', updatePos, WINDOW_REPOSITION_LISTENERS);
+    window.addEventListener('resize', updatePos, { passive: true });
 
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined') {
@@ -326,7 +328,7 @@ function CollapsedHoverExpand({
     }
 
     return () => {
-      window.removeEventListener('scroll', updatePos, true);
+      window.removeEventListener('scroll', updatePos, WINDOW_REPOSITION_LISTENERS);
       window.removeEventListener('resize', updatePos);
       resizeObserver?.disconnect();
     };

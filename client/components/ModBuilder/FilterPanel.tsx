@@ -273,7 +273,7 @@ export function FilterPanel({
             type="button"
             onClick={() => setShowLockedOut((v) => !v)}
             aria-pressed={showLockedOut}
-            className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-all"
+            className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-[color,background-color,border-color] duration-200"
             title="Toggle showing locked mods"
           >
             <span
@@ -292,7 +292,7 @@ export function FilterPanel({
             type="button"
             onClick={() => setExpandMods((v) => !v)}
             aria-pressed={expandMods}
-            className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-all"
+            className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-[color,background-color,border-color] duration-200"
             title="Toggle expanded mod cards"
           >
             <span
@@ -335,7 +335,7 @@ export function FilterPanel({
             key={r.value}
             onClick={() => setRarity(r.value)}
             type="button"
-            className={`rounded-lg px-2 py-1 text-xs transition-all ${
+            className={`rounded-lg px-2 py-1 text-xs transition-[color,background-color,border-color] duration-200 ${
               rarity === r.value
                 ? 'bg-accent-weak text-accent'
                 : 'text-muted hover:bg-glass-hover hover:text-foreground'

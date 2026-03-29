@@ -213,7 +213,7 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
                 onClick={() => {
                   setActiveTab(t);
                 }}
-                className={`rounded-full border px-3 py-2 text-xs font-medium tracking-[0.18em] uppercase transition-all ${
+                className={`rounded-full border px-3 py-2 text-xs font-medium tracking-[0.18em] uppercase transition-[color,background-color,border-color,box-shadow] duration-200 ${
                   activeTab === t
                     ? 'border-accent/40 bg-accent/10 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
                     : 'text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground border-transparent'
@@ -256,7 +256,7 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
                   key={item.unique_name}
                   type="button"
                   onClick={() => onSelect(item.selection_type ?? activeTab, item.unique_name)}
-                  className="group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative overflow-hidden rounded-2xl border p-0 text-center transition-all hover:-translate-y-0.5"
+                  className="group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative overflow-hidden rounded-2xl border p-0 text-center transition-[color,background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5"
                   aria-label={`Select ${normalizeEquipmentName(item.name)}`}
                 >
                   <div className="bg-glass relative flex h-24 w-full items-center justify-center overflow-hidden">

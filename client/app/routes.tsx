@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense } from 'react';
+import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { Layout } from '../components/Layout/Layout';
@@ -33,7 +33,7 @@ const LegalPage = lazy(() =>
 );
 
 type ChunkErrorBoundaryProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   reset?: () => void;
 };
 
@@ -50,7 +50,7 @@ class ChunkErrorBoundary extends Component<ChunkErrorBoundaryProps, ChunkErrorBo
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo): void {
+  componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('[ChunkErrorBoundary] Chunk load failed', error, info.componentStack);
   }
 
@@ -89,10 +89,14 @@ class ChunkErrorBoundary extends Component<ChunkErrorBoundaryProps, ChunkErrorBo
 
 function RouteFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <p className="text-muted text-sm" role="status" aria-live="polite">
-        Loading...
-      </p>
+    <div
+      className="flex min-h-screen items-center justify-center"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-atomic="true"
+    >
+      <p className="text-muted text-sm">Loading...</p>
     </div>
   );
 }

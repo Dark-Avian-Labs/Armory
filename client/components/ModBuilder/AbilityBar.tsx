@@ -180,7 +180,7 @@ export function AbilityBar({
             >
               <button
                 onClick={() => onAbilityClick(ability.index)}
-                className={`relative flex h-12 w-12 items-center justify-center rounded-lg border transition-all ${
+                className={`relative flex h-12 w-12 items-center justify-center rounded-lg border transition-[color,background-color,border-color] duration-200 ${
                   isActive
                     ? 'border-accent bg-accent-weak/20 ring-accent ring-1'
                     : isReplaced
@@ -217,7 +217,7 @@ export function AbilityBar({
         {helminthConfig && (
           <button
             onClick={handleRemoveHelminth}
-            className="border-danger/30 text-danger hover:bg-danger/10 ml-2 rounded-lg border px-2 py-1 text-[10px] transition-all"
+            className="border-danger/30 text-danger hover:bg-danger/10 ml-2 rounded-lg border px-2 py-1 text-[10px] transition-[color,background-color,border-color] duration-200"
           >
             Reset
           </button>
