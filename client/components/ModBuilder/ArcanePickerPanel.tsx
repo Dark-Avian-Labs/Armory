@@ -76,7 +76,7 @@ export function ArcanePickerPanel({
 
       <input
         type="text"
-        placeholder="Search arcanes…"
+        placeholder="Search arcanes..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="form-input mb-3"

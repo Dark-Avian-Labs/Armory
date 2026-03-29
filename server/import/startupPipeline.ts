@@ -136,7 +136,7 @@ export async function runStartupPipeline(
   };
 
   phase('Schema');
-  log(cli ? 'Ensuring SQLite schema…' : 'Starting data pipeline...');
+  log(cli ? 'Ensuring SQLite schema...' : 'Starting data pipeline...');
   try {
     createAppSchema();
     summary.schema = { outcome: 'ok', detail: 'App tables and indexes are ready.' };
@@ -193,7 +193,7 @@ export async function runStartupPipeline(
     if (shouldProcess) {
       log(
         cli
-          ? 'Export bundle fingerprint changed — rebuilding game tables from JSON…'
+          ? 'Export bundle fingerprint changed — rebuilding game tables from JSON...'
           : 'Processing exports into database...',
       );
       const counts = processExports();
@@ -342,7 +342,7 @@ export async function runStartupPipeline(
     if (indexResult.entries.length > 0) {
       log(
         cli
-          ? `Scraping ${indexResult.entries.length} Overframe detail pages…`
+          ? `Scraping ${indexResult.entries.length} Overframe detail pages...`
           : `Overframe: scraping ${indexResult.entries.length} items...`,
       );
       const scrapedItems = await scrapeItems(indexResult.entries, 1500, (p) => {

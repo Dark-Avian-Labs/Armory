@@ -325,7 +325,7 @@ function ShareSkillsPanel({
       ? selectedReplacement.description
       : ownAbilities.find((a) => a.description)?.description;
 
-  const displayDesc = desc != null && desc.length > 900 ? `${desc.slice(0, 897).trim()}…` : desc;
+  const displayDesc = desc != null && desc.length > 900 ? `${desc.slice(0, 897).trim()}...` : desc;
 
   return (
     <div className="flex min-h-0 flex-col gap-2">

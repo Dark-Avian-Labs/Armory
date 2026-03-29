@@ -227,7 +227,7 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
 
         <input
           type="text"
-          placeholder="Search…"
+          placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="form-input mb-4"
@@ -237,7 +237,7 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
         <div className="custom-scroll max-h-[55vh] overflow-y-auto">
           {loading ? (
             <div className="flex h-32 items-center justify-center">
-              <p className="text-muted text-sm">Loading…</p>
+              <p className="text-muted text-sm">Loading...</p>
             </div>
           ) : error ? (
             <div className="flex h-32 items-center justify-center">

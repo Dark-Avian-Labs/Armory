@@ -310,7 +310,7 @@ export function BuildOverview() {
     return (
       <div className="mx-auto max-w-[2000px]">
         <div className="glass-shell flex h-64 items-center justify-center">
-          <p className="text-muted">Loading builds…</p>
+          <p className="text-muted">Loading builds...</p>
         </div>
       </div>
     );
@@ -428,7 +428,7 @@ export function BuildOverview() {
                     setNewLoadoutName(e.target.value);
                     if (newLoadoutError) setNewLoadoutError(null);
                   }}
-                  placeholder="Loadout name…"
+                  placeholder="Loadout name..."
                   className="form-input flex-1 text-xs"
                   autoFocus
                   onKeyDown={(e) => {

@@ -313,7 +313,7 @@ export function FilterPanel({
       <div className="relative mb-3">
         <input
           type="text"
-          placeholder="Search mods…"
+          placeholder="Search mods..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="form-input w-full pr-8"

@@ -74,7 +74,7 @@ export function HelminthPickerPanel({
 
       <input
         type="text"
-        placeholder="Search helminth abilities…"
+        placeholder="Search helminth abilities..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="form-input mb-3"

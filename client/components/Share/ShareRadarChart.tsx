@@ -19,7 +19,7 @@ function wrapRadarLabelLines(label: string, maxCharsPerLine: number): string[] {
       cur = next;
     } else {
       if (cur) lines.push(cur);
-      cur = w.length > maxCharsPerLine ? `${w.slice(0, maxCharsPerLine - 1)}…` : w;
+      cur = w.length > maxCharsPerLine ? `${w.slice(0, maxCharsPerLine - 1)}...` : w;
     }
   }
   if (cur) lines.push(cur);

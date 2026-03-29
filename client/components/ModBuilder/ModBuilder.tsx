@@ -279,7 +279,6 @@ export function ModBuilder() {
     const prev = prevRightPanelModeRef.current;
     prevRightPanelModeRef.current = rightPanelMode;
     if (rightPanelMode === 'mods' && prev !== null && prev !== 'mods') {
-      void import('./FilterPanel');
       setMountFilterPanel(true);
     }
   }, [rightPanelMode]);

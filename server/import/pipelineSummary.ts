@@ -86,7 +86,7 @@ const DIV = '══════════════════════�
 function clipList(items: string[], max = 12): string {
   if (items.length === 0) return '—';
   if (items.length <= max) return items.join(', ');
-  return `${items.slice(0, max).join(', ')} … (+${items.length - max} more)`;
+  return `${items.slice(0, max).join(', ')} ... (+${items.length - max} more)`;
 }
 
 function outcomeLabel(o: SummaryOutcome): string {
@@ -143,7 +143,7 @@ export function printStartupPipelineSummary(s: StartupPipelineSummary): void {
       for (const f of st.failed.slice(0, 5)) {
         lines.push(`  • ${f.category}: ${f.error}`);
       }
-      if (st.failed.length > 5) lines.push(`  … +${st.failed.length - 5} more`);
+      if (st.failed.length > 5) lines.push(`  ... +${st.failed.length - 5} more`);
     }
     row('Official exports (manifest + files)', st.failed.length > 0 ? 'partial' : 'ok', lines);
   } else {
