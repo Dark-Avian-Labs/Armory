@@ -354,10 +354,12 @@ jobs:
           /tmp/deploy/ \
           $SERVER_USER@$SERVER_HOST:$SERVER_PATH/
 
-          rsync -av \
-          -e "ssh -p $SERVER_SSH_PORT -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
-          dark-avian-labs.config.cjs \
-          $SERVER_USER@$SERVER_HOST:${STACK_PATH}/
+          if [ -f dark-avian-labs.config.cjs ]; then
+            rsync -av \
+            -e "ssh -p $SERVER_SSH_PORT -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
+            dark-avian-labs.config.cjs \
+            $SERVER_USER@$SERVER_HOST:${STACK_PATH}/
+          fi
 
           DOTENV_KEY_B64=$(printf '%s' "$DOTENV_PRIVATE_KEY_PRODUCTION" | base64 | tr -d '\n')
           ssh -p "$SERVER_SSH_PORT" -i ~/.ssh/deploy_key \
@@ -372,7 +374,7 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             $SERVER_USER@$SERVER_HOST \
-            "cd $SERVER_PATH && source ~/.nvm/nvm.sh && pm2 restart 'Auth' --update-env"
+            "cd $SERVER_PATH && source ~/.nvm/nvm.sh && pm2 restart 'Parametric' --update-env"
 
       - name: Cleanup SSH key
         if: always()
