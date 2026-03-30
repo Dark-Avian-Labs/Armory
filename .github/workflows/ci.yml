@@ -239,7 +239,6 @@ jobs:
     env:
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       SERVER_KNOWN_HOST: ${{ secrets.SERVER_KNOWN_HOST }}
-      SERVER_STACK_PATH: ${{ secrets.SERVER_STACK_PATH }}
       SERVER_PATH: ${{ secrets.SERVER_PATH }}
       SERVER_USER: ${{ secrets.SERVER_USER }}
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
