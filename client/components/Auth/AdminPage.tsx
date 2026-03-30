@@ -105,7 +105,7 @@ function DataImportAdmin() {
         setSnapshot(next);
         setRunningImport(next.running);
       } catch {
-        // ignore malformed snapshot payload
+        // ignore
       }
     });
     stream.onerror = () => {
