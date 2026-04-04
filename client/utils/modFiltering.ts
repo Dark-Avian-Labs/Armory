@@ -7,6 +7,7 @@ export const VARIANT_PREFIXES = [
   'Umbral',
   'Amalgam',
   'Necramech',
+  'Berserker',
   'Enhanced',
   'Link',
   'Galvanized',
@@ -24,10 +25,77 @@ export function getModBaseName(name: string): string {
   return result;
 }
 
+/**
+ * Lowercased ExportUpgrades `uniqueName` paths that share the same in-game mod slot
+ * (siblings under different asset paths). Sourced from public export + wiki Mod Incompatibility.
+ */
+const UPGRADE_PATH_LOCKOUT_GROUPS: Record<string, string> = {
+  '/lotus/upgrades/mods/shotgun/dualstat/corruptedcritchancefirerateshotgun':
+    'shotgun_weapon_crit_chance',
+  '/lotus/upgrades/mods/shotgun/weaponcritchancemod': 'shotgun_weapon_crit_chance',
+  '/lotus/upgrades/mods/rifle/event/arbitration/shootpickupriflemod': 'rifle_bow_explosion_chance',
+  '/lotus/upgrades/mods/rifle/bowexplosionchancemod': 'rifle_bow_explosion_chance',
+  '/lotus/upgrades/mods/pvpmods/rifle/moredamageontripletapriflemod':
+    'pvp_rifle_double_tap_hydraulic',
+  '/lotus/upgrades/mods/pvpmods/rifle/lessrecoilsmallermagriflemod':
+    'pvp_rifle_double_tap_hydraulic',
+  '/lotus/upgrades/mods/pvpmods/rifle/highervelocitylessdamagebowmod': 'pvp_rifle_feathered_lucky',
+  '/lotus/upgrades/mods/pvpmods/rifle/highervelocitylessaccurateriflemod':
+    'pvp_rifle_feathered_lucky',
+  '/lotus/upgrades/mods/pvpmods/shotgun/lessrecoilsmallermagshotgunmod':
+    'pvp_shotgun_reload_mag_chain',
+  '/lotus/upgrades/mods/pvpmods/shotgun/fasterreloadmorerecoilshotgunmod':
+    'pvp_shotgun_reload_mag_chain',
+  '/lotus/upgrades/mods/pvpmods/shotgun/largermaglongerreloadshotgunmod':
+    'pvp_shotgun_reload_mag_chain',
+};
+
+function normalizeUpgradePath(uniqueName: string): string {
+  return uniqueName.trim().toLowerCase();
+}
+
+function getPathLockoutGroupId(uniqueName: string | undefined): string | null {
+  if (!uniqueName) return null;
+  const path = normalizeUpgradePath(uniqueName);
+  const mapped = UPGRADE_PATH_LOCKOUT_GROUPS[path];
+  if (mapped) return mapped;
+
+  const lastSlash = path.lastIndexOf('/');
+  const base = lastSlash >= 0 ? path.slice(lastSlash + 1) : path;
+  if (base.endsWith('parkourtwomod')) {
+    return 'warframe_parkour_two';
+  }
+
+  if (/\/sets\/(amar|boreal|nira)\/[^/]+exilusmod$/.test(path)) {
+    return 'archon_school_exilus';
+  }
+  if (/\/sets\/(amar|boreal|nira)\/[^/]+warframemod$/.test(path)) {
+    return 'archon_school_warframe';
+  }
+  if (/\/sets\/(amar|boreal|nira)\/[^/]+meleemod$/.test(path)) {
+    return 'archon_school_melee';
+  }
+
+  return null;
+}
+
+/** Name + mod category (handles Primed / Amalgam / Link / … variants). */
 export function getModLockoutKey(mod: Mod): string {
   const baseName = getModBaseName(mod.name).toLowerCase();
   const type = (mod.type || '').toLowerCase();
   return `${baseName}|${type}`;
+}
+
+/**
+ * All lockout identities for a mod: a candidate conflicts with an equipped mod if any key matches.
+ * Uses ExportUpgrades paths where they encode shared upgrade classes, plus legacy name|type fallback.
+ */
+export function getModLockoutKeys(mod: Mod): string[] {
+  const keys = new Set<string>();
+  keys.add(`legacy:${getModLockoutKey(mod)}`);
+  const pathGroup = getPathLockoutGroupId(mod.unique_name);
+  if (pathGroup) keys.add(`path:${pathGroup}`);
+  return [...keys];
 }
 
 export function isModLockedOut(candidate: Mod, equippedMods: Mod[]): boolean {
@@ -35,8 +103,11 @@ export function isModLockedOut(candidate: Mod, equippedMods: Mod[]): boolean {
     return true;
   }
 
-  const candidateKey = getModLockoutKey(candidate);
-  return equippedMods.some((m) => getModLockoutKey(m) === candidateKey);
+  const candidateKeys = getModLockoutKeys(candidate);
+  return equippedMods.some((m) => {
+    const equippedKeys = getModLockoutKeys(m);
+    return candidateKeys.some((k) => equippedKeys.includes(k));
+  });
 }
 
 export const WEAPON_CATEGORY_TO_MOD_COMPAT: Record<string, string[]> = {
