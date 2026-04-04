@@ -418,7 +418,8 @@ export async function runStartupPipeline(
       }
     }, true);
     log(
-      `Wiki: ${wikiResult.abilitiesUpdated} abilities, ${wikiResult.passivesUpdated} passives, ${wikiResult.augmentsUpdated} augments`,
+      `Wiki: ${wikiResult.abilitiesUpdated} abilities, ${wikiResult.passivesUpdated} passives, ${wikiResult.augmentsUpdated} augments, ` +
+        `${wikiResult.weaponsProjectileSpeedsUpdated} weapon projectile speeds`,
     );
     summary.wiki = { outcome: 'ok', merge: wikiResult };
   } catch (e) {

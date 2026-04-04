@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 
 import { getDb } from '../db/connection.js';
 
@@ -100,6 +101,7 @@ export interface WikiScrapeResult {
   augments: WikiAugmentMapping[];
   shards: WikiShardResult;
   dispositions: WikiRivenDisposition[];
+  projectileSpeedByWeapon: Map<string, Array<number | null>>;
 }
 
 export interface WikiScrapeProgress {
@@ -109,6 +111,7 @@ export interface WikiScrapeProgress {
     | 'augments'
     | 'shards'
     | 'riven_disposition'
+    | 'projectile_speed'
     | 'merging'
     | 'done';
   current: number;
@@ -732,6 +735,189 @@ export async function scrapeRivenDispositions(
   return output;
 }
 
+function normalizeWikiWeaponLabel(s: string): string {
+  return normalizeText(s).replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function parseProjectileSpeedCell(text: string): number | null {
+  const t = normalizeText(text);
+  if (!t || /^n\/?a$/i.test(t)) return null;
+  const m = t.match(/(\d+(?:\.\d+)?)\s*m?\/?s/i);
+  if (m) {
+    const n = parseFloat(m[1]);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function extractWeaponNameFromCell($: cheerio.CheerioAPI, cell: Element): string {
+  const $cell = $(cell);
+  const link = $cell.find('a[href*="/w/"]').first();
+  const fromLink = normalizeText(link.text());
+  if (fromLink) return fromLink;
+  return normalizeText($cell.text());
+}
+
+function getWikiTableHeaderRow(
+  $: cheerio.CheerioAPI,
+  $table: cheerio.Cheerio<Element>,
+): cheerio.Cheerio<Element> {
+  const thead = $table.find('thead tr').first();
+  if (thead.length) return thead;
+  return $table
+    .find('tr')
+    .filter((_, el) => $(el).find('th').length > 0)
+    .first();
+}
+
+/** Per-weapon speeds in table row order: row i = fire mode i; null = wiki N/A (no speed for that mode). */
+function parseProjectileSpeedTables($: cheerio.CheerioAPI): Map<string, Array<number | null>> {
+  const map = new Map<string, Array<number | null>>();
+
+  function appendSpeed(nameRaw: string, speed: number | null): void {
+    if (!nameRaw) return;
+    const name = normalizeWikiWeaponLabel(nameRaw);
+    if (!name) return;
+    const existing = map.get(name) ?? [];
+    existing.push(speed);
+    map.set(name, existing);
+  }
+
+  $('table.wikitable, table.listtable').each((_, table) => {
+    const $table = $(table);
+    const $headerRow = getWikiTableHeaderRow($, $table);
+    if ($headerRow.length === 0) return;
+
+    const headerCells = $headerRow.find('th, td').toArray();
+    const headerTexts = headerCells.map((c) => normalizeText($(c).text()).toLowerCase());
+
+    const nameIdx = headerTexts.findIndex((h) => h === 'name' || h.startsWith('name '));
+    if (nameIdx < 0) return;
+
+    const chargedFlightIdx = headerTexts.findIndex((h) => h.includes('charged flight'));
+    if (chargedFlightIdx >= 0) {
+      const bodyRows = $table.find('tbody tr').length
+        ? $table.find('tbody tr')
+        : $table.find('tr').slice(1);
+      bodyRows.each((__, row) => {
+        const cells = $(row).find('td').toArray();
+        if (cells.length <= Math.max(nameIdx, chargedFlightIdx)) return;
+        const wname = extractWeaponNameFromCell($, cells[nameIdx]);
+        const speed = parseProjectileSpeedCell($(cells[chargedFlightIdx]).text());
+        appendSpeed(wname, speed);
+      });
+      return;
+    }
+
+    const speedIdx = headerTexts.findIndex(
+      (h) => h.includes('projectile speed') || h.includes('projectile speed (m/s)'),
+    );
+    if (speedIdx < 0) return;
+
+    const bodyRows = $table.find('tbody tr').length
+      ? $table.find('tbody tr')
+      : $table.find('tr').slice(1);
+    bodyRows.each((__, row) => {
+      const cells = $(row).find('td').toArray();
+      if (cells.length <= Math.max(nameIdx, speedIdx)) return;
+      const wname = extractWeaponNameFromCell($, cells[nameIdx]);
+      const speed = parseProjectileSpeedCell($(cells[speedIdx]).text());
+      appendSpeed(wname, speed);
+    });
+  });
+
+  return map;
+}
+
+export async function scrapeProjectileSpeedsFromWiki(
+  onProgress?: (msg: string) => void,
+): Promise<Map<string, Array<number | null>>> {
+  onProgress?.('Fetching Projectile Speed wiki page...');
+  const res = await fetchWithTimeout(`${WIKI_BASE}/w/Projectile_Speed`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Projectile Speed page: ${res.status}`);
+  }
+
+  const html = await res.text();
+  const $ = cheerio.load(html);
+  const map = parseProjectileSpeedTables($);
+  onProgress?.(`Parsed projectile speeds for ${map.size} wiki weapon name(s)`);
+  return map;
+}
+
+function buildProjectileSpeedLookupKeys(name: string, slot: number | null): string[] {
+  const base = normalizeWikiWeaponLabel(name);
+  const keys: string[] = [base];
+  if (slot === 1) {
+    keys.push(`${base} (primary)`);
+  } else if (slot === 0) {
+    keys.push(`${base} (secondary)`);
+  }
+  return keys;
+}
+
+function resolveProjectileSpeedList(
+  wikiMap: Map<string, Array<number | null>>,
+  name: string,
+  slot: number | null,
+): Array<number | null> | undefined {
+  const keys = buildProjectileSpeedLookupKeys(name, slot);
+  for (const k of keys) {
+    const hit = wikiMap.get(k);
+    if (hit && hit.length > 0) return hit;
+  }
+  return undefined;
+}
+
+function mergeProjectileSpeedsIntoWeapons(
+  wikiMap: Map<string, Array<number | null>>,
+  onProgress?: (msg: string) => void,
+): number {
+  const db = getDb();
+  const update = db.prepare('UPDATE weapons SET fire_behaviors = ? WHERE unique_name = ?');
+  const rows = db
+    .prepare(
+      `SELECT unique_name, name, slot, fire_behaviors FROM weapons WHERE fire_behaviors IS NOT NULL`,
+    )
+    .all() as Array<{
+    unique_name: string;
+    name: string;
+    slot: number | null;
+    fire_behaviors: string;
+  }>;
+
+  let updated = 0;
+  for (const row of rows) {
+    const speeds = resolveProjectileSpeedList(wikiMap, row.name, row.slot);
+    if (!speeds || speeds.length === 0) continue;
+    if (!speeds.some((s) => s != null && Number.isFinite(s))) continue;
+
+    let behaviors: unknown;
+    try {
+      behaviors = JSON.parse(row.fire_behaviors);
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(behaviors)) continue;
+
+    const next = behaviors.map((b, i) => {
+      if (i >= speeds.length) return b;
+      if (!b || typeof b !== 'object' || Array.isArray(b)) return b;
+      const s = speeds[i];
+      if (s == null || !Number.isFinite(s)) return b;
+      return { ...(b as Record<string, unknown>), projectileSpeed: s };
+    });
+
+    const newJson = JSON.stringify(next);
+    if (newJson === row.fire_behaviors) continue;
+    update.run(newJson, row.unique_name);
+    updated++;
+  }
+
+  onProgress?.(`Projectile speed: updated ${updated} weapon fire mode row(s)`);
+  return updated;
+}
+
 export interface WikiMergeResult {
   abilitiesUpdated: number;
   passivesUpdated: number;
@@ -740,6 +926,7 @@ export interface WikiMergeResult {
   shardBuffs: number;
   rivenDispositionsUpdated: number;
   rivenDispositionsFallbackFromOmega: number;
+  weaponsProjectileSpeedsUpdated: number;
 }
 
 export function mergeWikiData(
@@ -755,6 +942,7 @@ export function mergeWikiData(
     shardBuffs: 0,
     rivenDispositionsUpdated: 0,
     rivenDispositionsFallbackFromOmega: 0,
+    weaponsProjectileSpeedsUpdated: 0,
   };
 
   const updateAbility = db.prepare(
@@ -884,6 +1072,13 @@ export function mergeWikiData(
     }
     const fallback = fallbackRivenDisposition.run();
     result.rivenDispositionsFallbackFromOmega = fallback.changes;
+
+    if (data.projectileSpeedByWeapon.size > 0) {
+      result.weaponsProjectileSpeedsUpdated = mergeProjectileSpeedsIntoWeapons(
+        data.projectileSpeedByWeapon,
+        onProgress,
+      );
+    }
   });
 
   mergeAll();
@@ -893,7 +1088,8 @@ export function mergeWikiData(
       `${result.augmentsUpdated} augments, ` +
       `${result.shardTypes} shard types, ${result.shardBuffs} shard buffs, ` +
       `${result.rivenDispositionsUpdated} dispositions, ` +
-      `${result.rivenDispositionsFallbackFromOmega} fallback dispositions`,
+      `${result.rivenDispositionsFallbackFromOmega} fallback dispositions, ` +
+      `${result.weaponsProjectileSpeedsUpdated} weapon projectile speed rows`,
   );
   return result;
 }
@@ -946,6 +1142,17 @@ export async function runWikiScrape(
     );
   }
 
+  state.phase = 'projectile_speed';
+  let projectileSpeedByWeapon = new Map<string, Array<number | null>>();
+  try {
+    projectileSpeedByWeapon = await scrapeProjectileSpeedsFromWiki(log);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log(
+      `[WikiScraper] scrapeProjectileSpeedsFromWiki failed: ${message}. Continuing without projectile speeds.`,
+    );
+  }
+
   state.phase = 'abilities';
   const abilities = await scrapeAbilities((msg) => {
     const m = msg.match(/\[(\d+)\/(\d+)\]\s*(.*)/);
@@ -970,7 +1177,10 @@ export async function runWikiScrape(
 
   state.phase = 'merging';
   log('Merging wiki data into database...');
-  const result = mergeWikiData({ abilities, passives, augments, shards, dispositions }, log);
+  const result = mergeWikiData(
+    { abilities, passives, augments, shards, dispositions, projectileSpeedByWeapon },
+    log,
+  );
 
   state.phase = 'done';
   log('Wiki scrape complete');
