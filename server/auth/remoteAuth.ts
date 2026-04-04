@@ -1,4 +1,3 @@
-/** Load `.env.*` before reading `process.env` (see `server/config.ts`). Must run before this file’s top-level env parsing. */
 import '../config.js';
 
 import type { Request, Response } from 'express';
@@ -192,7 +191,9 @@ export async function fetchRemoteAuthState(
           permissions: [],
         };
       }
-      const body = (await upstream.json()) as Partial<RemoteAuthState>;
+      const rawBody = await upstream.json();
+      const body: Partial<RemoteAuthState> =
+        rawBody && typeof rawBody === 'object' ? (rawBody as Partial<RemoteAuthState>) : {};
       const user = body.user;
       return {
         authenticated: body.authenticated === true,
@@ -312,8 +313,15 @@ export async function proxyAuthLogout(req: Request, res: Response): Promise<void
     if (!csrfResponse.ok) {
       throw new Error('Failed to fetch CSRF token for logout');
     }
-    const csrfBody = (await csrfResponse.json()) as { csrfToken?: string };
-    if (!csrfBody.csrfToken) {
+    const rawCsrfBody: unknown = await csrfResponse.json();
+    const csrfBody =
+      rawCsrfBody &&
+      typeof rawCsrfBody === 'object' &&
+      'csrfToken' in rawCsrfBody &&
+      typeof (rawCsrfBody as { csrfToken: unknown }).csrfToken === 'string'
+        ? { csrfToken: (rawCsrfBody as { csrfToken: string }).csrfToken }
+        : null;
+    if (!csrfBody || !csrfBody.csrfToken) {
       throw new Error('Missing CSRF token for logout');
     }
 

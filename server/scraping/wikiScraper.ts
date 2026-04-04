@@ -657,7 +657,7 @@ export async function scrapeArchonShards(
 
     const parsedValues = parseBuffValues(buffText);
     if (!parsedValues) {
-      console.warn(`[WikiScraper] Skipping unparsable shard buff text: "${buffText}"`);
+      console.warn(`[wikiScraper] Skipping unparsable shard buff text: "${buffText}"`);
       return;
     }
 
@@ -770,7 +770,6 @@ function getWikiTableHeaderRow(
     .first();
 }
 
-/** Per-weapon speeds in table row order: row i = fire mode i; null = wiki N/A (no speed for that mode). */
 function parseProjectileSpeedTables($: cheerio.CheerioAPI): Map<string, Array<number | null>> {
   const map = new Map<string, Array<number | null>>();
 

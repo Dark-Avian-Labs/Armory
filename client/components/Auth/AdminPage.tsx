@@ -208,8 +208,8 @@ function DataImportAdmin() {
       <Modal
         open={showLogs}
         onClose={() => setShowLogs(false)}
-        ariaLabelledBy="parametric-import-log-title"
-        className="parametric-import-modal"
+        aria-labelledby="parametric-import-log-title"
+        className="import-log-modal"
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
@@ -313,7 +313,7 @@ function ArchonShardAdmin() {
   };
 
   const handleConfirmDeleteBuff = async () => {
-    if (pendingDeleteId == null) return;
+    if (pendingDeleteId === null) return;
     const didDelete = await handleApiCall(
       () =>
         apiFetch(`/api/archon-shards/buffs/${pendingDeleteId}`, {

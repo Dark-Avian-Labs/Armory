@@ -47,7 +47,6 @@ import { ElementOutput } from './ElementOutput';
 import { ModSlotGrid } from './ModSlotGrid';
 import { StatsPanel } from './StatsPanel';
 
-/** Max wait before loading mod picker even if the browser stays busy (slow devices). */
 const FILTER_PANEL_IDLE_TIMEOUT_MS = 2000;
 
 const FilterPanelLazy = lazy(() =>

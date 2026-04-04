@@ -22,11 +22,8 @@ export interface ExportFileInfo {
 }
 
 export interface ImportPipelineStats {
-  /** Categories in REQUIRED_EXPORTS from manifest */
   requiredCount: number;
-  /** Downloaded new content or replaced file (hash changed) */
   downloaded: string[];
-  /** Local file already matched manifest hash */
   skippedUnchanged: string[];
   failed: Array<{ category: string; error: string }>;
 }

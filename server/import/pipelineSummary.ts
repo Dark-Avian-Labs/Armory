@@ -78,7 +78,6 @@ export interface StartupPipelineSummary {
     error?: string;
     skipReason?: string;
   };
-  /** Fatal stops (e.g. no exports and no DB) */
   blockingIssues: string[];
 }
 

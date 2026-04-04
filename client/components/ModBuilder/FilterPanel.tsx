@@ -98,7 +98,6 @@ function isImportedRivenPlaceholder(mod: Mod): boolean {
   return /\bRiven Mod$/i.test(mod.name) && (mod.type || '').toUpperCase() !== 'RIVEN';
 }
 
-/** Name plus rank descriptions (and raw fallback) for search. */
 function getModSearchHaystack(mod: Mod): string {
   const parts: string[] = [mod.name];
   const raw = mod.description?.trim();

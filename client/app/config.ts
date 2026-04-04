@@ -21,7 +21,6 @@ export const LEGAL_PAGE_URL = readTrimmedEnv(
   '/auth/legal',
 );
 
-/** Central account profile (Auth app), same path Corpus uses under the gateway. */
 export const AUTH_PROFILE_URL = readTrimmedEnv(
   import.meta.env.VITE_AUTH_PROFILE_URL as string | undefined,
   '/auth/profile',

@@ -1,4 +1,3 @@
-/** Minimal placeholder while a lazily loaded UI chunk is downloading. */
 export function LazySuspenseFallback() {
   return (
     <div
