@@ -25,7 +25,9 @@ async function fetchWithTimeout(
   timeoutMs = DEFAULT_FETCH_TIMEOUT,
 ): Promise<Response> {
   const controller = new AbortController();
-  const { signal: callerSignal, ...restOptions } = options;
+  const callerSignal = options.signal;
+  const restOptions: RequestInit = { ...options };
+  delete (restOptions as { signal?: AbortSignal | null }).signal;
   const timeoutId = setTimeout(() => {
     controller.abort();
   }, timeoutMs);
@@ -351,14 +353,14 @@ export async function scrapeAbilities(
   onlyMissing = false,
 ): Promise<WikiAbilityResult[]> {
   const db = getDb();
-  const baseFilter = onlyMissing ? 'WHERE a.wiki_stats IS NULL' : '';
+  const missingStatsWhereClause = onlyMissing ? 'WHERE a.wiki_stats IS NULL' : '';
   const abilities = db
     .prepare(
       `
     SELECT a.unique_name, a.name, w.name as wf_name
     FROM abilities a
     LEFT JOIN warframes w ON a.warframe_unique_name = w.unique_name
-    ${baseFilter}
+    ${missingStatsWhereClause}
     ORDER BY a.name
   `,
     )
@@ -477,14 +479,16 @@ async function scrapeWarframePage(wfName: string): Promise<string | null> {
   return null;
 }
 
+const WARFRAME_SUITS_BASE_WHERE = `product_category = 'Suits' AND name NOT LIKE '%Prime' AND name NOT LIKE '%Umbra'`;
+
 export async function scrapePassives(
   onProgress?: (msg: string) => void,
   onlyMissing = false,
 ): Promise<WikiPassiveResult[]> {
   const db = getDb();
   const query = onlyMissing
-    ? `SELECT unique_name, name FROM warframes WHERE product_category = 'Suits' AND name NOT LIKE '%Prime' AND name NOT LIKE '%Umbra' AND passive_description_wiki IS NULL ORDER BY name`
-    : `SELECT unique_name, name FROM warframes WHERE product_category = 'Suits' AND name NOT LIKE '%Prime' AND name NOT LIKE '%Umbra' ORDER BY name`;
+    ? `SELECT unique_name, name FROM warframes WHERE ${WARFRAME_SUITS_BASE_WHERE} AND passive_description_wiki IS NULL ORDER BY name`
+    : `SELECT unique_name, name FROM warframes WHERE ${WARFRAME_SUITS_BASE_WHERE} ORDER BY name`;
   const warframes = db.prepare(query).all() as {
     unique_name: string;
     name: string;
@@ -493,9 +497,7 @@ export async function scrapePassives(
   if (onlyMissing) {
     const total = (
       db
-        .prepare(
-          `SELECT COUNT(*) as c FROM warframes WHERE product_category = 'Suits' AND name NOT LIKE '%Prime' AND name NOT LIKE '%Umbra'`,
-        )
+        .prepare(`SELECT COUNT(*) as c FROM warframes WHERE ${WARFRAME_SUITS_BASE_WHERE}`)
         .get() as { c: number }
     ).c;
     onProgress?.(
@@ -970,6 +972,7 @@ export function mergeWikiData(
   const updatePassive = db.prepare(
     'UPDATE warframes SET passive_description_wiki = ? WHERE unique_name = ?',
   );
+  /** Same passive text often applies to variant rows whose `unique_name` shares a path prefix (e.g. `/Lotus/.../Foo` vs `/Lotus/.../Foo/Prime`). The exact-name update above only hits one row; this second pass fills siblings that still have NULL wiki passives. */
   const updatePassiveLike = db.prepare(
     `UPDATE warframes SET passive_description_wiki = ?
      WHERE unique_name LIKE ? AND passive_description_wiki IS NULL`,
@@ -995,8 +998,10 @@ export function mergeWikiData(
       const changes = updatePassive.run(p.passive, p.uniqueName);
       if (changes.changes > 0) result.passivesUpdated++;
 
-      const pathBase = `${p.uniqueName.substring(0, p.uniqueName.lastIndexOf('/') + 1)}%`;
-      updatePassiveLike.run(p.passive, pathBase);
+      if (p.uniqueName.includes('/')) {
+        const pathBase = `${p.uniqueName.substring(0, p.uniqueName.lastIndexOf('/') + 1)}%`;
+        updatePassiveLike.run(p.passive, pathBase);
+      }
     }
 
     for (const aug of data.augments) {
