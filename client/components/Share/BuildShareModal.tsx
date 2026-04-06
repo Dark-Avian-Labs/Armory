@@ -552,7 +552,6 @@ export function BuildShareModal({
   const isWide = aspect === 'wide';
   const canvasWidth = isWide ? 1280 : 720;
   const canvasHeight = isWide ? 720 : 1280;
-  /* Wide: larger scale now that mods sit in a dedicated full-height row above arcane/shards/skills */
   const modScale = isWide ? 0.56 : 0.36;
   const arcaneScale = isWide ? 0.64 : 0.54;
   const radarMain = isWide ? 200 : 156;

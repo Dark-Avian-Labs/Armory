@@ -6,6 +6,9 @@ import { getDb } from '../db/connection.js';
 const WIKI_BASE = 'https://wiki.warframe.com';
 const DEFAULT_FETCH_TIMEOUT = 15_000;
 
+const SLOT_SECONDARY = 0;
+const SLOT_PRIMARY = 1;
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -120,7 +123,7 @@ export interface WikiScrapeProgress {
   log: string[];
 }
 
-function lastRankValue(text: string): string {
+function extractLastSlashDelimitedValue(text: string): string {
   const parts = text
     .split('/')
     .map((s) => s.trim())
@@ -131,7 +134,7 @@ function lastRankValue(text: string): string {
 function cleanStatValue(raw: string): string | null {
   const text = raw.trim();
   if (!text || text === 'N/A') return null;
-  return lastRankValue(text);
+  return extractLastSlashDelimitedValue(text);
 }
 
 function wikiSlug(name: string): string {
@@ -219,7 +222,7 @@ async function scrapeAbilityPage(
       .map((l) => l.trim())
       .filter(Boolean);
     for (const line of lines) {
-      const maxed = lastRankValue(line);
+      const maxed = extractLastSlashDelimitedValue(line);
       if (maxed) misc.push(maxed);
     }
   });
@@ -584,12 +587,20 @@ function parseBuffValues(text: string): {
   tauforged: number;
   isPercent: boolean;
 } | null {
-  const m = text.match(/\+?(\d+(?:\.\d+)?)(%?)\s*\((?:\+?(\d+(?:\.\d+)?))(%?)\)/);
-  if (!m) return null;
+  const m = text.match(
+    /\+?(?<baseValue>\d+(?:\.\d+)?)(?<basePercent>%?)\s*\(\+?(?<tauValue>\d+(?:\.\d+)?)(?<tauPercent>%?)\)/,
+  );
+  if (!m || !m.groups) return null;
+  const { baseValue, basePercent, tauValue, tauPercent } = m.groups as {
+    baseValue: string;
+    basePercent: string;
+    tauValue: string;
+    tauPercent: string;
+  };
   return {
-    base: parseFloat(m[1]),
-    tauforged: parseFloat(m[3]),
-    isPercent: m[2] === '%' || m[4] === '%',
+    base: parseFloat(baseValue),
+    tauforged: parseFloat(tauValue),
+    isPercent: basePercent === '%' || tauPercent === '%',
   };
 }
 
@@ -736,7 +747,7 @@ export async function scrapeRivenDispositions(
 }
 
 function normalizeWikiWeaponLabel(s: string): string {
-  return normalizeText(s).replace(/\s+/g, ' ').trim().toLowerCase();
+  return normalizeText(s).replace(/\s+/g, ' ').toLowerCase();
 }
 
 function parseProjectileSpeedCell(text: string): number | null {
@@ -750,8 +761,8 @@ function parseProjectileSpeedCell(text: string): number | null {
   return null;
 }
 
-function extractWeaponNameFromCell($: cheerio.CheerioAPI, cell: Element): string {
-  const $cell = $(cell);
+function extractWeaponNameFromCell($: cheerio.CheerioAPI, cellElement: Element): string {
+  const $cell = $(cellElement);
   const link = $cell.find('a[href*="/w/"]').first();
   const fromLink = normalizeText(link.text());
   if (fromLink) return fromLink;
@@ -847,9 +858,9 @@ export async function scrapeProjectileSpeedsFromWiki(
 function buildProjectileSpeedLookupKeys(name: string, slot: number | null): string[] {
   const base = normalizeWikiWeaponLabel(name);
   const keys: string[] = [base];
-  if (slot === 1) {
+  if (slot === SLOT_PRIMARY) {
     keys.push(`${base} (primary)`);
-  } else if (slot === 0) {
+  } else if (slot === SLOT_SECONDARY) {
     keys.push(`${base} (secondary)`);
   }
   return keys;

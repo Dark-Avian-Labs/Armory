@@ -25,10 +25,6 @@ export function getModBaseName(name: string): string {
   return result;
 }
 
-/**
- * Lowercased ExportUpgrades `uniqueName` paths that share the same in-game mod slot
- * (siblings under different asset paths). Sourced from public export + wiki Mod Incompatibility.
- */
 const UPGRADE_PATH_LOCKOUT_GROUPS: Record<string, string> = {
   '/lotus/upgrades/mods/shotgun/dualstat/corruptedcritchancefirerateshotgun':
     'shotgun_weapon_crit_chance',
@@ -50,11 +46,13 @@ const UPGRADE_PATH_LOCKOUT_GROUPS: Record<string, string> = {
     'pvp_shotgun_reload_mag_chain',
 };
 
+const MIN_COMPAT_TOKEN_LENGTH = 3;
+
 function normalizeUpgradePath(uniqueName: string): string {
   return uniqueName.trim().toLowerCase();
 }
 
-function getPathLockoutGroupId(uniqueName: string | undefined): string | null {
+function getModPathLockoutGroup(uniqueName: string | undefined): string | null {
   if (!uniqueName) return null;
   const path = normalizeUpgradePath(uniqueName);
   const mapped = UPGRADE_PATH_LOCKOUT_GROUPS[path];
@@ -79,21 +77,16 @@ function getPathLockoutGroupId(uniqueName: string | undefined): string | null {
   return null;
 }
 
-/** Name + mod category (handles Primed / Amalgam / Link / … variants). */
 export function getModLockoutKey(mod: Mod): string {
   const baseName = getModBaseName(mod.name).toLowerCase();
   const type = (mod.type || '').toLowerCase();
   return `${baseName}|${type}`;
 }
 
-/**
- * All lockout identities for a mod: a candidate conflicts with an equipped mod if any key matches.
- * Uses ExportUpgrades paths where they encode shared upgrade classes, plus legacy name|type fallback.
- */
 export function getModLockoutKeys(mod: Mod): string[] {
   const keys = new Set<string>();
   keys.add(`legacy:${getModLockoutKey(mod)}`);
-  const pathGroup = getPathLockoutGroupId(mod.unique_name);
+  const pathGroup = getModPathLockoutGroup(mod.unique_name);
   if (pathGroup) keys.add(`path:${pathGroup}`);
   return [...keys];
 }
@@ -173,9 +166,9 @@ export function getCompanionSubtype(equipment?: {
 function normalizeCompatText(value: string | undefined): string {
   if (!value) return '';
   return value
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .toLowerCase()
     .replace(/[_/\\-]+/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -184,7 +177,7 @@ function normalizeCompatText(value: string | undefined): string {
 function getCompatTokens(value: string | undefined): string[] {
   const normalized = normalizeCompatText(value);
   if (!normalized) return [];
-  return normalized.split(' ').filter((token) => token.length >= 3);
+  return normalized.split(' ').filter((token) => token.length >= MIN_COMPAT_TOKEN_LENGTH);
 }
 
 export function stanceMatchesEquipment(
