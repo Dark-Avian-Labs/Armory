@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { calculateEffectiveDrain, calculateTotalCapacity } from '../drain';
+import { calculateEffectiveDrain, calculateTotalCapacity, polarityMatchForUi } from '../drain';
 
 describe('calculateEffectiveDrain', () => {
   describe('general slots', () => {
@@ -84,6 +84,30 @@ describe('calculateEffectiveDrain', () => {
     it('returns neutral aura capacity for universal slot + umbra mod', () => {
       expect(calculateEffectiveDrain(-7, 0, 5, 'AP_ANY', 'AP_UMBRA', 'aura')).toBe(-7);
     });
+  });
+});
+
+describe('polarityMatchForUi', () => {
+  it('returns undefined when slot or mod polarity is missing', () => {
+    expect(polarityMatchForUi(undefined, 'AP_ATTACK')).toBeUndefined();
+    expect(polarityMatchForUi('AP_ANY', undefined)).toBeUndefined();
+  });
+
+  it('returns match for universal slot with non-Umbra mod (same as drain)', () => {
+    expect(polarityMatchForUi('AP_ANY', 'AP_ATTACK')).toBe('match');
+  });
+
+  it('returns match for regular slot with universal mod', () => {
+    expect(polarityMatchForUi('AP_DEFENSE', 'AP_ANY')).toBe('match');
+  });
+
+  it('returns mismatch for incompatible regular polarities', () => {
+    expect(polarityMatchForUi('AP_DEFENSE', 'AP_ATTACK')).toBe('mismatch');
+  });
+
+  it('returns undefined for universal + Umbra (neutral drain, default card styling)', () => {
+    expect(polarityMatchForUi('AP_ANY', 'AP_UMBRA')).toBeUndefined();
+    expect(polarityMatchForUi('AP_UMBRA', 'AP_ANY')).toBeUndefined();
   });
 });
 

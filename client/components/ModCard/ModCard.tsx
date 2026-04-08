@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 
 import type { Mod, SlotType } from '../../types/warframe';
 import { sanitizeDisplayTextKeepDamageTokens } from '../../utils/damageTypeTokens';
-import { calculateEffectiveDrain } from '../../utils/drain';
+import { calculateEffectiveDrain, polarityMatchForUi } from '../../utils/drain';
 import { isPostureMod } from '../../utils/modFiltering';
 import { isRivenMod } from '../../utils/riven';
 import { DEFAULT_LAYOUT, dbRarityToCardRarity, dbPolarityToIconName } from './cardLayout';
@@ -102,12 +102,7 @@ export function ModCard({
 
   const displayDrain = Math.abs(effectiveDrain);
 
-  const polarityMatch: 'match' | 'mismatch' | undefined =
-    slotPolarity && mod.polarity
-      ? slotPolarity === mod.polarity
-        ? 'match'
-        : 'mismatch'
-      : undefined;
+  const polarityMatch = polarityMatchForUi(slotPolarity, mod.polarity);
 
   const layout = {
     ...DEFAULT_LAYOUT,

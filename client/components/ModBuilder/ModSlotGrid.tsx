@@ -10,6 +10,7 @@ import {
   type ModSlot,
   type SlotType,
 } from '../../types/warframe';
+import { polarityMatchForUi } from '../../utils/drain';
 import { isRivenMod } from '../../utils/riven';
 import { ModCard, CardPreview, DEFAULT_LAYOUT } from '../ModCard';
 
@@ -261,9 +262,10 @@ function PolarityIcon({
 
   let filterStyle = 'brightness(0) invert(1) opacity(0.7)';
   if (mod?.polarity) {
-    if (mod.polarity === polarity) {
+    const match = polarityMatchForUi(polarity, mod.polarity);
+    if (match === 'match') {
       filterStyle = 'brightness(0) invert(0.5) sepia(1) saturate(5) hue-rotate(85deg)';
-    } else {
+    } else if (match === 'mismatch') {
       filterStyle = 'brightness(0) invert(0.5) sepia(1) saturate(5) hue-rotate(-10deg)';
     }
   }
