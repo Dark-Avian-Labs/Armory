@@ -1,6 +1,10 @@
 import type { Mod, ModSlot } from '../types/warframe';
 import { isRivenMod } from './riven';
-import { countEquippedUmbraSetMods, getUmbraTierStatBlockAtMaxRank } from './umbraSet';
+import {
+  countEquippedUmbraSetMods,
+  getUmbraTierStatBlockAtMaxRank,
+  resolveModRankDescriptionText,
+} from './umbraSet';
 
 export interface AggregateOptions {
   rivenDispositionMultiplier?: number;
@@ -152,18 +156,8 @@ export function parseModEffects(
       applyStatLineToEffects(line, effects);
     }
   } else if (mod.description) {
-    let descriptions: string[];
-    try {
-      descriptions = JSON.parse(mod.description);
-    } catch {
-      return effects;
-    }
-
-    const clampedRank = Math.min(rank, descriptions.length - 1);
-    if (clampedRank < 0) return effects;
-
-    const text = descriptions[clampedRank];
-    if (!text) return effects;
+    const text = resolveModRankDescriptionText(mod, rank);
+    if (!text.trim()) return effects;
 
     for (const line of text.split('\n')) {
       applyStatLineToEffects(line, effects);

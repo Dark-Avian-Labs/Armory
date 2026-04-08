@@ -4,23 +4,13 @@ import {
   getUmbraTierStatBlockAtMaxRank,
   isUmbraSelfScalingSetMod,
   parseSetStatsTiers,
+  resolveModRankDescriptionText,
 } from './umbraSet';
 
 export interface ModCardDisplayTexts {
   mainDescription: string;
   setBonusDescription: string;
   effectiveSetRank: number;
-}
-
-function parseDescriptionJsonAtRank(mod: Mod, rank: number): string {
-  if (!mod.description) return '';
-  try {
-    const descriptions: string[] = JSON.parse(mod.description);
-    if (!descriptions.length) return '';
-    return descriptions[Math.min(rank, descriptions.length - 1)] ?? '';
-  } catch {
-    return mod.description ?? '';
-  }
 }
 
 export function getModCardDisplayTexts(
@@ -46,7 +36,7 @@ export function getModCardDisplayTexts(
     };
   }
 
-  const rankBody = parseDescriptionJsonAtRank(mod, rank);
+  const rankBody = resolveModRankDescriptionText(mod, rank);
   const mainDescription = sanitizeDisplayTextKeepDamageTokens(rankBody);
 
   let setBonusDescription = '';
