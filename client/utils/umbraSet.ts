@@ -115,7 +115,11 @@ const UMBRA_SET_MULTIPLIERS: Record<string, Record<number, number>> = {
   'Umbral Intensify': { 2: 1.25, 3: 1.75 },
 };
 
-export const UMBRA_SET_BONUS_DESCRIPTION = 'Enhances all equipped mods within the set';
+const UMBRA_SET_DESCRIPTIONS: string[] = [
+  'Enhances all equipped mods within the set',
+  'Vitality/Fiber +30%, Intensify +25%',
+  'Vitality/Fiber +80%, Intensify +75%',
+];
 
 export function getUmbraSetMultiplier(mod: Mod, equippedCount: number): number {
   if (!isUmbraSelfScalingSetMod(mod) || equippedCount < 2) return 1;
@@ -134,4 +138,9 @@ export function applyUmbraMultiplierToText(text: string, multiplier: number): st
       : String(Math.round(boosted));
     return `${sign}${formatted}`;
   });
+}
+
+export function getUmbraSetBonusDescription(equippedCount: number): string {
+  const idx = Math.min(Math.max(equippedCount, 1), 3) - 1;
+  return UMBRA_SET_DESCRIPTIONS[idx];
 }

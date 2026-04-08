@@ -1,8 +1,8 @@
 import type { Mod } from '../types/warframe';
 import { sanitizeDisplayTextKeepDamageTokens } from './damageTypeTokens';
 import {
-  UMBRA_SET_BONUS_DESCRIPTION,
   applyUmbraMultiplierToText,
+  getUmbraSetBonusDescription,
   getUmbraSetMultiplier,
   isUmbraSelfScalingSetMod,
   parseSetStatsTiers,
@@ -43,7 +43,7 @@ export function getModCardDisplayTexts(
 
   let setBonusDescription = '';
   if (isUmbra && maxSetRank > 0) {
-    setBonusDescription = UMBRA_SET_BONUS_DESCRIPTION;
+    setBonusDescription = getUmbraSetBonusDescription(umbraCount ?? 0);
   } else if (mod.set_stats && maxSetRank > 0) {
     const setStats = parseSetStatsTiers(mod.set_stats);
     if (setStats?.length) {

@@ -4,7 +4,7 @@ import type { Mod } from '../../types/warframe';
 import { getModCardDisplayTexts } from '../modDisplayText';
 
 describe('getModCardDisplayTexts', () => {
-  it('applies Umbral multiplier to main body and shows static set bonus description', () => {
+  it('applies Umbral multiplier to main body and shows tiered set bonus description', () => {
     const mod: Mod = {
       unique_name: '/u/umbra',
       name: 'Umbral Vitality',
@@ -18,7 +18,7 @@ describe('getModCardDisplayTexts', () => {
       umbraSetEquippedCount: 3,
     });
     expect(mainDescription).toContain('792'); // 440 * 1.80
-    expect(setBonusDescription).toBe('Enhances all equipped mods within the set');
+    expect(setBonusDescription).toBe('Vitality/Fiber +80%, Intensify +75%');
     expect(effectiveSetRank).toBe(3);
   });
 
@@ -48,8 +48,10 @@ describe('getModCardDisplayTexts', () => {
       set_num_in_set: 3,
       fusion_limit: 1,
     };
-    const { mainDescription, setBonusDescription } = getModCardDisplayTexts(mod, 0, { umbraSetEquippedCount: 3 });
+    const { mainDescription, setBonusDescription } = getModCardDisplayTexts(mod, 0, {
+      umbraSetEquippedCount: 3,
+    });
     expect(mainDescription).toContain('18'); // 10 * 1.80
-    expect(setBonusDescription).toBe('Enhances all equipped mods within the set');
+    expect(setBonusDescription).toBe('Vitality/Fiber +80%, Intensify +75%');
   });
 });
