@@ -123,51 +123,44 @@ describe('parseModEffects', () => {
     expect(parseModEffects(mod, 8).baseDamage).toBeCloseTo(0.9);
   });
 
-  it('uses Umbral set_stats tier at max rank from umbraSetEquippedCount', () => {
-    const mod = makeMod(['ignored at max rank 0', 'ignored at max rank 1'], {
-      mod_set: '/Lotus/Upgrades/ModSets/Umbra/UmbraModSet',
-      set_stats: JSON.stringify([
-        '+100 Health\n+11% Ability Strength',
-        '+130 Health\n+14.3% Ability Strength',
-        '+180 Health\n+19.8% Ability Strength',
-      ]),
-      fusion_limit: 1,
-    });
-    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 1 }).healthFlat).toBeCloseTo(100);
-    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 1 }).abilityStrength).toBeCloseTo(0.11);
-    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 2 }).healthFlat).toBeCloseTo(130);
-    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 3 }).healthFlat).toBeCloseTo(180);
-  });
-
-  it('uses Umbral set_stats when tiers are a JSON object', () => {
-    const mod = makeMod(['ignored'], {
-      mod_set: 'UmbraModSet',
-      set_stats: JSON.stringify({
-        '1': '+100 Health',
-        '2': '+130 Health',
-        '3': '+180 Health',
-      }),
-      fusion_limit: 1,
-    });
-    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 3 }).healthFlat).toBeCloseTo(180);
-  });
-
-  it('treats Umbral name prefix as self-scaling when mod_set is missing', () => {
-    const mod = makeMod(['+10 Health'], {
+  it('applies Umbral Vitality multiplier based on equipped count', () => {
+    const mod = makeMod(['+100 Health', '+440 Health'], {
       name: 'Umbral Vitality',
-      set_stats: JSON.stringify(['+100 Health']),
+      mod_set: '/Lotus/Upgrades/ModSets/Umbra/UmbraModSet',
       fusion_limit: 1,
     });
-    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 1 }).healthFlat).toBeCloseTo(100);
+    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 1 }).healthFlat).toBeCloseTo(440);
+    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 2 }).healthFlat).toBeCloseTo(440 * 1.3);
+    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 3 }).healthFlat).toBeCloseTo(440 * 1.8);
   });
 
-  it('does not use Umbral set_stats below max fusion rank', () => {
-    const mod = makeMod(['+10 Health', '+20 Health'], {
+  it('applies Umbral Intensify multiplier correctly', () => {
+    const mod = makeMod(['+11% Ability Strength', '+44% Ability Strength'], {
+      name: 'Umbral Intensify',
       mod_set: 'UmbraModSet',
-      set_stats: JSON.stringify(['+999 Health']),
       fusion_limit: 1,
     });
-    expect(parseModEffects(mod, 0, { umbraSetEquippedCount: 1 }).healthFlat).toBeCloseTo(10);
+    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 1 }).abilityStrength).toBeCloseTo(0.44);
+    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 2 }).abilityStrength).toBeCloseTo(0.44 * 1.25);
+    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 3 }).abilityStrength).toBeCloseTo(0.44 * 1.75);
+  });
+
+  it('applies Umbral multiplier at non-max rank too', () => {
+    const mod = makeMod(['+100 Health', '+440 Health'], {
+      name: 'Umbral Vitality',
+      mod_set: 'UmbraModSet',
+      fusion_limit: 1,
+    });
+    expect(parseModEffects(mod, 0, { umbraSetEquippedCount: 3 }).healthFlat).toBeCloseTo(100 * 1.8);
+  });
+
+  it('no multiplier with only 1 Umbral mod equipped', () => {
+    const mod = makeMod(['+100 Health', '+440 Health'], {
+      name: 'Umbral Vitality',
+      mod_set: 'UmbraModSet',
+      fusion_limit: 1,
+    });
+    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 1 }).healthFlat).toBeCloseTo(440);
   });
 });
 
@@ -216,12 +209,12 @@ describe('aggregateAllMods', () => {
     expect(total.baseDamage).toBeCloseTo(1.65);
   });
 
-  it('uses Umbral set tier from equipped Umbral mod count for each Umbral mod', () => {
+  it('applies Umbral multiplier from equipped count for each Umbral mod', () => {
     const mkUmbra = (unique_name: string) =>
-      makeMod(['—', '—'], {
+      makeMod(['+100 Health', '+200 Health'], {
         unique_name,
+        name: 'Umbral Vitality',
         mod_set: 'UmbraModSet',
-        set_stats: JSON.stringify(['+100 Health', '+130 Health']),
         fusion_limit: 1,
       });
     const slots: ModSlot[] = [
@@ -229,6 +222,6 @@ describe('aggregateAllMods', () => {
       { index: 1, type: 'general', mod: mkUmbra('/u/b'), rank: 1 },
     ];
     const total = aggregateAllMods(slots);
-    expect(total.healthFlat).toBeCloseTo(260);
+    expect(total.healthFlat).toBeCloseTo(200 * 1.3 * 2); // 2 equipped → 1.30x each
   });
 });

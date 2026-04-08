@@ -2,7 +2,8 @@ import type { Mod, ModSlot } from '../types/warframe';
 import { isRivenMod } from './riven';
 import {
   countEquippedUmbraSetMods,
-  getUmbraTierStatBlockAtMaxRank,
+  getUmbraSetMultiplier,
+  isUmbraSelfScalingSetMod,
   resolveModRankDescriptionText,
 } from './umbraSet';
 
@@ -149,18 +150,22 @@ export function parseModEffects(
   options?: ParseModEffectsOptions,
 ): StatEffects {
   const effects = emptyEffects();
-  const umbraTierText = getUmbraTierStatBlockAtMaxRank(mod, rank, options?.umbraSetEquippedCount);
 
-  if (umbraTierText != null) {
-    for (const line of umbraTierText.split('\n')) {
-      applyStatLineToEffects(line, effects);
-    }
-  } else if (mod.description) {
+  if (mod.description) {
     const text = resolveModRankDescriptionText(mod, rank);
     if (!text.trim()) return effects;
 
     for (const line of text.split('\n')) {
       applyStatLineToEffects(line, effects);
+    }
+  }
+
+  if (isUmbraSelfScalingSetMod(mod) && options?.umbraSetEquippedCount != null) {
+    const multiplier = getUmbraSetMultiplier(mod, options.umbraSetEquippedCount);
+    if (multiplier > 1) {
+      for (const key of Object.keys(effects) as (keyof StatEffects)[]) {
+        effects[key] *= multiplier;
+      }
     }
   }
 

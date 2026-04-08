@@ -108,3 +108,30 @@ export function countEquippedUmbraSetModsFromModList(mods: Mod[]): number {
   }
   return n;
 }
+
+const UMBRA_SET_MULTIPLIERS: Record<string, Record<number, number>> = {
+  'Umbral Vitality': { 2: 1.3, 3: 1.8 },
+  'Umbral Fiber': { 2: 1.3, 3: 1.8 },
+  'Umbral Intensify': { 2: 1.25, 3: 1.75 },
+};
+
+export const UMBRA_SET_BONUS_DESCRIPTION = 'Enhances all equipped mods within the set';
+
+export function getUmbraSetMultiplier(mod: Mod, equippedCount: number): number {
+  if (!isUmbraSelfScalingSetMod(mod) || equippedCount < 2) return 1;
+  const tier = Math.min(equippedCount, 3);
+  return UMBRA_SET_MULTIPLIERS[mod.name]?.[tier] ?? 1;
+}
+
+export function applyUmbraMultiplierToText(text: string, multiplier: number): string {
+  if (multiplier <= 1) return text;
+  return text.replace(/([+-])(\d+(?:\.\d+)?)/g, (_match, sign: string, numStr: string) => {
+    const val = parseFloat(numStr);
+    const boosted = val * multiplier;
+    const hasDecimal = numStr.includes('.');
+    const formatted = hasDecimal
+      ? boosted.toFixed(1).replace(/\.0$/, '')
+      : String(Math.round(boosted));
+    return `${sign}${formatted}`;
+  });
+}
