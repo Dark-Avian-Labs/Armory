@@ -27,7 +27,7 @@ import { getCompanionWeaponSelectionType, isCompanionWeapon } from '../../utils/
 import { calculateBuildDamage } from '../../utils/damage';
 import { calculateWeaponDps } from '../../utils/damageCalc';
 import { calculateTotalCapacity } from '../../utils/drain';
-import { getModTypesForEquipment } from '../../utils/equipmentModTypes';
+import { getModTypesForEquipment, NO_MOD_TYPES_FOR_EQUIPMENT } from '../../utils/equipmentModTypes';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
 import { hydrateSlotsWithModCatalog } from '../../utils/modCatalogHydration';
 import { isModLockedOut, isPostureMod } from '../../utils/modFiltering';
@@ -293,7 +293,9 @@ export function ModBuilder() {
 
   const modCatalogTypes = getModTypesForEquipment(equipmentType);
   const modCatalogUrl =
-    modCatalogTypes !== '---' ? `/api/mods?types=${encodeURIComponent(modCatalogTypes)}` : null;
+    modCatalogTypes !== NO_MOD_TYPES_FOR_EQUIPMENT
+      ? `/api/mods?types=${encodeURIComponent(modCatalogTypes)}`
+      : null;
   const { data: modCatalogData } = useApi<{ items: Mod[] }>(modCatalogUrl);
 
   const modCatalogByUnique = useMemo(() => {

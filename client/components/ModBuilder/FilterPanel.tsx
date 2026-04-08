@@ -2,7 +2,7 @@ import { memo, useState, useMemo, useRef, useEffect, useLayoutEffect, useCallbac
 
 import { useApi } from '../../hooks/useApi';
 import type { Mod, ModRarity, EquipmentType } from '../../types/warframe';
-import { getModTypesForEquipment } from '../../utils/equipmentModTypes';
+import { getModTypesForEquipment, NO_MOD_TYPES_FOR_EQUIPMENT } from '../../utils/equipmentModTypes';
 import { filterCompatibleMods, isModLockedOut, isPostureMod } from '../../utils/modFiltering';
 import { createRivenPlaceholderMod, getRivenWeaponType } from '../../utils/riven';
 import { getRequiredExaltedStanceName } from '../../utils/specialItems';
@@ -172,7 +172,9 @@ export function FilterPanel({
 
   const modTypes = getModTypesForEquipment(equipmentType);
   const { data, loading } = useApi<{ items: Mod[] }>(
-    `/api/mods?types=${encodeURIComponent(modTypes)}`,
+    modTypes !== NO_MOD_TYPES_FOR_EQUIPMENT
+      ? `/api/mods?types=${encodeURIComponent(modTypes)}`
+      : null,
   );
   const rawMods = data?.items || [];
   const importedRivenMods = useMemo(() => rawMods.filter(isImportedRivenPlaceholder), [rawMods]);
