@@ -4,7 +4,7 @@ import type { Mod } from '../../types/warframe';
 import { getModCardDisplayTexts } from '../modDisplayText';
 
 describe('getModCardDisplayTexts', () => {
-  it('applies Umbral multiplier to main body and shows tiered set bonus description', () => {
+  it('applies Umbral multiplier to main body and shows a fixed set bonus description', () => {
     const mod: Mod = {
       unique_name: '/u/umbra',
       name: 'Umbral Vitality',
@@ -17,9 +17,25 @@ describe('getModCardDisplayTexts', () => {
     const { mainDescription, setBonusDescription, effectiveSetRank } = getModCardDisplayTexts(mod, 1, {
       umbraSetEquippedCount: 3,
     });
-    expect(mainDescription).toContain('792'); // 440 * 1.80
-    expect(setBonusDescription).toBe('Vitality/Fiber +80%, Intensify +75%');
+    expect(mainDescription).toContain('792');
+    expect(setBonusDescription).toBe('Enhances all equipped mods within the set');
     expect(effectiveSetRank).toBe(3);
+  });
+
+  it('keeps the same Umbral set bonus copy regardless of equipped count', () => {
+    const mod: Mod = {
+      unique_name: '/u/umbra',
+      name: 'Umbral Vitality',
+      mod_set: '/Lotus/Upgrades/ModSets/Umbra/UmbraModSet',
+      description: JSON.stringify(['+10 Health']),
+      set_stats: JSON.stringify(['+100 Health', '+130 Health', '+180 Health']),
+      set_num_in_set: 3,
+      fusion_limit: 1,
+    };
+    const d2 = getModCardDisplayTexts(mod, 0, { umbraSetEquippedCount: 2 }).setBonusDescription;
+    const d3 = getModCardDisplayTexts(mod, 0, { umbraSetEquippedCount: 3 }).setBonusDescription;
+    expect(d2).toBe('Enhances all equipped mods within the set');
+    expect(d3).toBe(d2);
   });
 
   it('uses rank JSON for non-Umbral set mod and set_stats for the set strip', () => {
@@ -51,7 +67,7 @@ describe('getModCardDisplayTexts', () => {
     const { mainDescription, setBonusDescription } = getModCardDisplayTexts(mod, 0, {
       umbraSetEquippedCount: 3,
     });
-    expect(mainDescription).toContain('18'); // 10 * 1.80
-    expect(setBonusDescription).toBe('Vitality/Fiber +80%, Intensify +75%');
+    expect(mainDescription).toContain('18');
+    expect(setBonusDescription).toBe('Enhances all equipped mods within the set');
   });
 });

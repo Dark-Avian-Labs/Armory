@@ -222,6 +222,6 @@ describe('aggregateAllMods', () => {
       { index: 1, type: 'general', mod: mkUmbra('/u/b'), rank: 1 },
     ];
     const total = aggregateAllMods(slots);
-    expect(total.healthFlat).toBeCloseTo(200 * 1.3 * 2); // 2 equipped → 1.30x each
+    expect(total.healthFlat).toBeCloseTo(200 * 1.3 * 2);
   });
 });
