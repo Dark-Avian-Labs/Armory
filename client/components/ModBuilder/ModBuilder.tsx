@@ -27,7 +27,9 @@ import { getCompanionWeaponSelectionType, isCompanionWeapon } from '../../utils/
 import { calculateBuildDamage } from '../../utils/damage';
 import { calculateWeaponDps } from '../../utils/damageCalc';
 import { calculateTotalCapacity } from '../../utils/drain';
+import { getModTypesForEquipment } from '../../utils/equipmentModTypes';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
+import { hydrateSlotsWithModCatalog } from '../../utils/modCatalogHydration';
 import { isModLockedOut, isPostureMod } from '../../utils/modFiltering';
 import {
   createRivenMod,
@@ -289,6 +291,26 @@ export function ModBuilder() {
   const shardTypes = shardData?.shards || [];
   const { data: stanceData } = useApi<{ items: Mod[] }>('/api/mods?types=STANCE');
 
+  const modCatalogTypes = getModTypesForEquipment(equipmentType);
+  const modCatalogUrl =
+    modCatalogTypes !== '---' ? `/api/mods?types=${encodeURIComponent(modCatalogTypes)}` : null;
+  const { data: modCatalogData } = useApi<{ items: Mod[] }>(modCatalogUrl);
+
+  const modCatalogByUnique = useMemo(() => {
+    const items = modCatalogData?.items;
+    if (!items?.length) return new Map<string, Mod>();
+    const m = new Map<string, Mod>();
+    for (const mod of items) {
+      m.set(mod.unique_name, mod);
+    }
+    return m;
+  }, [modCatalogData?.items]);
+
+  const hydratedSlots = useMemo(
+    () => hydrateSlotsWithModCatalog(slots, modCatalogByUnique),
+    [slots, modCatalogByUnique],
+  );
+
   const { addSnapshot, snapshots: compareSnapshots } = useCompare();
 
   const resolveSpecialItem = useCallback(
@@ -479,7 +501,10 @@ export function ModBuilder() {
     }
   }, [loaded, buildId, getBuild, isOwnBuild]);
 
-  const equippedMods = useMemo(() => slots.filter((s) => s.mod).map((s) => s.mod!), [slots]);
+  const equippedMods = useMemo(
+    () => hydratedSlots.filter((s) => s.mod).map((s) => s.mod!),
+    [hydratedSlots],
+  );
   const selectedRequiredExaltedStanceName = useMemo(() => {
     if (equipmentType !== 'melee' || !selectedEquipment?.name) {
       return null;
@@ -870,8 +895,8 @@ export function ModBuilder() {
   }, []);
 
   const capacity = useMemo(
-    () => calculateTotalCapacity(slots, 30, orokinReactor),
-    [slots, orokinReactor],
+    () => calculateTotalCapacity(hydratedSlots, 30, orokinReactor),
+    [hydratedSlots, orokinReactor],
   );
 
   const formaCost = useMemo<FormaCount>(
@@ -1057,8 +1082,8 @@ export function ModBuilder() {
   const addToCompare = () => {
     if (!selectedEquipment || equipmentType === 'warframe') return;
     const weapon = selectedEquipment as Weapon;
-    const calc = calculateWeaponDps(weapon, slots);
-    const { totalDamage, damageBreakdown } = calculateBuildDamage(weapon, slots);
+    const calc = calculateWeaponDps(weapon, hydratedSlots);
+    const { totalDamage, damageBreakdown } = calculateBuildDamage(weapon, hydratedSlots);
     addSnapshot({
       id: crypto.randomUUID(),
       label: buildName,
@@ -1195,7 +1220,7 @@ export function ModBuilder() {
             <StatsPanel
               equipment={selectedEquipment as Warframe | Weapon}
               type={equipmentType}
-              slots={slots}
+              slots={hydratedSlots}
               shardSlots={equipmentType === 'warframe' ? shardSlots : undefined}
               shardTypes={equipmentType === 'warframe' ? shardTypes : undefined}
               abilities={
@@ -1224,7 +1249,7 @@ export function ModBuilder() {
             />
           )}
           {selectedEquipment && equipmentType !== 'warframe' && (
-            <ElementOutput weapon={selectedEquipment as Weapon} slots={slots} />
+            <ElementOutput weapon={selectedEquipment as Weapon} slots={hydratedSlots} />
           )}
         </div>
 
@@ -1296,7 +1321,7 @@ export function ModBuilder() {
 
           {selectedEquipment ? (
             <ModSlotGrid
-              slots={slots}
+              slots={hydratedSlots}
               onDrop={handleModDrop}
               onSwap={handleModSwap}
               onRemove={handleModRemove}
@@ -1556,7 +1581,7 @@ export function ModBuilder() {
             equipmentName={selectedEquipment.name}
             equipmentType={equipmentType}
             equipmentImagePath={selectedEquipmentImagePath}
-            slots={slots}
+            slots={hydratedSlots}
             arcaneSlots={arcaneSlots}
             shardSlots={shardSlots}
             shardTypes={equipmentType === 'warframe' ? shardTypes : []}

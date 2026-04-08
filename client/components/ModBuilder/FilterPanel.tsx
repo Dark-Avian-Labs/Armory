@@ -2,6 +2,7 @@ import { memo, useState, useMemo, useRef, useEffect, useLayoutEffect, useCallbac
 
 import { useApi } from '../../hooks/useApi';
 import type { Mod, ModRarity, EquipmentType } from '../../types/warframe';
+import { getModTypesForEquipment } from '../../utils/equipmentModTypes';
 import { filterCompatibleMods, isModLockedOut, isPostureMod } from '../../utils/modFiltering';
 import { createRivenPlaceholderMod, getRivenWeaponType } from '../../utils/riven';
 import { getRequiredExaltedStanceName } from '../../utils/specialItems';
@@ -56,35 +57,6 @@ function getSyntheticSpecialItemStanceMods(
       fusion_limit: 5,
     },
   ];
-}
-
-function getModTypes(eqType: EquipmentType): string {
-  switch (eqType) {
-    case 'warframe':
-      return 'WARFRAME,AURA';
-    case 'primary':
-      return 'PRIMARY';
-    case 'secondary':
-      return 'SECONDARY';
-    case 'melee':
-      return 'MELEE,STANCE';
-    case 'beast_claws':
-      return 'MELEE,STANCE';
-    case 'companion':
-      return 'SENTINEL,KAVAT,KUBROW,HELMINTH CHARGER';
-    case 'archgun':
-      return 'ARCH-GUN';
-    case 'archmelee':
-      return 'ARCH-MELEE';
-    case 'archwing':
-      return 'ARCHWING';
-    case 'necramech':
-      return '---';
-    case 'kdrive':
-      return '---';
-    default:
-      return 'WARFRAME';
-  }
 }
 
 const RARITIES: { value: ModRarity | 'ALL'; label: string }[] = [
@@ -198,7 +170,7 @@ export function FilterPanel({
     }
   }, [active, measure]);
 
-  const modTypes = getModTypes(equipmentType);
+  const modTypes = getModTypesForEquipment(equipmentType);
   const { data, loading } = useApi<{ items: Mod[] }>(
     `/api/mods?types=${encodeURIComponent(modTypes)}`,
   );
