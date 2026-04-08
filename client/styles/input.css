@@ -565,6 +565,10 @@ html.ui-shadow:not(.dark) {
     max-width: min(960px, 94vw);
   }
 
+  .modal.import-log-modal {
+    max-width: min(1000px, 94vw);
+  }
+
   .glass-button,
   .glass-button-secondary {
     appearance: none;

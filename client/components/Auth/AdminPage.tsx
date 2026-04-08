@@ -69,7 +69,9 @@ function DataImportAdmin() {
   const [runningImport, setRunningImport] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'error'>('idle');
   const logContainerRef = useRef<HTMLDivElement | null>(null);
+  const copyFeedbackResetTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     let isDisposed = false;
@@ -120,6 +122,16 @@ function DataImportAdmin() {
   }, []);
 
   useEffect(() => {
+    return () => {
+      const id = copyFeedbackResetTimeoutRef.current;
+      if (id != null) {
+        window.clearTimeout(id);
+        copyFeedbackResetTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!showLogs) return;
     if (!logContainerRef.current) return;
     const el = logContainerRef.current;
@@ -158,6 +170,31 @@ function DataImportAdmin() {
       setRunningImport(false);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to start import.');
     }
+  };
+
+  const copyLogToClipboard = async () => {
+    const lines = snapshot?.lines ?? [];
+    const text =
+      lines.length === 0
+        ? 'No output yet.'
+        : lines
+            .map((line) => `[${new Date(line.ts).toLocaleTimeString()}] ${line.message}`)
+            .join('\n');
+    const prevResetId = copyFeedbackResetTimeoutRef.current;
+    if (prevResetId != null) {
+      window.clearTimeout(prevResetId);
+      copyFeedbackResetTimeoutRef.current = null;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyFeedback('copied');
+    } catch {
+      setCopyFeedback('error');
+    }
+    copyFeedbackResetTimeoutRef.current = window.setTimeout(() => {
+      copyFeedbackResetTimeoutRef.current = null;
+      setCopyFeedback('idle');
+    }, 2000);
   };
 
   return (
@@ -208,7 +245,7 @@ function DataImportAdmin() {
       <Modal
         open={showLogs}
         onClose={() => setShowLogs(false)}
-        aria-labelledby="parametric-import-log-title"
+        ariaLabelledBy="parametric-import-log-title"
         className="import-log-modal"
       >
         <div className="space-y-3">
@@ -216,12 +253,28 @@ function DataImportAdmin() {
             <h3 id="parametric-import-log-title" className="text-foreground text-lg font-semibold">
               Import Console
             </h3>
-            <span
-              className={`text-xs ${snapshot?.running ? 'text-warning' : 'text-muted'}`}
-              role="status"
-            >
-              {snapshot?.running ? 'Running' : 'Idle'}
-            </span>
+            <div className="flex shrink-0 items-center gap-2">
+              <span
+                className={`text-xs ${snapshot?.running ? 'text-warning' : 'text-muted'}`}
+                role="status"
+              >
+                {snapshot?.running ? 'Running' : 'Idle'}
+              </span>
+              <button
+                type="button"
+                className="glass-button-secondary text-sm"
+                onClick={() => {
+                  void copyLogToClipboard();
+                }}
+                aria-label="Copy import log to clipboard"
+              >
+                {copyFeedback === 'copied'
+                  ? 'Copied'
+                  : copyFeedback === 'error'
+                    ? 'Copy failed'
+                    : 'Copy log'}
+              </button>
+            </div>
           </div>
           {snapshot?.summary?.blockingIssues?.length ? (
             <div className="error-msg text-xs">{snapshot.summary.blockingIssues.join(' ')}</div>
