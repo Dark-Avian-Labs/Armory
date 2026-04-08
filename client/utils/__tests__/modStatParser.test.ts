@@ -122,6 +122,31 @@ describe('parseModEffects', () => {
     expect(parseModEffects(mod, 0).baseDamage).toBeCloseTo(0.9 / 9);
     expect(parseModEffects(mod, 8).baseDamage).toBeCloseTo(0.9);
   });
+
+  it('uses Umbral set_stats tier at max rank from umbraSetEquippedCount', () => {
+    const mod = makeMod(['ignored at max rank 0', 'ignored at max rank 1'], {
+      mod_set: '/Lotus/Upgrades/ModSets/Umbra/UmbraModSet',
+      set_stats: JSON.stringify([
+        '+100 Health\n+11% Ability Strength',
+        '+130 Health\n+14.3% Ability Strength',
+        '+180 Health\n+19.8% Ability Strength',
+      ]),
+      fusion_limit: 1,
+    });
+    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 1 }).healthFlat).toBeCloseTo(100);
+    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 1 }).abilityStrength).toBeCloseTo(0.11);
+    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 2 }).healthFlat).toBeCloseTo(130);
+    expect(parseModEffects(mod, 1, { umbraSetEquippedCount: 3 }).healthFlat).toBeCloseTo(180);
+  });
+
+  it('does not use Umbral set_stats below max fusion rank', () => {
+    const mod = makeMod(['+10 Health', '+20 Health'], {
+      mod_set: 'UmbraModSet',
+      set_stats: JSON.stringify(['+999 Health']),
+      fusion_limit: 1,
+    });
+    expect(parseModEffects(mod, 0, { umbraSetEquippedCount: 1 }).healthFlat).toBeCloseTo(10);
+  });
 });
 
 describe('aggregateAllMods', () => {
@@ -167,5 +192,21 @@ describe('aggregateAllMods', () => {
 
     const total = aggregateAllMods(slots);
     expect(total.baseDamage).toBeCloseTo(1.65);
+  });
+
+  it('uses Umbral set tier from equipped Umbral mod count for each Umbral mod', () => {
+    const mkUmbra = (unique_name: string) =>
+      makeMod(['—', '—'], {
+        unique_name,
+        mod_set: 'UmbraModSet',
+        set_stats: JSON.stringify(['+100 Health', '+130 Health']),
+        fusion_limit: 1,
+      });
+    const slots: ModSlot[] = [
+      { index: 0, type: 'general', mod: mkUmbra('/u/a'), rank: 1 },
+      { index: 1, type: 'general', mod: mkUmbra('/u/b'), rank: 1 },
+    ];
+    const total = aggregateAllMods(slots);
+    expect(total.healthFlat).toBeCloseTo(260);
   });
 });

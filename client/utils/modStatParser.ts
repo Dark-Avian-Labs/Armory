@@ -1,5 +1,6 @@
 import type { Mod, ModSlot } from '../types/warframe';
 import { isRivenMod } from './riven';
+import { countEquippedUmbraSetMods, isUmbraSelfScalingSetMod } from './umbraSet';
 
 export interface AggregateOptions {
   rivenDispositionMultiplier?: number;
@@ -32,6 +33,10 @@ export interface StatEffects {
   abilityDuration: number;
   abilityEfficiency: number;
   abilityRange: number;
+  healthFlat: number;
+  shieldFlat: number;
+  armorFlat: number;
+  energyFlat: number;
 }
 
 function emptyEffects(): StatEffects {
@@ -62,6 +67,10 @@ function emptyEffects(): StatEffects {
     abilityDuration: 0,
     abilityEfficiency: 0,
     abilityRange: 0,
+    healthFlat: 0,
+    shieldFlat: 0,
+    armorFlat: 0,
+    energyFlat: 0,
   };
 }
 
@@ -99,38 +108,100 @@ const STAT_PATTERNS: Array<{ regex: RegExp; key: keyof StatEffects }> = [
   { regex: /([+-][\d.]+)%\s+Ability Range/i, key: 'abilityRange' },
 ];
 
-export function parseModEffects(mod: Mod, rank: number): StatEffects {
-  const effects = emptyEffects();
-  if (!mod.description) return effects;
+const FLAT_STAT_PATTERNS: Array<{
+  regex: RegExp;
+  key: 'healthFlat' | 'shieldFlat' | 'armorFlat' | 'energyFlat';
+}> = [
+  { regex: /\+(\d+(?:\.\d+)?)\s+Health\b/i, key: 'healthFlat' },
+  { regex: /\+(\d+(?:\.\d+)?)\s+Shield(?:\s+Capacity)?\b/i, key: 'shieldFlat' },
+  { regex: /\+(\d+(?:\.\d+)?)\s+Armor\b/i, key: 'armorFlat' },
+  { regex: /\+(\d+(?:\.\d+)?)\s+(?:Max\s+)?Energy\b/i, key: 'energyFlat' },
+];
 
-  let descriptions: string[];
-  try {
-    descriptions = JSON.parse(mod.description);
-  } catch {
-    return effects;
+export interface ParseModEffectsOptions {
+  /** Number of Umbral-set mods in the same build (including this mod). Used at max rank only. */
+  umbraSetEquippedCount?: number;
+}
+
+function applyStatLineToEffects(line: string, effects: StatEffects): void {
+  for (const { regex, key } of STAT_PATTERNS) {
+    const match = line.match(regex);
+    if (match) {
+      effects[key] += parseFloat(match[1]) / 100;
+      return;
+    }
   }
+  for (const { regex, key } of FLAT_STAT_PATTERNS) {
+    const match = line.match(regex);
+    if (match) {
+      effects[key] += parseFloat(match[1]);
+      return;
+    }
+  }
+}
 
-  const clampedRank = Math.min(rank, descriptions.length - 1);
-  if (clampedRank < 0) return effects;
+/** At max rank, Umbral mods use mod_sets.stats tier lines as the effective stat block. */
+function getUmbraSetTierStatText(
+  mod: Mod,
+  rank: number,
+  umbraSetEquippedCount: number | undefined,
+): string | null {
+  const fusionLimit = mod.fusion_limit ?? 0;
+  const atMaxRank = fusionLimit > 0 && rank >= fusionLimit;
+  if (
+    !isUmbraSelfScalingSetMod(mod) ||
+    !atMaxRank ||
+    umbraSetEquippedCount == null ||
+    !mod.set_stats
+  ) {
+    return null;
+  }
+  try {
+    const setStats: string[] = JSON.parse(mod.set_stats);
+    if (setStats.length === 0) return null;
+    const tier = Math.min(Math.max(umbraSetEquippedCount, 1), setStats.length);
+    const t = setStats[tier - 1]?.trim();
+    return t || null;
+  } catch {
+    return null;
+  }
+}
 
-  const text = descriptions[clampedRank];
-  if (!text) return effects;
+export function parseModEffects(
+  mod: Mod,
+  rank: number,
+  options?: ParseModEffectsOptions,
+): StatEffects {
+  const effects = emptyEffects();
+  const umbraTierText = getUmbraSetTierStatText(mod, rank, options?.umbraSetEquippedCount);
 
-  const lines = text.split('\n');
-  for (const line of lines) {
-    for (const { regex, key } of STAT_PATTERNS) {
-      const match = line.match(regex);
-      if (match) {
-        effects[key] += parseFloat(match[1]) / 100;
-        break;
-      }
+  if (umbraTierText != null) {
+    for (const line of umbraTierText.split('\n')) {
+      applyStatLineToEffects(line, effects);
+    }
+  } else if (mod.description) {
+    let descriptions: string[];
+    try {
+      descriptions = JSON.parse(mod.description);
+    } catch {
+      return effects;
+    }
+
+    const clampedRank = Math.min(rank, descriptions.length - 1);
+    if (clampedRank < 0) return effects;
+
+    const text = descriptions[clampedRank];
+    if (!text) return effects;
+
+    for (const line of text.split('\n')) {
+      applyStatLineToEffects(line, effects);
     }
   }
 
   if (isRivenMod(mod)) {
-    const maxRank = mod.fusion_limit ?? 8;
-    const r = Math.min(Math.max(rank, 0), maxRank);
-    const scale = (r + 1) / (maxRank + 1);
+    const rivenCap = mod.fusion_limit ?? 8;
+    const r = Math.min(Math.max(rank, 0), rivenCap);
+    const scale = (r + 1) / (rivenCap + 1);
     for (const key of Object.keys(effects) as (keyof StatEffects)[]) {
       effects[key] *= scale;
     }
@@ -142,11 +213,12 @@ export function parseModEffects(mod: Mod, rank: number): StatEffects {
 export function aggregateAllMods(slots: ModSlot[], _options?: AggregateOptions): StatEffects {
   void _options;
   const total = emptyEffects();
+  const umbraSetEquippedCount = countEquippedUmbraSetMods(slots);
 
   for (const slot of slots) {
     if (!slot.mod) continue;
     const rank = slot.rank ?? slot.mod.fusion_limit ?? 0;
-    const effects = parseModEffects(slot.mod, rank);
+    const effects = parseModEffects(slot.mod, rank, { umbraSetEquippedCount });
     for (const key of Object.keys(total) as (keyof StatEffects)[]) {
       total[key] += effects[key];
     }

@@ -5,6 +5,7 @@ import type { Mod, ModRarity, EquipmentType } from '../../types/warframe';
 import { filterCompatibleMods, isModLockedOut, isPostureMod } from '../../utils/modFiltering';
 import { createRivenPlaceholderMod, getRivenWeaponType } from '../../utils/riven';
 import { getRequiredExaltedStanceName } from '../../utils/specialItems';
+import { countEquippedUmbraSetModsFromModList } from '../../utils/umbraSet';
 import { ModCard, CardPreview, DEFAULT_LAYOUT } from '../ModCard';
 
 interface FilterPanelProps {
@@ -265,6 +266,10 @@ export function FilterPanel({
   }, [allMods, equipmentType, equipment, equippedMods, targetSlotType, rarity, search]);
 
   const displayMods = showLockedOut ? [...compatible, ...lockedOut] : compatible;
+  const umbraSetEquippedCount = useMemo(
+    () => countEquippedUmbraSetModsFromModList(equippedMods),
+    [equippedMods],
+  );
   const handleModPick = useCallback(
     (mod: Mod, locked: boolean) => {
       if (!locked) {
@@ -471,6 +476,7 @@ export function FilterPanel({
                     locked={locked}
                     expanded={expandMods}
                     scale={cardScale}
+                    umbraSetEquippedCount={umbraSetEquippedCount}
                     onPick={handleModPick}
                   />
                 );
@@ -488,12 +494,14 @@ const ModPickerCard = memo(function ModPickerCard({
   locked,
   expanded,
   scale,
+  umbraSetEquippedCount,
   onPick,
 }: {
   mod: Mod;
   locked: boolean;
   expanded: boolean;
   scale: number;
+  umbraSetEquippedCount: number;
   onPick: (mod: Mod, locked: boolean) => void;
 }) {
   return (
@@ -507,6 +515,7 @@ const ModPickerCard = memo(function ModPickerCard({
         draggable={!locked}
         lockedOut={locked}
         scale={scale}
+        umbraSetEquippedCount={umbraSetEquippedCount}
         collapsed={!expanded}
       />
     </div>

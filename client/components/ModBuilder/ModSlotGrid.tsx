@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 import {
   AP_ANY,
@@ -12,6 +12,7 @@ import {
 } from '../../types/warframe';
 import { polarityMatchForUi } from '../../utils/drain';
 import { isRivenMod } from '../../utils/riven';
+import { countEquippedUmbraSetMods, isUmbraSelfScalingSetMod } from '../../utils/umbraSet';
 import { ModCard, CardPreview, DEFAULT_LAYOUT } from '../ModCard';
 
 const POLARITY_CYCLE_FULL: (string | undefined)[] = [
@@ -150,6 +151,8 @@ export function ModSlotGrid({
     rows.push(generalSlots.slice(i, i + 4));
   }
 
+  const umbraSetEquippedCount = useMemo(() => countEquippedUmbraSetMods(slots), [slots]);
+
   return (
     <div className="glass-panel relative z-10 space-y-1 overflow-visible p-3">
       {(specialSlots.length > 0 || exilusSlot) && (
@@ -158,6 +161,7 @@ export function ModSlotGrid({
           {specialSlots[0] ? (
             <SlotCell
               slot={specialSlots[0]}
+              umbraSetEquippedCount={umbraSetEquippedCount}
               active={activeSlotIndex === specialSlots[0].index}
               formaMode={formaMode}
               onDragOver={handleDragOver}
@@ -191,6 +195,7 @@ export function ModSlotGrid({
           {exilusSlot ? (
             <SlotCell
               slot={exilusSlot}
+              umbraSetEquippedCount={umbraSetEquippedCount}
               active={activeSlotIndex === exilusSlot.index}
               formaMode={formaMode}
               onDragOver={handleDragOver}
@@ -223,6 +228,7 @@ export function ModSlotGrid({
               <SlotCell
                 key={slot.index}
                 slot={slot}
+                umbraSetEquippedCount={umbraSetEquippedCount}
                 active={activeSlotIndex === slot.index}
                 formaMode={formaMode}
                 onDragOver={handleDragOver}
@@ -286,6 +292,7 @@ function PolarityIcon({
 
 interface SlotCellProps {
   slot: ModSlot;
+  umbraSetEquippedCount: number;
   active?: boolean;
   formaMode?: boolean;
   onDragOver: (e: React.DragEvent) => void;
@@ -305,6 +312,7 @@ const SLOT_H = Math.round(DEFAULT_LAYOUT.collapsedHeight * SLOT_SCALE);
 
 function SlotCell({
   slot,
+  umbraSetEquippedCount,
   active,
   formaMode,
   onDragOver,
@@ -324,6 +332,8 @@ function SlotCell({
   useEffect(() => {
     setIsDragging(false);
   }, [slot.mod?.unique_name]);
+
+  const slotModIsUmbra = slot.mod ? isUmbraSelfScalingSetMod(slot.mod) : false;
 
   const polarityLabel = slot.polarity ? POLARITY_LABELS[slot.polarity] || slot.polarity : 'None';
   const slotIconName =
@@ -411,6 +421,7 @@ function SlotCell({
                 setRank={slot.setRank}
                 slotType={slot.type}
                 slotPolarity={slot.polarity}
+                umbraSetEquippedCount={umbraSetEquippedCount}
                 collapsed
                 scale={SLOT_SCALE}
               />
@@ -428,6 +439,7 @@ function SlotCell({
                   setRank={slot.setRank}
                   slotType={slot.type}
                   slotPolarity={slot.polarity}
+                  umbraSetEquippedCount={umbraSetEquippedCount}
                   collapsed={false}
                   scale={SLOT_SCALE}
                 />
@@ -462,28 +474,30 @@ function SlotCell({
                       +
                     </button>
                   )}
-                  {slot.mod!.set_stats && (slot.mod!.set_num_in_set ?? 0) > 0 && (
-                    <>
-                      <button
-                        onClick={() => onSetRankChange(Math.max(1, (slot.setRank ?? 1) - 1))}
-                        className="border-warning/30 bg-glass-active text-warning hover:bg-glass-hover absolute left-[52px] flex h-[14px] w-[16px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
-                        title="Decrease set rank"
-                      >
-                        −
-                      </button>
-                      <button
-                        onClick={() =>
-                          onSetRankChange(
-                            Math.min(slot.mod!.set_num_in_set ?? 0, (slot.setRank ?? 1) + 1),
-                          )
-                        }
-                        className="border-warning/30 bg-glass-active text-warning hover:bg-glass-hover absolute right-[52px] flex h-[14px] w-[16px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
-                        title="Increase set rank"
-                      >
-                        +
-                      </button>
-                    </>
-                  )}
+                  {slot.mod!.set_stats &&
+                    (slot.mod!.set_num_in_set ?? 0) > 0 &&
+                    !slotModIsUmbra && (
+                      <>
+                        <button
+                          onClick={() => onSetRankChange(Math.max(1, (slot.setRank ?? 1) - 1))}
+                          className="border-warning/30 bg-glass-active text-warning hover:bg-glass-hover absolute left-[52px] flex h-[14px] w-[16px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
+                          title="Decrease set rank"
+                        >
+                          −
+                        </button>
+                        <button
+                          onClick={() =>
+                            onSetRankChange(
+                              Math.min(slot.mod!.set_num_in_set ?? 0, (slot.setRank ?? 1) + 1),
+                            )
+                          }
+                          className="border-warning/30 bg-glass-active text-warning hover:bg-glass-hover absolute right-[52px] flex h-[14px] w-[16px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
+                          title="Increase set rank"
+                        >
+                          +
+                        </button>
+                      </>
+                    )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

@@ -6,6 +6,7 @@ import { sanitizeDisplayTextKeepDamageTokens } from '../../utils/damageTypeToken
 import { calculateEffectiveDrain, polarityMatchForUi } from '../../utils/drain';
 import { isPostureMod } from '../../utils/modFiltering';
 import { isRivenMod } from '../../utils/riven';
+import { isUmbraSelfScalingSetMod } from '../../utils/umbraSet';
 import { DEFAULT_LAYOUT, dbRarityToCardRarity, dbPolarityToIconName } from './cardLayout';
 import { CardPreview } from './CardPreview';
 
@@ -24,6 +25,8 @@ interface ModCardProps {
   lockedOut?: boolean;
   collapsed?: boolean;
   scale?: number;
+  /** When set, Umbral set mods use this count for tier stats/dots (1 = solo). */
+  umbraSetEquippedCount?: number;
 }
 
 export function ModCard({
@@ -39,6 +42,7 @@ export function ModCard({
   lockedOut = false,
   collapsed = false,
   scale,
+  umbraSetEquippedCount,
 }: ModCardProps) {
   const [hovered, setHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -62,6 +66,14 @@ export function ModCard({
   const polarity = dbPolarityToIconName(mod.polarity);
   const modArt = mod.image_path ? `/images${mod.image_path}` : '';
 
+  const maxSetRank = mod.set_num_in_set ?? 0;
+  const isUmbra = isUmbraSelfScalingSetMod(mod);
+
+  const effectiveSetRank =
+    isUmbra && umbraSetEquippedCount != null && maxSetRank > 0
+      ? Math.min(Math.max(umbraSetEquippedCount, 1), maxSetRank)
+      : (setRank ?? (maxSetRank > 0 ? 1 : 0));
+
   let description = '';
   try {
     if (mod.description) {
@@ -73,10 +85,23 @@ export function ModCard({
     description = sanitizeDisplayTextKeepDamageTokens(mod.description ?? '');
   }
 
+  if (isUmbra && maxRank > 0 && rank >= maxRank && umbraSetEquippedCount != null && mod.set_stats) {
+    try {
+      const setStats: string[] = JSON.parse(mod.set_stats);
+      if (setStats.length > 0) {
+        const idx = Math.min(Math.max(umbraSetEquippedCount, 1), setStats.length) - 1;
+        const tierLine = setStats[idx];
+        if (tierLine?.trim()) {
+          description = sanitizeDisplayTextKeepDamageTokens(tierLine);
+        }
+      }
+    } catch {
+      // keep rank-based description
+    }
+  }
+
   let setDescription = '';
-  const maxSetRank = mod.set_num_in_set ?? 0;
-  const effectiveSetRank = setRank ?? (maxSetRank > 0 ? 1 : 0);
-  if (mod.set_stats && maxSetRank > 0) {
+  if (!isUmbra && mod.set_stats && maxSetRank > 0) {
     try {
       const setStats: string[] = JSON.parse(mod.set_stats);
       const idx = Math.min(Math.max(effectiveSetRank - 1, 0), setStats.length - 1);

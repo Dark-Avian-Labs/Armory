@@ -53,10 +53,30 @@ export function calculateWarframeStats(
   });
 
   return {
-    health: apply(warframe.health ?? 0, mods.health, bonus?.healthPct, bonus?.healthFlat),
-    shield: apply(warframe.shield ?? 0, mods.shield, bonus?.shieldPct, bonus?.shieldFlat),
-    armor: apply(warframe.armor ?? 0, mods.armor, bonus?.armorPct, bonus?.armorFlat),
-    energy: apply(warframe.power ?? 0, mods.energy, bonus?.energyPct, bonus?.energyFlat),
+    health: apply(
+      warframe.health ?? 0,
+      mods.health,
+      bonus?.healthPct,
+      (bonus?.healthFlat ?? 0) + (mods.healthFlat ?? 0),
+    ),
+    shield: apply(
+      warframe.shield ?? 0,
+      mods.shield,
+      bonus?.shieldPct,
+      (bonus?.shieldFlat ?? 0) + (mods.shieldFlat ?? 0),
+    ),
+    armor: apply(
+      warframe.armor ?? 0,
+      mods.armor,
+      bonus?.armorPct,
+      (bonus?.armorFlat ?? 0) + (mods.armorFlat ?? 0),
+    ),
+    energy: apply(
+      warframe.power ?? 0,
+      mods.energy,
+      bonus?.energyPct,
+      (bonus?.energyFlat ?? 0) + (mods.energyFlat ?? 0),
+    ),
     sprintSpeed: apply(
       warframe.sprint_speed ?? 1,
       mods.sprintSpeed,
