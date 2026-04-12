@@ -108,8 +108,8 @@ export const WEAPON_CATEGORY_TO_MOD_COMPAT: Record<string, string[]> = {
   Shotgun: ['Shotgun', 'PRIMARY'],
   Bow: ['Bow', 'PRIMARY'],
   Sniper: ['Sniper', 'PRIMARY'],
-  /** Launchers use rifle-style primaries and accept Sniper-category utility mods (e.g. Sniper Ammo Mutation). */
-  Launcher: ['Launcher', 'Sniper', 'PRIMARY'],
+  /** Sniper-category utility mods on launchers are handled by `primaryWeaponAcceptsSniperCategoryMods` (path/name), not here. */
+  Launcher: ['Launcher', 'PRIMARY'],
 
   Pistols: ['Pistol'],
   Thrown: ['Thrown'],
@@ -322,6 +322,35 @@ export function normalizeWeaponIdentityName(name: string): string {
   return n.toUpperCase();
 }
 
+/**
+ * Explosive / launcher primaries accept Sniper-category utility mods in-game (e.g. Sniper Ammo Mutation).
+ * Corpus often uses `LongGuns` for these weapons instead of `Launcher`, so we also match by path and name.
+ */
+function primaryWeaponAcceptsSniperCategoryMods(equipment?: {
+  unique_name: string;
+  name: string;
+  product_category?: string;
+}): boolean {
+  if (!equipment) return false;
+  if (equipment.product_category === 'Launcher') return true;
+
+  const path = equipment.unique_name.replace(/\\/g, '/').toLowerCase();
+  if (path.includes('/launchers/')) return true;
+
+  const identity = normalizeWeaponIdentityName(equipment.name).toLowerCase();
+  const launcherNameTokens = [
+    'ogris',
+    'bramma',
+    'tonkor',
+    'zarr',
+    'penta',
+    'torid',
+    'stug',
+    'lenz',
+  ];
+  return launcherNameTokens.some((t) => identity.includes(t));
+}
+
 function isPrimaryModCompatible(
   _mod: Mod,
   modType: string,
@@ -343,6 +372,10 @@ function isPrimaryModCompatible(
 
   const validCompats = WEAPON_CATEGORY_TO_MOD_COMPAT[category] || [];
   if (validCompats.some((c) => c.toUpperCase() === compatUpper)) return true;
+
+  if (compatUpper === 'SNIPER' && primaryWeaponAcceptsSniperCategoryMods(equipment)) {
+    return true;
+  }
 
   if (equipment) {
     const weaponName = equipment.name.replace(/\s+/g, ' ').toUpperCase();
