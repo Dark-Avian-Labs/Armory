@@ -488,6 +488,33 @@ function processCompanions(data: Record<string, unknown[]>): number {
   return items.length;
 }
 
+const GENERIC_MOD_TYPE = '---';
+
+const COMPAT_NAME_TO_WEAPON_TYPE: Record<string, string> = {
+  SNIPER: 'SNIPER',
+  RIFLE: 'RIFLE',
+  SHOTGUN: 'SHOTGUN',
+  BOW: 'BOW',
+  LAUNCHER: 'LAUNCHER',
+  'ASSAULT RIFLE': 'ASSAULT RIFLE',
+  PISTOL: 'SECONDARY',
+};
+
+/**
+ * DE uses `type: "---"` for mods whose compatibility is driven by
+ * `compatibilityTags` rather than the `type` field. When the `compatName`
+ * maps to a recognizable weapon category we resolve the type so the mod
+ * appears in the correct server-side type filter queries.
+ */
+function resolveGenericModType(
+  rawType: string | null,
+  compatName: string | undefined,
+): string | null {
+  if (rawType !== GENERIC_MOD_TYPE) return rawType;
+  if (!compatName) return rawType;
+  return COMPAT_NAME_TO_WEAPON_TYPE[compatName.toUpperCase()] ?? rawType;
+}
+
 function processMods(data: Record<string, unknown[]>): number {
   const db = getDb();
   const items = (data.ExportUpgrades || []) as Record<string, unknown>[];
@@ -531,6 +558,9 @@ function processMods(data: Record<string, unknown[]>): number {
     for (const item of items) {
       const isAugment = !!item.subtype;
 
+      const rawType = (item.type as string) ?? null;
+      const resolvedType = resolveGenericModType(rawType, item.compatName as string | undefined);
+
       let description: string | null = null;
       const baseDesc = item.description as string[] | undefined;
       const levelStats = item.levelStats as Array<{ stats?: string[] }> | undefined;
@@ -566,7 +596,7 @@ function processMods(data: Record<string, unknown[]>): number {
         item.name,
         item.polarity ?? null,
         item.rarity ?? null,
-        item.type ?? null,
+        resolvedType,
         item.compatName ?? null,
         item.baseDrain ?? null,
         item.fusionLimit ?? null,

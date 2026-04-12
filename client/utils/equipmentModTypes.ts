@@ -11,6 +11,8 @@ export function getModTypesForEquipment(eqType: EquipmentType): ModTypesForEquip
     case 'primary':
       // ExportUpgrades uses per-weapon-class labels (Rifle, Sniper, …), not a single PRIMARY type.
       // Some entries use the "Rifle Mod" style (WFCD / wiki); server matches types case-insensitively.
+      // DE ships some mods (e.g. Sniper Ammo Mutation) with type "---"; the import resolves most of
+      // these but we include "---" for un-re-imported data.
       return [
         'PRIMARY',
         'Rifle',
@@ -25,6 +27,7 @@ export function getModTypesForEquipment(eqType: EquipmentType): ModTypesForEquip
         'Bow Mod',
         'Launcher Mod',
         'Assault Rifle Mod',
+        '---',
       ].join(',');
     case 'secondary':
       return 'SECONDARY';

@@ -243,7 +243,10 @@ function isModCompatible(
   const modType = (mod.type || '').toUpperCase();
   const compat = (mod.compat_name || '').trim();
 
-  if (compat.toUpperCase() === 'ANY') return true;
+  // "ANY" compat means the mod fits any equipment of its type. However, mods
+  // with the generic `---` export type use `compatName` for routing, so "ANY"
+  // on a `---` mod does NOT mean "fits every equipment category".
+  if (compat.toUpperCase() === 'ANY' && modType !== '---') return true;
 
   switch (equipmentType) {
     case 'warframe':
@@ -363,13 +366,32 @@ function isPrimaryWeaponModExportType(modType: string): boolean {
   return ['RIFLE', 'SNIPER', 'SHOTGUN', 'BOW', 'LAUNCHER', 'ASSAULT RIFLE'].includes(t);
 }
 
+/**
+ * Primary weapon category names that a `type: "---"` mod's `compatName` can
+ * resolve to.  When the import hasn't re-resolved the type yet, these let the
+ * client accept the mod into the primary compatibility pipeline.
+ */
+const GENERIC_TYPE_PRIMARY_COMPAT_NAMES = new Set([
+  'SNIPER',
+  'RIFLE',
+  'SHOTGUN',
+  'BOW',
+  'LAUNCHER',
+  'ASSAULT RIFLE',
+  'PRIMARY',
+]);
+
 function isPrimaryModCompatible(
   _mod: Mod,
   modType: string,
   compat: string,
   equipment?: { unique_name: string; name: string; product_category?: string },
 ): boolean {
-  if (!isPrimaryWeaponModExportType(modType)) return false;
+  if (modType === '---') {
+    if (!GENERIC_TYPE_PRIMARY_COMPAT_NAMES.has(compat.toUpperCase())) return false;
+  } else if (!isPrimaryWeaponModExportType(modType)) {
+    return false;
+  }
 
   const compatUpper = compat.toUpperCase();
 

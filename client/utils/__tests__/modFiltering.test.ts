@@ -28,21 +28,6 @@ describe('Launcher mod compatibility', () => {
     expect(filterCompatibleMods([mod], 'primary', weapon)).toHaveLength(1);
   });
 
-  it('accepts Rifle compat + Rifle type (DE export for Sniper Ammo Mutation) on Launcher category', () => {
-    const sniperAmmoMutation: Mod = {
-      unique_name: '/Lotus/Upgrades/Mods/Rifle/WeaponSnipersConvertAmmoMod',
-      name: 'Sniper Ammo Mutation',
-      type: 'Rifle',
-      compat_name: 'Rifle',
-    };
-    const ogrisLauncherCategory = {
-      unique_name: '/Lotus/Weapons/Tenno/Launcher/OgrisWeapon',
-      name: 'Ogris',
-      product_category: 'Launcher',
-    };
-    expect(filterCompatibleMods([sniperAmmoMutation], 'primary', ogrisLauncherCategory)).toHaveLength(1);
-  });
-
   it('does not map Sniper via WEAPON_CATEGORY_TO_MOD_COMPAT.Launcher (uses path/name helper instead)', () => {
     expect(WEAPON_CATEGORY_TO_MOD_COMPAT.Launcher).not.toContain('Sniper');
   });
@@ -120,5 +105,94 @@ describe('Launcher mod compatibility', () => {
       product_category: 'Launcher',
     };
     expect(filterCompatibleMods([augment], 'primary', kuvaOgris)).toHaveLength(1);
+  });
+});
+
+describe('DE generic type "---" mod compatibility', () => {
+  const sniperAmmoMutationReal: Mod = {
+    unique_name: '/Lotus/Upgrades/Mods/Rifle/WeaponSnipersConvertAmmoMod',
+    name: 'Sniper Ammo Mutation',
+    type: '---',
+    compat_name: 'Sniper',
+  };
+
+  const primedSniperAmmoMutationReal: Mod = {
+    unique_name: '/Lotus/Upgrades/Mods/Rifle/Expert/WeaponSnipersConvertAmmoModExpert',
+    name: 'Primed Sniper Ammo Mutation',
+    type: '---',
+    compat_name: 'Sniper',
+  };
+
+  const ogrisLauncher = {
+    unique_name: '/Lotus/Weapons/ClanTech/Chemical/RocketLauncher',
+    name: 'Ogris',
+    product_category: 'Launcher',
+  };
+
+  const kuvaOgrisLongGuns = {
+    unique_name: '/Lotus/Weapons/Grineer/Kuva/KuvaOgris',
+    name: 'Kuva Ogris',
+    product_category: 'LongGuns',
+  };
+
+  const rubicoPrimeSniper = {
+    unique_name: '/Lotus/Weapons/Tenno/Rifle/Rubico/RubicoPrime',
+    name: 'Rubico Prime',
+    product_category: 'Sniper',
+  };
+
+  const boltor = {
+    unique_name: '/Lotus/Weapons/Tenno/Rifle/Boltor',
+    name: 'Boltor',
+    product_category: 'LongGuns',
+  };
+
+  it('accepts Sniper Ammo Mutation (type "---") on Ogris (Launcher category)', () => {
+    expect(filterCompatibleMods([sniperAmmoMutationReal], 'primary', ogrisLauncher)).toHaveLength(1);
+  });
+
+  it('accepts Primed Sniper Ammo Mutation (type "---") on Ogris (Launcher category)', () => {
+    expect(filterCompatibleMods([primedSniperAmmoMutationReal], 'primary', ogrisLauncher)).toHaveLength(1);
+  });
+
+  it('accepts Sniper Ammo Mutation (type "---") on Kuva Ogris (LongGuns with launcher name)', () => {
+    expect(filterCompatibleMods([sniperAmmoMutationReal], 'primary', kuvaOgrisLongGuns)).toHaveLength(1);
+  });
+
+  it('accepts Sniper Ammo Mutation (type "---") on Rubico Prime (Sniper category)', () => {
+    expect(filterCompatibleMods([sniperAmmoMutationReal], 'primary', rubicoPrimeSniper)).toHaveLength(1);
+  });
+
+  it('does NOT accept Sniper Ammo Mutation (type "---") on Boltor (regular LongGuns)', () => {
+    expect(filterCompatibleMods([sniperAmmoMutationReal], 'primary', boltor)).toHaveLength(0);
+  });
+
+  it('does NOT accept Necramech mods (type "---") as primary', () => {
+    const necramechMod: Mod = {
+      unique_name: '/lotus/upgrades/mods/necramech/test',
+      name: 'Necramech Stretch',
+      type: '---',
+      compat_name: 'Necramech',
+    };
+    expect(filterCompatibleMods([necramechMod], 'primary', ogrisLauncher)).toHaveLength(0);
+  });
+
+  it('does NOT accept K-Drive mods (type "---") as primary', () => {
+    const kdriveMod: Mod = {
+      unique_name: '/lotus/upgrades/mods/kdrive/test',
+      name: 'K-Drive Test',
+      type: '---',
+      compat_name: 'K-Drive',
+    };
+    expect(filterCompatibleMods([kdriveMod], 'primary', ogrisLauncher)).toHaveLength(0);
+  });
+
+  it('accepts Sniper Ammo Mutation (type "---") after import resolves type to SNIPER', () => {
+    const resolved: Mod = {
+      ...sniperAmmoMutationReal,
+      type: 'SNIPER',
+    };
+    expect(filterCompatibleMods([resolved], 'primary', ogrisLauncher)).toHaveLength(1);
+    expect(filterCompatibleMods([resolved], 'primary', rubicoPrimeSniper)).toHaveLength(1);
   });
 });
