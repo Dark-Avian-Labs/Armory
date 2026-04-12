@@ -13,6 +13,21 @@ describe('normalizeWeaponIdentityName', () => {
 });
 
 describe('Launcher mod compatibility', () => {
+  it('accepts Rifle compat + Rifle type (DE export for Sniper Ammo Mutation) on Launcher category', () => {
+    const sniperAmmoMutation: Mod = {
+      unique_name: '/Lotus/Upgrades/Mods/Rifle/WeaponSnipersConvertAmmoMod',
+      name: 'Sniper Ammo Mutation',
+      type: 'Rifle',
+      compat_name: 'Rifle',
+    };
+    const ogrisLauncherCategory = {
+      unique_name: '/Lotus/Weapons/Tenno/Launcher/OgrisWeapon',
+      name: 'Ogris',
+      product_category: 'Launcher',
+    };
+    expect(filterCompatibleMods([sniperAmmoMutation], 'primary', ogrisLauncherCategory)).toHaveLength(1);
+  });
+
   it('does not map Sniper via WEAPON_CATEGORY_TO_MOD_COMPAT.Launcher (uses path/name helper instead)', () => {
     expect(WEAPON_CATEGORY_TO_MOD_COMPAT.Launcher).not.toContain('Sniper');
   });

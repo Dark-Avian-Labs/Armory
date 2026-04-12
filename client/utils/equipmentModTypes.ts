@@ -9,7 +9,8 @@ export function getModTypesForEquipment(eqType: EquipmentType): ModTypesForEquip
     case 'warframe':
       return 'WARFRAME,AURA';
     case 'primary':
-      return 'PRIMARY';
+      // ExportUpgrades uses per-weapon-class labels (Rifle, Sniper, …), not a single PRIMARY type.
+      return 'PRIMARY,Rifle,Sniper,Shotgun,Bow,Launcher,Assault Rifle';
     case 'secondary':
       return 'SECONDARY';
     case 'melee':

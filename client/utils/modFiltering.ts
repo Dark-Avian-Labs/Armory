@@ -108,8 +108,8 @@ export const WEAPON_CATEGORY_TO_MOD_COMPAT: Record<string, string[]> = {
   Shotgun: ['Shotgun', 'PRIMARY'],
   Bow: ['Bow', 'PRIMARY'],
   Sniper: ['Sniper', 'PRIMARY'],
-  /** Sniper-category utility mods on launchers are handled by `primaryWeaponAcceptsSniperCategoryMods` (path/name), not here. */
-  Launcher: ['Launcher', 'PRIMARY'],
+  /** Same primary mod tags as LongGuns (Rifle, etc.); export lists many launcher mods under `Rifle` compat. */
+  Launcher: ['Launcher', 'PRIMARY', 'Rifle', 'Assault Rifle'],
 
   Pistols: ['Pistol'],
   Thrown: ['Thrown'],
@@ -352,13 +352,20 @@ function primaryWeaponAcceptsSniperCategoryMods(equipment?: {
   return launcherNameTokens.some((t) => identity.includes(t));
 }
 
+/** Export `type` for primary weapon mods is usually a class name (Rifle, Sniper, …), not `PRIMARY`. */
+function isPrimaryWeaponModExportType(modType: string): boolean {
+  const t = modType.toUpperCase().trim();
+  if (t === 'PRIMARY') return true;
+  return ['RIFLE', 'SNIPER', 'SHOTGUN', 'BOW', 'LAUNCHER', 'ASSAULT RIFLE'].includes(t);
+}
+
 function isPrimaryModCompatible(
   _mod: Mod,
   modType: string,
   compat: string,
   equipment?: { unique_name: string; name: string; product_category?: string },
 ): boolean {
-  if (modType !== 'PRIMARY') return false;
+  if (!isPrimaryWeaponModExportType(modType)) return false;
 
   const compatUpper = compat.toUpperCase();
 
@@ -388,7 +395,9 @@ function isPrimaryModCompatible(
     if (identityName && compatUpper === identityName) return true;
   }
 
-  if (compatUpper.startsWith('RIFLE') && category === 'LongGuns') return true;
+  if (compatUpper.startsWith('RIFLE') && (category === 'LongGuns' || category === 'Launcher')) {
+    return true;
+  }
   if (compatUpper.startsWith('SHOTGUN') && category === 'Shotgun') return true;
 
   return false;
