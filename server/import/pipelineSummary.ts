@@ -71,8 +71,8 @@ export interface StartupPipelineSummary {
       augmentsUpdated: number;
       shardTypes: number;
       shardBuffs: number;
-      rivenDispositionsUpdated: number;
-      rivenDispositionsFallbackFromOmega: number;
+      rivenDispositionsSyncedFromOmega: number;
+      rivenDispositionsWikiFallback: number;
       weaponsProjectileSpeedsUpdated: number;
     };
     error?: string;
@@ -229,7 +229,7 @@ export function printStartupPipelineSummary(s: StartupPipelineSummary): void {
     wkLines.push(
       `Wiki-driven DB updates: ${wk.merge.abilitiesUpdated} ability stat rows, ${wk.merge.passivesUpdated} passives, ` +
         `${wk.merge.augmentsUpdated} augment links, ${wk.merge.shardTypes} shard types, ${wk.merge.shardBuffs} shard buffs, ` +
-        `${wk.merge.rivenDispositionsUpdated} riven dispositions (plus ${wk.merge.rivenDispositionsFallbackFromOmega} omega fallbacks), ` +
+        `${wk.merge.rivenDispositionsSyncedFromOmega} riven dispositions from omega, ${wk.merge.rivenDispositionsWikiFallback} wiki disposition fallbacks, ` +
         `${wk.merge.weaponsProjectileSpeedsUpdated} weapon projectile speed injections.`,
     );
   }

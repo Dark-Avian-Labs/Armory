@@ -40,8 +40,9 @@ import {
   isRivenMod,
   RIVEN_PLACEHOLDER_UNIQUE,
 } from '../../utils/riven';
+import { getEffectiveRivenDisposition } from '../../utils/riven';
 import { getRequiredExaltedStanceName, matchesSpecialItemType } from '../../utils/specialItems';
-import { weaponSupportsValenceBonus } from '../../utils/weaponValence';
+import { getWeaponModCapacityBase, weaponSupportsValenceBonus } from '../../utils/weaponValence';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { Modal } from '../ui/Modal';
 import { AbilityBar } from './AbilityBar';
@@ -959,9 +960,14 @@ export function ModBuilder() {
     setSlots((prev) => prev.map((s) => (s.index === slotIndex ? { ...s, rank } : s)));
   }, []);
 
+  const modCapacityBase = useMemo(
+    () => getWeaponModCapacityBase(selectedEquipment ?? undefined),
+    [selectedEquipment],
+  );
+
   const capacity = useMemo(
-    () => calculateTotalCapacity(hydratedSlots, 30, orokinReactor),
-    [hydratedSlots, orokinReactor],
+    () => calculateTotalCapacity(hydratedSlots, modCapacityBase, orokinReactor),
+    [hydratedSlots, modCapacityBase, orokinReactor],
   );
 
   const formaCost = useMemo<FormaCount>(
@@ -1233,8 +1239,7 @@ export function ModBuilder() {
     selectedEquipment && selectedWeaponTypes.includes(equipmentType)
       ? (selectedEquipment as Weapon)
       : null;
-  const rivenDisposition =
-    selectedWeapon?.riven_disposition ?? selectedWeapon?.omega_attenuation ?? 1;
+  const rivenDisposition = selectedWeapon ? (getEffectiveRivenDisposition(selectedWeapon) ?? 1) : 1;
   const selectedIsCompanionWeapon = selectedWeapon != null && isCompanionWeapon(selectedWeapon);
   const supportsArcanes =
     !selectedIsCompanionWeapon &&

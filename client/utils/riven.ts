@@ -4,6 +4,7 @@ import type {
   RivenConfig,
   RivenStat,
   RivenWeaponType,
+  Weapon,
 } from '../types/warframe';
 
 export const RIVEN_PLACEHOLDER_UNIQUE = '__RIVEN_PLACEHOLDER__';
@@ -131,8 +132,31 @@ export function getRivenBaselineValue(stat: string, weaponType: RivenWeaponType)
   return baselineMap[stat] ?? null;
 }
 
+/** Prefer game export (`omega_attenuation`); wiki-only `riven_disposition` when omega is absent. */
+export function getEffectiveRivenDisposition(
+  weapon: Pick<Weapon, 'omega_attenuation' | 'riven_disposition'>,
+): number | null {
+  const v = weapon.omega_attenuation ?? weapon.riven_disposition;
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
+/**
+ * Disposition rank 1–5 as filled pips (multiplier bands).
+ * 1: 0.50–0.69, 2: 0.70–0.89, 3: 0.90–1.10, 4: 1.11–1.30, 5: ≥1.31
+ */
+export function getDispositionPips(value: number): number {
+  if (value >= 1.31) return 5;
+  if (value >= 1.11) return 4;
+  if (value >= 0.9) return 3;
+  if (value >= 0.7) return 2;
+  if (value >= 0.5) return 1;
+  return 1;
+}
+
+/** One decimal place; uses string rounding to avoid float noise (e.g. 61.9 → 61.8). */
 function toOneDecimal(value: number): number {
-  return Math.round(value * 10) / 10;
+  const sign = value < 0 ? -1 : 1;
+  return sign * parseFloat(Math.abs(value).toFixed(1));
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -241,6 +265,11 @@ export function resolveRivenConfig(
     let nextAbs = scaled;
     if (bounds) {
       nextAbs = clamp(scaled, bounds.min, bounds.max);
+      if (Math.abs(nextAbs - scaled) > 1e-6) {
+        warnings.push(
+          `${stat.stat}: ${originalAbs.toFixed(1)} exceeds the allowed ${bounds.min.toFixed(1)}–${bounds.max.toFixed(1)} range at disposition ${disp.toFixed(2)} (wiki-style bounds for this roll).`,
+        );
+      }
     }
     const nextValue = toOneDecimal(nextAbs);
     if (nextValue !== toOneDecimal(originalAbs) || stat.value < 0) adjusted = true;
@@ -265,6 +294,11 @@ export function resolveRivenConfig(
       const lo = Math.min(a, b);
       const hi = Math.max(a, b);
       nextAbs = clamp(scaled, lo, hi);
+      if (Math.abs(nextAbs - scaled) > 1e-6) {
+        warnings.push(
+          `${normalized.negative.stat}: curse magnitude ${originalAbs.toFixed(1)} exceeds the allowed ${lo.toFixed(1)}–${hi.toFixed(1)} at disposition ${disp.toFixed(2)} (stronger curses need higher disposition).`,
+        );
+      }
     }
     const nextValue = -toOneDecimal(nextAbs);
     if (nextValue !== -toOneDecimal(originalAbs) || normalized.negative.value > 0) adjusted = true;

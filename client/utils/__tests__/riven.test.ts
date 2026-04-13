@@ -1,6 +1,35 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveRivenConfig, verifyAndAdjustRivenConfig } from '../riven';
+import {
+  getDispositionPips,
+  getEffectiveRivenDisposition,
+  resolveRivenConfig,
+  verifyAndAdjustRivenConfig,
+} from '../riven';
+
+describe('getEffectiveRivenDisposition', () => {
+  it('prefers omega_attenuation over riven_disposition', () => {
+    expect(getEffectiveRivenDisposition({ omega_attenuation: 0.85, riven_disposition: 0.5 })).toBe(0.85);
+  });
+
+  it('falls back to riven_disposition when omega is absent', () => {
+    expect(getEffectiveRivenDisposition({ riven_disposition: 0.9 })).toBe(0.9);
+  });
+
+  it('returns null when neither is set', () => {
+    expect(getEffectiveRivenDisposition({})).toBeNull();
+  });
+});
+
+describe('getDispositionPips', () => {
+  it('maps multiplier bands to 1–5 pips', () => {
+    expect(getDispositionPips(0.65)).toBe(1);
+    expect(getDispositionPips(0.75)).toBe(2);
+    expect(getDispositionPips(1.0)).toBe(3);
+    expect(getDispositionPips(1.2)).toBe(4);
+    expect(getDispositionPips(1.35)).toBe(5);
+  });
+});
 
 describe('verifyAndAdjustRivenConfig', () => {
   it('clamps 3 positive no negative values to valid range', () => {
@@ -41,6 +70,30 @@ describe('verifyAndAdjustRivenConfig', () => {
 });
 
 describe('resolveRivenConfig', () => {
+  it('clamps negative Zoom when curse magnitude exceeds disposition cap (e.g. −32.1 → −25.9 at ~0.7 disp)', () => {
+    const { config, warnings, adjusted } = resolveRivenConfig(
+      {
+        polarity: 'AP_ATTACK',
+        positive: [
+          { stat: 'Heat', value: 61.9, isNegative: false },
+          { stat: 'Status Chance', value: 63.1, isNegative: false },
+          { stat: 'Electricity', value: 63.6, isNegative: false },
+        ],
+        negative: { stat: 'Zoom', value: 32.1, isNegative: true },
+      },
+      {
+        weaponType: 'primary',
+        disposition: 0.7,
+        assumeValuesAreMaxRank: true,
+        manualRank: 8,
+      },
+    );
+
+    expect(adjusted).toBe(true);
+    expect(config.negative?.value).toBeCloseTo(-25.9, 1);
+    expect(warnings.some((w) => w.includes('Zoom'))).toBe(true);
+  });
+
   it('scales displayed stats to max-rank when not assume max', () => {
     const { config, rank } = resolveRivenConfig(
       {

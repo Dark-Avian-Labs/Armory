@@ -5,6 +5,7 @@ import type { Warframe, Weapon, EquipmentType, ModSlot, ValenceBonus } from '../
 import { extractArchonShardBonuses } from '../../utils/archonShardBonuses';
 import { formatPercent } from '../../utils/damage';
 import { calculateWeaponDps, type WeaponCalcResult } from '../../utils/damageCalc';
+import { getDispositionPips, getEffectiveRivenDisposition } from '../../utils/riven';
 import { calculateWarframeStats, type WarframeBonusEffects } from '../../utils/warframeCalc';
 import type { ShardSlotConfig, ShardType } from './ArchonShardSlots';
 
@@ -393,7 +394,7 @@ function WeaponStats({
   );
 
   const isMelee = weapon.range != null;
-  const rivenDisposition = weapon.riven_disposition ?? weapon.omega_attenuation;
+  const rivenDisposition = getEffectiveRivenDisposition(weapon);
   const dispositionPips = rivenDisposition != null ? getDispositionPips(rivenDisposition) : null;
 
   const moddedStats: Array<{
@@ -623,14 +624,6 @@ function WeaponStats({
       )}
     </div>
   );
-}
-
-function getDispositionPips(value: number): number {
-  if (value <= 0.7) return 1;
-  if (value <= 0.9) return 2;
-  if (value <= 1.1) return 3;
-  if (value <= 1.3) return 4;
-  return 5;
 }
 
 function DpsInfoTip({ isMelee }: { isMelee: boolean }) {

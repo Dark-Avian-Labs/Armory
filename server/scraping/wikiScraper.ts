@@ -945,8 +945,10 @@ export interface WikiMergeResult {
   augmentsUpdated: number;
   shardTypes: number;
   shardBuffs: number;
-  rivenDispositionsUpdated: number;
-  rivenDispositionsFallbackFromOmega: number;
+  /** Rows where `riven_disposition` was set from game export `omega_attenuation`. */
+  rivenDispositionsSyncedFromOmega: number;
+  /** Wiki table values applied only when `omega_attenuation` is null on the weapon. */
+  rivenDispositionsWikiFallback: number;
   weaponsProjectileSpeedsUpdated: number;
 }
 
@@ -961,8 +963,8 @@ export function mergeWikiData(
     augmentsUpdated: 0,
     shardTypes: 0,
     shardBuffs: 0,
-    rivenDispositionsUpdated: 0,
-    rivenDispositionsFallbackFromOmega: 0,
+    rivenDispositionsSyncedFromOmega: 0,
+    rivenDispositionsWikiFallback: 0,
     weaponsProjectileSpeedsUpdated: 0,
   };
 
@@ -979,11 +981,11 @@ export function mergeWikiData(
   const updateAugment = db.prepare(
     'UPDATE mods SET augment_for_ability = ? WHERE name = ? AND is_augment = 1',
   );
-  const updateRivenDisposition = db.prepare(
-    'UPDATE weapons SET riven_disposition = ? WHERE name = ? COLLATE NOCASE',
+  const syncRivenDispositionFromOmega = db.prepare(
+    'UPDATE weapons SET riven_disposition = omega_attenuation WHERE omega_attenuation IS NOT NULL',
   );
-  const fallbackRivenDisposition = db.prepare(
-    'UPDATE weapons SET riven_disposition = omega_attenuation WHERE riven_disposition IS NULL AND omega_attenuation IS NOT NULL',
+  const updateRivenDispositionWikiFallback = db.prepare(
+    'UPDATE weapons SET riven_disposition = ? WHERE name = ? COLLATE NOCASE AND omega_attenuation IS NULL',
   );
 
   const mergeAll = db.transaction(() => {
@@ -1089,12 +1091,13 @@ export function mergeWikiData(
       }
     }
 
+    const synced = syncRivenDispositionFromOmega.run();
+    result.rivenDispositionsSyncedFromOmega = synced.changes;
+
     for (const d of data.dispositions) {
-      const changes = updateRivenDisposition.run(d.disposition, d.weapon_name);
-      if (changes.changes > 0) result.rivenDispositionsUpdated += changes.changes;
+      const changes = updateRivenDispositionWikiFallback.run(d.disposition, d.weapon_name);
+      if (changes.changes > 0) result.rivenDispositionsWikiFallback += changes.changes;
     }
-    const fallback = fallbackRivenDisposition.run();
-    result.rivenDispositionsFallbackFromOmega = fallback.changes;
 
     if (data.projectileSpeedByWeapon.size > 0) {
       result.weaponsProjectileSpeedsUpdated = mergeProjectileSpeedsIntoWeapons(
@@ -1110,8 +1113,8 @@ export function mergeWikiData(
       `${result.passivesUpdated} passives, ` +
       `${result.augmentsUpdated} augments, ` +
       `${result.shardTypes} shard types, ${result.shardBuffs} shard buffs, ` +
-      `${result.rivenDispositionsUpdated} dispositions, ` +
-      `${result.rivenDispositionsFallbackFromOmega} fallback dispositions, ` +
+      `${result.rivenDispositionsSyncedFromOmega} riven dispositions synced from omega, ` +
+      `${result.rivenDispositionsWikiFallback} wiki disposition fallbacks (no omega), ` +
       `${result.weaponsProjectileSpeedsUpdated} weapon projectile speed rows`,
   );
   return result;
