@@ -143,13 +143,17 @@ export function getEffectiveRivenDisposition(
 /**
  * Disposition rank 1–5 as filled pips (multiplier bands).
  * 1: 0.50–0.69, 2: 0.70–0.89, 3: 0.90–1.10, 4: 1.11–1.30, 5: ≥1.31
+ *
+ * Values are rounded to 3 decimals before bucketing so binary float noise (e.g. 0.6999999
+ * for “0.7”) does not sit one tier below what the UI shows with `.toFixed(3)`.
  */
 export function getDispositionPips(value: number): number {
-  if (value >= 1.31) return 5;
-  if (value >= 1.11) return 4;
-  if (value >= 0.9) return 3;
-  if (value >= 0.7) return 2;
-  if (value >= 0.5) return 1;
+  const v = Math.round(value * 1000) / 1000;
+  if (v >= 1.31) return 5;
+  if (v >= 1.11) return 4;
+  if (v >= 0.9) return 3;
+  if (v >= 0.7) return 2;
+  if (v >= 0.5) return 1;
   return 1;
 }
 

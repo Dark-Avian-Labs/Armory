@@ -29,6 +29,10 @@ describe('getDispositionPips', () => {
     expect(getDispositionPips(1.2)).toBe(4);
     expect(getDispositionPips(1.35)).toBe(5);
   });
+
+  it('treats float noise at 0.7 boundary as rank 2 (matches 0.700 display)', () => {
+    expect(getDispositionPips(0.69999999)).toBe(2);
+  });
 });
 
 describe('verifyAndAdjustRivenConfig', () => {
