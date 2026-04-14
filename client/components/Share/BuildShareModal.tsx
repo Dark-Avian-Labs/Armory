@@ -1,6 +1,6 @@
 import { toBlob } from 'html-to-image';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 
 import feathers from '../../assets/feathers.png';
 import orokinReactorImg from '../../assets/orokin-reactor.png';
@@ -43,6 +43,68 @@ const SHARE_CANVAS_WIDTH = 720;
 const SHARE_CANVAS_HEIGHT = 1280;
 /** html-to-image rasterizes the DOM to a canvas; 1× looks soft and gradients can band. 2× supersamples for sharper PNGs. */
 const SHARE_EXPORT_PIXEL_RATIO = 2;
+
+/** Same stack as `body` in `input.css` so the share card matches the main app backdrop. */
+const MAIN_PAGE_BACKGROUND_STYLE: CSSProperties = {
+  backgroundImage:
+    'radial-gradient(circle at 10% 10%, var(--color-bg-glow), transparent 40%), radial-gradient(circle at 85% 15%, var(--color-bg-glow), transparent 45%), linear-gradient(to bottom, var(--color-bg-start) 0%, var(--color-bg-end) 100%)',
+  backgroundSize: '100% 100%',
+  backgroundRepeat: 'no-repeat',
+};
+
+function clampBackgroundPan(
+  naturalW: number,
+  naturalH: number,
+  scale: number,
+  panX: number,
+  panY: number,
+): { x: number; y: number } {
+  const sw = naturalW * scale;
+  const sh = naturalH * scale;
+  const minX = Math.min(0, SHARE_CANVAS_WIDTH - sw);
+  const maxX = Math.max(0, SHARE_CANVAS_WIDTH - sw);
+  const minY = Math.min(0, SHARE_CANVAS_HEIGHT - sh);
+  const maxY = Math.max(0, SHARE_CANVAS_HEIGHT - sh);
+  return {
+    x: Math.min(maxX, Math.max(minX, panX)),
+    y: Math.min(maxY, Math.max(minY, panY)),
+  };
+}
+
+/** Uploaded partial background: full image at uniform scale, positioned with translate (no object-cover crop). */
+function ShareUploadBackgroundView({
+  dataUrl,
+  naturalW,
+  naturalH,
+  scale,
+  pan,
+}: {
+  dataUrl: string;
+  naturalW: number;
+  naturalH: number;
+  scale: number;
+  pan: { x: number; y: number };
+}) {
+  const w = Math.round(naturalW * scale);
+  const h = Math.round(naturalH * scale);
+  return (
+    <div
+      className="absolute top-0 left-0 overflow-hidden"
+      style={{ width: SHARE_CANVAS_WIDTH, height: SHARE_CANVAS_HEIGHT }}
+    >
+      <div style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
+        <img
+          src={dataUrl}
+          alt=""
+          width={w}
+          height={h}
+          className="block max-w-none"
+          draggable={false}
+        />
+      </div>
+    </div>
+  );
+}
 
 interface BuildShareModalProps {
   open: boolean;
@@ -693,10 +755,26 @@ export function BuildShareModal({
 }: BuildShareModalProps) {
   const exportRef = useRef<HTMLDivElement | null>(null);
   const previewBoxRef = useRef<HTMLDivElement | null>(null);
+  const bgPanSurfaceRef = useRef<HTMLDivElement | null>(null);
+  const bgPanDragRef = useRef<{
+    pointerId: number;
+    startClientX: number;
+    startClientY: number;
+    originPanX: number;
+    originPanY: number;
+    nw: number;
+    nh: number;
+    scale: number;
+  } | null>(null);
   const [bgDataUrl, setBgDataUrl] = useState<string | null>(null);
   const [uploadName, setUploadName] = useState<string>('');
   const [bgOpacity, setBgOpacity] = useState(36);
-  const [bgScale, setBgScale] = useState(1);
+  /** Uniform scale applied to the uploaded image's intrinsic pixel size (not crop). */
+  const [bgImageScale, setBgImageScale] = useState(1);
+  const [bgNaturalW, setBgNaturalW] = useState(0);
+  const [bgNaturalH, setBgNaturalH] = useState(0);
+  const [bgPan, setBgPan] = useState({ x: 0, y: 0 });
+  const [bgPanSurfaceK, setBgPanSurfaceK] = useState(1);
   const [previewScale, setPreviewScale] = useState(1);
   const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -756,6 +834,20 @@ export function BuildShareModal({
     return () => ro.disconnect();
   }, [open]);
 
+  useLayoutEffect(() => {
+    const el = bgPanSurfaceRef.current;
+    if (!el || !bgDataUrl) return;
+    const run = () => {
+      const w = el.clientWidth;
+      if (w <= 0) return;
+      setBgPanSurfaceK(w / SHARE_CANVAS_WIDTH);
+    };
+    run();
+    const ro = new ResizeObserver(run);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [bgDataUrl, open]);
+
   const arcaneScale = 0.5;
   const skillIconPx = 34;
 
@@ -768,10 +860,75 @@ export function BuildShareModal({
     setError(null);
     try {
       const dataUrl = await readFileAsDataUrl(file);
+      const dims = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+        const im = new Image();
+        im.onload = () => resolve({ w: im.naturalWidth, h: im.naturalHeight });
+        im.onerror = () => reject(new Error('image load failed'));
+        im.src = dataUrl;
+      });
+      if (dims.w <= 0 || dims.h <= 0) {
+        setError('That image has invalid dimensions.');
+        return;
+      }
+      const scale0 = Math.min(1, SHARE_CANVAS_WIDTH / dims.w, SHARE_CANVAS_HEIGHT / dims.h);
+      const sw = dims.w * scale0;
+      const sh = dims.h * scale0;
+      const pan0 = clampBackgroundPan(
+        dims.w,
+        dims.h,
+        scale0,
+        (SHARE_CANVAS_WIDTH - sw) / 2,
+        (SHARE_CANVAS_HEIGHT - sh) / 2,
+      );
+      setBgNaturalW(dims.w);
+      setBgNaturalH(dims.h);
+      setBgImageScale(scale0);
+      setBgPan(pan0);
       setBgDataUrl(dataUrl);
       setUploadName(file.name);
     } catch {
       setError('Could not read that image file.');
+    }
+  }
+
+  function handleBgPanPointerDown(e: ReactPointerEvent<HTMLDivElement>): void {
+    if (e.button !== 0 || bgNaturalW <= 0) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    bgPanDragRef.current = {
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      originPanX: bgPan.x,
+      originPanY: bgPan.y,
+      nw: bgNaturalW,
+      nh: bgNaturalH,
+      scale: bgImageScale,
+    };
+  }
+
+  function handleBgPanPointerMove(e: ReactPointerEvent<HTMLDivElement>): void {
+    const drag = bgPanDragRef.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const surface = bgPanSurfaceRef.current;
+    if (!surface) return;
+    const rect = surface.getBoundingClientRect();
+    const k = SHARE_CANVAS_WIDTH / rect.width;
+    const dx = (e.clientX - drag.startClientX) * k;
+    const dy = (e.clientY - drag.startClientY) * k;
+    setBgPan(
+      clampBackgroundPan(drag.nw, drag.nh, drag.scale, drag.originPanX + dx, drag.originPanY + dy),
+    );
+  }
+
+  function handleBgPanPointerUp(e: ReactPointerEvent<HTMLDivElement>): void {
+    const drag = bgPanDragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    bgPanDragRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // already released
     }
   }
 
@@ -996,18 +1153,62 @@ export function BuildShareModal({
                 className="mt-1 w-full"
               />
             </label>
-            <label className="text-muted block text-xs">
-              Scale: {bgScale.toFixed(2)}x
-              <input
-                type="range"
-                min={0.7}
-                max={1.6}
-                step={0.01}
-                value={bgScale}
-                onChange={(event) => setBgScale(Number(event.target.value))}
-                className="mt-1 w-full"
-              />
-            </label>
+            {bgDataUrl && bgNaturalW > 0 ? (
+              <>
+                <label className="text-muted block text-xs">
+                  Zoom: {bgImageScale.toFixed(2)}× (uniform; no crop)
+                  <input
+                    type="range"
+                    min={0.12}
+                    max={2.5}
+                    step={0.01}
+                    value={bgImageScale}
+                    onChange={(event) => {
+                      const v = Number(event.target.value);
+                      setBgImageScale(v);
+                      setBgPan((p) => clampBackgroundPan(bgNaturalW, bgNaturalH, v, p.x, p.y));
+                    }}
+                    className="mt-1 w-full"
+                  />
+                </label>
+                <div>
+                  <p className="text-muted mb-1.5 text-xs">Position (drag)</p>
+                  <div
+                    ref={bgPanSurfaceRef}
+                    role="application"
+                    aria-label="Drag to position the background image"
+                    className="relative cursor-grab touch-none overflow-hidden rounded-lg border border-white/15 bg-black/30 active:cursor-grabbing"
+                    style={{ aspectRatio: `${SHARE_CANVAS_WIDTH} / ${SHARE_CANVAS_HEIGHT}` }}
+                    onPointerDown={handleBgPanPointerDown}
+                    onPointerMove={handleBgPanPointerMove}
+                    onPointerUp={handleBgPanPointerUp}
+                    onPointerCancel={handleBgPanPointerUp}
+                  >
+                    <div
+                      className="pointer-events-none absolute top-0 left-0"
+                      style={{
+                        width: SHARE_CANVAS_WIDTH,
+                        height: SHARE_CANVAS_HEIGHT,
+                        transform: `scale(${Math.max(0.001, bgPanSurfaceK)})`,
+                        transformOrigin: 'top left',
+                      }}
+                    >
+                      <ShareUploadBackgroundView
+                        dataUrl={bgDataUrl}
+                        naturalW={bgNaturalW}
+                        naturalH={bgNaturalH}
+                        scale={bgImageScale}
+                        pan={bgPan}
+                      />
+                    </div>
+                    <div
+                      className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/12 ring-inset"
+                      aria-hidden
+                    />
+                  </div>
+                </div>
+              </>
+            ) : null}
             {bgDataUrl ? (
               <button
                 type="button"
@@ -1015,6 +1216,11 @@ export function BuildShareModal({
                 onClick={() => {
                   setBgDataUrl(null);
                   setUploadName('');
+                  setBgNaturalW(0);
+                  setBgNaturalH(0);
+                  setBgPan({ x: 0, y: 0 });
+                  setBgImageScale(1);
+                  bgPanDragRef.current = null;
                 }}
               >
                 Remove Background Image
@@ -1071,18 +1277,21 @@ export function BuildShareModal({
                   style={{ width: SHARE_CANVAS_WIDTH, height: SHARE_CANVAS_HEIGHT }}
                   className="share-export-root share-export-glass-frame relative flex shrink-0 flex-col overflow-hidden text-[#edf2ff]"
                 >
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(120,154,255,0.35),transparent_38%),radial-gradient(circle_at_85%_78%,rgba(70,214,190,0.24),transparent_45%),linear-gradient(130deg,#0a1020_0%,#12172d_45%,#090d18_100%)]" />
-                  {bgDataUrl ? (
+                  <div
+                    className="pointer-events-none absolute inset-0"
+                    style={MAIN_PAGE_BACKGROUND_STYLE}
+                  />
+                  {bgDataUrl && bgNaturalW > 0 ? (
                     <div
                       className="pointer-events-none absolute inset-0 overflow-hidden"
                       style={{ opacity: bgOpacity / 100 }}
                     >
-                      <img
-                        src={bgDataUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        style={{ transform: `scale(${bgScale})` }}
-                        draggable={false}
+                      <ShareUploadBackgroundView
+                        dataUrl={bgDataUrl}
+                        naturalW={bgNaturalW}
+                        naturalH={bgNaturalH}
+                        scale={bgImageScale}
+                        pan={bgPan}
                       />
                       <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(9,13,24,0.82),rgba(9,13,24,0.35),rgba(9,13,24,0.55))]" />
                     </div>
