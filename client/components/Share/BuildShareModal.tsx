@@ -1,5 +1,6 @@
 import { toBlob } from 'html-to-image';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 
 import feathers from '../../assets/feathers.png';
 import orokinReactorImg from '../../assets/orokin-reactor.png';
@@ -111,10 +112,11 @@ const SHARE_ELEMENT_ICONS: Record<string, string> = {
   True: '20_true',
 };
 
-const MOD_SHARE_GAP_PX = 4;
+const MOD_SHARE_GAP_PX = 3;
 const MOD_COLLAPSED_H = DEFAULT_LAYOUT.collapsedHeight;
-const MOD_SCALE_MIN = 0.26;
-const MOD_SCALE_MAX = 0.62;
+/** Warframe builds can have up to 12 mod slots; scale is computed from actual count but must not cap too low or a large empty band appears below the list. */
+const MOD_SCALE_MIN = 0.28;
+const MOD_SCALE_MAX = 1.02;
 
 function ModShareColumnList({ slots, modScale }: { slots: ModSlot[]; modScale: number }) {
   if (slots.length === 0) {
@@ -156,7 +158,8 @@ function ModsShareSection({ slots }: { slots: ModSlot[] }) {
     const run = () => {
       const h = el.clientHeight;
       if (h <= 0) return;
-      const raw = (h - Math.max(0, n - 1) * MOD_SHARE_GAP_PX) / (n * MOD_COLLAPSED_H);
+      const nEff = Math.min(n, 12);
+      const raw = (h - Math.max(0, nEff - 1) * MOD_SHARE_GAP_PX) / (nEff * MOD_COLLAPSED_H);
       setModScale(Math.min(MOD_SCALE_MAX, Math.max(MOD_SCALE_MIN, raw)));
     };
     run();
@@ -167,20 +170,14 @@ function ModsShareSection({ slots }: { slots: ModSlot[] }) {
 
   if (n === 0) {
     return (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <p className="mb-1.5 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
-          Mods (0)
-        </p>
-        <p className="text-muted py-2 text-center text-[10px] text-[#7e8fb8]">No mods equipped.</p>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-hidden">
+        <p className="text-center text-[10px] text-[#7e8fb8]">No mods equipped.</p>
       </div>
     );
   }
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <p className="mb-1.5 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
-        Mods ({slots.length})
-      </p>
       <div ref={listRef} className="min-h-0 min-w-0 flex-1">
         <ModShareColumnList slots={slots} modScale={modScale} />
       </div>
@@ -295,10 +292,13 @@ function ShareShardColumn({
   slots,
   shards,
   compact = false,
+  textLeftIconRight = false,
 }: {
   slots: ShardSlotConfig[];
   shards: ShardType[];
   compact?: boolean;
+  /** Share card: right-align rows; text on the left of the row, shard icon on the right. */
+  textLeftIconRight?: boolean;
 }) {
   const lines: { key: string; name: string; tau: boolean; buff: string }[] = [];
   for (let i = 0; i < 5; i++) {
@@ -319,69 +319,122 @@ function ShareShardColumn({
   const iconSize = compact ? 'h-7 w-7' : 'h-9 w-9';
   const gapClass = compact ? 'space-y-1' : 'space-y-2';
 
+  const shardIcon = (slot: ShardSlotConfig, shard?: ShardType) => {
+    if (!slot.shard_type_id) {
+      return (
+        <div
+          className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-md ${iconSize}`}
+        >
+          <img
+            src="/icons/shards/emptyBackground.png"
+            alt=""
+            className="invert-on-light absolute inset-0 h-full w-full object-cover"
+            draggable={false}
+          />
+        </div>
+      );
+    }
+    if (!shard) {
+      return <div className={`shrink-0 rounded-md bg-white/10 ${iconSize}`} />;
+    }
+    const iconPath = slot.tauforged ? shard.tauforged_icon_path : shard.icon_path;
+    return (
+      <div
+        className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-md ${iconSize}`}
+      >
+        <img
+          src="/icons/shards/filledBackground.png"
+          alt=""
+          className={`absolute inset-0 h-full w-full object-cover ${slot.tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
+          draggable={false}
+        />
+        <img
+          src={iconPath}
+          alt=""
+          className="invert-on-light absolute inset-0 h-full w-full object-cover"
+          draggable={false}
+        />
+      </div>
+    );
+  };
+
   return (
-    <ul className={gapClass}>
+    <ul className={`${gapClass} ${textLeftIconRight ? 'flex w-full flex-col items-end' : ''}`}>
       {Array.from({ length: 5 }, (_, i) => {
         const slot = slots[i] ?? { tauforged: false };
         if (!slot.shard_type_id) {
           return (
-            <li key={i} className="flex items-center gap-2">
-              <div
-                className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-md ${iconSize}`}
-              >
-                <img
-                  src="/icons/shards/emptyBackground.png"
-                  alt=""
-                  className="invert-on-light absolute inset-0 h-full w-full object-cover"
-                  draggable={false}
-                />
-              </div>
-              <span className="text-[10px] text-[#8fa4d4]">Empty</span>
+            <li
+              key={i}
+              className={`flex items-center gap-2 ${textLeftIconRight ? 'w-full max-w-full justify-end' : ''}`}
+            >
+              {textLeftIconRight ? (
+                <>
+                  <span className="text-[10px] text-[#8fa4d4]">Empty</span>
+                  {shardIcon(slot, undefined)}
+                </>
+              ) : (
+                <>
+                  {shardIcon(slot, undefined)}
+                  <span className="text-[10px] text-[#8fa4d4]">Empty</span>
+                </>
+              )}
             </li>
           );
         }
         const shard = shards.find((s) => String(s.id) === String(slot.shard_type_id));
         if (!shard) {
           return (
-            <li key={i} className="flex items-center gap-2">
-              <div className={`shrink-0 rounded-md bg-white/10 ${iconSize}`} />
-              <span className="text-[10px] text-[#8fa4d4]">—</span>
+            <li
+              key={i}
+              className={`flex items-center gap-2 ${textLeftIconRight ? 'w-full max-w-full justify-end' : ''}`}
+            >
+              {textLeftIconRight ? (
+                <>
+                  <span className="text-[10px] text-[#8fa4d4]">—</span>
+                  {shardIcon(slot, undefined)}
+                </>
+              ) : (
+                <>
+                  {shardIcon(slot, undefined)}
+                  <span className="text-[10px] text-[#8fa4d4]">—</span>
+                </>
+              )}
             </li>
           );
         }
-        const iconPath = slot.tauforged ? shard.tauforged_icon_path : shard.icon_path;
         const line = lines.find((l) => l.key.startsWith(`shard-${i}`));
-        return (
-          <li key={i} className="flex items-start gap-2">
-            <div
-              className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-md ${iconSize}`}
-            >
-              <img
-                src="/icons/shards/filledBackground.png"
-                alt=""
-                className={`absolute inset-0 h-full w-full object-cover ${slot.tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
-                draggable={false}
-              />
-              <img
-                src={iconPath}
-                alt=""
-                className="invert-on-light absolute inset-0 h-full w-full object-cover"
-                draggable={false}
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-semibold text-[#eef2ff]">
-                {shard.name}
-                {line?.tau ? (
-                  <span className="ml-1 text-[8px] tracking-wide text-cyan-200/90 uppercase">
-                    Tau
-                  </span>
-                ) : null}
-              </div>
-              {line?.buff ? (
-                <div className="text-[9px] leading-snug text-[#a8b8e0]">{line.buff}</div>
+        const textBlock = (
+          <div className={`min-w-0 ${textLeftIconRight ? 'flex-1 text-right' : 'flex-1'}`}>
+            <div className="text-[10px] font-semibold text-[#eef2ff]">
+              {shard.name}
+              {line?.tau ? (
+                <span className="ml-1 text-[8px] tracking-wide text-cyan-200/90 uppercase">
+                  Tau
+                </span>
               ) : null}
             </div>
+            {line?.buff ? (
+              <div className="text-[9px] leading-snug text-[#a8b8e0]">{line.buff}</div>
+            ) : null}
+          </div>
+        );
+        return (
+          <li
+            key={i}
+            className={`flex items-start gap-2 ${textLeftIconRight ? 'w-full max-w-full justify-end' : ''}`}
+          >
+            {textLeftIconRight ? (
+              <>
+                {textBlock}
+                {shardIcon(slot, shard)}
+              </>
+            ) : (
+              <>
+                {shardIcon(slot, shard)}
+                {textBlock}
+              </>
+            )}
           </li>
         );
       })}
@@ -478,10 +531,12 @@ function ShareDamageBreakdownBars({
   weapon,
   slots,
   valenceBonus,
+  hideHeader = false,
 }: {
   weapon: Weapon;
   slots: ModSlot[];
   valenceBonus?: ValenceBonus | null;
+  hideHeader?: boolean;
 }) {
   const { totalDamage, damageBreakdown } = calculateBuildDamage(
     weapon,
@@ -494,10 +549,16 @@ function ShareDamageBreakdownBars({
 
   return (
     <div className="space-y-1">
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="text-[10px] tracking-[0.16em] text-[#c7d5ff] uppercase">Damage</span>
-        <span className="text-[12px] font-bold text-[#f0f4ff]">{formatDamage(totalDamage)}</span>
-      </div>
+      {hideHeader ? (
+        <div className="mb-1 flex justify-end">
+          <span className="text-[12px] font-bold text-[#f0f4ff]">{formatDamage(totalDamage)}</span>
+        </div>
+      ) : (
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <span className="text-[10px] tracking-[0.16em] text-[#c7d5ff] uppercase">Damage</span>
+          <span className="text-[12px] font-bold text-[#f0f4ff]">{formatDamage(totalDamage)}</span>
+        </div>
+      )}
       {damageBreakdown.map((entry) => {
         const color = getElementColor(entry.type);
         const pct = totalDamage > 0 ? (entry.value / totalDamage) * 100 : 0;
@@ -545,6 +606,15 @@ function ShareDamageBreakdownBars({
   );
 }
 
+/**
+ * Fades hero art to transparency at left, right, and bottom; top stays fully opaque.
+ * Intersection of: horizontal feather + vertical feather (opaque on top half of column).
+ */
+const HERO_MASK_HORIZONTAL =
+  'linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%)';
+const HERO_MASK_VERTICAL = 'linear-gradient(to bottom, black 0%, black 56%, transparent 100%)';
+const HERO_MASK_IMAGE = `${HERO_MASK_HORIZONTAL}, ${HERO_MASK_VERTICAL}`;
+
 function ShareHeroImage({
   equipmentImagePath,
   equipmentName,
@@ -552,31 +622,32 @@ function ShareHeroImage({
   equipmentImagePath?: string;
   equipmentName: string;
 }) {
-  const edge = '#090d18';
+  const heroMaskStyle: CSSProperties = {
+    WebkitMaskImage: HERO_MASK_IMAGE,
+    WebkitMaskRepeat: 'no-repeat',
+    WebkitMaskSize: '100% 100%',
+    maskImage: HERO_MASK_IMAGE,
+    maskRepeat: 'no-repeat',
+    maskSize: '100% 100%',
+    // Intersect: keep pixels only where both feather bands are opaque (sides + bottom fade).
+    maskComposite: 'intersect',
+  };
+
   return (
-    <div className="relative h-[340px] w-full shrink-0 overflow-hidden rounded-lg bg-[#090d18]">
+    <div className="relative h-[340px] w-full shrink-0 overflow-hidden bg-transparent">
       {equipmentImagePath ? (
         <img
           src={equipmentImagePath}
           alt=""
           className="h-full w-full object-contain object-top"
           draggable={false}
+          style={heroMaskStyle}
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-white/45">
           No Art
         </div>
       )}
-      {/* Visible L/R/bottom fade into the card background (html-to-image needs explicit opaque blends). */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: `
-            linear-gradient(90deg, ${edge} 0%, ${edge} 8%, rgba(9,13,24,0.55) 22%, transparent 42%, transparent 58%, rgba(9,13,24,0.55) 78%, ${edge} 92%, ${edge} 100%),
-            linear-gradient(180deg, transparent 0%, transparent 38%, rgba(9,13,24,0.35) 62%, ${edge} 100%)
-          `,
-        }}
-      />
       <div className="absolute right-0 bottom-0 left-0 z-10 pb-3">
         <ShareHeroTitle text={equipmentName} />
       </div>
@@ -802,14 +873,10 @@ export function BuildShareModal({
           />
         </div>
         <div className="min-h-0 shrink-0 px-0.5">
-          <p className="mb-1 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">Shards</p>
-          <ShareShardColumn compact slots={shardSlots} shards={shardTypes} />
+          <ShareShardColumn compact textLeftIconRight slots={shardSlots} shards={shardTypes} />
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <p className="mb-0.5 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
-              Stats
-            </p>
             <ShareRadarAuto
               labels={['Health', 'Shield', 'Armor', 'Energy', 'Sprint Speed']}
               values={[
@@ -822,9 +889,6 @@ export function BuildShareModal({
             />
           </div>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <p className="mb-0.5 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
-              Abilities
-            </p>
             <ShareRadarAuto
               labels={[
                 'Ability Strength',
@@ -856,13 +920,11 @@ export function BuildShareModal({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 pl-1">
         <ShareHeroImage equipmentImagePath={equipmentImagePath} equipmentName={equipmentName} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <p className="mb-0.5 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
-            Stats
-          </p>
           <ShareRadarAuto labels={weaponStatLabels} values={weaponRadarValues} />
         </div>
         <div className="min-h-0 flex-1 overflow-hidden">
           <ShareDamageBreakdownBars
+            hideHeader
             weapon={equipment as Weapon}
             slots={slots}
             valenceBonus={valenceBonus}
