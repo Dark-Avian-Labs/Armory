@@ -42,7 +42,8 @@
     ".vite/**",
     "tmp/**",
     "out/**",
-    "pnpm-lock.yaml"
+    "pnpm-lock.yaml",
+    "**/pnpm-lock.yaml"
   ],
 
   "overrides": [
