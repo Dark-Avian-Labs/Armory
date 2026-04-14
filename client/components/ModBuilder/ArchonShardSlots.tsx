@@ -29,6 +29,7 @@ interface ArchonShardSlotsProps {
   activeSlot?: number | null;
   onSlotClick: (slotIndex: number) => void;
   onRemove: (slotIndex: number) => void;
+  readOnly?: boolean;
 }
 
 const V_OFFSETS = [0, 14, 28, 14, 0];
@@ -39,6 +40,7 @@ export function ArchonShardSlots({
   activeSlot,
   onSlotClick,
   onRemove,
+  readOnly = false,
 }: ArchonShardSlotsProps) {
   const getShardInfo = (slot: ShardSlotConfig) => {
     if (!slot.shard_type_id) return null;
@@ -81,12 +83,19 @@ export function ArchonShardSlots({
                   }
                 >
                   <button
+                    type="button"
+                    disabled={readOnly}
+                    tabIndex={readOnly ? -1 : undefined}
                     onClick={() => onSlotClick(i)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      onRemove(i);
-                    }}
-                    className={`relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg transition-[color,background-color,border-color,box-shadow] duration-200 ${
+                    onContextMenu={
+                      readOnly
+                        ? undefined
+                        : (e) => {
+                            e.preventDefault();
+                            onRemove(i);
+                          }
+                    }
+                    className={`relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg transition-[color,background-color,border-color,box-shadow] duration-200 disabled:pointer-events-none disabled:opacity-90 ${
                       isActive ? 'ring-accent ring-1' : ''
                     }`}
                   >
@@ -105,11 +114,14 @@ export function ArchonShardSlots({
                   </button>
                 </GlassTooltip>
                 <button
+                  type="button"
+                  disabled={readOnly}
+                  tabIndex={readOnly ? -1 : undefined}
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemove(i);
                   }}
-                  className="border-muted/30 text-muted/30 hover:border-danger/50 hover:text-danger absolute -right-1 -bottom-1 flex h-3.25 w-3.25 items-center justify-center rounded-full border text-[7px] transition-colors"
+                  className="border-muted/30 text-muted/30 hover:border-danger/50 hover:text-danger absolute -right-1 -bottom-1 flex h-3.25 w-3.25 items-center justify-center rounded-full border text-[7px] transition-colors disabled:pointer-events-none disabled:opacity-50"
                   title="Remove"
                 >
                   ✕
@@ -121,8 +133,11 @@ export function ArchonShardSlots({
           return (
             <button
               key={i}
+              type="button"
+              disabled={readOnly}
+              tabIndex={readOnly ? -1 : undefined}
               onClick={() => onSlotClick(i)}
-              className={`relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg transition-[color,background-color,border-color,box-shadow] duration-200 ${
+              className={`relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg transition-[color,background-color,border-color,box-shadow] duration-200 disabled:pointer-events-none disabled:opacity-90 ${
                 isActive ? 'ring-accent ring-1' : ''
               }`}
               style={{ marginTop: vOffset }}

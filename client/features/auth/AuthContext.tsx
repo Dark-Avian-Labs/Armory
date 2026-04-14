@@ -82,7 +82,7 @@ interface AuthProviderProps {
 
 export function AuthProvider({
   children,
-  defaultLogoutRedirectPath = '/builder',
+  defaultLogoutRedirectPath = '/builder/builds',
 }: AuthProviderProps) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [account, setAccount] = useState<AppAccountState>({

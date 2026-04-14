@@ -11,6 +11,16 @@ const BuildOverview = lazy(() =>
     default: mod.BuildOverview,
   })),
 );
+const BuildsCatalogPage = lazy(() =>
+  import('../components/BuildsCatalog/BuildsCatalogPage').then((mod) => ({
+    default: mod.BuildsCatalogPage,
+  })),
+);
+const BuildsByEquipmentPage = lazy(() =>
+  import('../components/BuildsCatalog/BuildsByEquipmentPage').then((mod) => ({
+    default: mod.BuildsByEquipmentPage,
+  })),
+);
 const ModBuilder = lazy(() =>
   import('../components/ModBuilder/ModBuilder').then((mod) => ({
     default: mod.ModBuilder,
@@ -114,7 +124,13 @@ export function AppRoutes() {
             }
           >
             <Route path="/" element={<Navigate to={APP_PATHS.home} replace />} />
-            <Route path={APP_PATHS.buildOverview} element={<BuildOverview />} />
+            <Route path="/builder" element={<Navigate to={APP_PATHS.home} replace />} />
+            <Route
+              path="/builder/builds/:equipmentType/:equipmentUniqueName"
+              element={<BuildsByEquipmentPage />}
+            />
+            <Route path={APP_PATHS.buildsExplore} element={<BuildsCatalogPage />} />
+            <Route path={APP_PATHS.myBuilds} element={<BuildOverview />} />
             <Route path={APP_PATHS.buildNew} element={<ModBuilder />} />
             <Route path={APP_PATHS.buildEdit} element={<ModBuilder />} />
             <Route path={APP_PATHS.admin} element={<AdminPage />} />

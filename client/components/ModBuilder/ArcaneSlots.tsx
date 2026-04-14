@@ -28,6 +28,7 @@ interface ArcaneSlotsProps {
   onRankChange: (slotIndex: number, rank: number) => void;
   onRemove: (slotIndex: number) => void;
   onDrop?: (slotIndex: number, arcane: Arcane) => void;
+  readOnly?: boolean;
 }
 
 const SCALE = 0.6;
@@ -43,6 +44,7 @@ export function ArcaneSlots({
   onRankChange,
   onRemove,
   onDrop,
+  readOnly = false,
 }: ArcaneSlotsProps) {
   const layout = { ...DEFAULT_ARCANE_LAYOUT, scale: SCALE };
 
@@ -64,6 +66,7 @@ export function ArcaneSlots({
               maxRank={maxRank}
               isActive={isActive}
               layout={layout}
+              readOnly={readOnly}
               onClick={() => onSlotClick(i)}
               onRankChange={(rank) => onRankChange(i, rank)}
               onRemove={() => onRemove(i)}
@@ -82,6 +85,7 @@ function ArcaneSlotCell({
   maxRank,
   isActive,
   layout,
+  readOnly,
   onClick,
   onRankChange,
   onRemove,
@@ -92,6 +96,7 @@ function ArcaneSlotCell({
   maxRank: number;
   isActive: boolean;
   layout: typeof DEFAULT_ARCANE_LAYOUT;
+  readOnly: boolean;
   onClick: () => void;
   onRankChange: (rank: number) => void;
   onRemove: () => void;
@@ -142,16 +147,20 @@ function ArcaneSlotCell({
           height: arcane ? SLOT_H + RANK_ROW_H : SLOT_H,
           marginBottom: 4,
         }}
-        className={`relative cursor-pointer rounded-lg ${isActive ? 'ring-accent ring-1' : ''}`}
-        onClick={onClick}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        onContextMenu={(e) => {
-          if (arcane) {
-            e.preventDefault();
-            onRemove();
-          }
-        }}
+        className={`relative rounded-lg ${readOnly ? 'cursor-default' : 'cursor-pointer'} ${isActive ? 'ring-accent ring-1' : ''}`}
+        onClick={readOnly ? undefined : onClick}
+        onDragOver={readOnly ? undefined : handleDragOver}
+        onDrop={readOnly ? undefined : handleDrop}
+        onContextMenu={
+          readOnly
+            ? undefined
+            : (e) => {
+                if (arcane) {
+                  e.preventDefault();
+                  onRemove();
+                }
+              }
+        }
       >
         {arcane ? (
           <>
@@ -169,25 +178,34 @@ function ArcaneSlotCell({
               <div
                 className="relative flex items-center justify-center gap-1"
                 style={{ height: RANK_ROW_H }}
-                onClick={(e) => e.stopPropagation()}
+                onClick={readOnly ? undefined : (e) => e.stopPropagation()}
               >
                 <button
+                  type="button"
+                  disabled={readOnly}
+                  tabIndex={readOnly ? -1 : undefined}
                   onClick={() => onRankChange(Math.max(0, slot.rank - 1))}
-                  className="border-muted/30 text-muted hover:border-foreground/50 hover:text-foreground flex h-3 w-6 items-center justify-center rounded-full border text-[9px] font-bold transition-colors"
+                  className="border-muted/30 text-muted hover:border-foreground/50 hover:text-foreground flex h-3 w-6 items-center justify-center rounded-full border text-[9px] font-bold transition-colors disabled:pointer-events-none disabled:opacity-50"
                   title="Decrease rank"
                 >
                   −
                 </button>
                 <button
+                  type="button"
+                  disabled={readOnly}
+                  tabIndex={readOnly ? -1 : undefined}
                   onClick={() => onRankChange(Math.min(maxRank, slot.rank + 1))}
-                  className="border-muted/30 text-muted hover:border-foreground/50 hover:text-foreground flex h-3 w-6 items-center justify-center rounded-full border text-[9px] font-bold transition-colors"
+                  className="border-muted/30 text-muted hover:border-foreground/50 hover:text-foreground flex h-3 w-6 items-center justify-center rounded-full border text-[9px] font-bold transition-colors disabled:pointer-events-none disabled:opacity-50"
                   title="Increase rank"
                 >
                   +
                 </button>
                 <button
+                  type="button"
+                  disabled={readOnly}
+                  tabIndex={readOnly ? -1 : undefined}
                   onClick={() => onRemove()}
-                  className="border-muted/30 text-muted/30 hover:border-danger/50 hover:text-danger absolute right-8 flex h-3.25 w-3.25 items-center justify-center rounded-full border text-[7px] transition-colors"
+                  className="border-muted/30 text-muted/30 hover:border-danger/50 hover:text-danger absolute right-8 flex h-3.25 w-3.25 items-center justify-center rounded-full border text-[7px] transition-colors disabled:pointer-events-none disabled:opacity-50"
                   title="Remove"
                 >
                   ✕

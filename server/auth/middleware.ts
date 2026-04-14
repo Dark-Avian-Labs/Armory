@@ -127,7 +127,7 @@ export async function redirectIfAuthenticated(
 ): Promise<void> {
   const state = await fetchRemoteAuthState(req);
   if (state.authenticated && state.has_game_access) {
-    res.redirect('/builder');
+    res.redirect('/builder/builds');
     return;
   }
   next();

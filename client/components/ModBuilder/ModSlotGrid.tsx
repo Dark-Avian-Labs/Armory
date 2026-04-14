@@ -82,6 +82,7 @@ interface ModSlotGridProps {
   formaMode?: boolean;
   onPolarityChange?: (slotIndex: number, polarity: string | undefined) => void;
   equipmentType?: EquipmentType;
+  readOnly?: boolean;
 }
 
 export function ModSlotGrid({
@@ -97,6 +98,7 @@ export function ModSlotGrid({
   formaMode = false,
   onPolarityChange,
   equipmentType = 'warframe',
+  readOnly = false,
 }: ModSlotGridProps) {
   const specialSlots = slots.filter(
     (s) => s.type === 'aura' || s.type === 'stance' || s.type === 'posture',
@@ -188,6 +190,7 @@ export function ModSlotGrid({
                 )
               }
               label={specialSlots[0].type.charAt(0).toUpperCase() + specialSlots[0].type.slice(1)}
+              readOnly={readOnly}
             />
           ) : (
             <div />
@@ -213,6 +216,7 @@ export function ModSlotGrid({
                 handleFormaClick(exilusSlot.index, exilusSlot.polarity, exilusSlot.type, true)
               }
               label="Exilus"
+              readOnly={readOnly}
             />
           ) : (
             <div />
@@ -243,6 +247,7 @@ export function ModSlotGrid({
                     : onSlotClick?.(slot.index, slot.type)
                 }
                 onRightClick={() => handleFormaClick(slot.index, slot.polarity, slot.type, true)}
+                readOnly={readOnly}
               />
             ))}
           </div>
@@ -304,6 +309,7 @@ interface SlotCellProps {
   onClick?: () => void;
   onRightClick?: () => void;
   label?: string;
+  readOnly?: boolean;
 }
 
 const SLOT_SCALE = 0.75;
@@ -324,6 +330,7 @@ function SlotCell({
   onClick,
   onRightClick,
   label,
+  readOnly = false,
 }: SlotCellProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -347,7 +354,7 @@ function SlotCell({
             ? 'exilus'
             : '';
 
-  const canDrag = !!slot.mod && !formaMode;
+  const canDrag = !!slot.mod && !formaMode && !readOnly;
 
   const handleSlotDragStart = (e: React.DragEvent) => {
     if (!slot.mod || formaMode) return;
@@ -388,11 +395,12 @@ function SlotCell({
       className={`relative overflow-visible rounded-lg transition-opacity select-none ${
         active && !formaMode ? 'ring-accent ring-1' : ''
       } ${isDragging ? 'opacity-40' : ''} ${isDragOver ? 'ring-accent/60 ring-2' : ''}`}
-      onDragOver={!formaMode ? handleLocalDragOver : undefined}
-      onDragLeave={!formaMode ? handleLocalDragLeave : undefined}
-      onDrop={!formaMode ? handleLocalDrop : undefined}
-      onClick={onClick}
+      onDragOver={!formaMode && !readOnly ? handleLocalDragOver : undefined}
+      onDragLeave={!formaMode && !readOnly ? handleLocalDragLeave : undefined}
+      onDrop={!formaMode && !readOnly ? handleLocalDrop : undefined}
+      onClick={readOnly ? undefined : onClick}
       onContextMenu={(e) => {
+        if (readOnly) return;
         e.preventDefault();
         if (formaMode && onRightClick) {
           onRightClick();
@@ -601,6 +609,9 @@ function SlotCell({
           )}
         </>
       )}
+      {readOnly ? (
+        <div className="absolute inset-0 z-[200] cursor-default rounded-lg" aria-hidden="true" />
+      ) : null}
     </div>
   );
 }

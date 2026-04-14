@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { requireAdmin } from '../auth/middleware.js';
-import { getDb } from '../db/connection.js';
+import { getCentralDb, getDb } from '../db/connection.js';
 import {
   getAdminImportSnapshot,
   startAdminImportJob,
@@ -432,6 +432,7 @@ type BuildRow = {
   mod_config: string;
   created_at: string;
   updated_at: string;
+  visibility?: string;
 };
 
 function parseBuildConfig(raw: string): Record<string, unknown> | null {
@@ -447,6 +448,48 @@ function toBuildResponse(row: BuildRow): Record<string, unknown> {
   return {
     ...row,
     mod_config: parseBuildConfig(row.mod_config),
+  };
+}
+
+function getOwnerUsernames(userIds: number[]): Map<number, string | null> {
+  const map = new Map<number, string | null>();
+  const unique = [...new Set(userIds)].filter((id) => Number.isFinite(id) && id > 0);
+  if (unique.length === 0) {
+    return map;
+  }
+
+  try {
+    const central = getCentralDb();
+    const placeholders = unique.map(() => '?').join(',');
+    const rows = central
+      .prepare(`SELECT id, username FROM users WHERE id IN (${placeholders})`)
+      .all(...unique) as Array<{ id: number; username: string }>;
+    for (const r of rows) {
+      map.set(r.id, r.username ?? null);
+    }
+  } catch {
+    // ignore
+  }
+
+  return map;
+}
+
+function toBuildListItem(row: BuildRow, ownerUsernames: Map<number, string | null>) {
+  const cfg = parseBuildConfig(row.mod_config);
+  const equipmentName =
+    typeof cfg?.equipment_name === 'string' ? cfg.equipment_name : row.equipment_unique_name;
+  const equipmentImage = typeof cfg?.equipment_image === 'string' ? cfg.equipment_image : undefined;
+  return {
+    id: row.id,
+    name: row.name,
+    equipment_type: row.equipment_type,
+    equipment_unique_name: row.equipment_unique_name,
+    equipment_name: equipmentName,
+    equipment_image: equipmentImage,
+    updated_at: row.updated_at,
+    created_at: row.created_at,
+    owner_user_id: row.user_id,
+    owner_username: ownerUsernames.get(row.user_id) ?? null,
   };
 }
 
@@ -1239,6 +1282,123 @@ apiRouter.get('/builds', (req: Request, res: Response) => {
   }
 });
 
+apiRouter.get('/builds/catalog', (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    if (!req.session.user_id) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const userId = req.session.user_id;
+    const rows = db
+      .prepare(
+        `SELECT equipment_type, equipment_unique_name, COUNT(*) AS build_count
+         FROM builds
+         WHERE user_id = ? OR visibility IN ('public', 'unlisted')
+         GROUP BY equipment_type, equipment_unique_name
+         ORDER BY equipment_type ASC, equipment_unique_name ASC`,
+      )
+      .all(userId) as Array<{
+      equipment_type: string;
+      equipment_unique_name: string;
+      build_count: number;
+    }>;
+
+    res.json({ entries: rows });
+  } catch (err) {
+    sendInternalError(res, 'builds.catalog', err);
+  }
+});
+
+apiRouter.get('/builds/by-equipment', (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    if (!req.session.user_id) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const equipmentType =
+      typeof req.query.equipment_type === 'string' ? req.query.equipment_type.trim() : '';
+    const equipmentUniqueName =
+      typeof req.query.equipment_unique_name === 'string'
+        ? req.query.equipment_unique_name.trim()
+        : '';
+
+    if (!equipmentType || !equipmentUniqueName) {
+      res.status(400).json({ error: 'equipment_type and equipment_unique_name are required' });
+      return;
+    }
+
+    const userId = req.session.user_id;
+    const rows = db
+      .prepare(
+        `SELECT * FROM builds
+         WHERE equipment_type = ? AND equipment_unique_name = ?
+           AND (user_id = ? OR visibility IN ('public', 'unlisted'))
+         ORDER BY updated_at DESC`,
+      )
+      .all(equipmentType, equipmentUniqueName, userId) as BuildRow[];
+
+    const ownerUsernames = getOwnerUsernames(rows.map((r) => r.user_id));
+    res.json({ builds: rows.map((row) => toBuildListItem(row, ownerUsernames)) });
+  } catch (err) {
+    sendInternalError(res, 'builds.byEquipment', err);
+  }
+});
+
+apiRouter.get('/builds/:id/loadouts', (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    if (!req.session.user_id) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const id = parseNumericId(req.params.id);
+    if (id === null) {
+      res.status(400).json({ error: 'Invalid build id' });
+      return;
+    }
+
+    const buildExists = db.prepare('SELECT 1 FROM builds WHERE id = ?').get(id);
+    if (!buildExists) {
+      res.status(404).json({ error: 'Build not found' });
+      return;
+    }
+
+    const uid = req.session.user_id;
+    const rows = db
+      .prepare(
+        `SELECT l.id, l.name, l.user_id, l.visibility
+         FROM loadout_builds lb
+         INNER JOIN loadouts l ON l.id = lb.loadout_id
+         WHERE lb.build_id = ?
+           AND (l.user_id = ? OR l.visibility = 'public' OR l.visibility = 'unlisted')
+         ORDER BY l.updated_at DESC`,
+      )
+      .all(id, uid) as Array<{
+      id: number;
+      name: string;
+      user_id: number;
+      visibility: string;
+    }>;
+
+    const ownerUsernames = getOwnerUsernames(rows.map((r) => r.user_id));
+    const loadouts = rows.map((row) => ({
+      id: String(row.id),
+      name: row.name,
+      owner_user_id: row.user_id,
+      owner_username: ownerUsernames.get(row.user_id) ?? null,
+      is_own: row.user_id === uid,
+    }));
+
+    res.json({ loadouts });
+  } catch (err) {
+    sendInternalError(res, 'builds.loadouts', err);
+  }
+});
+
 apiRouter.get('/builds/:id', (req: Request, res: Response) => {
   try {
     const db = getDb();
@@ -1257,14 +1417,21 @@ apiRouter.get('/builds/:id', (req: Request, res: Response) => {
       res.status(404).json({ error: 'Build not found' });
       return;
     }
-    if (row.user_id !== req.session.user_id) {
-      res.status(403).json({ error: 'Forbidden' });
+
+    const sessionUserId = req.session.user_id;
+    const isOwner = row.user_id === sessionUserId;
+    const vis = row.visibility ?? 'private';
+    if (!isOwner && vis !== 'public' && vis !== 'unlisted') {
+      res.status(404).json({ error: 'Build not found' });
       return;
     }
+
+    const canEdit = isOwner;
 
     res.json({
       build: toBuildResponse(row),
       owner_user_id: row.user_id,
+      can_edit: canEdit,
     });
   } catch (err) {
     sendInternalError(res, 'builds.getById', err);
@@ -1280,6 +1447,9 @@ apiRouter.post('/builds', (req: Request, res: Response) => {
     }
 
     const { name, equipment_type, equipment_unique_name, mod_config } = req.body;
+    const visRaw = req.body?.visibility;
+    const visibility =
+      visRaw === 'public' || visRaw === 'private' || visRaw === 'unlisted' ? visRaw : 'private';
 
     const modConfigResult = ModConfigSchema.safeParse(mod_config);
     if (
@@ -1298,8 +1468,8 @@ apiRouter.post('/builds', (req: Request, res: Response) => {
 
     const result = db
       .prepare(
-        `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+        `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       )
       .run(
         req.session.user_id,
@@ -1307,6 +1477,7 @@ apiRouter.post('/builds', (req: Request, res: Response) => {
         equipment_type,
         equipment_unique_name,
         JSON.stringify(modConfigResult.data),
+        visibility,
       );
 
     res.json({ success: true, id: result.lastInsertRowid });
@@ -1328,7 +1499,7 @@ apiRouter.put('/builds/:id', (req: Request, res: Response) => {
       res.status(400).json({ error: 'Invalid build id' });
       return;
     }
-    const { name, mod_config } = req.body;
+    const { name, mod_config, visibility: visRaw } = req.body;
     const modConfigResult = ModConfigSchema.safeParse(mod_config);
     if (typeof name !== 'string') {
       res.status(400).json({ error: 'Invalid build payload' });
@@ -1338,11 +1509,13 @@ apiRouter.put('/builds/:id', (req: Request, res: Response) => {
       res.status(400).json({ error: 'Invalid mod_config' });
       return;
     }
+    const visibility =
+      visRaw === 'public' || visRaw === 'private' || visRaw === 'unlisted' ? visRaw : 'private';
 
     db.prepare(
-      `UPDATE builds SET name = ?, mod_config = ?, updated_at = datetime('now')
+      `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, updated_at = datetime('now')
        WHERE id = ? AND user_id = ?`,
-    ).run(name, JSON.stringify(modConfigResult.data), id, req.session.user_id);
+    ).run(name, JSON.stringify(modConfigResult.data), visibility, id, req.session.user_id);
 
     res.json({ success: true });
   } catch (err) {
@@ -1387,10 +1560,6 @@ apiRouter.post('/builds/:id/copy', (req: Request, res: Response) => {
       res.status(404).json({ error: 'Build not found' });
       return;
     }
-    if (source.user_id !== req.session.user_id) {
-      res.status(403).json({ error: 'Forbidden' });
-      return;
-    }
 
     const requestedName = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
     const requestedNameTruncated = requestedName.slice(0, MAX_NAME_LENGTH);
@@ -1401,8 +1570,8 @@ apiRouter.post('/builds/:id/copy', (req: Request, res: Response) => {
 
     const result = db
       .prepare(
-        `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+        `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'private', datetime('now'), datetime('now'))`,
       )
       .run(
         req.session.user_id,

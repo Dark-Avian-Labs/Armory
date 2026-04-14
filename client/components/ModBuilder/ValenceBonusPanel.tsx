@@ -24,9 +24,10 @@ const MAX_P = 60;
 interface ValenceBonusPanelProps {
   value: ValenceBonus;
   onChange: (next: ValenceBonus) => void;
+  readOnly?: boolean;
 }
 
-export function ValenceBonusPanel({ value, onChange }: ValenceBonusPanelProps) {
+export function ValenceBonusPanel({ value, onChange, readOnly = false }: ValenceBonusPanelProps) {
   const selectElement = (element: ValenceDamageType) => {
     onChange({
       element,
@@ -56,6 +57,7 @@ export function ValenceBonusPanel({ value, onChange }: ValenceBonusPanelProps) {
               key={el}
               type="button"
               title={el}
+              disabled={readOnly}
               onClick={() => selectElement(el)}
               className={`flex h-7 w-7 shrink-0 items-center justify-center rounded border transition-colors ${
                 active
@@ -91,8 +93,9 @@ export function ValenceBonusPanel({ value, onChange }: ValenceBonusPanelProps) {
           max={MAX_P}
           step={1}
           value={value.percent}
+          disabled={readOnly}
           onChange={(e) => setPercent(Number(e.target.value))}
-          className="accent-accent h-2 w-full cursor-pointer"
+          className="accent-accent h-2 w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Valence bonus percent"
         />
       </div>

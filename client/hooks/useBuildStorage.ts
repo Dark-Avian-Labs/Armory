@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-import type { StoredBuild, BuildConfig } from '../types/warframe';
+import type { StoredBuild, BuildConfig, BuildVisibility } from '../types/warframe';
 import { apiFetch, UnauthorizedError } from '../utils/api';
 import { normalizeRivenConfigMembership } from '../utils/riven';
 
@@ -55,6 +55,11 @@ export function useBuildStorage() {
               typeof modConfig.equipment_image === 'string' ? modConfig.equipment_image : undefined,
             created_at: String(row.created_at ?? new Date().toISOString()),
             updated_at: String(row.updated_at ?? new Date().toISOString()),
+            visibility: ((): BuildVisibility | undefined => {
+              const v = row.visibility;
+              if (v === 'public' || v === 'private' || v === 'unlisted') return v;
+              return 'private';
+            })(),
           } as StoredBuild;
         })
         .filter((build) => build.id.length > 0);
@@ -125,6 +130,7 @@ export function useBuildStorage() {
       config: BuildConfig,
       equipmentName: string,
       equipmentImage?: string,
+      visibility?: BuildVisibility,
     ): Promise<StoredBuild> => {
       const normalizedSlots = config.slots.map((slot) =>
         slot.riven_config
@@ -143,14 +149,24 @@ export function useBuildStorage() {
       const isUpdate = Boolean(config.id);
       const endpoint = isUpdate ? `/api/builds/${config.id}` : '/api/builds';
       const method = isUpdate ? 'PUT' : 'POST';
+      const vis: BuildVisibility = visibility ?? (config as StoredBuild).visibility ?? 'private';
       const response = await apiFetch(endpoint, {
         method,
-        body: JSON.stringify({
-          name: configWithMeta.name,
-          equipment_type: configWithMeta.equipment_type,
-          equipment_unique_name: configWithMeta.equipment_unique_name,
-          mod_config: configWithMeta,
-        }),
+        body: JSON.stringify(
+          isUpdate
+            ? {
+                name: configWithMeta.name,
+                mod_config: configWithMeta,
+                visibility: vis,
+              }
+            : {
+                name: configWithMeta.name,
+                equipment_type: configWithMeta.equipment_type,
+                equipment_unique_name: configWithMeta.equipment_unique_name,
+                mod_config: configWithMeta,
+                visibility: vis,
+              },
+        ),
       });
       if (!response.ok) {
         let message = 'Failed to save build';
@@ -223,5 +239,35 @@ export function useBuildStorage() {
     [builds],
   );
 
-  return { builds, loading, saveBuild, deleteBuild, getBuild, refresh };
+  const copyBuildFromId = useCallback(
+    async (sourceId: string, name: string): Promise<string> => {
+      const response = await apiFetch(`/api/builds/${sourceId}/copy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!response.ok) {
+        let message = 'Failed to copy build';
+        try {
+          const body = (await response.json()) as { error?: string };
+          if (typeof body.error === 'string' && body.error.trim().length > 0) {
+            message = body.error;
+          }
+        } catch {
+          // ignore
+        }
+        throw new Error(message);
+      }
+      const body = (await response.json()) as { id?: number | string };
+      const newId = body.id !== undefined ? String(body.id) : '';
+      if (!newId) {
+        throw new Error('Copy succeeded but no id returned');
+      }
+      await refresh();
+      return newId;
+    },
+    [refresh],
+  );
+
+  return { builds, loading, saveBuild, deleteBuild, getBuild, refresh, copyBuildFromId };
 }

@@ -13,7 +13,7 @@ export function LoginPage() {
     };
 
     try {
-      const nextAuthUrl = buildCentralAuthLoginUrl('/builder');
+      const nextAuthUrl = buildCentralAuthLoginUrl('/builder/builds');
 
       let parsedUrl: URL;
       try {

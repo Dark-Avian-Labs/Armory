@@ -4,7 +4,7 @@ import { AuthProvider } from './features/auth/AuthContext';
 
 export function App() {
   return (
-    <AuthProvider defaultLogoutRedirectPath="/builder">
+    <AuthProvider defaultLogoutRedirectPath="/builder/builds">
       <CompareProvider>
         <AppRoutes />
       </CompareProvider>

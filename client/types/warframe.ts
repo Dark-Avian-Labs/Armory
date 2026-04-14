@@ -199,12 +199,15 @@ export interface BuildConfig {
   orokinReactor?: boolean;
 }
 
+export type BuildVisibility = 'public' | 'private' | 'unlisted';
+
 export interface StoredBuild extends BuildConfig {
   id: string;
   equipment_name: string;
   equipment_image?: string;
   created_at: string;
   updated_at: string;
+  visibility?: BuildVisibility;
 }
 
 export const EQUIPMENT_TYPE_LABELS: Record<EquipmentType, string> = {

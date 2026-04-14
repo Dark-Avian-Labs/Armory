@@ -22,6 +22,7 @@ interface AbilityBarProps {
   onHelminthChange: (config: BuildConfig['helminth'] | undefined) => void;
   activeAbilityIndex?: number | null;
   onAbilityClick: (index: number) => void;
+  readOnly?: boolean;
 }
 
 export function AbilityBar({
@@ -30,6 +31,7 @@ export function AbilityBar({
   onHelminthChange,
   activeAbilityIndex,
   onAbilityClick,
+  readOnly = false,
 }: AbilityBarProps) {
   const renderDamageSnippet = (raw: string): React.ReactNode => {
     const cleaned = sanitizeDisplayTextKeepDamageTokens(raw);
@@ -182,14 +184,18 @@ export function AbilityBar({
               }
             >
               <button
-                onClick={() => onAbilityClick(ability.index)}
+                type="button"
+                disabled={readOnly}
+                onClick={() => {
+                  if (!readOnly) onAbilityClick(ability.index);
+                }}
                 className={`relative flex h-12 w-12 items-center justify-center rounded-lg border transition-[color,background-color,border-color] duration-200 ${
                   isActive
                     ? 'border-accent bg-accent-weak/20 ring-accent ring-1'
                     : isReplaced
                       ? 'border-danger/50 bg-danger/10'
                       : 'border-glass-border bg-glass hover:border-glass-border-hover hover:bg-glass-hover'
-                }`}
+                } ${readOnly ? 'cursor-default opacity-90' : ''}`}
               >
                 {icon ? (
                   <img
@@ -217,8 +223,9 @@ export function AbilityBar({
           );
         })}
 
-        {helminthConfig && (
+        {helminthConfig && !readOnly && (
           <button
+            type="button"
             onClick={handleRemoveHelminth}
             className="border-danger/30 text-danger hover:bg-danger/10 ml-2 rounded-lg border px-2 py-1 text-[10px] transition-[color,background-color,border-color] duration-200"
           >

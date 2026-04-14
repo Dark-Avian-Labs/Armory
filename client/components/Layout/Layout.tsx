@@ -30,6 +30,15 @@ import { SearchBar } from './SearchBar';
 const EquipmentGridModal = lazy(() =>
   import('./EquipmentGridModal').then((m) => ({ default: m.EquipmentGridModal })),
 );
+
+function getNavLinkClass(isActive: boolean): string {
+  return `inline-flex items-center rounded-2xl border px-4 py-2 text-sm transition-[color,background-color,border-color,box-shadow] duration-200 ${
+    isActive
+      ? 'border-accent bg-accent-weak text-accent'
+      : 'border-glass-border text-muted hover:border-glass-border-hover hover:text-foreground'
+  }`;
+}
+
 export function Layout() {
   const [showAddBuild, setShowAddBuild] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -155,19 +164,19 @@ export function Layout() {
           <div className="justify-self-center">{isLoggedIn ? <SearchBar /> : null}</div>
 
           <div className="flex flex-wrap items-center justify-end gap-3">
-            <nav className="flex gap-2">
+            <nav className="flex flex-wrap gap-2">
               <NavLink
-                to={APP_PATHS.buildOverview}
+                to={APP_PATHS.buildsExplore}
                 end
-                className={({ isActive }) =>
-                  `inline-flex items-center rounded-2xl border px-4 py-2 text-sm transition-[color,background-color,border-color,box-shadow] duration-200 ${
-                    isActive
-                      ? 'border-accent bg-accent-weak text-accent'
-                      : 'border-glass-border text-muted hover:border-glass-border-hover hover:text-foreground'
-                  }`
-                }
+                className={({ isActive }) => getNavLinkClass(isActive)}
               >
                 Builds
+              </NavLink>
+              <NavLink
+                to={APP_PATHS.myBuilds}
+                className={({ isActive }) => getNavLinkClass(isActive)}
+              >
+                My Builds
               </NavLink>
             </nav>
             <button
@@ -225,7 +234,7 @@ export function Layout() {
                       </Link>
                     ) : null}
                     <a
-                      href={`${AUTH_PROFILE_URL}?next=${encodeURIComponent(APP_PATHS.buildOverview)}`}
+                      href={`${AUTH_PROFILE_URL}?next=${encodeURIComponent(APP_PATHS.home)}`}
                       className="user-menu-item"
                       role="menuitem"
                       onClick={() => setUserMenuOpen(false)}

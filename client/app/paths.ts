@@ -1,6 +1,7 @@
 export const APP_PATHS = {
-  home: '/builder',
-  buildOverview: '/builder',
+  home: '/builder/builds',
+  buildsExplore: '/builder/builds',
+  myBuilds: '/builder/my-builds',
   buildNew: '/builder/new/:equipmentType/:equipmentId',
   buildEdit: '/builder/:buildId',
   admin: '/admin',
@@ -14,4 +15,15 @@ export function buildNewPath(equipmentType: string, equipmentId: string): string
 
 export function buildEditPath(buildId: string): string {
   return `/builder/${encodeURIComponent(buildId)}`;
+}
+
+export function buildReadOnlyPath(buildId: string): string {
+  return `/builder/${encodeURIComponent(buildId)}?view=1`;
+}
+
+export function buildEquipmentBuildsListPath(
+  equipmentType: string,
+  equipmentUniqueName: string,
+): string {
+  return `/builder/builds/${encodeURIComponent(equipmentType)}/${encodeURIComponent(equipmentUniqueName)}`;
 }

@@ -8,7 +8,7 @@ describe('buildAuthLoginUrl', () => {
       vi.resetModules();
       const { buildAuthLoginUrl } = await import('./remoteAuth.js');
       const req = {
-        originalUrl: '/builder',
+        originalUrl: '/builder/builds',
         protocol: 'http',
         headers: {
           'x-forwarded-host': 'attacker.example.com',
@@ -23,7 +23,7 @@ describe('buildAuthLoginUrl', () => {
       const loginUrl = buildAuthLoginUrl(req);
       const parsed = new URL(loginUrl);
       expect(parsed.pathname).toBe('/login');
-      expect(parsed.searchParams.get('next')).toBe('https://parametric.example.com/builder');
+      expect(parsed.searchParams.get('next')).toBe('https://parametric.example.com/builder/builds');
     } finally {
       if (original == null) {
         delete process.env.APP_PUBLIC_BASE_URL;

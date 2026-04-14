@@ -17,6 +17,7 @@ interface StatsPanelProps {
   shardSlots?: ShardSlotConfig[];
   shardTypes?: ShardType[];
   valenceBonus?: ValenceBonus | null;
+  headerActions?: ReactNode;
 }
 
 export function StatsPanel({
@@ -27,10 +28,16 @@ export function StatsPanel({
   shardSlots,
   shardTypes,
   valenceBonus,
+  headerActions,
 }: StatsPanelProps) {
   return (
     <div className="glass-panel overflow-visible p-4">
-      <h3 className="text-muted mb-3 text-sm font-semibold tracking-wider uppercase">Stats</h3>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <h3 className="text-muted text-sm font-semibold tracking-wider uppercase">Stats</h3>
+        {headerActions ? (
+          <div className="flex shrink-0 items-center gap-1">{headerActions}</div>
+        ) : null}
+      </div>
 
       {type === 'warframe' ? (
         <WarframeStats

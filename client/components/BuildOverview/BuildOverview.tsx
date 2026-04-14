@@ -317,161 +317,172 @@ export function BuildOverview() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[2000px] gap-6">
-      <div className="min-w-0 flex-1 space-y-4">
-        {loadouts.length > 0 && (
-          <div className="glass-shell overflow-hidden">
-            <div className="border-glass-divider bg-glass-hover/50 flex items-center justify-between border-b px-4 py-2.5">
-              <h2 className="text-muted text-sm font-semibold tracking-wider uppercase">
-                Loadouts
-                <span className="text-muted/60 ml-2 text-xs font-normal">({loadouts.length})</span>
-              </h2>
-            </div>
-            <div className="divide-glass-divider divide-y">
-              {loadouts.map((loadout) => (
-                <LoadoutRow
-                  key={loadout.id}
-                  loadout={loadout}
-                  getBuildById={getBuildById}
-                  onDelete={async () => {
-                    if (!confirm(`Delete loadout "${loadout.name}"?`)) {
-                      return;
-                    }
-                    try {
-                      await deleteLoadout(loadout.id);
-                    } catch (error) {
-                      const message =
-                        error instanceof Error ? error.message : 'Failed to delete loadout';
-                      console.error('Failed to delete loadout', error);
-                      window.alert(message);
-                    }
-                  }}
-                  onNavigate={(buildId) => navigate(buildEditPath(buildId))}
-                  onUnlink={async (slotType) => {
-                    try {
-                      await unlinkBuild(loadout.id, slotType);
-                    } catch (error) {
-                      const message =
-                        error instanceof Error
-                          ? error.message
-                          : 'Failed to unlink build from loadout';
-                      console.error('Failed to unlink build from loadout', error);
-                      window.alert(message);
-                    }
-                  }}
-                  onAddBuild={() => {
-                    setLinkingLoadout(loadout);
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {builds.length === 0 ? (
-          <div className="glass-shell flex h-64 flex-col items-center justify-center gap-4">
-            <p className="text-muted text-lg">No builds yet</p>
-            <p className="text-muted text-sm">
-              Click "Add Build" in the header to create your first build.
-            </p>
-          </div>
-        ) : (
-          grouped.map((group) => (
-            <div key={group.type} className="glass-shell overflow-hidden">
-              <div className="border-glass-divider bg-glass-hover/50 border-b px-4 py-2.5">
+    <div className="mx-auto flex max-w-[2000px] flex-col gap-4">
+      <div className="glass-shell p-5">
+        <h1 className="text-foreground text-xl font-semibold tracking-tight">My Builds</h1>
+        <p className="text-muted mt-1 text-sm">
+          Your loadouts and saved builds. Open Builds in the header to browse all community builds
+          by equipment.
+        </p>
+      </div>
+      <div className="flex gap-6">
+        <div className="min-w-0 flex-1 space-y-4">
+          {loadouts.length > 0 && (
+            <div className="glass-shell overflow-hidden">
+              <div className="border-glass-divider bg-glass-hover/50 flex items-center justify-between border-b px-4 py-2.5">
                 <h2 className="text-muted text-sm font-semibold tracking-wider uppercase">
-                  {group.label}
+                  Loadouts
                   <span className="text-muted/60 ml-2 text-xs font-normal">
-                    ({group.builds.length})
+                    ({loadouts.length})
                   </span>
                 </h2>
               </div>
               <div className="divide-glass-divider divide-y">
-                {group.builds.map((build) => (
-                  <BuildRow
-                    key={build.id}
-                    build={build}
-                    usedFormaCost={
-                      usedFormaByBuildId[build.id] ?? {
-                        regular: 0,
-                        universal: 0,
-                        umbra: 0,
-                        stance: 0,
-                        total: 0,
+                {loadouts.map((loadout) => (
+                  <LoadoutRow
+                    key={loadout.id}
+                    loadout={loadout}
+                    getBuildById={getBuildById}
+                    onDelete={async () => {
+                      if (!confirm(`Delete loadout "${loadout.name}"?`)) {
+                        return;
                       }
-                    }
-                    onClick={() => navigate(buildEditPath(build.id))}
-                    onDelete={() => {
-                      if (confirm(`Delete "${build.name}"?`)) void deleteBuild(build.id);
+                      try {
+                        await deleteLoadout(loadout.id);
+                      } catch (error) {
+                        const message =
+                          error instanceof Error ? error.message : 'Failed to delete loadout';
+                        console.error('Failed to delete loadout', error);
+                        window.alert(message);
+                      }
                     }}
-                    onLink={() => setLinkingBuild(build)}
-                    hasLoadouts={loadouts.length > 0}
+                    onNavigate={(buildId) => navigate(buildEditPath(buildId))}
+                    onUnlink={async (slotType) => {
+                      try {
+                        await unlinkBuild(loadout.id, slotType);
+                      } catch (error) {
+                        const message =
+                          error instanceof Error
+                            ? error.message
+                            : 'Failed to unlink build from loadout';
+                        console.error('Failed to unlink build from loadout', error);
+                        window.alert(message);
+                      }
+                    }}
+                    onAddBuild={() => {
+                      setLinkingLoadout(loadout);
+                    }}
                   />
                 ))}
               </div>
             </div>
-          ))
-        )}
-      </div>
+          )}
 
-      <div className="hidden w-80 shrink-0 space-y-4 lg:block">
-        <div className="glass-surface p-4">
-          <h3 className="text-foreground mb-3 text-sm font-semibold">Loadouts</h3>
-          <p className="text-muted mb-3 text-xs">Group builds into complete character setups.</p>
-          {showNewLoadout ? (
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newLoadoutName}
-                  onChange={(e) => {
-                    setNewLoadoutName(e.target.value);
-                    if (newLoadoutError) setNewLoadoutError(null);
-                  }}
-                  placeholder="Loadout name..."
-                  className="form-input flex-1 text-xs"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      void handleCreateLoadout();
-                    }
-                  }}
-                />
-                <button
-                  className="btn btn-accent btn-sm"
-                  onClick={() => {
-                    void handleCreateLoadout();
-                  }}
-                >
-                  Create
-                </button>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => {
-                    setShowNewLoadout(false);
-                    setNewLoadoutError(null);
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-              {newLoadoutError ? <p className="text-danger text-xs">{newLoadoutError}</p> : null}
+          {builds.length === 0 ? (
+            <div className="glass-shell flex h-64 flex-col items-center justify-center gap-4">
+              <p className="text-muted text-lg">No builds yet</p>
+              <p className="text-muted text-sm">
+                Click "Add Build" in the header to create your first build.
+              </p>
             </div>
           ) : (
-            <button
-              className="btn btn-accent w-full text-xs"
-              onClick={() => {
-                setShowNewLoadout(true);
-                setNewLoadoutError(null);
-              }}
-            >
-              + New Loadout
-            </button>
+            grouped.map((group) => (
+              <div key={group.type} className="glass-shell overflow-hidden">
+                <div className="border-glass-divider bg-glass-hover/50 border-b px-4 py-2.5">
+                  <h2 className="text-muted text-sm font-semibold tracking-wider uppercase">
+                    {group.label}
+                    <span className="text-muted/60 ml-2 text-xs font-normal">
+                      ({group.builds.length})
+                    </span>
+                  </h2>
+                </div>
+                <div className="divide-glass-divider divide-y">
+                  {group.builds.map((build) => (
+                    <BuildRow
+                      key={build.id}
+                      build={build}
+                      usedFormaCost={
+                        usedFormaByBuildId[build.id] ?? {
+                          regular: 0,
+                          universal: 0,
+                          umbra: 0,
+                          stance: 0,
+                          total: 0,
+                        }
+                      }
+                      onClick={() => navigate(buildEditPath(build.id))}
+                      onDelete={() => {
+                        if (confirm(`Delete "${build.name}"?`)) void deleteBuild(build.id);
+                      }}
+                      onLink={() => setLinkingBuild(build)}
+                      hasLoadouts={loadouts.length > 0}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
           )}
         </div>
 
-        <div className="glass-surface flex h-48 items-center justify-center">
-          <p className="text-muted/50 text-sm">Select a build to view details</p>
+        <div className="hidden w-80 shrink-0 space-y-4 lg:block">
+          <div className="glass-surface p-4">
+            <h3 className="text-foreground mb-3 text-sm font-semibold">Loadouts</h3>
+            <p className="text-muted mb-3 text-xs">Group builds into complete character setups.</p>
+            {showNewLoadout ? (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newLoadoutName}
+                    onChange={(e) => {
+                      setNewLoadoutName(e.target.value);
+                      if (newLoadoutError) setNewLoadoutError(null);
+                    }}
+                    placeholder="Loadout name..."
+                    className="form-input flex-1 text-xs"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        void handleCreateLoadout();
+                      }
+                    }}
+                  />
+                  <button
+                    className="btn btn-accent btn-sm"
+                    onClick={() => {
+                      void handleCreateLoadout();
+                    }}
+                  >
+                    Create
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setShowNewLoadout(false);
+                      setNewLoadoutError(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {newLoadoutError ? <p className="text-danger text-xs">{newLoadoutError}</p> : null}
+              </div>
+            ) : (
+              <button
+                className="btn btn-accent w-full text-xs"
+                onClick={() => {
+                  setShowNewLoadout(true);
+                  setNewLoadoutError(null);
+                }}
+              >
+                + New Loadout
+              </button>
+            )}
+          </div>
+
+          <div className="glass-surface flex h-48 items-center justify-center">
+            <p className="text-muted/50 text-sm">Select a build to view details</p>
+          </div>
         </div>
       </div>
 
@@ -517,7 +528,16 @@ export function BuildOverview() {
       )}
 
       {linkingLoadout && (
-        <div className="modal-overlay" onClick={() => setLinkingLoadout(null)}>
+        <div
+          className="modal-overlay"
+          tabIndex={0}
+          onClick={() => setLinkingLoadout(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setLinkingLoadout(null);
+            }
+          }}
+        >
           <div
             className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
             onClick={(e) => e.stopPropagation()}
