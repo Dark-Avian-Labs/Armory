@@ -608,11 +608,30 @@ function ShareDamageBreakdownBars({
 
 /**
  * Fades hero art to transparency at left, right, and bottom; top stays fully opaque.
- * Intersection of: horizontal feather + vertical feather (opaque on top half of column).
+ * Multi-stop horizontal feather avoids a visible "step" at the first opaque pixel (html-to-image).
  */
-const HERO_MASK_HORIZONTAL =
-  'linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%)';
-const HERO_MASK_VERTICAL = 'linear-gradient(to bottom, black 0%, black 56%, transparent 100%)';
+const HERO_MASK_HORIZONTAL = `linear-gradient(to right,
+  rgba(0,0,0,0) 0%,
+  rgba(0,0,0,0.06) 4%,
+  rgba(0,0,0,0.18) 8%,
+  rgba(0,0,0,0.42) 13%,
+  rgba(0,0,0,0.72) 18%,
+  rgba(0,0,0,0.92) 22%,
+  #000 28%,
+  #000 72%,
+  rgba(0,0,0,0.92) 78%,
+  rgba(0,0,0,0.72) 82%,
+  rgba(0,0,0,0.42) 87%,
+  rgba(0,0,0,0.18) 92%,
+  rgba(0,0,0,0.06) 96%,
+  rgba(0,0,0,0) 100%)`;
+const HERO_MASK_VERTICAL = `linear-gradient(to bottom,
+  #000 0%,
+  #000 52%,
+  rgba(0,0,0,0.88) 62%,
+  rgba(0,0,0,0.55) 72%,
+  rgba(0,0,0,0.22) 84%,
+  rgba(0,0,0,0) 100%)`;
 const HERO_MASK_IMAGE = `${HERO_MASK_HORIZONTAL}, ${HERO_MASK_VERTICAL}`;
 
 function ShareHeroImage({
@@ -828,7 +847,7 @@ export function BuildShareModal({
           <p className="mt-1 text-[10px] text-[#7d92c0]">{formatEquipmentType(equipmentType)}</p>
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-end gap-4">
+      <div className="flex w-full shrink-0 flex-wrap items-end justify-center gap-4">
         <ShareFormaCounts forma={formaCost} />
         <ShareReactorStamp active={orokinReactor} />
       </div>
@@ -872,7 +891,7 @@ export function BuildShareModal({
             iconsOnly
           />
         </div>
-        <div className="min-h-0 shrink-0 px-0.5">
+        <div className="min-h-0 shrink-0 pr-[30px] pl-0.5">
           <ShareShardColumn compact textLeftIconRight slots={shardSlots} shards={shardTypes} />
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden">
