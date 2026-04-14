@@ -1,5 +1,5 @@
-import { toPng } from 'html-to-image';
-import { useMemo, useRef, useState } from 'react';
+import { toBlob } from 'html-to-image';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import feathers from '../../assets/feathers.png';
 import orokinReactorImg from '../../assets/orokin-reactor.png';
@@ -26,6 +26,7 @@ import { ArcaneCardPreview } from '../ModCard/ArcaneCardPreview';
 import { DEFAULT_ARCANE_LAYOUT, normalizeArcaneRarity } from '../ModCard/cardLayout';
 import { ModCard } from '../ModCard/ModCard';
 import { Modal } from '../ui/Modal';
+import { ShareHeroTitle } from './ShareHeroTitle';
 import { ShareRadarChart } from './ShareRadarChart';
 import {
   getShareAbilityDbIcon,
@@ -33,7 +34,10 @@ import {
   useWarframeShareAbilities,
 } from './useWarframeShareAbilities';
 
-type ShareAspect = 'wide' | 'portrait';
+const SHARE_CANVAS_WIDTH = 720;
+const SHARE_CANVAS_HEIGHT = 1280;
+/** html-to-image rasterizes the DOM to a canvas; 1× looks soft and gradients can band. 2× supersamples for sharper PNGs. */
+const SHARE_EXPORT_PIXEL_RATIO = 2;
 
 interface BuildShareModalProps {
   open: boolean;
@@ -103,64 +107,72 @@ const SHARE_ELEMENT_ICONS: Record<string, string> = {
   True: '20_true',
 };
 
-function chunkEquippedModsForLayout(slots: ModSlot[]): ModSlot[][] {
-  const n = slots.length;
-  if (n === 0) return [];
-  if (n <= 2) return [slots];
-  if (n <= 6) return [slots.slice(0, 2), slots.slice(2)];
-  if (n <= 10) return [slots.slice(0, 2), slots.slice(2, 6), slots.slice(6, 10)];
-  const rows: ModSlot[][] = [slots.slice(0, 2)];
-  let i = 2;
-  while (i < n) {
-    rows.push(slots.slice(i, i + 4));
-    i += 4;
+function ModShareColumnList({ slots, modScale }: { slots: ModSlot[]; modScale: number }) {
+  if (slots.length === 0) {
+    return (
+      <p className="text-muted py-4 text-center text-[10px] text-[#7e8fb8]">No mods equipped.</p>
+    );
   }
-  return rows;
-}
-
-function ModShareGrid({
-  slots,
-  modScale,
-  fillSpace,
-}: {
-  slots: ModSlot[];
-  modScale: number;
-  fillSpace?: boolean;
-}) {
-  const rows = chunkEquippedModsForLayout(slots);
   return (
-    <div
-      className={
-        fillSpace ? 'flex min-h-0 flex-1 flex-col justify-evenly gap-3 py-1' : 'flex flex-col gap-2'
-      }
-    >
-      {rows.map((row, ri) => (
+    <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden pr-0.5">
+      {slots.map((slot) => (
         <div
-          key={ri}
-          className={`flex flex-wrap gap-x-3 gap-y-2 ${
-            fillSpace
-              ? ri === 0
-                ? 'w-full justify-center'
-                : 'w-full justify-between px-0.5'
-              : ri === 0
-                ? 'justify-center'
-                : 'justify-start'
-          }`}
+          key={`${slot.index}-${slot.mod?.unique_name ?? 'm'}`}
+          className="flex shrink-0 justify-center"
         >
-          {row.map((slot) => (
-            <ModCard
-              key={`${slot.index}-${slot.mod?.unique_name ?? 'm'}`}
-              mod={slot.mod!}
-              rank={slot.rank ?? 0}
-              setRank={slot.setRank}
-              slotType={slot.type}
-              slotPolarity={slot.polarity}
-              collapsed
-              scale={modScale}
-            />
-          ))}
+          <ModCard
+            mod={slot.mod!}
+            rank={slot.rank ?? 0}
+            setRank={slot.setRank}
+            slotType={slot.type}
+            slotPolarity={slot.polarity}
+            collapsed
+            scale={modScale}
+          />
         </div>
       ))}
+    </div>
+  );
+}
+
+function ShareRadarAuto({
+  labels,
+  values,
+  fill,
+  stroke,
+}: {
+  labels: string[];
+  values: number[];
+  fill?: string;
+  stroke?: string;
+}) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState(168);
+
+  useLayoutEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const run = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      setSize(Math.max(72, Math.floor(Math.min(w, h) - 8)));
+    };
+    run();
+    const ro = new ResizeObserver(run);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div ref={boxRef} className="flex min-h-0 w-full min-w-0 flex-1 items-center justify-center">
+      <ShareRadarChart
+        dense
+        size={size}
+        labels={labels}
+        values={values}
+        fill={fill}
+        stroke={stroke}
+      />
     </div>
   );
 }
@@ -226,7 +238,15 @@ function ShareReactorStamp({ active }: { active: boolean }) {
   );
 }
 
-function ShareShardColumn({ slots, shards }: { slots: ShardSlotConfig[]; shards: ShardType[] }) {
+function ShareShardColumn({
+  slots,
+  shards,
+  compact = false,
+}: {
+  slots: ShardSlotConfig[];
+  shards: ShardType[];
+  compact?: boolean;
+}) {
   const lines: { key: string; name: string; tau: boolean; buff: string }[] = [];
   for (let i = 0; i < 5; i++) {
     const slot = slots[i] ?? { tauforged: false };
@@ -243,14 +263,19 @@ function ShareShardColumn({ slots, shards }: { slots: ShardSlotConfig[]; shards:
     });
   }
 
+  const iconSize = compact ? 'h-7 w-7' : 'h-9 w-9';
+  const gapClass = compact ? 'space-y-1' : 'space-y-2';
+
   return (
-    <ul className="space-y-2">
+    <ul className={gapClass}>
       {Array.from({ length: 5 }, (_, i) => {
         const slot = slots[i] ?? { tauforged: false };
         if (!slot.shard_type_id) {
           return (
             <li key={i} className="flex items-center gap-2">
-              <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md">
+              <div
+                className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-md ${iconSize}`}
+              >
                 <img
                   src="/icons/shards/emptyBackground.png"
                   alt=""
@@ -266,7 +291,7 @@ function ShareShardColumn({ slots, shards }: { slots: ShardSlotConfig[]; shards:
         if (!shard) {
           return (
             <li key={i} className="flex items-center gap-2">
-              <div className="h-9 w-9 shrink-0 rounded-md bg-white/10" />
+              <div className={`shrink-0 rounded-md bg-white/10 ${iconSize}`} />
               <span className="text-[10px] text-[#8fa4d4]">—</span>
             </li>
           );
@@ -275,7 +300,9 @@ function ShareShardColumn({ slots, shards }: { slots: ShardSlotConfig[]; shards:
         const line = lines.find((l) => l.key.startsWith(`shard-${i}`));
         return (
           <li key={i} className="flex items-start gap-2">
-            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md">
+            <div
+              className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-md ${iconSize}`}
+            >
               <img
                 src="/icons/shards/filledBackground.png"
                 alt=""
@@ -315,12 +342,14 @@ function ShareSkillsPanel({
   selectedReplacement,
   helminthConfig,
   iconPx,
+  iconsOnly = false,
 }: {
   ownAbilities: ParsedShareAbility[];
   dbAbilities: Ability[];
   selectedReplacement: Ability | null;
   helminthConfig?: BuildConfig['helminth'];
   iconPx: number;
+  iconsOnly?: boolean;
 }) {
   const MAX_DESCRIPTION_LENGTH = 900;
   const TRUNCATED_DESCRIPTION_LENGTH = MAX_DESCRIPTION_LENGTH - 3;
@@ -381,7 +410,7 @@ function ShareSkillsPanel({
           );
         })}
       </div>
-      {displayDesc ? (
+      {iconsOnly ? null : displayDesc ? (
         <p className="line-clamp-[10] text-[10px] leading-snug break-words text-[#b8c8ec]">
           {displayDesc}
         </p>
@@ -463,6 +492,43 @@ function ShareDamageBreakdownBars({
   );
 }
 
+function ShareHeroImage({
+  equipmentImagePath,
+  equipmentName,
+}: {
+  equipmentImagePath?: string;
+  equipmentName: string;
+}) {
+  return (
+    <div className="relative h-[340px] w-full shrink-0 overflow-hidden rounded-lg bg-[#0c1222]">
+      {equipmentImagePath ? (
+        <img
+          src={equipmentImagePath}
+          alt=""
+          className="h-full w-full object-contain object-top"
+          draggable={false}
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-white/45">
+          No Art
+        </div>
+      )}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `
+            linear-gradient(to right, rgba(9,13,24,0.97) 0%, transparent 12%, transparent 88%, rgba(9,13,24,0.97) 100%),
+            linear-gradient(to bottom, transparent 0%, transparent 58%, rgba(9,13,24,0.98) 100%)
+          `,
+        }}
+      />
+      <div className="absolute right-0 bottom-0 left-0 z-10 pb-3">
+        <ShareHeroTitle text={equipmentName} />
+      </div>
+    </div>
+  );
+}
+
 export function BuildShareModal({
   open,
   onClose,
@@ -481,11 +547,12 @@ export function BuildShareModal({
   valenceBonus,
 }: BuildShareModalProps) {
   const exportRef = useRef<HTMLDivElement | null>(null);
+  const previewBoxRef = useRef<HTMLDivElement | null>(null);
   const [bgDataUrl, setBgDataUrl] = useState<string | null>(null);
   const [uploadName, setUploadName] = useState<string>('');
   const [bgOpacity, setBgOpacity] = useState(36);
   const [bgScale, setBgScale] = useState(1);
-  const [aspect, setAspect] = useState<ShareAspect>('wide');
+  const [previewScale, setPreviewScale] = useState(1);
   const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -528,6 +595,26 @@ export function BuildShareModal({
     return [m.critChance, m.critMultiplier, m.statusChance, m.fireRate, m.multishot, reloadScore];
   }, [weaponCalc]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+    const el = previewBoxRef.current;
+    if (!el) return;
+    const run = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w <= 0 || h <= 0) return;
+      setPreviewScale(Math.min(w / SHARE_CANVAS_WIDTH, h / SHARE_CANVAS_HEIGHT, 1));
+    };
+    run();
+    const ro = new ResizeObserver(run);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open]);
+
+  const modScale = 0.34;
+  const arcaneScale = 0.5;
+  const skillIconPx = 34;
+
   async function handleUploadChange(file: File | null): Promise<void> {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -548,16 +635,21 @@ export function BuildShareModal({
     if (!exportRef.current) return;
     setIsRendering(true);
     setError(null);
+    let objectUrl: string | null = null;
     try {
-      const dataUrl = await toPng(exportRef.current, {
+      const blob = await toBlob(exportRef.current, {
         cacheBust: true,
-        pixelRatio: 1,
-        canvasWidth,
-        canvasHeight,
+        pixelRatio: SHARE_EXPORT_PIXEL_RATIO,
+        canvasWidth: SHARE_CANVAS_WIDTH,
+        canvasHeight: SHARE_CANVAS_HEIGHT,
         backgroundColor: '#090d18',
       });
+      if (!blob) {
+        throw new Error('Export produced an empty image');
+      }
+      objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = dataUrl;
+      a.href = objectUrl;
       a.download = buildShareDownloadFileName(equipmentName, buildName || 'build');
       a.click();
     } catch (renderError) {
@@ -565,19 +657,177 @@ export function BuildShareModal({
       setError('Failed to export image. If this persists, try removing the background image.');
     } finally {
       setIsRendering(false);
+      if (objectUrl) {
+        const u = objectUrl;
+        window.setTimeout(() => URL.revokeObjectURL(u), 500);
+      }
     }
   }
 
   if (!open) return null;
 
-  const isWide = aspect === 'wide';
-  const canvasWidth = isWide ? 1280 : 720;
-  const canvasHeight = isWide ? 720 : 1280;
-  const modScale = isWide ? 0.56 : 0.36;
-  const arcaneScale = isWide ? 0.64 : 0.54;
-  const radarMain = isWide ? 200 : 156;
-  const radarSecondary = isWide ? 178 : 140;
-  const skillIconPx = isWide ? 40 : 36;
+  const weaponStatLabels = weaponCalc?.isMelee
+    ? [
+        'Critical Chance',
+        'Critical Multiplier',
+        'Status Chance',
+        'Attack Speed',
+        'Multishot',
+        'Reload Speed',
+      ]
+    : [
+        'Critical Chance',
+        'Critical Multiplier',
+        'Status Chance',
+        'Fire Rate',
+        'Multishot',
+        'Reload Speed',
+      ];
+
+  const leftColumn = (
+    <div className="flex min-h-0 w-[46%] max-w-[46%] min-w-0 flex-[0_0_46%] flex-col gap-2 pr-1">
+      <div className="flex shrink-0 items-start gap-2.5">
+        <img
+          src={feathers}
+          alt=""
+          width={36}
+          height={36}
+          className="mt-0.5 h-9 w-9 shrink-0 object-contain opacity-95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]"
+          draggable={false}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] tracking-[0.2em] text-[#9fb2e8]/95 uppercase">Parametric</p>
+          <h4 className="mt-0.5 text-[28px] leading-[1.06] font-semibold tracking-tight text-[#f6f8ff]">
+            {buildName}
+          </h4>
+          <p className="mt-1 text-[10px] text-[#7d92c0]">{formatEquipmentType(equipmentType)}</p>
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-end gap-4">
+        <ShareFormaCounts forma={formaCost} />
+        <ShareReactorStamp active={orokinReactor} />
+      </div>
+      <div className="share-export-panel flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-2">
+        <p className="mb-1.5 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
+          Mods ({equippedSlots.length})
+        </p>
+        <ModShareColumnList slots={equippedSlots} modScale={modScale} />
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center justify-center gap-3 py-1">
+        {filledArcanes.length === 0 ? (
+          <span className="text-[9px] text-[#7e8fb8]">No arcanes</span>
+        ) : (
+          filledArcanes.map((slot, i) => {
+            const a = slot.arcane!;
+            const maxRank = getMaxRank(a);
+            const art = a.image_path ? `/images${a.image_path}` : '';
+            return (
+              <ArcaneCardPreview
+                key={`${a.unique_name}-${i}`}
+                layout={{ ...DEFAULT_ARCANE_LAYOUT, scale: arcaneScale }}
+                rarity={normalizeArcaneRarity(a.rarity)}
+                arcaneArt={art}
+                arcaneName={a.name}
+                rank={slot.rank}
+                maxRank={maxRank}
+              />
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+
+  const warframeRightColumn =
+    isWarframe && warframeCalc ? (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden pl-1">
+        <ShareHeroImage equipmentImagePath={equipmentImagePath} equipmentName={equipmentName} />
+        <div className="share-export-panel shrink-0 px-2 py-1.5">
+          <ShareSkillsPanel
+            ownAbilities={shareAbilities.ownAbilities}
+            dbAbilities={shareAbilities.dbAbilities}
+            selectedReplacement={shareAbilities.selectedReplacement}
+            helminthConfig={helminthConfig}
+            iconPx={skillIconPx}
+            iconsOnly
+          />
+        </div>
+        <div className="share-export-panel max-h-[132px] min-h-0 shrink-0 overflow-hidden p-2">
+          <p className="mb-1 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">Shards</p>
+          <ShareShardColumn compact slots={shardSlots} shards={shardTypes} />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
+          <div className="share-export-panel flex min-h-0 min-w-0 flex-1 flex-col p-2">
+            <p className="mb-0.5 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
+              Stats
+            </p>
+            <ShareRadarAuto
+              labels={['Health', 'Shield', 'Armor', 'Energy', 'Sprint Speed']}
+              values={[
+                warframeCalc.health.modded,
+                warframeCalc.shield.modded,
+                warframeCalc.armor.modded,
+                warframeCalc.energy.modded,
+                warframeCalc.sprintSpeed.modded,
+              ]}
+            />
+          </div>
+          <div className="share-export-panel flex min-h-0 min-w-0 flex-1 flex-col p-2">
+            <p className="mb-0.5 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
+              Abilities
+            </p>
+            <ShareRadarAuto
+              labels={[
+                'Ability Strength',
+                'Ability Duration',
+                'Ability Efficiency',
+                'Ability Range',
+              ]}
+              values={[
+                warframeCalc.abilityStrength.modded,
+                warframeCalc.abilityDuration.modded,
+                warframeCalc.abilityEfficiency.modded,
+                warframeCalc.abilityRange.modded,
+              ]}
+              fill="rgba(70, 214, 190, 0.28)"
+              stroke="rgba(120, 230, 210, 0.95)"
+            />
+          </div>
+        </div>
+      </div>
+    ) : isWarframe ? (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden pl-1">
+        <ShareHeroImage equipmentImagePath={equipmentImagePath} equipmentName={equipmentName} />
+        <div className="share-export-panel text-[11px] text-[#b6c5ed]">
+          Stats unavailable for this build.
+        </div>
+      </div>
+    ) : null;
+
+  const weaponRightColumn =
+    !isWarframe && weaponCalc && weaponRadarValues ? (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden pl-1">
+        <ShareHeroImage equipmentImagePath={equipmentImagePath} equipmentName={equipmentName} />
+        <div className="share-export-panel flex min-h-0 min-w-0 flex-1 flex-col p-2">
+          <p className="mb-0.5 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
+            Stats
+          </p>
+          <ShareRadarAuto labels={weaponStatLabels} values={weaponRadarValues} />
+        </div>
+        <div className="share-export-panel min-h-0 flex-1 overflow-hidden p-2.5">
+          <ShareDamageBreakdownBars
+            weapon={equipment as Weapon}
+            slots={slots}
+            valenceBonus={valenceBonus}
+          />
+        </div>
+      </div>
+    ) : !isWarframe ? (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden pl-1">
+        <ShareHeroImage equipmentImagePath={equipmentImagePath} equipmentName={equipmentName} />
+        <div className="share-export-panel text-[11px] text-[#b6c5ed]">Stats unavailable.</div>
+      </div>
+    ) : null;
 
   return (
     <Modal open onClose={onClose} ariaLabelledBy="share-build-title" className="max-w-[1120px]">
@@ -590,26 +840,6 @@ export function BuildShareModal({
             Your uploaded image stays local in the browser and is only used for this rendered
             export.
           </p>
-
-          <div className="glass-panel space-y-3 p-3">
-            <p className="text-muted text-xs tracking-[0.16em] uppercase">Frame Preset</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className={`btn ${aspect === 'wide' ? 'btn-accent' : 'btn-secondary'} flex-1`}
-                onClick={() => setAspect('wide')}
-              >
-                Wide
-              </button>
-              <button
-                type="button"
-                className={`btn ${aspect === 'portrait' ? 'btn-accent' : 'btn-secondary'} flex-1`}
-                onClick={() => setAspect('portrait')}
-              >
-                Portrait
-              </button>
-            </div>
-          </div>
 
           <div className="glass-panel space-y-3 p-3">
             <p className="text-muted text-xs tracking-[0.16em] uppercase">Partial Background</p>
@@ -683,440 +913,64 @@ export function BuildShareModal({
           </div>
         </section>
 
-        <section className="space-y-3">
+        <section className="flex min-h-0 min-w-0 flex-col space-y-3">
           <div className="text-muted text-xs tracking-[0.16em] uppercase">
-            Preview ({canvasWidth} × {canvasHeight}) — scroll if clipped
+            Preview ({SHARE_CANVAS_WIDTH} × {SHARE_CANVAS_HEIGHT}) — scaled to fit; PNG exports at{' '}
+            {SHARE_CANVAS_WIDTH * SHARE_EXPORT_PIXEL_RATIO} ×{' '}
+            {SHARE_CANVAS_HEIGHT * SHARE_EXPORT_PIXEL_RATIO} for sharper output
           </div>
-          <div className="max-h-[min(720px,82vh)] w-full overflow-auto rounded-xl border border-white/10 bg-black/20 p-2">
+          <div
+            ref={previewBoxRef}
+            className="flex h-[min(720px,82vh)] min-h-0 w-full min-w-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20 p-2"
+          >
             <div
-              ref={exportRef}
-              style={{ width: canvasWidth, height: canvasHeight }}
-              className="share-export-root relative flex shrink-0 flex-col overflow-hidden rounded-[28px] border border-white/15 bg-[#090d18] text-[#edf2ff]"
+              className="overflow-hidden rounded-[20px]"
+              style={{
+                width: SHARE_CANVAS_WIDTH * previewScale,
+                height: SHARE_CANVAS_HEIGHT * previewScale,
+              }}
             >
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(120,154,255,0.35),transparent_38%),radial-gradient(circle_at_85%_78%,rgba(70,214,190,0.24),transparent_45%),linear-gradient(130deg,#0a1020_0%,#12172d_45%,#090d18_100%)]" />
-              {bgDataUrl ? (
+              <div
+                style={{
+                  width: SHARE_CANVAS_WIDTH,
+                  height: SHARE_CANVAS_HEIGHT,
+                  transform: `scale(${previewScale})`,
+                  transformOrigin: 'top left',
+                }}
+              >
                 <div
-                  className="pointer-events-none absolute inset-0 overflow-hidden"
-                  style={{ opacity: bgOpacity / 100 }}
+                  ref={exportRef}
+                  style={{ width: SHARE_CANVAS_WIDTH, height: SHARE_CANVAS_HEIGHT }}
+                  className="share-export-root share-export-glass-frame relative flex shrink-0 flex-col overflow-hidden text-[#edf2ff]"
                 >
-                  <img
-                    src={bgDataUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    style={{ transform: `scale(${bgScale})` }}
-                    draggable={false}
-                  />
-                  <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(9,13,24,0.82),rgba(9,13,24,0.35),rgba(9,13,24,0.55))]" />
-                </div>
-              ) : null}
-              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,transparent_25%,transparent_70%,rgba(0,0,0,0.44)_100%)]" />
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(120,154,255,0.35),transparent_38%),radial-gradient(circle_at_85%_78%,rgba(70,214,190,0.24),transparent_45%),linear-gradient(130deg,#0a1020_0%,#12172d_45%,#090d18_100%)]" />
+                  {bgDataUrl ? (
+                    <div
+                      className="pointer-events-none absolute inset-0 overflow-hidden"
+                      style={{ opacity: bgOpacity / 100 }}
+                    >
+                      <img
+                        src={bgDataUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        style={{ transform: `scale(${bgScale})` }}
+                        draggable={false}
+                      />
+                      <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(9,13,24,0.82),rgba(9,13,24,0.35),rgba(9,13,24,0.55))]" />
+                    </div>
+                  ) : null}
+                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,transparent_25%,transparent_70%,rgba(0,0,0,0.44)_100%)]" />
 
-              <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 pt-4 pb-3">
-                <div className="flex shrink-0 items-start justify-between gap-3">
-                  <div className="flex min-w-0 flex-1 items-start gap-3">
-                    <img
-                      src={feathers}
-                      alt=""
-                      width={40}
-                      height={40}
-                      className="mt-0.5 h-10 w-10 shrink-0 object-contain opacity-95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]"
-                      draggable={false}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[9px] tracking-[0.2em] text-[#9fb2e8]/95 uppercase">
-                        Parametric
-                      </p>
-                      <h4
-                        className={`mt-0.5 leading-[1.06] font-semibold tracking-tight text-[#f6f8ff] ${isWide ? 'text-[34px]' : 'text-[30px]'}`}
-                      >
-                        {buildName}
-                      </h4>
-                      <p className="mt-1 text-[13px] font-medium text-[#d0ddf8]">{equipmentName}</p>
-                      <p className="mt-0.5 text-[10px] text-[#7d92c0]">
-                        {formatEquipmentType(equipmentType)}
-                      </p>
+                  <div className="relative z-10 flex min-h-0 flex-1 flex-col px-4 pt-4 pb-2">
+                    <div className="flex min-h-0 flex-1 flex-row gap-0">
+                      {leftColumn}
+                      {isWarframe ? warframeRightColumn : weaponRightColumn}
+                    </div>
+                    <div className="share-export-footer -mx-4 mt-auto flex shrink-0 items-center justify-between bg-[#090d18] px-4 pt-3 pb-2 text-[11px] text-[#a8b8d8]/88">
+                      <span>darkavianlabs.com/parametric</span>
+                      <span>Generated in Parametric</span>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-end gap-3 pr-0.5">
-                    <ShareFormaCounts forma={formaCost} />
-                    <ShareReactorStamp active={orokinReactor} />
-                    <div className="glass-panel shrink-0 overflow-hidden rounded-2xl p-1">
-                      <div
-                        className={`flex items-center justify-center overflow-hidden rounded-xl bg-black/35 ${
-                          isWide ? 'h-[100px] w-[100px]' : 'h-[92px] w-[92px]'
-                        }`}
-                      >
-                        {equipmentImagePath ? (
-                          <img
-                            src={equipmentImagePath}
-                            alt=""
-                            className="max-h-full max-w-full object-contain"
-                            draggable={false}
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center px-2 text-center text-[10px] text-white/55">
-                            No Art
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {isWide ? (
-                  <div className="mt-3 grid min-h-0 flex-1 grid-cols-12 grid-rows-[minmax(0,1fr)_auto] gap-x-2.5 gap-y-2.5">
-                    <div className="col-span-8 row-start-1 min-h-0">
-                      <div className="glass-panel flex h-full min-h-0 flex-col rounded-2xl p-2.5">
-                        <p className="mb-1.5 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
-                          Mods ({equippedSlots.length})
-                        </p>
-                        <div className="flex min-h-0 flex-1 flex-col">
-                          <ModShareGrid slots={equippedSlots} modScale={modScale} fillSpace />
-                        </div>
-                      </div>
-                    </div>
-                    {isWarframe ? (
-                      <div className="col-span-8 row-start-2 grid grid-cols-12 gap-2">
-                        <div className="glass-panel col-span-3 flex min-h-0 flex-col rounded-xl p-2">
-                          <p className="mb-1.5 shrink-0 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
-                            Arcane
-                          </p>
-                          <div className="flex min-h-0 flex-1 flex-col items-center justify-evenly gap-3 py-1">
-                            {filledArcanes.length === 0 ? (
-                              <span className="text-[9px] text-[#7e8fb8]">None</span>
-                            ) : (
-                              filledArcanes.map((slot, i) => {
-                                const a = slot.arcane!;
-                                const maxRank = getMaxRank(a);
-                                const art = a.image_path ? `/images${a.image_path}` : '';
-                                return (
-                                  <ArcaneCardPreview
-                                    key={`${a.unique_name}-${i}`}
-                                    layout={{
-                                      ...DEFAULT_ARCANE_LAYOUT,
-                                      scale: arcaneScale,
-                                    }}
-                                    rarity={normalizeArcaneRarity(a.rarity)}
-                                    arcaneArt={art}
-                                    arcaneName={a.name}
-                                    rank={slot.rank}
-                                    maxRank={maxRank}
-                                  />
-                                );
-                              })
-                            )}
-                          </div>
-                        </div>
-                        <div className="glass-panel col-span-4 rounded-xl p-2">
-                          <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
-                            Shards
-                          </p>
-                          <ShareShardColumn slots={shardSlots} shards={shardTypes} />
-                        </div>
-                        <div className="glass-panel col-span-5 rounded-xl p-2">
-                          <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
-                            Skills
-                          </p>
-                          <ShareSkillsPanel
-                            ownAbilities={shareAbilities.ownAbilities}
-                            dbAbilities={shareAbilities.dbAbilities}
-                            selectedReplacement={shareAbilities.selectedReplacement}
-                            helminthConfig={helminthConfig}
-                            iconPx={skillIconPx}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="col-span-8 row-start-2">
-                        <div className="glass-panel rounded-xl p-2">
-                          <p className="mb-1.5 text-[9px] tracking-[0.14em] text-[#c7d5ff] uppercase">
-                            Arcane
-                          </p>
-                          {filledArcanes.length === 0 ? (
-                            <span className="text-[9px] text-[#7e8fb8]">None</span>
-                          ) : (
-                            <div className="flex flex-wrap gap-2">
-                              {filledArcanes.map((slot, i) => {
-                                const a = slot.arcane!;
-                                const maxRank = getMaxRank(a);
-                                const art = a.image_path ? `/images${a.image_path}` : '';
-                                return (
-                                  <ArcaneCardPreview
-                                    key={`${a.unique_name}-${i}`}
-                                    layout={{ ...DEFAULT_ARCANE_LAYOUT, scale: arcaneScale }}
-                                    rarity={normalizeArcaneRarity(a.rarity)}
-                                    arcaneArt={art}
-                                    arcaneName={a.name}
-                                    rank={slot.rank}
-                                    maxRank={maxRank}
-                                  />
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    <div className="col-span-4 col-start-9 row-span-2 row-start-1 flex min-h-0 flex-col gap-2.5">
-                      {isWarframe && warframeCalc ? (
-                        <>
-                          <div className="glass-panel flex min-h-0 flex-1 flex-col items-center rounded-2xl p-2.5">
-                            <p className="mb-0.5 w-full text-left text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
-                              Stats
-                            </p>
-                            <ShareRadarChart
-                              size={radarMain}
-                              labels={['Health', 'Shield', 'Armor', 'Energy', 'Sprint Speed']}
-                              values={[
-                                warframeCalc.health.modded,
-                                warframeCalc.shield.modded,
-                                warframeCalc.armor.modded,
-                                warframeCalc.energy.modded,
-                                warframeCalc.sprintSpeed.modded,
-                              ]}
-                            />
-                          </div>
-                          <div className="glass-panel flex min-h-0 flex-1 flex-col items-center rounded-2xl p-2.5">
-                            <p className="mb-0.5 w-full text-left text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
-                              Abilities
-                            </p>
-                            <ShareRadarChart
-                              size={radarSecondary}
-                              labels={[
-                                'Ability Strength',
-                                'Ability Duration',
-                                'Ability Efficiency',
-                                'Ability Range',
-                              ]}
-                              values={[
-                                warframeCalc.abilityStrength.modded,
-                                warframeCalc.abilityDuration.modded,
-                                warframeCalc.abilityEfficiency.modded,
-                                warframeCalc.abilityRange.modded,
-                              ]}
-                              fill="rgba(70, 214, 190, 0.28)"
-                              stroke="rgba(120, 230, 210, 0.95)"
-                            />
-                          </div>
-                        </>
-                      ) : null}
-                      {!isWarframe && weaponCalc && weaponRadarValues ? (
-                        <>
-                          <div className="glass-panel flex flex-col items-center rounded-2xl p-2.5">
-                            <p className="mb-0.5 w-full text-left text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
-                              Stats
-                            </p>
-                            <ShareRadarChart
-                              size={radarMain}
-                              labels={
-                                weaponCalc.isMelee
-                                  ? [
-                                      'Critical Chance',
-                                      'Critical Multiplier',
-                                      'Status Chance',
-                                      'Attack Speed',
-                                      'Multishot',
-                                      'Reload Speed',
-                                    ]
-                                  : [
-                                      'Critical Chance',
-                                      'Critical Multiplier',
-                                      'Status Chance',
-                                      'Fire Rate',
-                                      'Multishot',
-                                      'Reload Speed',
-                                    ]
-                              }
-                              values={weaponRadarValues}
-                            />
-                          </div>
-                          <div className="glass-panel min-h-0 flex-1 rounded-2xl p-2.5">
-                            <ShareDamageBreakdownBars
-                              weapon={equipment as Weapon}
-                              slots={slots}
-                              valenceBonus={valenceBonus}
-                            />
-                          </div>
-                        </>
-                      ) : null}
-                      {!isWarframe && !weaponCalc ? (
-                        <div className="glass-panel rounded-2xl p-3 text-[11px] text-[#b6c5ed]">
-                          Stats unavailable.
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-3 flex min-h-0 flex-1 flex-col gap-2.5">
-                    <div className="glass-panel flex min-h-0 flex-1 flex-col rounded-2xl p-3">
-                      <p className="mb-2 shrink-0 text-[10px] tracking-[0.18em] text-[#c7d5ff] uppercase">
-                        Mods ({equippedSlots.length})
-                      </p>
-                      <div className="flex min-h-0 flex-1 flex-col">
-                        <ModShareGrid slots={equippedSlots} modScale={modScale} fillSpace />
-                      </div>
-                    </div>
-                    {isWarframe && warframeCalc ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="glass-panel flex flex-col items-center rounded-xl p-2">
-                          <p className="mb-0.5 w-full text-left text-[9px] tracking-wide text-[#c7d5ff] uppercase">
-                            Stats
-                          </p>
-                          <ShareRadarChart
-                            size={radarMain}
-                            labels={['Health', 'Shield', 'Armor', 'Energy', 'Sprint Speed']}
-                            values={[
-                              warframeCalc.health.modded,
-                              warframeCalc.shield.modded,
-                              warframeCalc.armor.modded,
-                              warframeCalc.energy.modded,
-                              warframeCalc.sprintSpeed.modded,
-                            ]}
-                          />
-                        </div>
-                        <div className="glass-panel flex flex-col items-center rounded-xl p-2">
-                          <p className="mb-0.5 w-full text-left text-[9px] tracking-wide text-[#c7d5ff] uppercase">
-                            Abilities
-                          </p>
-                          <ShareRadarChart
-                            size={radarSecondary}
-                            labels={[
-                              'Ability Strength',
-                              'Ability Duration',
-                              'Ability Efficiency',
-                              'Ability Range',
-                            ]}
-                            values={[
-                              warframeCalc.abilityStrength.modded,
-                              warframeCalc.abilityDuration.modded,
-                              warframeCalc.abilityEfficiency.modded,
-                              warframeCalc.abilityRange.modded,
-                            ]}
-                            fill="rgba(70, 214, 190, 0.28)"
-                            stroke="rgba(120, 230, 210, 0.95)"
-                          />
-                        </div>
-                      </div>
-                    ) : null}
-                    {!isWarframe && weaponCalc && weaponRadarValues ? (
-                      <>
-                        <div className="glass-panel flex flex-col items-center rounded-xl p-2">
-                          <p className="mb-0.5 w-full text-left text-[9px] tracking-wide text-[#c7d5ff] uppercase">
-                            Stats
-                          </p>
-                          <ShareRadarChart
-                            size={radarMain + 8}
-                            labels={
-                              weaponCalc.isMelee
-                                ? [
-                                    'Critical Chance',
-                                    'Critical Multiplier',
-                                    'Status Chance',
-                                    'Attack Speed',
-                                    'Multishot',
-                                    'Reload Speed',
-                                  ]
-                                : [
-                                    'Critical Chance',
-                                    'Critical Multiplier',
-                                    'Status Chance',
-                                    'Fire Rate',
-                                    'Multishot',
-                                    'Reload Speed',
-                                  ]
-                            }
-                            values={weaponRadarValues}
-                          />
-                        </div>
-                        <div className="glass-panel rounded-xl p-2.5">
-                          <ShareDamageBreakdownBars
-                            weapon={equipment as Weapon}
-                            slots={slots}
-                            valenceBonus={valenceBonus}
-                          />
-                        </div>
-                      </>
-                    ) : null}
-                    {isWarframe ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="glass-panel flex min-h-0 flex-col rounded-xl p-2">
-                          <p className="mb-1 shrink-0 text-[9px] tracking-wide text-[#c7d5ff] uppercase">
-                            Arcane
-                          </p>
-                          {filledArcanes.length === 0 ? (
-                            <span className="text-[9px] text-[#7e8fb8]">None</span>
-                          ) : (
-                            <div className="flex min-h-[100px] flex-1 flex-col items-center justify-evenly gap-3 py-1">
-                              {filledArcanes.map((slot, i) => {
-                                const a = slot.arcane!;
-                                const maxRank = getMaxRank(a);
-                                const art = a.image_path ? `/images${a.image_path}` : '';
-                                return (
-                                  <ArcaneCardPreview
-                                    key={`${a.unique_name}-${i}`}
-                                    layout={{ ...DEFAULT_ARCANE_LAYOUT, scale: arcaneScale }}
-                                    rarity={normalizeArcaneRarity(a.rarity)}
-                                    arcaneArt={art}
-                                    arcaneName={a.name}
-                                    rank={slot.rank}
-                                    maxRank={maxRank}
-                                  />
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                        <div className="glass-panel rounded-xl p-2">
-                          <p className="mb-1 text-[9px] tracking-wide text-[#c7d5ff] uppercase">
-                            Shards
-                          </p>
-                          <ShareShardColumn slots={shardSlots} shards={shardTypes} />
-                        </div>
-                      </div>
-                    ) : filledArcanes.length > 0 ? (
-                      <div className="glass-panel rounded-xl p-2">
-                        <p className="mb-1 text-[9px] tracking-wide text-[#c7d5ff] uppercase">
-                          Arcane
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {filledArcanes.map((slot, i) => {
-                            const a = slot.arcane!;
-                            const maxRank = getMaxRank(a);
-                            const art = a.image_path ? `/images${a.image_path}` : '';
-                            return (
-                              <ArcaneCardPreview
-                                key={`${a.unique_name}-${i}`}
-                                layout={{ ...DEFAULT_ARCANE_LAYOUT, scale: arcaneScale }}
-                                rarity={normalizeArcaneRarity(a.rarity)}
-                                arcaneArt={art}
-                                arcaneName={a.name}
-                                rank={slot.rank}
-                                maxRank={maxRank}
-                              />
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : null}
-                    {isWarframe ? (
-                      <div className="glass-panel rounded-xl p-2">
-                        <p className="mb-1 text-[9px] tracking-wide text-[#c7d5ff] uppercase">
-                          Skills
-                        </p>
-                        <ShareSkillsPanel
-                          ownAbilities={shareAbilities.ownAbilities}
-                          dbAbilities={shareAbilities.dbAbilities}
-                          selectedReplacement={shareAbilities.selectedReplacement}
-                          helminthConfig={helminthConfig}
-                          iconPx={skillIconPx}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-                <div className="share-export-footer -mx-5 mt-auto flex shrink-0 items-center justify-between bg-[#090d18] px-5 pt-3 pb-2 text-[11px] text-[#a8b8d8]/88">
-                  <span>darkavianlabs.com/parametric</span>
-                  <span>Generated in Parametric</span>
                 </div>
               </div>
             </div>

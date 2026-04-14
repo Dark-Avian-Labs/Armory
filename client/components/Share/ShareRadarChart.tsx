@@ -6,6 +6,8 @@ interface ShareRadarChartProps {
   stroke?: string;
   gridStroke?: string;
   className?: string;
+  /** Tighter plot + labels; less empty padding inside the SVG (share export). */
+  dense?: boolean;
 }
 
 function wrapRadarLabelLines(label: string, maxCharsPerLine: number): string[] {
@@ -34,6 +36,7 @@ export function ShareRadarChart({
   stroke = 'rgba(140, 180, 255, 0.95)',
   gridStroke = 'rgba(255, 255, 255, 0.12)',
   className,
+  dense = false,
 }: ShareRadarChartProps) {
   const n = labels.length;
   if (n < 3 || values.length !== n) {
@@ -42,8 +45,8 @@ export function ShareRadarChart({
 
   const cx = size / 2;
   const cy = size / 2;
-  const maxR = size * 0.26;
-  const labelR = size * 0.46;
+  const maxR = size * (dense ? 0.37 : 0.26);
+  const labelR = size * (dense ? 0.445 : 0.46);
   const vmax = Math.max(...values.map((v) => (Number.isFinite(v) ? Math.abs(v) : 0)), 1e-9);
   const norm = values.map((v) => {
     const t = Number.isFinite(v) ? Math.abs(v) / vmax : 0;
@@ -81,7 +84,7 @@ export function ShareRadarChart({
   });
 
   const maxChars = n >= 6 ? 10 : n >= 5 ? 11 : 12;
-  const fs = Math.max(6.5, size * 0.024);
+  const fs = Math.max(6.5, size * (dense ? 0.03 : 0.024));
   const lineHeight = fs * 1.12;
 
   const labelEls = labels.map((label, i) => {

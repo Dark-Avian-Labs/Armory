@@ -279,30 +279,32 @@ html.ui-shadow:not(.dark) {
     backdrop-filter: none !important;
   }
 
-  .share-export-root .glass-panel,
-  .share-export-root .glass-shell,
-  .share-export-root .glass-surface,
-  .share-export-root .glass-light {
+  /* Glass treatment only on the outer export frame (PNG-safe: no live backdrop blur). */
+  .share-export-glass-frame {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
     background:
       linear-gradient(
         155deg,
-        oklch(100% 0 0 / 0.11) 0%,
-        oklch(100% 0 0 / 0.03) 42%,
-        oklch(0% 0 0 / 0.14) 100%
+        oklch(100% 0 0 / 0.12) 0%,
+        oklch(100% 0 0 / 0.04) 42%,
+        oklch(0% 0 0 / 0.12) 100%
       ),
-      oklch(18% 0.04 264 / 0.92) !important;
-    border-color: oklch(100% 0 0 / 0.11) !important;
+      oklch(18% 0.04 264 / 0.94);
+    border: 1px solid oklch(100% 0 0 / 0.14);
+    box-shadow:
+      0 12px 40px oklch(0% 0 0 / 0.35),
+      inset 0 1px 0 oklch(100% 0 0 / 0.12),
+      inset 0 -1px 0 oklch(0% 0 0 / 0.15);
   }
 
-  .share-export-footer {
-    border: 0;
-    box-shadow: none;
-  }
-
-  .share-export-root .glass-panel::before,
-  .share-export-root .glass-shell::before,
-  .share-export-root .glass-surface::before,
-  .share-export-root .glass-light::before {
+  .share-export-glass-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
     background:
       linear-gradient(90deg, transparent, oklch(100% 0 0 / 0.14), transparent) top center/78% 1px
         no-repeat,
@@ -313,6 +315,17 @@ html.ui-shadow:not(.dark) {
           transparent 100%
         )
         left center/1px 84% no-repeat;
+  }
+
+  .share-export-panel {
+    border-radius: 0.875rem;
+    background: oklch(16% 0.04 264 / 0.92);
+    border: 1px solid oklch(100% 0 0 / 0.1);
+  }
+
+  .share-export-footer {
+    border: 0;
+    box-shadow: none;
   }
 
   .text-shadow-soft {
