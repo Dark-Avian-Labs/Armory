@@ -2,25 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useApi } from '../../hooks/useApi';
 import { apiFetch } from '../../utils/api';
-import { ConfirmModal } from '../ui/ConfirmModal';
+import type { ShardType } from '../ModBuilder/ArchonShardSlots';
 import { Modal } from '../ui/Modal';
-
-interface ShardBuff {
-  id: number;
-  shard_type_id: string;
-  description: string;
-  base_value: number;
-  tauforged_value: number;
-  value_format: string;
-}
-
-interface ShardType {
-  id: string;
-  name: string;
-  icon_path: string;
-  tauforged_icon_path: string;
-  buffs: ShardBuff[];
-}
 
 interface ImportLogLine {
   ts: string;
@@ -270,7 +253,7 @@ export function AdminPage() {
       <div className="glass-shell p-6">
         <h1 className="text-foreground text-2xl font-bold">Admin Panel</h1>
         <p className="text-muted mt-1 text-sm">
-          Data import controls and Archon Shard configuration.
+          Data import controls and read-only Archon Shard data from the wiki pipeline.
         </p>
       </div>
       <DataImportAdmin />
@@ -427,21 +410,23 @@ function DataImportAdmin() {
           <p className="text-foreground mb-2 text-xs font-semibold">
             Last run summary ({(snapshot.summary.durationMs / 1000).toFixed(1)}s)
           </p>
-          <ul className="max-h-64 list-none space-y-0 overflow-y-auto text-xs">
+          <ul className="list-none space-y-0 text-xs">
             {formatImportSummaryLines(snapshot.summary).map((row) => (
               <li
                 key={row.title}
-                className="border-border/60 flex flex-col gap-1 border-b border-dashed py-2 last:border-0 sm:flex-row sm:items-start sm:gap-3"
+                className="border-border/60 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 border-b border-dashed py-2 last:border-0 sm:grid-cols-[minmax(10rem,14rem)_5.75rem_minmax(0,1fr)] sm:items-start sm:gap-y-1"
               >
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  <span className="text-foreground min-w-[10rem] font-medium">{row.title}</span>
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${outcomeBadgeClass(row.outcome as SummaryOutcome)}`}
-                  >
-                    {row.outcome}
-                  </span>
-                </div>
-                <span className="text-muted min-w-0 flex-1 leading-snug">{row.detail}</span>
+                <span className="text-foreground col-span-2 font-medium sm:col-span-1">
+                  {row.title}
+                </span>
+                <span
+                  className={`col-start-1 row-start-2 inline-flex w-fit shrink-0 self-start justify-self-start rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase sm:col-start-2 sm:row-start-1 ${outcomeBadgeClass(row.outcome as SummaryOutcome)}`}
+                >
+                  {row.outcome}
+                </span>
+                <span className="text-muted col-start-2 row-start-2 min-w-0 self-start leading-snug sm:col-start-3 sm:row-start-1">
+                  {row.detail}
+                </span>
               </li>
             ))}
           </ul>
@@ -539,249 +524,107 @@ function DataImportAdmin() {
   );
 }
 
+const SHARD_TABLE_ICON_FALLBACK = '/icons/shards/emptyBackground.png';
+
+function shardTableIconSrc(iconPath: unknown): string {
+  if (typeof iconPath === 'string' && iconPath.trim() !== '') {
+    return iconPath.trim();
+  }
+  return SHARD_TABLE_ICON_FALLBACK;
+}
+
 function ArchonShardAdmin() {
-  const { data, loading, error, refetch } = useApi<{ shards: ShardType[] }>('/api/archon-shards');
+  const { data, loading, error } = useApi<{ shards: ShardType[] }>('/api/archon-shards');
   const shards = data?.shards || [];
-  const [editingBuff, setEditingBuff] = useState<ShardBuff | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-
-  const handleApiCall = async (
-    apiCall: () => Promise<Response>,
-    successMessage: string,
-    failureMessage: string,
-  ) => {
-    try {
-      const response = await apiCall();
-      if (!response.ok) {
-        throw new Error(failureMessage);
-      }
-      setStatusMessage(successMessage);
-      setErrorMessage(null);
-      refetch();
-      return true;
-    } catch {
-      setStatusMessage(null);
-      setErrorMessage(failureMessage);
-      return false;
-    }
-  };
-
-  const handleSaveBuff = async () => {
-    if (!editingBuff) return;
-    const didSave = await handleApiCall(
-      () =>
-        apiFetch(`/api/archon-shards/buffs/${editingBuff.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(editingBuff),
-        }),
-      'Shard buff saved.',
-      'Failed to save shard buff.',
-    );
-    if (didSave) {
-      setEditingBuff(null);
-    }
-  };
-
-  const closeDeleteConfirm = () => {
-    setConfirmOpen(false);
-    setPendingDeleteId(null);
-  };
-
-  const handleDeleteBuff = (id: number) => {
-    setPendingDeleteId(id);
-    setConfirmOpen(true);
-  };
-
-  const handleConfirmDeleteBuff = async () => {
-    if (pendingDeleteId === null) return;
-    const didDelete = await handleApiCall(
-      () =>
-        apiFetch(`/api/archon-shards/buffs/${pendingDeleteId}`, {
-          method: 'DELETE',
-        }),
-      'Shard buff deleted.',
-      'Failed to delete shard buff.',
-    );
-    if (didDelete) {
-      closeDeleteConfirm();
-    }
-  };
-
-  const handleAddBuff = async (shardTypeId: string) => {
-    await handleApiCall(
-      () =>
-        apiFetch('/api/archon-shards/buffs', {
-          method: 'POST',
-          body: JSON.stringify({
-            shard_type_id: shardTypeId,
-            description: 'New Buff',
-            base_value: 0,
-            tauforged_value: 0,
-            value_format: '%',
-            sort_order: 99,
-          }),
-        }),
-      'Shard buff added.',
-      'Failed to add shard buff.',
-    );
-  };
 
   return (
-    <>
-      <div className="glass-surface p-6">
-        <h2 className="text-foreground mb-4 text-lg font-semibold">Archon Shards</h2>
-        <p className="text-muted mb-3 text-xs">Edit shard types and their buff values.</p>
-        {statusMessage ? (
-          <p className="text-success mb-3 text-sm" role="status" aria-live="polite">
-            {statusMessage}
-          </p>
-        ) : null}
-        {errorMessage || error ? (
-          <p className="text-danger mb-3 text-sm" role="alert" aria-live="assertive">
-            {errorMessage || error}
-          </p>
-        ) : null}
-        {loading ? (
-          <p className="text-muted mb-3 text-sm" role="status" aria-live="polite">
-            Loading archon shard configuration...
-          </p>
-        ) : null}
-
-        <div className="space-y-4">
-          {shards.map((shard) => (
-            <div key={shard.id} className="glass-surface rounded-lg p-3">
-              <div className="mb-2 flex items-center gap-2">
-                <img src={shard.icon_path} alt="" className="h-5 w-5 object-contain" />
-                <span className="text-foreground text-sm font-semibold">{shard.name}</span>
-              </div>
-              <div className="space-y-1">
-                {shard.buffs.map((buff) => (
-                  <div key={buff.id} className="flex items-center gap-2 text-xs">
-                    {editingBuff?.id === buff.id ? (
-                      <>
-                        <input
-                          type="text"
-                          aria-label={`Description for ${shard.name} buff`}
-                          value={editingBuff.description}
-                          onChange={(e) =>
-                            setEditingBuff({
-                              ...editingBuff,
-                              description: e.target.value,
-                            })
-                          }
-                          className="form-input flex-1 text-xs"
-                        />
-                        <input
-                          type="number"
-                          aria-label={`Base value for ${shard.name} buff`}
-                          value={editingBuff.base_value}
-                          onChange={(e) =>
-                            setEditingBuff({
-                              ...editingBuff,
-                              base_value: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          className="form-input w-16 text-xs"
-                          step="0.1"
-                        />
-                        <input
-                          type="number"
-                          aria-label={`Tauforged value for ${shard.name} buff`}
-                          value={editingBuff.tauforged_value}
-                          onChange={(e) =>
-                            setEditingBuff({
-                              ...editingBuff,
-                              tauforged_value: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          className="form-input w-16 text-xs"
-                          step="0.1"
-                        />
-                        <select
-                          aria-label={`Value format for ${shard.name} buff`}
-                          value={editingBuff.value_format}
-                          onChange={(e) =>
-                            setEditingBuff({
-                              ...editingBuff,
-                              value_format: e.target.value,
-                            })
-                          }
-                          className="form-input w-16 text-xs"
-                        >
-                          <option value="%">%</option>
-                          <option value="+flat">+flat</option>
-                          <option value="/s">/s</option>
-                          <option value="proc">proc</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={handleSaveBuff}
-                          className="text-success hover:text-success/80"
-                        >
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingBuff(null)}
-                          className="text-muted hover:text-foreground"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-muted flex-1">{buff.description}</span>
-                        <span className="text-foreground w-16 text-center">{buff.base_value}</span>
-                        <span className="text-warning w-16 text-center">
-                          {buff.tauforged_value}
-                        </span>
-                        <span className="text-muted/50 w-10 text-center">{buff.value_format}</span>
-                        <button
-                          type="button"
-                          onClick={() => setEditingBuff({ ...buff })}
-                          className="text-accent hover:text-accent/80"
-                          aria-label={`Edit buff ${buff.description}`}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteBuff(buff.id)}
-                          className="text-danger hover:text-danger/80"
-                          aria-label={`Delete buff ${buff.description}`}
-                        >
-                          &times;
-                        </button>
-                      </>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => handleAddBuff(shard.id)}
-                  className="text-accent hover:text-accent/80 mt-1 text-xs"
-                  aria-label={`Add buff for ${shard.name}`}
-                >
-                  + Add buff
-                </button>
-              </div>
-            </div>
-          ))}
+    <div className="glass-surface p-6">
+      <h2 className="text-foreground mb-3 text-lg font-semibold">Archon Shards</h2>
+      <p className="text-muted mb-4 text-xs">
+        Shard types and buffs from the wiki import pipeline (read-only). Run a full import to
+        refresh.
+      </p>
+      {error ? (
+        <p className="text-danger mb-3 text-sm" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {loading ? (
+        <p className="text-muted text-sm" role="status" aria-live="polite">
+          Loading archon shard data...
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-[var(--color-glass-border)] bg-[var(--color-glass)]/40">
+          <table className="w-full min-w-[32rem] border-collapse text-left text-xs">
+            <thead>
+              <tr className="border-b border-[var(--color-glass-border)] bg-[var(--color-glass)]/60">
+                <th className="text-foreground px-3 py-2 font-semibold">Shard</th>
+                <th className="text-foreground px-3 py-2 font-semibold">Buff</th>
+                <th className="text-foreground w-20 px-3 py-2 font-semibold">Base</th>
+                <th className="text-foreground w-20 px-3 py-2 font-semibold">Tauforged</th>
+                <th className="text-foreground w-16 px-3 py-2 font-semibold">Format</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shards.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-muted px-3 py-4 text-center">
+                    No shard data in the database yet.
+                  </td>
+                </tr>
+              ) : (
+                shards.flatMap((shard) =>
+                  shard.buffs.length === 0
+                    ? [
+                        <tr key={shard.id}>
+                          <td className="border-border/40 border-t px-3 py-2 align-top">
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={shardTableIconSrc(shard.icon_path)}
+                                alt={`${shard.name} shard icon`}
+                                className="h-5 w-5 object-contain"
+                              />
+                              <span className="text-foreground font-medium">{shard.name}</span>
+                            </div>
+                          </td>
+                          <td
+                            colSpan={4}
+                            className="border-border/40 text-muted border-t px-3 py-2 italic"
+                          >
+                            No buffs recorded
+                          </td>
+                        </tr>,
+                      ]
+                    : shard.buffs.map((buff, buffIdx) => (
+                        <tr key={buff.id} className="border-border/40 border-t">
+                          {buffIdx === 0 ? (
+                            <td className="px-3 py-2 align-top" rowSpan={shard.buffs.length}>
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={shardTableIconSrc(shard.icon_path)}
+                                  alt={`${shard.name} shard icon`}
+                                  className="h-5 w-5 object-contain"
+                                />
+                                <span className="text-foreground font-medium">{shard.name}</span>
+                              </div>
+                            </td>
+                          ) : null}
+                          <td className="text-muted px-3 py-2">{buff.description}</td>
+                          <td className="text-foreground px-3 py-2 tabular-nums">
+                            {buff.base_value}
+                          </td>
+                          <td className="text-warning px-3 py-2 tabular-nums">
+                            {buff.tauforged_value}
+                          </td>
+                          <td className="text-muted px-3 py-2">{buff.value_format}</td>
+                        </tr>
+                      )),
+                )
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
-      <ConfirmModal
-        open={confirmOpen}
-        title="Delete shard buff?"
-        message="This will permanently remove the selected buff."
-        confirmLabel="Delete"
-        onConfirm={() => {
-          void handleConfirmDeleteBuff();
-        }}
-        onCancel={closeDeleteConfirm}
-      />
-    </>
+      )}
+    </div>
   );
 }
