@@ -88,11 +88,11 @@ export function ElementOutput({ weapon, slots, valenceBonus }: ElementOutputProp
 
               <div className="relative z-10 flex-1" />
 
-              <span className="text-muted relative z-10 text-[10px] tabular-nums">
+              <span className="text-muted relative z-10 font-mono text-[10px] tabular-nums">
                 {pct.toFixed(1)}%
               </span>
 
-              <span className="text-foreground relative z-10 min-w-[48px] text-right text-xs font-semibold tabular-nums">
+              <span className="text-foreground relative z-10 min-w-[48px] text-right font-mono text-xs font-semibold tabular-nums">
                 {formatDamage(entry.value)}
               </span>
             </div>

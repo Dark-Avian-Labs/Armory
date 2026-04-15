@@ -11,6 +11,7 @@ import { syncHiddenCompanionWeaponsFromOverframe } from '../scraping/hiddenCompa
 import { scrapeIndex } from '../scraping/indexScraper.js';
 import { scrapeItems } from '../scraping/itemScraper.js';
 import { runWikiScrape } from '../scraping/wikiScraper.js';
+import { syncHelminthFlagsFromFandom } from './helminthFandom.js';
 import { downloadImages } from './images.js';
 import { runImportPipeline, listExportFiles } from './pipeline.js';
 import {
@@ -97,6 +98,7 @@ function emptySummary(start: number): StartupPipelineSummary {
     hiddenCompanionWeapons: { outcome: 'skipped', reason: 'Not run.' },
     overframe: { outcome: 'skipped', skipReason: 'Not run.' },
     wiki: { outcome: 'skipped', skipReason: 'Pipeline did not reach this step.' },
+    helminthFandom: { outcome: 'skipped', skipReason: 'Pipeline did not reach this step.' },
     blockingIssues: [],
   };
 }
@@ -422,6 +424,51 @@ export async function runStartupPipeline(
     const msg = e instanceof Error ? e.message : String(e);
     summary.wiki = { outcome: 'failed', error: msg };
     err('Wiki scrape failed:', e);
+  }
+
+  phase('Helminth (Fandom)');
+  try {
+    const db = getDb();
+    const helminthResult = await syncHelminthFlagsFromFandom(db);
+    if (!helminthResult.fetchOk) {
+      summary.helminthFandom = {
+        outcome: 'failed',
+        wikiNamesFound: helminthResult.wikiNamesFound,
+        abilitiesFlagged: helminthResult.abilitiesFlagged,
+        fetchOk: false,
+        error: helminthResult.error ?? 'Fandom fetch failed.',
+      };
+      err(
+        `Helminth Fandom: fetch failed — ${helminthResult.error ?? 'unknown'} (names parsed: ${helminthResult.wikiNamesFound})`,
+      );
+    } else if (helminthResult.wikiNamesFound === 0) {
+      summary.helminthFandom = {
+        outcome: 'partial',
+        wikiNamesFound: 0,
+        abilitiesFlagged: 0,
+        fetchOk: true,
+        skipReason: 'No ability names parsed from Fandom page (HTML layout may have changed).',
+      };
+      log('Helminth Fandom: no names parsed from wiki page.');
+    } else {
+      log(
+        `Helminth Fandom: ${helminthResult.wikiNamesFound} wiki tokens, ${helminthResult.abilitiesFlagged} abilities flagged.`,
+      );
+      summary.helminthFandom = {
+        outcome: helminthResult.abilitiesFlagged > 0 ? 'ok' : 'partial',
+        wikiNamesFound: helminthResult.wikiNamesFound,
+        abilitiesFlagged: helminthResult.abilitiesFlagged,
+        fetchOk: true,
+      };
+      if (helminthResult.abilitiesFlagged === 0) {
+        summary.helminthFandom.skipReason =
+          'Wiki tokens found but none matched DB ability names (check normalization).';
+      }
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    summary.helminthFandom = { outcome: 'failed', error: msg, fetchOk: false };
+    err('Helminth Fandom sync failed:', e);
   }
 
   summary.durationMs = Date.now() - startTime;

@@ -28,14 +28,229 @@ interface ImportLogLine {
   message: string;
 }
 
+type SummaryOutcome = 'ok' | 'skipped' | 'failed' | 'partial';
+
+interface ImportPipelineStats {
+  requiredCount: number;
+  downloaded: string[];
+  skippedUnchanged: string[];
+  failed: Array<{ category: string; error: string }>;
+}
+
 interface ImportSummary {
   durationMs: number;
   blockingIssues: string[];
-  sqliteFromExports: { outcome: 'ok' | 'skipped' | 'failed' | 'partial'; reason: string };
-  officialExports: { outcome: 'ok' | 'skipped' | 'failed' | 'partial' };
-  images: { outcome: 'ok' | 'skipped' | 'failed' | 'partial' };
-  overframe: { outcome: 'ok' | 'skipped' | 'failed' | 'partial' };
-  wiki: { outcome: 'ok' | 'skipped' | 'failed' | 'partial' };
+  schema: { outcome: SummaryOutcome; detail?: string };
+  officialExports: {
+    outcome: SummaryOutcome;
+    error?: string;
+    stats?: ImportPipelineStats;
+  };
+  sqliteFromExports: {
+    outcome: SummaryOutcome;
+    reason: string;
+    rows?: {
+      warframes: number;
+      weapons: number;
+      companions: number;
+      mods: number;
+      modSets: number;
+      arcanes: number;
+      abilities: number;
+    };
+    modDescriptionsBackfilled?: number;
+    error?: string;
+  };
+  exaltedStanceMods: {
+    outcome: SummaryOutcome;
+    reason?: string;
+    found?: number;
+    insertedOrUpdated?: number;
+    error?: string;
+  };
+  images: {
+    outcome: SummaryOutcome;
+    total?: number;
+    downloaded?: number;
+    skipped?: number;
+    failed?: number;
+    error?: string;
+  };
+  hiddenCompanionWeapons: {
+    outcome: SummaryOutcome;
+    reason?: string;
+    found?: number;
+    insertedOrUpdated?: number;
+    error?: string;
+  };
+  overframe: {
+    outcome: SummaryOutcome;
+    totalIndexed?: number;
+    matchedNeedingWork?: number;
+    pagesScraped?: number;
+    merge?: {
+      warframesUpdated: number;
+      weaponsUpdated: number;
+      companionsUpdated: number;
+      abilitiesUpdated: number;
+      helminthUpdated: number;
+    };
+    skipReason?: string;
+    error?: string;
+  };
+  wiki: {
+    outcome: SummaryOutcome;
+    merge?: {
+      abilitiesUpdated: number;
+      passivesUpdated: number;
+      augmentsUpdated: number;
+      shardTypes: number;
+      shardBuffs: number;
+      rivenDispositionsSyncedFromOmega: number;
+      rivenDispositionsWikiFallback: number;
+      weaponsProjectileSpeedsUpdated: number;
+    };
+    error?: string;
+    skipReason?: string;
+  };
+  helminthFandom?: {
+    outcome: SummaryOutcome;
+    wikiNamesFound?: number;
+    abilitiesFlagged?: number;
+    fetchOk?: boolean;
+    error?: string;
+    skipReason?: string;
+  };
+}
+
+function outcomeBadgeClass(outcome: SummaryOutcome | string | undefined): string {
+  switch (outcome) {
+    case 'ok':
+      return 'bg-success/15 text-success';
+    case 'partial':
+      return 'bg-warning/15 text-warning';
+    case 'failed':
+      return 'bg-danger/15 text-danger';
+    case 'skipped':
+    default:
+      return 'bg-muted/20 text-muted';
+  }
+}
+
+function formatImportSummaryLines(
+  s: ImportSummary,
+): Array<{ title: string; outcome: string; detail: string }> {
+  const lines: Array<{ title: string; outcome: string; detail: string }> = [];
+
+  lines.push({
+    title: 'Schema',
+    outcome: s.schema.outcome,
+    detail: s.schema.detail ?? '—',
+  });
+
+  const ex = s.officialExports;
+  if (ex.error) {
+    lines.push({ title: 'Official exports', outcome: ex.outcome, detail: ex.error });
+  } else if (ex.stats) {
+    const st = ex.stats;
+    const failedN = st.failed.length;
+    lines.push({
+      title: 'Official exports',
+      outcome: ex.outcome,
+      detail:
+        `Required ${st.requiredCount}; updated ${st.downloaded.length}; unchanged ${st.skippedUnchanged.length}` +
+        (failedN ? `; ${failedN} download failure(s)` : ''),
+    });
+  } else {
+    lines.push({ title: 'Official exports', outcome: ex.outcome, detail: '—' });
+  }
+
+  const db = s.sqliteFromExports;
+  lines.push({
+    title: 'SQLite ← exports',
+    outcome: db.outcome,
+    detail:
+      db.reason +
+      (db.rows
+        ? ` — ${db.rows.warframes} wf, ${db.rows.weapons} wp, ${db.rows.mods} mods, ${db.rows.abilities} abilities`
+        : '') +
+      (db.modDescriptionsBackfilled != null
+        ? `; mod desc backfill ${db.modDescriptionsBackfilled}`
+        : '') +
+      (db.error ? ` (${db.error})` : ''),
+  });
+
+  const es = s.exaltedStanceMods;
+  const esParts = [
+    es.reason,
+    es.found != null ? `${es.found} found, ${es.insertedOrUpdated ?? 0} upserted` : '',
+    es.error,
+  ].filter(Boolean);
+  lines.push({
+    title: 'Exalted stances',
+    outcome: es.outcome,
+    detail: esParts.length > 0 ? esParts.join(' — ') : '—',
+  });
+
+  const im = s.images;
+  lines.push({
+    title: 'Images',
+    outcome: im.outcome,
+    detail:
+      im.total != null
+        ? `${im.total} considered; ${im.downloaded ?? 0} dl, ${im.skipped ?? 0} skip, ${im.failed ?? 0} fail` +
+          (im.error ? ` — ${im.error}` : '')
+        : (im.error ?? '—'),
+  });
+
+  const hi = s.hiddenCompanionWeapons;
+  const hiParts = [
+    hi.reason,
+    hi.found != null ? `${hi.found} pages, ${hi.insertedOrUpdated ?? 0} rows` : '',
+    hi.error,
+  ].filter(Boolean);
+  lines.push({
+    title: 'Hidden companions',
+    outcome: hi.outcome,
+    detail: hiParts.length > 0 ? hiParts.join(' — ') : '—',
+  });
+
+  const ov = s.overframe;
+  const ovDetail =
+    ov.skipReason ??
+    (ov.totalIndexed != null
+      ? `Index ${ov.totalIndexed}; need work ${ov.matchedNeedingWork ?? 0}; scraped ${ov.pagesScraped ?? 0}` +
+        (ov.merge
+          ? ` — merged wf ${ov.merge.warframesUpdated}, wp ${ov.merge.weaponsUpdated}, ab ${ov.merge.abilitiesUpdated}, helminth+${ov.merge.helminthUpdated}`
+          : '')
+      : '') + (ov.error ? ` — ${ov.error}` : '');
+  lines.push({ title: 'Overframe', outcome: ov.outcome, detail: ovDetail || '—' });
+
+  const wk = s.wiki;
+  const wkDetail =
+    wk.skipReason ??
+    (wk.merge
+      ? `Abilities ${wk.merge.abilitiesUpdated}, passives ${wk.merge.passivesUpdated}, augments ${wk.merge.augmentsUpdated}, shards ${wk.merge.shardTypes}/${wk.merge.shardBuffs}, riven Ω/Wiki ${wk.merge.rivenDispositionsSyncedFromOmega}/${wk.merge.rivenDispositionsWikiFallback}, proj ${wk.merge.weaponsProjectileSpeedsUpdated}`
+      : '') + (wk.error ? ` — ${wk.error}` : '');
+  lines.push({ title: 'Wiki', outcome: wk.outcome, detail: wkDetail || '—' });
+
+  const hm = s.helminthFandom;
+  if (hm) {
+    const hmParts = [
+      hm.skipReason,
+      hm.wikiNamesFound != null
+        ? `Wiki tokens ${hm.wikiNamesFound}, flagged ${hm.abilitiesFlagged ?? 0}`
+        : '',
+      hm.error,
+    ].filter(Boolean);
+    lines.push({
+      title: 'Helminth (Fandom)',
+      outcome: hm.outcome,
+      detail: hmParts.length > 0 ? hmParts.join(' — ') : '—',
+    });
+  }
+
+  return lines;
 }
 
 interface ImportSnapshot {
@@ -202,19 +417,34 @@ function DataImportAdmin() {
       <h2 className="text-foreground mb-3 text-lg font-semibold">Data Import</h2>
       <p className="text-muted mb-3 text-xs">
         Run the full data pipeline manually (official exports, DB processing, Overframe sync, wiki
-        enrichments, image updates).
+        enrichments, Helminth Fandom sync, image updates).
       </p>
       <p className="text-muted mb-4 text-sm" role="status">
         {statusText}
       </p>
       {snapshot?.summary ? (
-        <div className="text-muted mb-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-          <span>Duration: {(snapshot.summary.durationMs / 1000).toFixed(1)}s</span>
-          <span>Exports: {snapshot.summary.officialExports.outcome}</span>
-          <span>DB import: {snapshot.summary.sqliteFromExports.outcome}</span>
-          <span>Images: {snapshot.summary.images.outcome}</span>
-          <span>Overframe: {snapshot.summary.overframe.outcome}</span>
-          <span>Wiki: {snapshot.summary.wiki.outcome}</span>
+        <div className="mb-4 rounded-lg border border-[var(--color-glass-border)] bg-[var(--color-glass)]/40 p-3">
+          <p className="text-foreground mb-2 text-xs font-semibold">
+            Last run summary ({(snapshot.summary.durationMs / 1000).toFixed(1)}s)
+          </p>
+          <ul className="max-h-64 list-none space-y-0 overflow-y-auto text-xs">
+            {formatImportSummaryLines(snapshot.summary).map((row) => (
+              <li
+                key={row.title}
+                className="border-border/60 flex flex-col gap-1 border-b border-dashed py-2 last:border-0 sm:flex-row sm:items-start sm:gap-3"
+              >
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <span className="text-foreground min-w-[10rem] font-medium">{row.title}</span>
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${outcomeBadgeClass(row.outcome as SummaryOutcome)}`}
+                  >
+                    {row.outcome}
+                  </span>
+                </div>
+                <span className="text-muted min-w-0 flex-1 leading-snug">{row.detail}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
       {errorMessage ? (

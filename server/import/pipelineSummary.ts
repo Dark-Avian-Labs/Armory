@@ -78,6 +78,14 @@ export interface StartupPipelineSummary {
     error?: string;
     skipReason?: string;
   };
+  helminthFandom: {
+    outcome: SummaryOutcome;
+    wikiNamesFound?: number;
+    abilitiesFlagged?: number;
+    fetchOk?: boolean;
+    error?: string;
+    skipReason?: string;
+  };
   blockingIssues: string[];
 }
 
@@ -239,6 +247,18 @@ export function printStartupPipelineSummary(s: StartupPipelineSummary): void {
     else wkLines.push('No wiki stats recorded.');
   }
   row('Warframe Wiki enrichment', wk.outcome, wkLines);
+
+  const hm = s.helminthFandom;
+  const hmLines: string[] = [];
+  if (hm.skipReason) hmLines.push(hm.skipReason);
+  if (hm.wikiNamesFound !== undefined) {
+    hmLines.push(
+      `Fandom page tokens: ${hm.wikiNamesFound}; abilities flagged this run: ${hm.abilitiesFlagged ?? 0}.`,
+    );
+  }
+  if (hm.error) hmLines.push(`Error: ${hm.error}`);
+  if (hmLines.length === 0) hmLines.push('No Helminth Fandom stats recorded.');
+  row('Helminth (Fandom)', hm.outcome, hmLines);
 
   console.log(`${DIV}\n`);
 }

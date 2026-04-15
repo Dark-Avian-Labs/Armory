@@ -1,6 +1,4 @@
-import * as cheerio from 'cheerio';
 import { Router, type Request, type Response } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
@@ -13,15 +11,6 @@ import {
 } from '../import/adminImportJob.js';
 
 export const apiRouter = Router();
-
-apiRouter.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 600,
-    standardHeaders: true,
-    legacyHeaders: false,
-  }),
-);
 
 apiRouter.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', app: 'Parametric' });
@@ -54,60 +43,6 @@ const WEAPON_CATEGORY_TO_TYPE: Record<string, string> = {
   SpaceGuns: 'archgun',
   SpaceMelee: 'archmelee',
 };
-
-const HELMINTH_WIKI_URL = 'https://warframe.fandom.com/wiki/Helminth';
-const HELMINTH_NAME_CACHE_TTL_MS = 30 * 60 * 1000;
-const HELMINTH_WIKI_USER_AGENT =
-  process.env.HELMINTH_WIKI_USER_AGENT?.trim() ||
-  'Parametric/2.0 (manual-import; +https://warframe.fandom.com/wiki/Helminth)';
-let helminthNameCache: { names: Set<string>; expiresAt: number } | null = null;
-
-function normalizeAbilityName(value: string): string {
-  return value.replace(/\s+/g, ' ').trim().toLowerCase();
-}
-
-async function fetchHelminthAbilityNameSet(): Promise<Set<string>> {
-  const now = Date.now();
-  if (helminthNameCache && helminthNameCache.expiresAt > now) {
-    return helminthNameCache.names;
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-  try {
-    const response = await fetch(HELMINTH_WIKI_URL, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': HELMINTH_WIKI_USER_AGENT,
-      },
-    });
-    if (!response.ok) return new Set<string>();
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    const names = new Set<string>();
-
-    $('#mw-content-text a[href^="/w/"]').each((_, el) => {
-      const text = normalizeAbilityName($(el).text());
-      const title = normalizeAbilityName($(el).attr('title') || '');
-      for (const raw of [text, title]) {
-        if (!raw) continue;
-        const cleaned = raw.replace(/\s*\(ability\)$/, '').trim();
-        if (!cleaned || cleaned.length < 3 || cleaned.length > 80) continue;
-        names.add(cleaned);
-      }
-    });
-
-    helminthNameCache = {
-      names,
-      expiresAt: now + HELMINTH_NAME_CACHE_TTL_MS,
-    };
-    return names;
-  } catch {
-    return new Set<string>();
-  } finally {
-    clearTimeout(timeout);
-  }
-}
 
 apiRouter.get('/weapons', (req: Request, res: Response) => {
   try {
@@ -467,8 +402,8 @@ function getOwnerUsernames(userIds: number[]): Map<number, string | null> {
     for (const r of rows) {
       map.set(r.id, r.username ?? null);
     }
-  } catch {
-    // ignore
+  } catch (err) {
+    console.error('[API] getOwnerUsernames: central DB lookup failed:', err);
   }
 
   return map;
@@ -682,50 +617,13 @@ apiRouter.get('/abilities', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/helminth-abilities', async (_req: Request, res: Response) => {
+apiRouter.get('/helminth-abilities', (_req: Request, res: Response) => {
   try {
     const db = getDb();
-    const flaggedRows = db
+    const rows = db
       .prepare('SELECT * FROM abilities WHERE is_helminth_extractable = 1 ORDER BY name')
       .all() as Array<Record<string, unknown>>;
-
-    const wikiNames = await fetchHelminthAbilityNameSet();
-    if (wikiNames.size === 0) {
-      res.json({ items: flaggedRows });
-      return;
-    }
-
-    const allAbilities = db
-      .prepare(
-        `SELECT unique_name, name, description, image_path, energy_cost, is_helminth_extractable
-         FROM abilities
-         WHERE unique_name IS NOT NULL
-           AND unique_name != ''
-           AND name IS NOT NULL
-           AND name != ''`,
-      )
-      .all() as Array<Record<string, unknown> & { name?: string; unique_name?: string }>;
-    const inferred = allAbilities
-      .filter((row) => {
-        const name = typeof row.name === 'string' ? normalizeAbilityName(row.name) : '';
-        return !!name && wikiNames.has(name);
-      })
-      .map((row) => ({ ...row, is_helminth_extractable: 1 }));
-
-    const merged = new Map<string, Record<string, unknown>>();
-    for (const row of flaggedRows) {
-      const key = typeof row.unique_name === 'string' ? row.unique_name : '';
-      if (key) merged.set(key, row);
-    }
-    for (const row of inferred) {
-      const key = typeof row.unique_name === 'string' ? row.unique_name : '';
-      if (key) merged.set(key, row);
-    }
-
-    const items = Array.from(merged.values()).sort((a, b) =>
-      String(a.name ?? '').localeCompare(String(b.name ?? '')),
-    );
-    res.json({ items });
+    res.json({ items: rows });
   } catch (err) {
     sendInternalError(res, 'helminthAbilities.list', err);
   }
@@ -982,10 +880,39 @@ apiRouter.get('/loadouts', (req: Request, res: Response) => {
     const loadouts = db
       .prepare('SELECT * FROM loadouts WHERE user_id = ? ORDER BY updated_at DESC')
       .all(req.session.user_id) as Array<Record<string, unknown>>;
+    if (loadouts.length === 0) {
+      res.json({ loadouts });
+      return;
+    }
+    const loadoutIds = loadouts
+      .map((l) => l.id)
+      .filter((id): id is number => typeof id === 'number' && Number.isFinite(id));
+    if (loadoutIds.length === 0) {
+      for (const l of loadouts) {
+        (l as Record<string, unknown>).builds = [];
+      }
+      res.json({ loadouts });
+      return;
+    }
+    const placeholders = loadoutIds.map(() => '?').join(',');
+    const allBuilds = db
+      .prepare(`SELECT * FROM loadout_builds WHERE loadout_id IN (${placeholders})`)
+      .all(...loadoutIds) as Array<Record<string, unknown>>;
+    const buildsByLoadoutId = new Map<number, Array<Record<string, unknown>>>();
+    for (const b of allBuilds) {
+      const lid = b.loadout_id;
+      if (typeof lid !== 'number' || !Number.isFinite(lid)) continue;
+      const list = buildsByLoadoutId.get(lid);
+      if (list) {
+        list.push(b);
+      } else {
+        buildsByLoadoutId.set(lid, [b]);
+      }
+    }
     for (const l of loadouts) {
-      (l as Record<string, unknown>).builds = db
-        .prepare('SELECT * FROM loadout_builds WHERE loadout_id = ?')
-        .all(l.id);
+      const id = l.id;
+      (l as Record<string, unknown>).builds =
+        typeof id === 'number' && Number.isFinite(id) ? (buildsByLoadoutId.get(id) ?? []) : [];
     }
     res.json({ loadouts });
   } catch (err) {

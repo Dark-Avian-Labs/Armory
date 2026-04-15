@@ -245,7 +245,7 @@ export function CompareModal({ onClose }: CompareModalProps) {
                     {values.map((v, i) => (
                       <span
                         key={i}
-                        className={`text-center text-xs tabular-nums ${
+                        className={`text-center font-mono text-xs tabular-nums ${
                           i === best ? 'font-bold text-green-400' : 'text-foreground'
                         }`}
                       >
@@ -266,7 +266,7 @@ export function CompareModal({ onClose }: CompareModalProps) {
                   return snapshots.map((s, i) => (
                     <span
                       key={i}
-                      className={`text-center text-xs font-semibold tabular-nums ${
+                      className={`text-center font-mono text-xs font-semibold tabular-nums ${
                         i === bestTotalIdx ? 'text-green-400' : 'text-foreground'
                       }`}
                     >
@@ -313,7 +313,7 @@ function StatRowView({
       {values.map((v, i) => (
         <span
           key={i}
-          className={`text-center text-xs tabular-nums ${
+          className={`text-center font-mono text-xs tabular-nums ${
             i === bestIdx ? 'font-bold text-green-400' : 'text-foreground'
           }`}
         >

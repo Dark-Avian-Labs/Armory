@@ -85,7 +85,9 @@ export function ValenceBonusPanel({ value, onChange, readOnly = false }: Valence
       <div className="mt-3 space-y-1.5">
         <div className="flex items-center justify-between text-[10px] uppercase">
           <span className="text-muted">Bonus amount</span>
-          <span className="text-foreground font-semibold tabular-nums">{value.percent}%</span>
+          <span className="text-foreground font-mono font-semibold tabular-nums">
+            {value.percent}%
+          </span>
         </div>
         <input
           type="range"

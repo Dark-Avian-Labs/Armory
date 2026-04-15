@@ -609,12 +609,16 @@ function ShareDamageBreakdownBars({
     <div className="space-y-1">
       {hideHeader ? (
         <div className="mb-1 flex justify-end">
-          <span className="text-[12px] font-bold text-[#f0f4ff]">{formatDamage(totalDamage)}</span>
+          <span className="font-mono text-[12px] font-bold text-[#f0f4ff] tabular-nums">
+            {formatDamage(totalDamage)}
+          </span>
         </div>
       ) : (
         <div className="mb-1 flex items-center justify-between gap-2">
           <span className="text-[10px] tracking-[0.16em] text-[#c7d5ff] uppercase">Damage</span>
-          <span className="text-[12px] font-bold text-[#f0f4ff]">{formatDamage(totalDamage)}</span>
+          <span className="font-mono text-[12px] font-bold text-[#f0f4ff] tabular-nums">
+            {formatDamage(totalDamage)}
+          </span>
         </div>
       )}
       {damageBreakdown.map((entry) => {
@@ -651,10 +655,10 @@ function ShareDamageBreakdownBars({
               {entry.type}
             </span>
             <div className="relative z-10 flex-1" />
-            <span className="relative z-10 text-[8px] text-[#9fb0d8] tabular-nums">
+            <span className="relative z-10 font-mono text-[8px] text-[#9fb0d8] tabular-nums">
               {pct.toFixed(1)}%
             </span>
-            <span className="relative z-10 min-w-[40px] text-right text-[9px] font-semibold text-[#f0f4ff] tabular-nums">
+            <span className="relative z-10 min-w-[40px] text-right font-mono text-[9px] font-semibold text-[#f0f4ff] tabular-nums">
               {formatDamage(entry.value)}
             </span>
           </div>

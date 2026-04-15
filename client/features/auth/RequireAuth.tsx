@@ -46,7 +46,12 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (status === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div
+        className="flex min-h-screen items-center justify-center"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
         <p className="text-muted">Checking session...</p>
       </div>
     );
