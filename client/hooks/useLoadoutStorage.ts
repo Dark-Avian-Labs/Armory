@@ -3,11 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../utils/api';
 import { getApiErrorDetails } from '../utils/apiErrorUtils';
 
-const LEGACY_STORAGE_KEY = 'parametric_loadouts';
-const MIGRATED_KEY = 'parametric_loadouts_migrated_v1';
-const MIGRATION_MAP_KEY = 'parametric_build_id_map_v1';
-const MIGRATION_FAILURES_KEY = 'parametric_loadouts_migration_failures_v1';
-
 export interface LoadoutBuild {
   build_id: string;
   slot_type: string;
@@ -32,15 +27,6 @@ export const LOADOUT_SLOT_TYPES = [
   { key: 'archgun', label: 'Arch-Gun' },
   { key: 'archmelee', label: 'Arch-Melee' },
 ] as const;
-
-function readLegacyLoadouts(): Loadout[] {
-  try {
-    const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
 
 export function useLoadoutStorage() {
   const [loadouts, setLoadouts] = useState<Loadout[]>([]);
@@ -87,119 +73,7 @@ export function useLoadoutStorage() {
   }, []);
 
   useEffect(() => {
-    async function migrateLegacyLoadouts(): Promise<void> {
-      if (localStorage.getItem(MIGRATED_KEY) === '1') {
-        return;
-      }
-      const legacyLoadouts = readLegacyLoadouts();
-      if (legacyLoadouts.length === 0) {
-        localStorage.setItem(MIGRATED_KEY, '1');
-        return;
-      }
-      const idMapRaw = localStorage.getItem(MIGRATION_MAP_KEY);
-      const idMap = idMapRaw ? (JSON.parse(idMapRaw) as Record<string, string>) : {};
-      const failures: Array<{
-        type: 'loadout' | 'build';
-        loadoutId: string;
-        buildId?: string;
-        slotType?: string;
-        error: string;
-      }> = [];
-      for (const loadout of legacyLoadouts) {
-        try {
-          const createRes = await apiFetch('/api/loadouts', {
-            method: 'POST',
-            body: JSON.stringify({ name: loadout.name }),
-          });
-          if (!createRes.ok) {
-            const details = await getApiErrorDetails(createRes);
-            const error = `Failed to migrate legacy loadout ${loadout.id}: ${details}`;
-            console.error(error);
-            failures.push({
-              type: 'loadout',
-              loadoutId: loadout.id,
-              error,
-            });
-            continue;
-          }
-          const createBody = (await createRes.json()) as {
-            id?: string | number;
-          };
-          const newLoadoutId = createBody.id !== undefined ? String(createBody.id) : null;
-          if (!newLoadoutId) {
-            const error = `Failed to migrate legacy loadout ${loadout.id}: missing new loadout id`;
-            console.error(error);
-            failures.push({
-              type: 'loadout',
-              loadoutId: loadout.id,
-              error,
-            });
-            continue;
-          }
-          for (const buildLink of loadout.builds) {
-            const mappedBuildId = idMap[buildLink.build_id];
-            if (!mappedBuildId) {
-              const error = `Failed to migrate build ${buildLink.build_id} for loadout ${loadout.id}: missing build id mapping`;
-              console.error(error);
-              failures.push({
-                type: 'build',
-                loadoutId: loadout.id,
-                buildId: buildLink.build_id,
-                slotType: buildLink.slot_type,
-                error,
-              });
-              continue;
-            }
-            const linkRes = await apiFetch(`/api/loadouts/${newLoadoutId}/builds`, {
-              method: 'POST',
-              body: JSON.stringify({
-                build_id: mappedBuildId,
-                slot_type: buildLink.slot_type,
-              }),
-            });
-            if (!linkRes.ok) {
-              const details = await getApiErrorDetails(linkRes);
-              const error = `Failed to migrate build ${buildLink.build_id} for loadout ${loadout.id}: ${details}`;
-              console.error(error);
-              failures.push({
-                type: 'build',
-                loadoutId: loadout.id,
-                buildId: buildLink.build_id,
-                slotType: buildLink.slot_type,
-                error,
-              });
-            }
-          }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          const details = `Failed to migrate legacy loadout ${loadout.id}: ${message}`;
-          console.error(details, error);
-          failures.push({
-            type: 'loadout',
-            loadoutId: loadout.id,
-            error: details,
-          });
-        }
-      }
-      if (failures.length > 0) {
-        localStorage.setItem(MIGRATION_FAILURES_KEY, JSON.stringify(failures));
-        return;
-      }
-      localStorage.removeItem(MIGRATION_FAILURES_KEY);
-      localStorage.setItem(MIGRATED_KEY, '1');
-    }
-
-    void (async () => {
-      try {
-        await migrateLegacyLoadouts();
-        await refresh();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error('Failed during loadout migration bootstrap', error);
-        setLoadoutError(message);
-        setLoading(false);
-      }
-    })();
+    void refresh();
   }, [refresh]);
 
   const createLoadout = useCallback(

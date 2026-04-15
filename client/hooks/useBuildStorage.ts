@@ -4,19 +4,6 @@ import type { StoredBuild, BuildConfig, BuildVisibility } from '../types/warfram
 import { apiFetch, UnauthorizedError } from '../utils/api';
 import { normalizeRivenConfigMembership } from '../utils/riven';
 
-const LEGACY_STORAGE_KEY = 'parametric_builds';
-const MIGRATED_KEY = 'parametric_builds_migrated_v1';
-const MIGRATION_MAP_KEY = 'parametric_build_id_map_v1';
-
-function readLegacyBuilds(): StoredBuild[] {
-  try {
-    const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
 export function useBuildStorage() {
   const [builds, setBuilds] = useState<StoredBuild[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,47 +69,7 @@ export function useBuildStorage() {
   }, []);
 
   useEffect(() => {
-    async function migrateLegacyBuilds(): Promise<void> {
-      if (localStorage.getItem(MIGRATED_KEY) === '1') {
-        return;
-      }
-      const legacyBuilds = readLegacyBuilds();
-      if (legacyBuilds.length === 0) {
-        localStorage.setItem(MIGRATED_KEY, '1');
-        return;
-      }
-      const idMap: Record<string, string> = {};
-      for (const legacyBuild of legacyBuilds) {
-        try {
-          const payload = {
-            name: legacyBuild.name,
-            equipment_type: legacyBuild.equipment_type,
-            equipment_unique_name: legacyBuild.equipment_unique_name,
-            mod_config: legacyBuild,
-          };
-          const response = await apiFetch('/api/builds', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-          });
-          if (!response.ok) {
-            continue;
-          }
-          const body = (await response.json()) as { id?: number | string };
-          if (body.id !== undefined && legacyBuild.id) {
-            idMap[legacyBuild.id] = String(body.id);
-          }
-        } catch {
-          // ignore
-        }
-      }
-      localStorage.setItem(MIGRATION_MAP_KEY, JSON.stringify(idMap));
-      localStorage.setItem(MIGRATED_KEY, '1');
-    }
-
-    void (async () => {
-      await migrateLegacyBuilds();
-      await refresh();
-    })();
+    void refresh();
   }, [refresh]);
 
   const saveBuild = useCallback(

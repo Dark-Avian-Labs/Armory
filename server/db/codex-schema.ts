@@ -1,9 +1,9 @@
 import type Database from 'better-sqlite3';
 
-export function createCorpusSchema(db: Database.Database): void {
+export function createCodexSchema(db: Database.Database): void {
   db.exec(`
     -- Warframes (includes Archwings, Necramechs)
-    CREATE TABLE IF NOT EXISTS corpus_warframes (
+    CREATE TABLE IF NOT EXISTS codex_warframes (
       unique_name TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT,
@@ -18,10 +18,10 @@ export function createCorpusSchema(db: Database.Database): void {
       mastery_req INTEGER DEFAULT 0,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_warframes_name ON corpus_warframes(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_warframes_name ON codex_warframes(name);
 
     -- Weapons (all types)
-    CREATE TABLE IF NOT EXISTS corpus_weapons (
+    CREATE TABLE IF NOT EXISTS codex_weapons (
       unique_name TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT,
@@ -43,11 +43,11 @@ export function createCorpusSchema(db: Database.Database): void {
       omega_attenuation REAL,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_weapons_name ON corpus_weapons(name);
-    CREATE INDEX IF NOT EXISTS idx_corpus_weapons_category ON corpus_weapons(product_category);
+    CREATE INDEX IF NOT EXISTS idx_codex_weapons_name ON codex_weapons(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_weapons_category ON codex_weapons(product_category);
 
     -- Companions (Sentinels, Kubrows, Kavats, etc.)
-    CREATE TABLE IF NOT EXISTS corpus_sentinels (
+    CREATE TABLE IF NOT EXISTS codex_sentinels (
       unique_name TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT,
@@ -59,10 +59,10 @@ export function createCorpusSchema(db: Database.Database): void {
       mastery_req INTEGER DEFAULT 0,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_sentinels_name ON corpus_sentinels(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_sentinels_name ON codex_sentinels(name);
 
     -- Mods / Upgrades
-    CREATE TABLE IF NOT EXISTS corpus_upgrades (
+    CREATE TABLE IF NOT EXISTS codex_upgrades (
       unique_name TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       polarity TEXT,
@@ -74,11 +74,11 @@ export function createCorpusSchema(db: Database.Database): void {
       level_stats TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_upgrades_name ON corpus_upgrades(name);
-    CREATE INDEX IF NOT EXISTS idx_corpus_upgrades_type ON corpus_upgrades(type);
+    CREATE INDEX IF NOT EXISTS idx_codex_upgrades_name ON codex_upgrades(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_upgrades_type ON codex_upgrades(type);
 
     -- Relics & Arcanes
-    CREATE TABLE IF NOT EXISTS corpus_relic_arcane (
+    CREATE TABLE IF NOT EXISTS codex_relic_arcane (
       unique_name TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT,
@@ -86,70 +86,70 @@ export function createCorpusSchema(db: Database.Database): void {
       level_stats TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_relic_arcane_name ON corpus_relic_arcane(name);
+      CREATE INDEX IF NOT EXISTS idx_codex_relic_arcane_name ON codex_relic_arcane(name);
 
     -- Manifest (image/texture mapping)
-    CREATE TABLE IF NOT EXISTS corpus_manifest (
+    CREATE TABLE IF NOT EXISTS codex_manifest (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       texture_location TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_manifest_name ON corpus_manifest(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_manifest_name ON codex_manifest(name);
 
     -- Customs (skins, cosmetics)
-    CREATE TABLE IF NOT EXISTS corpus_customs (
+    CREATE TABLE IF NOT EXISTS codex_customs (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_customs_name ON corpus_customs(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_customs_name ON codex_customs(name);
 
     -- Drones (extractors)
-    CREATE TABLE IF NOT EXISTS corpus_drones (
+    CREATE TABLE IF NOT EXISTS codex_drones (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_drones_name ON corpus_drones(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_drones_name ON codex_drones(name);
 
     -- Flavour (lore text, faction descriptions)
-    CREATE TABLE IF NOT EXISTS corpus_flavour (
+    CREATE TABLE IF NOT EXISTS codex_flavour (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       description TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_flavour_name ON corpus_flavour(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_flavour_name ON codex_flavour(name);
 
     -- Fusion Bundles (endo/fusion items)
-    CREATE TABLE IF NOT EXISTS corpus_fusion_bundles (
+    CREATE TABLE IF NOT EXISTS codex_fusion_bundles (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_fusion_bundles_name ON corpus_fusion_bundles(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_fusion_bundles_name ON codex_fusion_bundles(name);
 
     -- Gear (gear wheel items)
-    CREATE TABLE IF NOT EXISTS corpus_gear (
+    CREATE TABLE IF NOT EXISTS codex_gear (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       description TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_gear_name ON corpus_gear(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_gear_name ON codex_gear(name);
 
     -- Keys (quest keys, mission keys)
-    CREATE TABLE IF NOT EXISTS corpus_keys (
+    CREATE TABLE IF NOT EXISTS codex_keys (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       description TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_keys_name ON corpus_keys(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_keys_name ON codex_keys(name);
 
     -- Recipes (crafting recipes)
-    CREATE TABLE IF NOT EXISTS corpus_recipes (
+    CREATE TABLE IF NOT EXISTS codex_recipes (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       result_type TEXT,
@@ -159,63 +159,63 @@ export function createCorpusSchema(db: Database.Database): void {
       ingredients TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_recipes_name ON corpus_recipes(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_recipes_name ON codex_recipes(name);
 
     -- Regions (star chart)
-    CREATE TABLE IF NOT EXISTS corpus_regions (
+    CREATE TABLE IF NOT EXISTS codex_regions (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_regions_name ON corpus_regions(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_regions_name ON codex_regions(name);
 
     -- Resources
-    CREATE TABLE IF NOT EXISTS corpus_resources (
+    CREATE TABLE IF NOT EXISTS codex_resources (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       description TEXT,
       product_category TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_resources_name ON corpus_resources(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_resources_name ON codex_resources(name);
 
     -- Sortie Rewards
-    CREATE TABLE IF NOT EXISTS corpus_sortie_rewards (
+    CREATE TABLE IF NOT EXISTS codex_sortie_rewards (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_sortie_rewards_name ON corpus_sortie_rewards(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_sortie_rewards_name ON codex_sortie_rewards(name);
 
     -- Intrinsics (Railjack intrinsic categories)
-    CREATE TABLE IF NOT EXISTS corpus_intrinsics (
+    CREATE TABLE IF NOT EXISTS codex_intrinsics (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_intrinsics_name ON corpus_intrinsics(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_intrinsics_name ON codex_intrinsics(name);
 
     -- Other (miscellaneous store items)
-    CREATE TABLE IF NOT EXISTS corpus_other (
+    CREATE TABLE IF NOT EXISTS codex_other (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       description TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_other_name ON corpus_other(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_other_name ON codex_other(name);
 
     -- Mod Sets (set bonus definitions)
-    CREATE TABLE IF NOT EXISTS corpus_mod_sets (
+    CREATE TABLE IF NOT EXISTS codex_mod_sets (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       num_in_set INTEGER,
       stats TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_mod_sets_name ON corpus_mod_sets(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_mod_sets_name ON codex_mod_sets(name);
 
     -- Avionics (Railjack mods)
-    CREATE TABLE IF NOT EXISTS corpus_avionics (
+    CREATE TABLE IF NOT EXISTS codex_avionics (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       polarity TEXT,
@@ -225,10 +225,10 @@ export function createCorpusSchema(db: Database.Database): void {
       level_stats TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_avionics_name ON corpus_avionics(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_avionics_name ON codex_avionics(name);
 
     -- Focus Upgrades (Focus school nodes)
-    CREATE TABLE IF NOT EXISTS corpus_focus_upgrades (
+    CREATE TABLE IF NOT EXISTS codex_focus_upgrades (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       polarity TEXT,
@@ -238,19 +238,19 @@ export function createCorpusSchema(db: Database.Database): void {
       level_stats TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_focus_upgrades_name ON corpus_focus_upgrades(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_focus_upgrades_name ON codex_focus_upgrades(name);
 
     -- Abilities (Helminth-infusable abilities)
-    CREATE TABLE IF NOT EXISTS corpus_abilities (
+    CREATE TABLE IF NOT EXISTS codex_abilities (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       description TEXT,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_abilities_name ON corpus_abilities(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_abilities_name ON codex_abilities(name);
 
     -- Railjack Weapons
-    CREATE TABLE IF NOT EXISTS corpus_railjack_weapons (
+    CREATE TABLE IF NOT EXISTS codex_railjack_weapons (
       unique_name TEXT PRIMARY KEY,
       name TEXT,
       description TEXT,
@@ -263,17 +263,17 @@ export function createCorpusSchema(db: Database.Database): void {
       fire_rate REAL,
       raw_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_corpus_railjack_weapons_name ON corpus_railjack_weapons(name);
+    CREATE INDEX IF NOT EXISTS idx_codex_railjack_weapons_name ON codex_railjack_weapons(name);
 
     -- Nightwave (single-row: challenges + rewards)
-    CREATE TABLE IF NOT EXISTS corpus_nightwave (
+    CREATE TABLE IF NOT EXISTS codex_nightwave (
       id TEXT PRIMARY KEY DEFAULT 'current',
       name TEXT,
       raw_json TEXT NOT NULL
     );
 
     -- Railjack Nodes (single-row: node list)
-    CREATE TABLE IF NOT EXISTS corpus_railjack_nodes (
+    CREATE TABLE IF NOT EXISTS codex_railjack_nodes (
       id TEXT PRIMARY KEY DEFAULT 'current',
       name TEXT,
       raw_json TEXT NOT NULL
@@ -281,51 +281,51 @@ export function createCorpusSchema(db: Database.Database): void {
   `);
 
   db.exec(`
-    DROP VIEW IF EXISTS corpus_search;
-    CREATE VIEW corpus_search AS
-      SELECT unique_name, name, 'warframe' AS category, raw_json FROM corpus_warframes
+    DROP VIEW IF EXISTS codex_search;
+    CREATE VIEW codex_search AS
+      SELECT unique_name, name, 'warframe' AS category, raw_json FROM codex_warframes
       UNION ALL
-      SELECT unique_name, name, 'weapon' AS category, raw_json FROM corpus_weapons
+      SELECT unique_name, name, 'weapon' AS category, raw_json FROM codex_weapons
       UNION ALL
-      SELECT unique_name, name, 'sentinel' AS category, raw_json FROM corpus_sentinels
+      SELECT unique_name, name, 'sentinel' AS category, raw_json FROM codex_sentinels
       UNION ALL
-      SELECT unique_name, name, 'upgrade' AS category, raw_json FROM corpus_upgrades
+      SELECT unique_name, name, 'upgrade' AS category, raw_json FROM codex_upgrades
       UNION ALL
-      SELECT unique_name, name, 'relic_arcane' AS category, raw_json FROM corpus_relic_arcane
+      SELECT unique_name, name, 'relic_arcane' AS category, raw_json FROM codex_relic_arcane
       UNION ALL
-      SELECT unique_name, name, 'custom' AS category, raw_json FROM corpus_customs
+      SELECT unique_name, name, 'custom' AS category, raw_json FROM codex_customs
       UNION ALL
-      SELECT unique_name, name, 'drone' AS category, raw_json FROM corpus_drones
+      SELECT unique_name, name, 'drone' AS category, raw_json FROM codex_drones
       UNION ALL
-      SELECT unique_name, name, 'flavour' AS category, raw_json FROM corpus_flavour
+      SELECT unique_name, name, 'flavour' AS category, raw_json FROM codex_flavour
       UNION ALL
-      SELECT unique_name, name, 'fusion_bundle' AS category, raw_json FROM corpus_fusion_bundles
+      SELECT unique_name, name, 'fusion_bundle' AS category, raw_json FROM codex_fusion_bundles
       UNION ALL
-      SELECT unique_name, name, 'gear' AS category, raw_json FROM corpus_gear
+      SELECT unique_name, name, 'gear' AS category, raw_json FROM codex_gear
       UNION ALL
-      SELECT unique_name, name, 'key' AS category, raw_json FROM corpus_keys
+      SELECT unique_name, name, 'key' AS category, raw_json FROM codex_keys
       UNION ALL
-      SELECT unique_name, name, 'recipe' AS category, raw_json FROM corpus_recipes
+      SELECT unique_name, name, 'recipe' AS category, raw_json FROM codex_recipes
       UNION ALL
-      SELECT unique_name, name, 'region' AS category, raw_json FROM corpus_regions
+      SELECT unique_name, name, 'region' AS category, raw_json FROM codex_regions
       UNION ALL
-      SELECT unique_name, name, 'resource' AS category, raw_json FROM corpus_resources
+      SELECT unique_name, name, 'resource' AS category, raw_json FROM codex_resources
       UNION ALL
-      SELECT unique_name, name, 'sortie_reward' AS category, raw_json FROM corpus_sortie_rewards
+      SELECT unique_name, name, 'sortie_reward' AS category, raw_json FROM codex_sortie_rewards
       UNION ALL
-      SELECT unique_name, name, 'intrinsic' AS category, raw_json FROM corpus_intrinsics
+      SELECT unique_name, name, 'intrinsic' AS category, raw_json FROM codex_intrinsics
       UNION ALL
-      SELECT unique_name, name, 'other' AS category, raw_json FROM corpus_other
+      SELECT unique_name, name, 'other' AS category, raw_json FROM codex_other
       UNION ALL
-      SELECT unique_name, name, 'mod_set' AS category, raw_json FROM corpus_mod_sets
+      SELECT unique_name, name, 'mod_set' AS category, raw_json FROM codex_mod_sets
       UNION ALL
-      SELECT unique_name, name, 'avionic' AS category, raw_json FROM corpus_avionics
+      SELECT unique_name, name, 'avionic' AS category, raw_json FROM codex_avionics
       UNION ALL
-      SELECT unique_name, name, 'focus_upgrade' AS category, raw_json FROM corpus_focus_upgrades
+      SELECT unique_name, name, 'focus_upgrade' AS category, raw_json FROM codex_focus_upgrades
       UNION ALL
-      SELECT unique_name, name, 'ability' AS category, raw_json FROM corpus_abilities
+      SELECT unique_name, name, 'ability' AS category, raw_json FROM codex_abilities
       UNION ALL
-      SELECT unique_name, name, 'railjack_weapon' AS category, raw_json FROM corpus_railjack_weapons
+      SELECT unique_name, name, 'railjack_weapon' AS category, raw_json FROM codex_railjack_weapons
     ;
   `);
 

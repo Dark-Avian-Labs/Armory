@@ -72,7 +72,7 @@ Use one key per environment to reduce blast radius.
 | `AUTH_FETCH_TIMEOUT_MS`    | Optional timeout (ms) for Auth API calls (default: `5000`).                    |
 | `CENTRAL_DB_PATH`          | Shared central DB for users/sessions/access (default under `./data/`).         |
 | `ARMORY_DB_PATH`           | Optional override for the main app SQLite file (default `./data/armory.db`).   |
-| `CODEX_EXPORT_DB_PATH`     | Optional override for the Codex export mirror DB (default `./data/corpus.db`). |
+| `CODEX_EXPORT_DB_PATH`     | Optional override for the Codex export mirror DB (default `./data/codex.db`).  |
 | `COOKIE_DOMAIN`            | Optional cross-subdomain cookie domain.                                        |
 | `SESSION_COOKIE_NAME`      | Session cookie name.                                                           |
 | `HELMINTH_WIKI_USER_AGENT` | Optional `User-Agent` for Helminth wiki fetches (see `helminthWiki.ts`).       |

@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { EXPORTS_DIR } from '../config.js';
-import { getCorpusDb } from './corpus.js';
+import { getCodexDb } from './codex.js';
 
 interface ImportResult {
   category: string;
@@ -14,34 +14,34 @@ interface ImportResult {
 }
 
 const EXPORT_KEY_TO_TABLE: Record<string, string> = {
-  ExportWarframes: 'corpus_warframes',
-  ExportWeapons: 'corpus_weapons',
-  ExportSentinels: 'corpus_sentinels',
-  ExportUpgrades: 'corpus_upgrades',
-  ExportRelicArcane: 'corpus_relic_arcane',
-  Manifest: 'corpus_manifest',
-  ExportCustoms: 'corpus_customs',
-  ExportDrones: 'corpus_drones',
-  ExportFlavour: 'corpus_flavour',
-  ExportFusionBundles: 'corpus_fusion_bundles',
-  ExportGear: 'corpus_gear',
-  ExportKeys: 'corpus_keys',
-  ExportRecipes: 'corpus_recipes',
-  ExportRegions: 'corpus_regions',
-  ExportResources: 'corpus_resources',
-  ExportSortieRewards: 'corpus_sortie_rewards',
-  ExportIntrinsics: 'corpus_intrinsics',
-  ExportOther: 'corpus_other',
-  ExportModSet: 'corpus_mod_sets',
-  ExportAvionics: 'corpus_avionics',
-  ExportFocusUpgrades: 'corpus_focus_upgrades',
-  ExportAbilities: 'corpus_abilities',
-  ExportRailjackWeapons: 'corpus_railjack_weapons',
+  ExportWarframes: 'codex_warframes',
+  ExportWeapons: 'codex_weapons',
+  ExportSentinels: 'codex_sentinels',
+  ExportUpgrades: 'codex_upgrades',
+  ExportRelicArcane: 'codex_relic_arcane',
+  Manifest: 'codex_manifest',
+  ExportCustoms: 'codex_customs',
+  ExportDrones: 'codex_drones',
+  ExportFlavour: 'codex_flavour',
+  ExportFusionBundles: 'codex_fusion_bundles',
+  ExportGear: 'codex_gear',
+  ExportKeys: 'codex_keys',
+  ExportRecipes: 'codex_recipes',
+  ExportRegions: 'codex_regions',
+  ExportResources: 'codex_resources',
+  ExportSortieRewards: 'codex_sortie_rewards',
+  ExportIntrinsics: 'codex_intrinsics',
+  ExportOther: 'codex_other',
+  ExportModSet: 'codex_mod_sets',
+  ExportAvionics: 'codex_avionics',
+  ExportFocusUpgrades: 'codex_focus_upgrades',
+  ExportAbilities: 'codex_abilities',
+  ExportRailjackWeapons: 'codex_railjack_weapons',
 };
 
 const OBJECT_KEY_TO_TABLE: Record<string, string> = {
-  ExportNightwave: 'corpus_nightwave',
-  ExportRailjack: 'corpus_railjack_nodes',
+  ExportNightwave: 'codex_nightwave',
+  ExportRailjack: 'codex_railjack_nodes',
 };
 
 type ColumnExtractor = (item: Record<string, unknown>) => Record<string, unknown>;
@@ -73,7 +73,7 @@ function deterministicUniqueName(item: Record<string, unknown>, prefix: string):
 }
 
 const EXTRACTORS: Record<string, ColumnExtractor> = {
-  corpus_warframes: (item) => ({
+  codex_warframes: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || '',
     description: item.description || null,
@@ -88,7 +88,7 @@ const EXTRACTORS: Record<string, ColumnExtractor> = {
     mastery_req: item.masteryReq ?? 0,
   }),
 
-  corpus_weapons: (item) => ({
+  codex_weapons: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || '',
     description: item.description || null,
@@ -110,7 +110,7 @@ const EXTRACTORS: Record<string, ColumnExtractor> = {
     omega_attenuation: item.omegaAttenuation ?? null,
   }),
 
-  corpus_sentinels: (item) => ({
+  codex_sentinels: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || '',
     description: item.description || null,
@@ -122,7 +122,7 @@ const EXTRACTORS: Record<string, ColumnExtractor> = {
     mastery_req: item.masteryReq ?? 0,
   }),
 
-  corpus_upgrades: (item) => ({
+  codex_upgrades: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || '',
     polarity: item.polarity ?? null,
@@ -134,7 +134,7 @@ const EXTRACTORS: Record<string, ColumnExtractor> = {
     level_stats: item.levelStats ? JSON.stringify(item.levelStats) : null,
   }),
 
-  corpus_relic_arcane: (item) => ({
+  codex_relic_arcane: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || '',
     description: item.description || null,
@@ -142,7 +142,7 @@ const EXTRACTORS: Record<string, ColumnExtractor> = {
     level_stats: item.levelStats ? JSON.stringify(item.levelStats) : null,
   }),
 
-  corpus_manifest: (item) => ({
+  codex_manifest: (item) => ({
     unique_name: item.uniqueName,
     name:
       String(item.uniqueName || '')
@@ -151,40 +151,40 @@ const EXTRACTORS: Record<string, ColumnExtractor> = {
     texture_location: item.textureLocation ?? null,
   }),
 
-  corpus_customs: (item) => ({
+  codex_customs: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || null,
   }),
 
-  corpus_drones: (item) => ({
+  codex_drones: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || null,
   }),
 
-  corpus_flavour: (item) => ({
-    unique_name: item.uniqueName,
-    name: item.name || null,
-    description: item.description || null,
-  }),
-
-  corpus_fusion_bundles: (item) => ({
-    unique_name: item.uniqueName,
-    name: item.name || null,
-  }),
-
-  corpus_gear: (item) => ({
+  codex_flavour: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || null,
     description: item.description || null,
   }),
 
-  corpus_keys: (item) => ({
+  codex_fusion_bundles: (item) => ({
+    unique_name: item.uniqueName,
+    name: item.name || null,
+  }),
+
+  codex_gear: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || null,
     description: item.description || null,
   }),
 
-  corpus_recipes: (item) => ({
+  codex_keys: (item) => ({
+    unique_name: item.uniqueName,
+    name: item.name || null,
+    description: item.description || null,
+  }),
+
+  codex_recipes: (item) => ({
     unique_name: item.uniqueName,
     name: item.resultType ? String(item.resultType).split('/').pop() : null,
     result_type: item.resultType ?? null,
@@ -194,42 +194,42 @@ const EXTRACTORS: Record<string, ColumnExtractor> = {
     ingredients: item.ingredients ? JSON.stringify(item.ingredients) : null,
   }),
 
-  corpus_regions: (item) => ({
+  codex_regions: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || null,
   }),
 
-  corpus_resources: (item) => ({
+  codex_resources: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || null,
     description: item.description || null,
     product_category: item.productCategory ?? null,
   }),
 
-  corpus_sortie_rewards: (item) => ({
+  codex_sortie_rewards: (item) => ({
     unique_name: item.uniqueName || item.rewardName || deterministicUniqueName(item, 'sortie'),
     name: item.name || item.rewardName || null,
   }),
 
-  corpus_intrinsics: (item) => ({
+  codex_intrinsics: (item) => ({
     unique_name: item.uniqueName || item.name || deterministicUniqueName(item, 'intrinsic'),
     name: item.name || null,
   }),
 
-  corpus_other: (item) => ({
+  codex_other: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || null,
     description: item.description || null,
   }),
 
-  corpus_mod_sets: (item) => ({
+  codex_mod_sets: (item) => ({
     unique_name: item.uniqueName,
     name: item.uniqueName ? String(item.uniqueName).split('/').pop() : null,
     num_in_set: item.numUpgradesInSet ?? null,
     stats: item.stats ? JSON.stringify(item.stats) : null,
   }),
 
-  corpus_avionics: (item) => ({
+  codex_avionics: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || null,
     polarity: item.polarity ?? null,
@@ -239,7 +239,7 @@ const EXTRACTORS: Record<string, ColumnExtractor> = {
     level_stats: item.levelStats ? JSON.stringify(item.levelStats) : null,
   }),
 
-  corpus_focus_upgrades: (item) => ({
+  codex_focus_upgrades: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || null,
     polarity: item.polarity ?? null,
@@ -249,13 +249,13 @@ const EXTRACTORS: Record<string, ColumnExtractor> = {
     level_stats: item.levelStats ? JSON.stringify(item.levelStats) : null,
   }),
 
-  corpus_abilities: (item) => ({
+  codex_abilities: (item) => ({
     unique_name: item.abilityUniqueName || item.uniqueName,
     name: item.abilityName || item.name || null,
     description: item.description || null,
   }),
 
-  corpus_railjack_weapons: (item) => ({
+  codex_railjack_weapons: (item) => ({
     unique_name: item.uniqueName,
     name: item.name || null,
     description: item.description || null,
@@ -280,7 +280,7 @@ function importCategory(
   tableName: string,
   items: Record<string, unknown>[],
 ): { count: number; failureCount: number } {
-  const db = getCorpusDb();
+  const db = getCodexDb();
   const extractor = EXTRACTORS[tableName] || defaultExtractor;
 
   if (items.length === 0) return { count: 0, failureCount: 0 };
@@ -373,7 +373,7 @@ export function importAllToCodexExport(): ImportResult[] {
             continue;
           }
 
-          const db = getCorpusDb();
+          const db = getCodexDb();
           const rawJson = JSON.stringify(value);
           db.prepare(
             `INSERT OR REPLACE INTO ${tableName} (id, name, raw_json) VALUES (?, ?, ?)`,
