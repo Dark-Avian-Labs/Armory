@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-export function createCorpusSchema(db: Database.Database): void {
+export function createCodexSchema(db: Database.Database): void {
   db.exec(`
     -- Warframes (includes Archwings, Necramechs)
     CREATE TABLE IF NOT EXISTS corpus_warframes (

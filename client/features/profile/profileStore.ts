@@ -1,7 +1,6 @@
 import type { AppAccountProfile } from '../auth/types';
 
 const PROFILE_STORAGE_KEY = 'armory.profile.v1';
-const LEGACY_PROFILE_STORAGE_KEY = 'parametric.profile.v1';
 
 interface StoredProfile {
   displayName: string;
@@ -12,18 +11,7 @@ function readProfileStorage(): Record<string, StoredProfile> {
     return {};
   }
   try {
-    let raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
-    if (!raw) {
-      raw = window.localStorage.getItem(LEGACY_PROFILE_STORAGE_KEY);
-      if (raw) {
-        try {
-          window.localStorage.setItem(PROFILE_STORAGE_KEY, raw);
-          window.localStorage.removeItem(LEGACY_PROFILE_STORAGE_KEY);
-        } catch {
-          // ignore migration failures
-        }
-      }
-    }
+    const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
     if (!raw) {
       return {};
     }

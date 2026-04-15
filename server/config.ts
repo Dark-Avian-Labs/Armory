@@ -52,9 +52,8 @@ export const EXPORTS_DIR = path.join(DATA_DIR, 'exports');
 export const IMAGES_DIR = path.join(DATA_DIR, 'images');
 export const ARMORY_DB_PATH =
   process.env.ARMORY_DB_PATH?.trim() || path.join(DATA_DIR, 'armory.db');
-/** Warframe export mirror used by Codex sync; default filename kept for existing deployments. */
 export const CODEX_EXPORT_DB_PATH =
-  process.env.CODEX_EXPORT_DB_PATH?.trim() || path.join(DATA_DIR, 'corpus.db');
+  process.env.CODEX_EXPORT_DB_PATH?.trim() || path.join(DATA_DIR, 'codex.db');
 export const CENTRAL_DB_PATH = process.env.CENTRAL_DB_PATH || path.join(DATA_DIR, 'central.db');
 
 const _port = parseInt(process.env.PORT || '3002', 10);

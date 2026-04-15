@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { EXPORTS_DIR } from '../config.js';
-import { getCorpusDb } from './corpus.js';
+import { getCodexDb } from './codex.js';
 
 interface ImportResult {
   category: string;
@@ -280,7 +280,7 @@ function importCategory(
   tableName: string,
   items: Record<string, unknown>[],
 ): { count: number; failureCount: number } {
-  const db = getCorpusDb();
+  const db = getCodexDb();
   const extractor = EXTRACTORS[tableName] || defaultExtractor;
 
   if (items.length === 0) return { count: 0, failureCount: 0 };
@@ -373,7 +373,7 @@ export function importAllToCodexExport(): ImportResult[] {
             continue;
           }
 
-          const db = getCorpusDb();
+          const db = getCodexDb();
           const rawJson = JSON.stringify(value);
           db.prepare(
             `INSERT OR REPLACE INTO ${tableName} (id, name, raw_json) VALUES (?, ?, ?)`,
