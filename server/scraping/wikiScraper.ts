@@ -153,7 +153,15 @@ function normalizeText(s: string): string {
   return s
     .replace(/\u00A0/g, ' ')
     .replace(/[\u2018\u2019]/g, "'")
+    .replace(/\r\n/g, '\n')
     .trim();
+}
+
+function textPreservingLineBreaks($root: cheerio.Cheerio<Element>): string {
+  if ($root.length === 0) return '';
+  const $clone = $root.clone();
+  $clone.find('br').replaceWith('\n');
+  return $clone.text();
 }
 
 async function scrapeAbilityPage(
@@ -430,17 +438,25 @@ async function scrapeWarframePage(wfName: string): Promise<string | null> {
       .first();
 
     if (passiveGroup.length > 0) {
-      const caption = normalizeText(passiveGroup.find('.row .value.caption').first().text());
-      if (caption.length > 0) {
-        return caption;
+      const $captionCell = passiveGroup.find('.row .value.caption').first();
+      if ($captionCell.length > 0) {
+        const caption = normalizeText(textPreservingLineBreaks($captionCell));
+        if (caption.length > 0) {
+          return caption;
+        }
       }
 
-      const value = normalizeText(passiveGroup.find('.row .value').first().text());
-      if (value.length > 0) {
-        return value;
+      const $valueCell = passiveGroup.find('.row .value').first();
+      if ($valueCell.length > 0) {
+        const value = normalizeText(textPreservingLineBreaks($valueCell));
+        if (value.length > 0) {
+          return value;
+        }
       }
 
-      const fallbackGroupText = normalizeText(passiveGroup.text().replace(/^Passive\s*/i, ''));
+      const $fallback = passiveGroup.clone();
+      $fallback.find('br').replaceWith('\n');
+      const fallbackGroupText = normalizeText($fallback.text().replace(/^Passive\s*/i, ''));
       if (fallbackGroupText.length > 0) {
         return fallbackGroupText;
       }
@@ -451,7 +467,7 @@ async function scrapeWarframePage(wfName: string): Promise<string | null> {
   if (passiveHeader.length > 0) {
     const nextP = passiveHeader.nextAll('p').first();
     if (nextP.length > 0) {
-      return normalizeText(nextP.text());
+      return normalizeText(textPreservingLineBreaks(nextP));
     }
   }
 
@@ -462,7 +478,7 @@ async function scrapeWarframePage(wfName: string): Promise<string | null> {
   if (passiveHeading.length > 0) {
     const nextP = passiveHeading.nextAll('p').first();
     if (nextP.length > 0) {
-      return normalizeText(nextP.text());
+      return normalizeText(textPreservingLineBreaks(nextP));
     }
   }
 

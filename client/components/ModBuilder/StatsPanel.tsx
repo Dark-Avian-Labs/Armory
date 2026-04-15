@@ -171,16 +171,16 @@ function WarframeStats({
   const passiveText = useMemo(() => {
     const wiki = warframe.passive_description_wiki?.trim() ?? '';
     const base = warframe.passive_description?.trim() ?? '';
+    let raw: string;
     if (wiki && base) {
       const wikiWordCount = wiki.split(/\s+/).filter(Boolean).length;
       const baseWordCount = base.split(/\s+/).filter(Boolean).length;
       const looksTruncated = wikiWordCount <= 3 || wiki.length < Math.max(20, base.length * 0.6);
-      if (looksTruncated && baseWordCount > wikiWordCount) {
-        return base;
-      }
-      return wiki;
+      raw = looksTruncated && baseWordCount > wikiWordCount ? base : wiki;
+    } else {
+      raw = wiki || base;
     }
-    return wiki || base;
+    return raw ? formatPassiveLineBreaks(raw) : '';
   }, [warframe.passive_description, warframe.passive_description_wiki]);
 
   return (
@@ -196,7 +196,9 @@ function WarframeStats({
         />
       )}
       <div className="text-foreground text-center text-sm font-semibold">{warframe.name}</div>
-      <div className="text-muted text-center text-xs">MR {warframe.mastery_req}</div>
+      <div className="text-muted text-center text-xs">
+        MR <span className="font-mono tabular-nums">{warframe.mastery_req}</span>
+      </div>
 
       <div className="mt-3 space-y-1.5">
         {baseStats.map(
@@ -205,7 +207,7 @@ function WarframeStats({
               <div key={stat.label} className="flex justify-between text-xs">
                 <span className="text-muted">{stat.label}</span>
                 <span
-                  className={`font-medium ${stat.moddedDisplay != null && stat.color !== 'text-foreground' ? stat.color : 'text-foreground'}`}
+                  className={`font-mono font-medium tabular-nums ${stat.moddedDisplay != null && stat.color !== 'text-foreground' ? stat.color : 'text-foreground'}`}
                 >
                   {stat.moddedDisplay ?? stat.baseDisplay}
                 </span>
@@ -222,7 +224,7 @@ function WarframeStats({
               <div key={stat.label} className="flex justify-between text-xs">
                 <span className="text-muted">{stat.label}</span>
                 <span
-                  className={`font-medium ${stat.moddedDisplay != null && stat.color !== 'text-foreground' ? stat.color : 'text-foreground'}`}
+                  className={`font-mono font-medium tabular-nums ${stat.moddedDisplay != null && stat.color !== 'text-foreground' ? stat.color : 'text-foreground'}`}
                 >
                   {stat.moddedDisplay ?? stat.baseDisplay}
                 </span>
@@ -281,11 +283,18 @@ const DT_ICON_MAP: Record<string, string> = {
   DT_TRUE_COLOR: '20_true',
 };
 
+function formatPassiveLineBreaks(text: string): string {
+  let s = text.replace(/\r\n/g, '\n');
+  s = s.replace(/\.([A-Z]{3,})\b/g, '.\n$1');
+  s = s.replace(/\)([A-Z]{3,})\b/g, ')\n$1');
+  return s;
+}
+
 function PassiveText({ text }: { text: string }) {
   const parts = text.split(/(<[^>]+>|\|[A-Z_]+\|)/g);
 
   return (
-    <span className="inline">
+    <span className="inline whitespace-pre-line">
       {parts.map((part, i) => {
         const tagMatch = part.match(/^<([^>]+)>$/);
         if (tagMatch) {
@@ -531,7 +540,7 @@ function WeaponStats({
       )}
       <div className="text-foreground text-center text-sm font-semibold">{weapon.name}</div>
       <div className="text-muted text-center text-xs">
-        MR {weapon.mastery_req}
+        MR <span className="font-mono tabular-nums">{weapon.mastery_req}</span>
         {weapon.product_category && ` · ${weapon.product_category}`}
       </div>
 
@@ -542,7 +551,7 @@ function WeaponStats({
               <div key={stat.label} className="flex justify-between text-xs">
                 <span className="text-muted">{stat.label}</span>
                 <span
-                  className={`font-medium ${stat.moddedDisplay != null && stat.color !== 'text-foreground' ? stat.color : 'text-foreground'}`}
+                  className={`font-mono font-medium tabular-nums ${stat.moddedDisplay != null && stat.color !== 'text-foreground' ? stat.color : 'text-foreground'}`}
                 >
                   {stat.moddedDisplay ?? stat.baseDisplay}
                 </span>
@@ -566,7 +575,7 @@ function WeaponStats({
                 {'●'.repeat(dispositionPips)}
                 {'○'.repeat(5 - dispositionPips)}
               </span>
-              <span>{rivenDisposition.toFixed(3)}</span>
+              <span className="font-mono tabular-nums">{rivenDisposition.toFixed(3)}</span>
             </span>
           </div>
         )}
@@ -575,7 +584,9 @@ function WeaponStats({
             stat.value != null && (
               <div key={stat.label} className="flex justify-between text-xs">
                 <span className="text-muted">{stat.label}</span>
-                <span className="text-foreground font-medium">{stat.value}</span>
+                <span className="text-foreground font-mono font-medium tabular-nums">
+                  {stat.value}
+                </span>
               </div>
             ),
         )}
@@ -590,25 +601,29 @@ function WeaponStats({
           <div className="mt-1 space-y-1">
             <div className="flex justify-between text-xs">
               <span className="text-muted">Avg Hit</span>
-              <span className="text-foreground font-semibold">
+              <span className="text-foreground font-mono font-semibold tabular-nums">
                 {formatBigNumber(calc.averageHit)}
               </span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted">Burst DPS</span>
-              <span className="text-accent font-semibold">{formatBigNumber(calc.burstDps)}</span>
+              <span className="text-accent font-mono font-semibold tabular-nums">
+                {formatBigNumber(calc.burstDps)}
+              </span>
             </div>
             {!isMelee && (
               <div className="flex justify-between text-xs">
                 <span className="text-muted">Sustained DPS</span>
-                <span className="text-accent font-semibold">
+                <span className="text-accent font-mono font-semibold tabular-nums">
                   {formatBigNumber(calc.sustainedDps)}
                 </span>
               </div>
             )}
             <div className="flex justify-between text-xs">
               <span className="text-muted">Status/sec</span>
-              <span className="text-foreground font-medium">{calc.statusPerSec.toFixed(2)}</span>
+              <span className="text-foreground font-mono font-medium tabular-nums">
+                {calc.statusPerSec.toFixed(2)}
+              </span>
             </div>
           </div>
         </div>
@@ -622,7 +637,9 @@ function WeaponStats({
               fb.projectileSpeed != null ? (
                 <div key={i} className="flex justify-between text-xs">
                   <span className="text-muted">{fb.name}</span>
-                  <span className="text-foreground font-medium">{fb.projectileSpeed} m/s</span>
+                  <span className="text-foreground font-mono font-medium tabular-nums">
+                    {fb.projectileSpeed} m/s
+                  </span>
                 </div>
               ) : null,
             )}
