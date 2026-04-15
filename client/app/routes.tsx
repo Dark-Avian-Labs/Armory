@@ -116,6 +116,10 @@ export function AppRoutes() {
     <ChunkErrorBoundary>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
+          <Route element={<Layout />}>
+            <Route path={APP_PATHS.legal} element={<LegalPage />} />
+            <Route path="/auth/legal" element={<LegalPage />} />
+          </Route>
           <Route
             element={
               <RequireAuth>
@@ -134,7 +138,6 @@ export function AppRoutes() {
             <Route path={APP_PATHS.buildNew} element={<ModBuilder />} />
             <Route path={APP_PATHS.buildEdit} element={<ModBuilder />} />
             <Route path={APP_PATHS.admin} element={<AdminPage />} />
-            <Route path={APP_PATHS.legal} element={<LegalPage />} />
           </Route>
           <Route path={APP_PATHS.login} element={<LoginPage />} />
           <Route path="*" element={<NotFoundPage />} />

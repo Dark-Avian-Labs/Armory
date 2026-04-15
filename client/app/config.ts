@@ -16,10 +16,14 @@ export const LEGAL_ENTITY_NAME = readTrimmedEnv(
   'Dark Avian Labs',
 );
 
-export const LEGAL_PAGE_URL = readTrimmedEnv(
+let legalPageUrl = readTrimmedEnv(
   import.meta.env.VITE_LEGAL_PAGE_URL as string | undefined,
   '/auth/legal',
 );
+if (legalPageUrl === '/legal') {
+  legalPageUrl = '/auth/legal';
+}
+export const LEGAL_PAGE_URL = legalPageUrl;
 
 export const AUTH_PROFILE_URL = readTrimmedEnv(
   import.meta.env.VITE_AUTH_PROFILE_URL as string | undefined,
