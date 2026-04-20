@@ -16,6 +16,7 @@ on:
       - 'icons/**'
       - 'index.html'
       - 'package.json'
+      - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - 'tsconfig*.json'
       - 'vite.config.ts'
@@ -31,7 +32,7 @@ concurrency:
 
 jobs:
   deployment-check:
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
 
     outputs:
@@ -97,7 +98,7 @@ jobs:
           echo "Reason: Only devDependencies or lockfile changed"
 
   validate:
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
 
     needs: deployment-check
@@ -132,7 +133,7 @@ jobs:
         run: pnpm run test
 
   build-and-deploy:
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
 
     needs: [deployment-check, validate]
