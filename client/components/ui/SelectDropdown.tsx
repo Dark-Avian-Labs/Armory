@@ -128,7 +128,7 @@ export function SelectDropdown({
           id={listboxId}
           role="listbox"
           onKeyDown={handleListboxKeyDown}
-          className="user-menu absolute top-full left-0 z-[110] mt-1 max-h-48 w-full min-w-[12rem] overflow-hidden"
+          className="select-dropdown-menu absolute top-full left-0 z-[240] mt-1 max-h-56 w-full min-w-[12rem] overflow-hidden"
         >
           <div className="custom-scroll max-h-48 overflow-y-auto">
             {options.map((opt, i) => {
@@ -144,8 +144,8 @@ export function SelectDropdown({
                   role="option"
                   tabIndex={isFocused ? 0 : -1}
                   aria-selected={isSelected}
-                  className={`user-menu-item text-xs outline-none ${
-                    isSelected ? 'bg-accent-weak text-accent' : ''
+                  className={`select-dropdown-item text-xs outline-none ${
+                    isSelected ? 'is-selected' : ''
                   } ${isFocused ? 'ring-1 ring-[color-mix(in_oklab,var(--color-accent)_40%,transparent)]' : ''}`}
                   onFocus={() => setFocusedIndex(i)}
                   onKeyDown={(ev) => {
