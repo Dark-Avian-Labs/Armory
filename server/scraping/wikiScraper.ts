@@ -720,6 +720,94 @@ export async function scrapeArchonShards(
 export async function scrapeRivenDispositions(
   onProgress?: (msg: string) => void,
 ): Promise<WikiRivenDisposition[]> {
+  function dedupeDispositions(
+    items: WikiRivenDisposition[],
+    keep = 'first',
+  ): WikiRivenDisposition[] {
+    const deduped = new Map<string, WikiRivenDisposition>();
+    for (const d of items) {
+      const key = d.weapon_name.toLowerCase();
+      if (!deduped.has(key) || keep === 'last') {
+        deduped.set(key, d);
+      }
+    }
+    return Array.from(deduped.values());
+  }
+
+  function collectRivenDispositionsFromCheerio(
+    $: cheerio.CheerioAPI,
+    sourceLabel: string,
+  ): WikiRivenDisposition[] {
+    const dispositions: WikiRivenDisposition[] = [];
+
+    // Original parser path: tabular pages where disposition values appear in columns.
+    $('table.wikitable, table.listtable').each((_, table) => {
+      const headers = $(table)
+        .find('tr')
+        .first()
+        .find('th')
+        .toArray()
+        .map((th) => normalizeText($(th).text()).toLowerCase());
+      if (!headers.some((h) => h.includes('weapon') || h.includes('name'))) return;
+      if (
+        !headers.some(
+          (h) => h.includes('disposition') || h.includes('attenuation') || h.includes('multiplier'),
+        )
+      ) {
+        return;
+      }
+
+      $(table)
+        .find('tr')
+        .slice(1)
+        .each((__, row) => {
+          const cells = $(row).find('td');
+          if (cells.length < 2) return;
+          const weaponName = normalizeText(cells.eq(0).text()).replace(/\s+/g, ' ');
+          const rowText = normalizeText($(row).text());
+          const multMatch = rowText.match(/(\d+(?:\.\d+)?)\s*x/i);
+          if (!weaponName || !multMatch) return;
+          const disposition = parseFloat(multMatch[1]);
+          if (!Number.isFinite(disposition)) return;
+          dispositions.push({ weapon_name: weaponName, disposition });
+        });
+    });
+
+    // Fallback parser path: list/text entries like "Weapon Name(0.55)".
+    const addFromText = (text: string): void => {
+      const normalized = normalizeText(text).replace(/\s+/g, ' ').trim();
+      if (!normalized) return;
+      const m = normalized.match(/^(.+?)\s*\((\d+(?:\.\d+)?)\)\s*$/);
+      if (!m) return;
+
+      const weaponName = m[1].trim();
+      const disposition = parseFloat(m[2]);
+      if (!weaponName || !Number.isFinite(disposition)) return;
+      if (disposition < 0 || disposition > 2) return;
+
+      dispositions.push({ weapon_name: weaponName, disposition });
+    };
+
+    $('#mw-content-text td, #mw-content-text li').each((_, el) => {
+      addFromText($(el).text());
+    });
+    if (dispositions.length === 0) {
+      // Last resort: scan whole content text for "(0.xx)" style entries.
+      const text = normalizeText($('#mw-content-text').text());
+      const re = /([A-Za-z0-9'().\-&:+/ ]{2,}?)\s*\((\d+(?:\.\d+)?)\)/g;
+      let match: RegExpExecArray | null = null;
+      while ((match = re.exec(text)) !== null) {
+        addFromText(`${match[1]}(${match[2]})`);
+      }
+    }
+
+    const deduped = dedupeDispositions(dispositions);
+    onProgress?.(
+      `[Riven Dispositions] Parsed ${deduped.length} candidate rows from ${sourceLabel}`,
+    );
+    return deduped;
+  }
+
   onProgress?.('Fetching Riven Mods wiki page...');
   const res = await fetchWithTimeout(`${WIKI_BASE}/w/Riven_Mods`);
   if (!res.ok) {
@@ -728,47 +816,31 @@ export async function scrapeRivenDispositions(
 
   const html = await res.text();
   const $ = cheerio.load(html);
-  const dispositions: WikiRivenDisposition[] = [];
 
-  $('table.wikitable').each((_, table) => {
-    const headers = $(table)
-      .find('tr')
-      .first()
-      .find('th')
-      .toArray()
-      .map((th) => normalizeText($(th).text()).toLowerCase());
-    if (!headers.some((h) => h.includes('weapon'))) return;
-    if (
-      !headers.some(
-        (h) => h.includes('disposition') || h.includes('attenuation') || h.includes('multiplier'),
-      )
-    ) {
-      return;
-    }
+  let output = collectRivenDispositionsFromCheerio($, '/w/Riven_Mods');
 
-    $(table)
-      .find('tr')
-      .slice(1)
-      .each((__, row) => {
-        const cells = $(row).find('td');
-        if (cells.length < 2) return;
-        const weaponName = normalizeText(cells.eq(0).text()).replace(/\s+/g, ' ');
-        const rowText = normalizeText($(row).text());
-        const multMatch = rowText.match(/(\d+(?:\.\d+)?)\s*x/i);
-        if (!weaponName || !multMatch) return;
-        const disposition = parseFloat(multMatch[1]);
-        if (!Number.isFinite(disposition)) return;
-        dispositions.push({ weapon_name: weaponName, disposition });
-      });
-  });
-
-  const deduped = new Map<string, WikiRivenDisposition>();
-  for (const d of dispositions) {
-    if (!deduped.has(d.weapon_name.toLowerCase())) {
-      deduped.set(d.weapon_name.toLowerCase(), d);
+  if (output.length === 0) {
+    onProgress?.(
+      '[Riven Dispositions] No rows found on /w/Riven_Mods; trying /w/Riven_Mods/Weapon_Dispos...',
+    );
+    const fallbackRes = await fetchWithTimeout(`${WIKI_BASE}/w/Riven_Mods/Weapon_Dispos`);
+    if (fallbackRes.ok) {
+      const fallbackHtml = await fallbackRes.text();
+      const $fallback = cheerio.load(fallbackHtml);
+      output = dedupeDispositions(
+        [
+          ...output,
+          ...collectRivenDispositionsFromCheerio($fallback, '/w/Riven_Mods/Weapon_Dispos'),
+        ],
+        'first',
+      );
+    } else {
+      onProgress?.(
+        `[Riven Dispositions] Fallback page fetch failed: ${fallbackRes.status} ${fallbackRes.statusText}`,
+      );
     }
   }
-  const output = Array.from(deduped.values());
+
   onProgress?.(`Found ${output.length} riven disposition rows`);
   return output;
 }

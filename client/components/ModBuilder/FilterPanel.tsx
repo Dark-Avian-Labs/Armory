@@ -255,6 +255,7 @@ export function FilterPanel({
     [onModSelect],
   );
   const rivenWeaponType = getRivenWeaponType(equipmentType);
+  const canShowRivenPlaceholder = targetSlotType !== 'stance' && targetSlotType !== 'exilus';
   const rivenArt = useMemo(() => {
     const preferredName = getRivenArtNameForType(equipmentType);
     if (preferredName) {
@@ -412,7 +413,7 @@ export function FilterPanel({
                   />
                 </div>
               )}
-              {rivenWeaponType && !search && (
+              {rivenWeaponType && canShowRivenPlaceholder && !search && (
                 <div
                   onClick={() => onModSelect(rivenPlaceholderMod)}
                   draggable
