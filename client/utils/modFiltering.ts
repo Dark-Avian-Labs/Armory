@@ -303,7 +303,7 @@ function getStanceFamiliesFromDescription(mod: Mod): string[] {
   const families = new Set<string>();
   for (const family of STANCE_FAMILY_DEFINITIONS) {
     for (const alias of family.aliases) {
-      if (normalizedText.includes(alias)) {
+      if (containsNormalizedPhrase(normalizedText, alias)) {
         for (const g of family.aliases) families.add(g);
         break;
       }

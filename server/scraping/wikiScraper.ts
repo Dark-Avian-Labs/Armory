@@ -722,7 +722,7 @@ export async function scrapeRivenDispositions(
 ): Promise<WikiRivenDisposition[]> {
   function dedupeDispositions(
     items: WikiRivenDisposition[],
-    keep = 'first',
+    keep: 'first' | 'last' = 'first',
   ): WikiRivenDisposition[] {
     const deduped = new Map<string, WikiRivenDisposition>();
     for (const d of items) {
@@ -827,13 +827,7 @@ export async function scrapeRivenDispositions(
     if (fallbackRes.ok) {
       const fallbackHtml = await fallbackRes.text();
       const $fallback = cheerio.load(fallbackHtml);
-      output = dedupeDispositions(
-        [
-          ...output,
-          ...collectRivenDispositionsFromCheerio($fallback, '/w/Riven_Mods/Weapon_Dispos'),
-        ],
-        'first',
-      );
+      output = collectRivenDispositionsFromCheerio($fallback, '/w/Riven_Mods/Weapon_Dispos');
     } else {
       onProgress?.(
         `[Riven Dispositions] Fallback page fetch failed: ${fallbackRes.status} ${fallbackRes.statusText}`,
