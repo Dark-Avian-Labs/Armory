@@ -369,7 +369,6 @@ export function stanceMatchesEquipment(
     return true;
   }
 
-  // Guard against family token bleed (e.g. "heavy scythe" matching plain "scythe").
   if (
     compatNorm.includes('heavy scythe') &&
     !hasAnyHint(searchable, ['heavy scythe', 'heavy scythes'])
