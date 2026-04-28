@@ -181,6 +181,160 @@ function getCompatTokens(value: string | undefined): string[] {
   return normalized.split(' ').filter((token) => token.length >= MIN_COMPAT_TOKEN_LENGTH);
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function containsNormalizedPhrase(haystack: string, needle: string): boolean {
+  const normalizedNeedle = normalizeCompatText(needle);
+  if (!normalizedNeedle) return false;
+  const pattern = `\\b${escapeRegExp(normalizedNeedle).replace(/\\ /g, '\\s+')}\\b`;
+  return new RegExp(pattern).test(haystack);
+}
+
+const STANCE_FAMILY_DEFINITIONS: Array<{
+  aliases: string[];
+  equipmentHints: string[];
+}> = [
+  {
+    aliases: ['scythe', 'scythes', 'heavy scythe', 'heavy scythes'],
+    equipmentHints: ['scythe', 'scythes', '/scythe', '/scythes'],
+  },
+  {
+    aliases: ['heavy blade', 'heavy blades', 'great sword', 'greatsword', 'heavy sword'],
+    equipmentHints: ['heavy blade', 'great sword', 'greatsword', '/greatsword'],
+  },
+  {
+    aliases: ['sword', 'swords', 'long sword', 'longsword'],
+    equipmentHints: ['long sword', 'longsword', '/longsword'],
+  },
+  {
+    aliases: ['dagger', 'daggers'],
+    equipmentHints: ['dagger', 'daggers', '/dagger'],
+  },
+  {
+    aliases: ['dual daggers', 'dual dagger'],
+    equipmentHints: ['dual dagger', 'dual daggers', '/dualdagger'],
+  },
+  {
+    aliases: ['nikana'],
+    equipmentHints: ['nikana', '/nikana'],
+  },
+  {
+    aliases: ['staff', 'staves'],
+    equipmentHints: ['staff', 'staves', '/staff'],
+  },
+  {
+    aliases: ['polearm', 'polearms'],
+    equipmentHints: ['polearm', 'polearms', '/polearm'],
+  },
+  {
+    aliases: ['hammer', 'hammers'],
+    equipmentHints: ['hammer', 'hammers', '/hammer'],
+  },
+  {
+    aliases: ['fist', 'fists'],
+    equipmentHints: ['fist', 'fists', '/fist'],
+  },
+  {
+    aliases: ['sparring'],
+    equipmentHints: ['sparring', '/sparring'],
+  },
+  {
+    aliases: ['tonfa', 'tonfas'],
+    equipmentHints: ['tonfa', 'tonfas', '/tonfa'],
+  },
+  {
+    aliases: ['claws'],
+    equipmentHints: ['claws', '/claws'],
+  },
+  {
+    aliases: ['whip', 'whips'],
+    equipmentHints: ['whip', 'whips', '/whip'],
+  },
+  {
+    aliases: ['blade and whip', 'blade whip'],
+    equipmentHints: ['blade and whip', 'blade whip', 'bladeandwhip', '/bladeandwhip'],
+  },
+  {
+    aliases: ['gunblade', 'gun blade'],
+    equipmentHints: ['gunblade', 'gun blade', '/gunblade'],
+  },
+  {
+    aliases: ['warfan', 'war fan', 'warfans'],
+    equipmentHints: ['warfan', 'war fan', 'warfans', '/warfan'],
+  },
+  {
+    aliases: ['rapier', 'rapiers'],
+    equipmentHints: ['rapier', 'rapiers', '/rapier'],
+  },
+];
+
+function getStanceCompatAliases(value: string): string[] {
+  const normalized = normalizeCompatText(value);
+  if (!normalized) return [];
+  for (const family of STANCE_FAMILY_DEFINITIONS) {
+    if (family.aliases.includes(normalized)) {
+      return family.aliases;
+    }
+  }
+  return [normalized];
+}
+
+function parseModDescriptionLines(mod: Mod): string[] {
+  const raw = mod.description?.trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed.filter((entry): entry is string => typeof entry === 'string');
+    }
+  } catch {
+    // ignore
+  }
+  return [raw];
+}
+
+function getStanceFamiliesFromDescription(mod: Mod): string[] {
+  const lines = parseModDescriptionLines(mod);
+  if (lines.length === 0) return [];
+  const normalizedText = normalizeCompatText(lines.join(' '));
+  if (!normalizedText) return [];
+  const families = new Set<string>();
+  for (const family of STANCE_FAMILY_DEFINITIONS) {
+    for (const alias of family.aliases) {
+      if (containsNormalizedPhrase(normalizedText, alias)) {
+        for (const g of family.aliases) families.add(g);
+        break;
+      }
+    }
+  }
+  return [...families];
+}
+
+function getEquipmentStanceFamilyAliases(equipment: {
+  unique_name: string;
+  name: string;
+  product_category?: string;
+}): string[] {
+  const searchable = `${normalizeCompatText(equipment.name)} ${normalizeCompatText(equipment.unique_name)}`;
+  const aliases = new Set<string>();
+  for (const family of STANCE_FAMILY_DEFINITIONS) {
+    if (
+      family.aliases.includes('sword') &&
+      (searchable.includes('great sword') || searchable.includes('greatsword'))
+    ) {
+      continue;
+    }
+    if (family.equipmentHints.some((hint) => searchable.includes(hint))) {
+      for (const alias of family.aliases) {
+        aliases.add(alias);
+      }
+    }
+  }
+  return [...aliases];
+}
+
 export function stanceMatchesEquipment(
   mod: Mod,
   equipment?: { unique_name: string; name: string; product_category?: string },
@@ -199,12 +353,38 @@ export function stanceMatchesEquipment(
     return true;
   }
 
-  if (searchable.includes(compatNorm) || compatNorm.includes(normalizeCompatText(equipment.name))) {
+  const suppressSwordFamilyOnGreatSword =
+    ['sword', 'swords', 'long sword', 'longsword'].includes(compatNorm) &&
+    (searchable.includes('great sword') || searchable.includes('greatsword'));
+
+  if (
+    !suppressSwordFamilyOnGreatSword &&
+    (containsNormalizedPhrase(searchable, compatNorm) ||
+      containsNormalizedPhrase(compatNorm, normalizeCompatText(equipment.name)))
+  ) {
+    return true;
+  }
+
+  if (suppressSwordFamilyOnGreatSword) {
+    return false;
+  }
+
+  const compatAliases = new Set<string>(getStanceCompatAliases(compatNorm));
+  for (const family of getStanceFamiliesFromDescription(mod)) {
+    for (const alias of getStanceCompatAliases(family)) {
+      compatAliases.add(alias);
+    }
+  }
+  const equipmentAliases = new Set<string>(getEquipmentStanceFamilyAliases(equipment));
+  if ([...compatAliases].some((alias) => alias && containsNormalizedPhrase(searchable, alias))) {
+    return true;
+  }
+  if ([...compatAliases].some((alias) => equipmentAliases.has(alias))) {
     return true;
   }
 
   const compatTokens = getCompatTokens(compatNorm);
-  return compatTokens.some((token) => searchable.includes(token));
+  return compatTokens.some((token) => containsNormalizedPhrase(searchable, token));
 }
 
 function doesCompatMatchEquipment(
