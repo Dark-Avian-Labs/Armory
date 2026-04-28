@@ -399,3 +399,56 @@ describe('Melee stance compatibility aliases', () => {
     }
   });
 });
+
+describe('Melee stance compatibility leakage guards', () => {
+  it('does not match heavy-scythe stance to regular scythe weapon', () => {
+    const galeforceDawn: Mod = {
+      unique_name: '/Lotus/Upgrades/Mods/Melee/Stance/GaleforceDawn',
+      name: 'Galeforce Dawn',
+      type: 'STANCE',
+      compat_name: 'Heavy Scythe',
+    };
+    const harmony = {
+      unique_name: '/Lotus/Weapons/Tenno/Melee/Scythes/Harmony',
+      name: 'Harmony',
+      product_category: 'Melee',
+    };
+
+    expect(stanceMatchesEquipment(galeforceDawn, harmony)).toBe(false);
+    expect(filterCompatibleMods([galeforceDawn], 'melee', harmony)).toHaveLength(0);
+  });
+
+  it('does not match heavy-blade stance to normal sword weapon', () => {
+    const heavyBladeStance: Mod = {
+      unique_name: '/Lotus/Upgrades/Mods/Melee/Stance/TempoRoyale',
+      name: 'Tempo Royale',
+      type: 'STANCE',
+      compat_name: 'Heavy Blade',
+    };
+    const skana = {
+      unique_name: '/Lotus/Weapons/Tenno/Melee/LongSword/Skana',
+      name: 'Skana',
+      product_category: 'Melee',
+    };
+
+    expect(stanceMatchesEquipment(heavyBladeStance, skana)).toBe(false);
+    expect(filterCompatibleMods([heavyBladeStance], 'melee', skana)).toHaveLength(0);
+  });
+
+  it('does not match dual-dagger stance to single dagger weapon', () => {
+    const dualDaggerStance: Mod = {
+      unique_name: '/Lotus/Upgrades/Mods/Melee/Stance/SpinningNeedle',
+      name: 'Spinning Needle',
+      type: 'STANCE',
+      compat_name: 'Dual Daggers',
+    };
+    const singleDagger = {
+      unique_name: '/Lotus/Weapons/Tenno/Melee/Dagger/SkanaDaggerTest',
+      name: 'Dagger Test',
+      product_category: 'Melee',
+    };
+
+    expect(stanceMatchesEquipment(dualDaggerStance, singleDagger)).toBe(false);
+    expect(filterCompatibleMods([dualDaggerStance], 'melee', singleDagger)).toHaveLength(0);
+  });
+});

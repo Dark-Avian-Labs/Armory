@@ -740,7 +740,6 @@ export async function scrapeRivenDispositions(
   ): WikiRivenDisposition[] {
     const dispositions: WikiRivenDisposition[] = [];
 
-    // Original parser path: tabular pages where disposition values appear in columns.
     $('table.wikitable, table.listtable').each((_, table) => {
       const headers = $(table)
         .find('tr')
@@ -773,7 +772,6 @@ export async function scrapeRivenDispositions(
         });
     });
 
-    // Fallback parser path: list/text entries like "Weapon Name(0.55)".
     const addFromText = (text: string): void => {
       const normalized = normalizeText(text).replace(/\s+/g, ' ').trim();
       if (!normalized) return;
@@ -792,7 +790,6 @@ export async function scrapeRivenDispositions(
       addFromText($(el).text());
     });
     if (dispositions.length === 0) {
-      // Last resort: scan whole content text for "(0.xx)" style entries.
       const text = normalizeText($('#mw-content-text').text());
       const re = /([A-Za-z0-9'().\-&:+/ ]{2,}?)\s*\((\d+(?:\.\d+)?)\)/g;
       let match: RegExpExecArray | null = null;

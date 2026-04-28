@@ -335,6 +335,10 @@ function getEquipmentStanceFamilyAliases(equipment: {
   return [...aliases];
 }
 
+function hasAnyHint(searchable: string, hints: string[]): boolean {
+  return hints.some((hint) => searchable.includes(hint));
+}
+
 export function stanceMatchesEquipment(
   mod: Mod,
   equipment?: { unique_name: string; name: string; product_category?: string },
@@ -363,6 +367,37 @@ export function stanceMatchesEquipment(
       containsNormalizedPhrase(compatNorm, normalizeCompatText(equipment.name)))
   ) {
     return true;
+  }
+
+  if (
+    compatNorm.includes('heavy scythe') &&
+    !hasAnyHint(searchable, ['heavy scythe', 'heavy scythes'])
+  ) {
+    return false;
+  }
+  if (
+    compatNorm.includes('heavy blade') &&
+    !hasAnyHint(searchable, ['heavy blade', 'heavy blades', 'great sword', 'greatsword'])
+  ) {
+    return false;
+  }
+  if (
+    compatNorm.includes('dual dagger') &&
+    !hasAnyHint(searchable, ['dual dagger', 'dual daggers'])
+  ) {
+    return false;
+  }
+  if (
+    compatNorm.includes('blade and whip') &&
+    !hasAnyHint(searchable, ['blade and whip', 'blade whip', 'bladeandwhip'])
+  ) {
+    return false;
+  }
+  if (
+    (compatNorm.includes('gun blade') || compatNorm.includes('gunblade')) &&
+    !hasAnyHint(searchable, ['gun blade', 'gunblade'])
+  ) {
+    return false;
   }
 
   if (suppressSwordFamilyOnGreatSword) {
