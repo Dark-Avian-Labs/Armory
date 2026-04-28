@@ -128,7 +128,7 @@ export function SelectDropdown({
           id={listboxId}
           role="listbox"
           onKeyDown={handleListboxKeyDown}
-          className="border-glass-border bg-surface-modal absolute top-full left-0 z-[110] mt-1 max-h-48 w-full min-w-[12rem] overflow-hidden rounded-xl border shadow-lg backdrop-blur-xl"
+          className="glass-tooltip-surface absolute top-full left-0 z-[110] mt-1 max-h-48 w-full min-w-[12rem] overflow-hidden rounded-xl"
         >
           <div className="custom-scroll max-h-48 overflow-y-auto py-1">
             {options.map((opt, i) => {
@@ -147,7 +147,7 @@ export function SelectDropdown({
                   className={`flex w-full px-3 py-2 text-left text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--color-accent)_55%,transparent)] ${
                     isSelected
                       ? 'bg-accent-weak text-accent'
-                      : 'text-muted hover:bg-glass-hover hover:text-foreground'
+                      : 'text-foreground hover:bg-glass-hover'
                   } ${isFocused ? 'ring-1 ring-[color-mix(in_oklab,var(--color-accent)_40%,transparent)]' : ''}`}
                   onFocus={() => setFocusedIndex(i)}
                   onKeyDown={(ev) => {
