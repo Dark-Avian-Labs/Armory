@@ -138,8 +138,6 @@ export async function runStartupPipeline(
     log(`Starting pipeline with force flags: ${flags}`);
   }
 
-  // ── Schema ──
-
   log('[Schema] Ensuring SQLite schema...');
   try {
     createAppSchema();
@@ -156,8 +154,6 @@ export async function runStartupPipeline(
     if (cli) printStartupPipelineSummary(summary);
     return summary;
   }
-
-  // ── Exports ──
 
   log('[Exports] Downloading manifest and export files...');
   try {
@@ -192,8 +188,6 @@ export async function runStartupPipeline(
       return summary;
     }
   }
-
-  // ── Database ──
 
   let dataChanged = false;
   try {
@@ -247,8 +241,6 @@ export async function runStartupPipeline(
     return summary;
   }
 
-  // ── Exalted Stances ──
-
   if (dataChanged) {
     log('[Exalted Stances] Syncing exalted stance mods from Overframe...');
     try {
@@ -274,8 +266,6 @@ export async function runStartupPipeline(
       detail: 'No data changes detected; skipped re-fetch.',
     };
   }
-
-  // ── Images ──
 
   log(
     forceImages
@@ -318,8 +308,6 @@ export async function runStartupPipeline(
     err('[Images] Download failed —', e);
   }
 
-  // ── Companion Weapons ──
-
   if (dataChanged) {
     log('[Companion Weapons] Syncing hidden companion weapons from Overframe...');
     try {
@@ -345,8 +333,6 @@ export async function runStartupPipeline(
       detail: 'No data changes detected; skipped re-fetch.',
     };
   }
-
-  // ── Overframe ──
 
   log('[Overframe] Indexing and scraping build data...');
   try {
@@ -395,8 +381,6 @@ export async function runStartupPipeline(
     err('[Overframe] Scrape failed —', e);
   }
 
-  // ── Wiki ──
-
   log('[Wiki] Scraping warframe wiki for ability stats, shards, riven dispositions...');
   try {
     const wikiResult = await runWikiScrape((p) => {
@@ -429,8 +413,6 @@ export async function runStartupPipeline(
     summary.wiki = { outcome: 'failed', detail: 'Wiki scrape failed.', error: msg };
     err('[Wiki] Scrape failed —', e);
   }
-
-  // ── Helminth ──
 
   log('[Helminth] Syncing helminth-infusable ability flags from wiki...');
   try {

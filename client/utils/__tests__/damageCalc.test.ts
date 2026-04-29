@@ -62,23 +62,14 @@ describe('calculateWeaponDps', () => {
     expect(result.modded.critChance).toBeCloseTo(0.5);
   });
 
-  it('calculates average hit with crits', () => {
+  it('derives burst and sustained DPS consistently from the same modded stats', () => {
     const result = calculateWeaponDps(makeWeapon(), []);
     const expectedAvgCritMult = 1 + 0.2 * (2.0 - 1);
-    const expectedAvgHit = 100 * 1 * expectedAvgCritMult;
-    expect(result.averageHit).toBeCloseTo(expectedAvgHit);
-  });
-
-  it('calculates burst DPS', () => {
-    const result = calculateWeaponDps(makeWeapon(), []);
+    expect(result.averageHit).toBeCloseTo(100 * expectedAvgCritMult);
     expect(result.burstDps).toBeCloseTo(result.averageHit * 5);
-  });
-
-  it('calculates sustained DPS accounting for reload', () => {
-    const result = calculateWeaponDps(makeWeapon(), []);
     const fireTime = 30 / 5;
-    const expectedSustained = result.burstDps * (fireTime / (fireTime + 2.0));
-    expect(result.sustainedDps).toBeCloseTo(expectedSustained);
+    expect(result.sustainedDps).toBeCloseTo(result.burstDps * (fireTime / (fireTime + 2.0)));
+    expect(result.statusPerSec).toBeCloseTo(0.25 * 1 * 5);
   });
 
   it('identifies melee weapons by range field', () => {
@@ -90,11 +81,6 @@ describe('calculateWeaponDps', () => {
     const result = calculateWeaponDps(melee, []);
     expect(result.isMelee).toBe(true);
     expect(result.sustainedDps).toBe(result.burstDps);
-  });
-
-  it('calculates status per second', () => {
-    const result = calculateWeaponDps(makeWeapon(), []);
-    expect(result.statusPerSec).toBeCloseTo(0.25 * 1 * 5);
   });
 
   it('handles custom ammo cost from fire_behaviors', () => {
