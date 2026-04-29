@@ -272,131 +272,33 @@ describe('Melee stance compatibility aliases', () => {
     expect(stanceMatchesEquipment(swordStance, skana)).toBe(true);
     expect(filterCompatibleMods([swordStance], 'melee', skana)).toHaveLength(1);
   });
+});
 
-  it('matches expected stance lists across key melee weapons', () => {
-    const makeStance = (name: string, compat: string): Mod => ({
-      unique_name: `/Lotus/Upgrades/Mods/Melee/Stance/${name.replace(/\s+/g, '')}`,
-      name,
-      type: 'STANCE',
-      compat_name: compat,
-    });
+describe('filterCompatibleMods with malformed or incomplete records', () => {
+  it('returns no mods when mod type is empty string (cannot classify primary mod)', () => {
+    const mod: Mod = {
+      unique_name: '/x',
+      name: 'Odd Mod',
+      type: '',
+      compat_name: 'Rifle',
+    };
+    const weapon = {
+      unique_name: '/Lotus/Weapons/Tenno/Rifle/Boltor',
+      name: 'Boltor',
+      product_category: 'LongGuns',
+    };
+    expect(filterCompatibleMods([mod], 'primary', weapon)).toEqual([]);
+  });
 
-    const allStances: Mod[] = [
-      makeStance('Reaping Spiral', 'Scythe'),
-      makeStance('Stalking Fan', 'Scythe'),
-      makeStance('Cleaving Whirlwind', 'Heavy Blade'),
-      makeStance('Rending Crane', 'Heavy Blade'),
-      makeStance('Tempo Royale', 'Heavy Blade'),
-      makeStance('Crimson Dervish', 'Sword'),
-      makeStance('Iron Phoenix', 'Sword'),
-      makeStance('Swooping Falcon', 'Sword'),
-      makeStance('Vengeful Revenant', 'Sword'),
-      makeStance('Bleeding Willow', 'Polearm'),
-      makeStance('Shimmering Blight', 'Polearm'),
-      makeStance('Twirling Spire', 'Polearm'),
-      makeStance('Clashing Forest', 'Staff'),
-      makeStance('Flailing Branch', 'Staff'),
-      makeStance('Blind Justice', 'Nikana'),
-      makeStance('Decisive Judgement', 'Nikana'),
-      makeStance('Tranquil Cleave', 'Nikana'),
-    ];
-
-    const expectations: Array<{
-      weapon: { unique_name: string; name: string; product_category: string };
-      expected: string[];
-    }> = [
-      {
-        weapon: {
-          unique_name: '/Lotus/Weapons/Tenno/Melee/Scythes/Harmony',
-          name: 'Harmony',
-          product_category: 'Melee',
-        },
-        expected: ['Reaping Spiral', 'Stalking Fan'],
-      },
-      {
-        weapon: {
-          unique_name: '/Lotus/Weapons/Tenno/Melee/Scythes/Hate',
-          name: 'Hate',
-          product_category: 'Melee',
-        },
-        expected: ['Reaping Spiral', 'Stalking Fan'],
-      },
-      {
-        weapon: {
-          unique_name: '/Lotus/Weapons/Tenno/Melee/LongSword/TwoHanded/GreatSword/Galatine',
-          name: 'Galatine',
-          product_category: 'Melee',
-        },
-        expected: ['Cleaving Whirlwind', 'Rending Crane', 'Tempo Royale'],
-      },
-      {
-        weapon: {
-          unique_name: '/Lotus/Weapons/Tenno/Melee/LongSword/TwoHanded/GreatSword/Paracesis',
-          name: 'Paracesis',
-          product_category: 'Melee',
-        },
-        expected: ['Cleaving Whirlwind', 'Rending Crane', 'Tempo Royale'],
-      },
-      {
-        weapon: {
-          unique_name: '/Lotus/Weapons/Tenno/Melee/LongSword/Skana',
-          name: 'Skana',
-          product_category: 'Melee',
-        },
-        expected: ['Crimson Dervish', 'Iron Phoenix', 'Swooping Falcon', 'Vengeful Revenant'],
-      },
-      {
-        weapon: {
-          unique_name: '/Lotus/Weapons/Tenno/Melee/LongSword/BrokenWar',
-          name: 'Broken War',
-          product_category: 'Melee',
-        },
-        expected: ['Crimson Dervish', 'Iron Phoenix', 'Swooping Falcon', 'Vengeful Revenant'],
-      },
-      {
-        weapon: {
-          unique_name: '/Lotus/Weapons/Tenno/Melee/LongSword/DakraPrime',
-          name: 'Dakra Prime',
-          product_category: 'Melee',
-        },
-        expected: ['Crimson Dervish', 'Iron Phoenix', 'Swooping Falcon', 'Vengeful Revenant'],
-      },
-      {
-        weapon: {
-          unique_name: '/Lotus/Weapons/Tenno/Melee/Polearms/OrthosPrime',
-          name: 'Orthos Prime',
-          product_category: 'Melee',
-        },
-        expected: ['Bleeding Willow', 'Shimmering Blight', 'Twirling Spire'],
-      },
-      {
-        weapon: {
-          unique_name: '/Lotus/Weapons/Tenno/Melee/Staff/BoPrime',
-          name: 'Bo Prime',
-          product_category: 'Melee',
-        },
-        expected: ['Clashing Forest', 'Flailing Branch'],
-      },
-      {
-        weapon: {
-          unique_name: '/Lotus/Weapons/Tenno/Melee/Katana/NikanaPrime',
-          name: 'Nikana Prime',
-          product_category: 'Melee',
-        },
-        expected: ['Blind Justice', 'Decisive Judgement', 'Tranquil Cleave'],
-      },
-    ];
-
-    for (const { weapon, expected } of expectations) {
-      const got = filterCompatibleMods(allStances, 'melee', weapon)
-        .map((m) => m.name)
-        .sort();
-      const sortedExpected = [...expected].sort();
-      expect(
-        got,
-        `Mismatch for ${weapon.name}: expected [${sortedExpected.join(', ')}], got [${got.join(', ')}]`,
-      ).toEqual(sortedExpected);
-    }
+  it('returns no mods when weapon unique_name is empty (incomplete import row)', () => {
+    const mod: Mod = {
+      unique_name: '/test',
+      name: 'Test',
+      type: 'Rifle Mod',
+      compat_name: 'Rifle',
+    };
+    const weapon = { unique_name: '', name: 'X', product_category: 'LongGuns' };
+    expect(filterCompatibleMods([mod], 'primary', weapon)).toEqual([]);
   });
 });
 

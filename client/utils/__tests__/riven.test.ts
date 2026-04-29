@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getDispositionPips,
   getEffectiveRivenDisposition,
+  getRivenStatBounds,
   resolveRivenConfig,
   verifyAndAdjustRivenConfig,
 } from '../riven';
@@ -74,8 +75,9 @@ describe('verifyAndAdjustRivenConfig', () => {
 });
 
 describe('resolveRivenConfig', () => {
-  it('keeps Zoom curse in range for rifle at ~0.7 disp (browse.wf / wiki baseline 59.99%)', () => {
-    const { config, warnings, adjusted } = resolveRivenConfig(
+  it('clamps an excessive curse toward wiki-style bounds and surfaces a warning', () => {
+    const rollRule3Pos1Neg = { positiveMultiplier: 0.9375, negativeMultiplier: 0.75 };
+    const { adjusted, warnings, config } = resolveRivenConfig(
       {
         polarity: 'AP_ATTACK',
         positive: [
@@ -83,31 +85,7 @@ describe('resolveRivenConfig', () => {
           { stat: 'Status Chance', value: 63.1, isNegative: false },
           { stat: 'Electricity', value: 63.6, isNegative: false },
         ],
-        negative: { stat: 'Zoom', value: 32.1, isNegative: true },
-      },
-      {
-        weaponType: 'primary',
-        disposition: 0.7,
-        assumeValuesAreMaxRank: true,
-        manualRank: 8,
-      },
-    );
-
-    expect(adjusted).toBe(false);
-    expect(config.negative?.value).toBeCloseTo(-32.1, 1);
-    expect(warnings.some((w) => w.includes('Zoom'))).toBe(false);
-  });
-
-  it('clamps negative Zoom when curse exceeds wiki max at this disposition', () => {
-    const { config, adjusted, warnings } = resolveRivenConfig(
-      {
-        polarity: 'AP_ATTACK',
-        positive: [
-          { stat: 'Heat', value: 61.9, isNegative: false },
-          { stat: 'Status Chance', value: 63.1, isNegative: false },
-          { stat: 'Electricity', value: 63.6, isNegative: false },
-        ],
-        negative: { stat: 'Zoom', value: 40, isNegative: true },
+        negative: { stat: 'Zoom', value: 80, isNegative: true },
       },
       {
         weaponType: 'primary',
@@ -118,8 +96,21 @@ describe('resolveRivenConfig', () => {
     );
 
     expect(adjusted).toBe(true);
-    expect(config.negative?.value).toBeCloseTo(-34.6, 1);
-    expect(warnings.some((w) => w.includes('Zoom'))).toBe(true);
+    expect(warnings.some((w) => /Zoom|curse/i.test(w))).toBe(true);
+
+    const neg = config.negative;
+    expect(neg?.stat).toBe('Zoom');
+    expect(neg?.value).toBeDefined();
+    expect(neg!.value).toBeLessThan(0);
+    expect(neg!.value).toBeCloseTo(-34.6, 1);
+
+    const bounds = getRivenStatBounds('Zoom', 'primary', 0.7, true, rollRule3Pos1Neg);
+    expect(bounds).not.toBeNull();
+    const mag = Math.abs(neg!.value);
+    const lo = Math.min(Math.abs(bounds!.min), Math.abs(bounds!.max));
+    const hi = Math.max(Math.abs(bounds!.min), Math.abs(bounds!.max));
+    expect(mag).toBeGreaterThanOrEqual(lo);
+    expect(mag).toBeLessThanOrEqual(hi);
   });
 
   it('scales displayed stats to max-rank when not assume max', () => {

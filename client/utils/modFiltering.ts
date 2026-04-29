@@ -596,6 +596,10 @@ function isPrimaryModCompatible(
 
   if (compatUpper === 'PRIMARY') return true;
 
+  if (equipment && (equipment.unique_name ?? '').trim() === '') {
+    return false;
+  }
+
   const category = equipment?.product_category || '';
   if (category === 'SentinelWeapons') {
     if (compatUpper === 'RIFLE' || compatUpper === 'ASSAULT RIFLE' || compatUpper === 'SHOTGUN') {
