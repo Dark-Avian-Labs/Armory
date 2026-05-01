@@ -226,6 +226,7 @@ export function createAppSchema(): void {
       canonical_key TEXT NOT NULL,
       worksheet_category TEXT NOT NULL,
       market_href TEXT,
+      market_href_prime TEXT,
       link_kind TEXT,
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (canonical_key, worksheet_category)
@@ -349,6 +350,12 @@ export function createAppSchema(): void {
       table: 'arcanes',
       column: 'compat_tags',
       sql: 'ALTER TABLE arcanes ADD COLUMN compat_tags TEXT',
+    },
+    {
+      id: '20260501_warframe_market_links_prime',
+      table: 'warframe_market_links',
+      column: 'market_href_prime',
+      sql: 'ALTER TABLE warframe_market_links ADD COLUMN market_href_prime TEXT',
     },
   ];
   const ALLOWED_MIGRATION_TABLES = new Set(migrations.map((migration) => migration.table));
