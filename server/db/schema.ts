@@ -221,6 +221,17 @@ export function createAppSchema(): void {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- Codex sync: resolved Warframe Market URLs (see server/warframeMarket/)
+    CREATE TABLE IF NOT EXISTS warframe_market_links (
+      canonical_key TEXT NOT NULL,
+      worksheet_category TEXT NOT NULL,
+      market_href TEXT,
+      link_kind TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (canonical_key, worksheet_category)
+    );
+    CREATE INDEX IF NOT EXISTS idx_warframe_market_links_category ON warframe_market_links(worksheet_category);
+
     -- Indexes
     CREATE INDEX IF NOT EXISTS idx_mods_type ON mods(type);
     CREATE INDEX IF NOT EXISTS idx_mods_rarity ON mods(rarity);

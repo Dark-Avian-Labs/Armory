@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 
 import { getDb } from '../db/connection.js';
+import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
 
 const BASE_URL = 'https://overframe.gg';
 
@@ -23,7 +24,15 @@ const CATEGORY_URLS: Record<string, string> = {
 
 async function scrapeCategory(category: string, urlPath: string): Promise<OverframeIndexEntry[]> {
   const url = `${BASE_URL}${urlPath}`;
-  const res = await fetch(url);
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.htmlPage);
+  } catch (error: unknown) {
+    if (isAbortError(error)) {
+      throw new Error(`Failed to fetch ${url}: timed out after ${FETCH_TIMEOUT_MS.htmlPage}ms`);
+    }
+    throw error;
+  }
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
 
   const html = await res.text();

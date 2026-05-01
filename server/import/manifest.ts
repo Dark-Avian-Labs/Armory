@@ -3,6 +3,7 @@ import { createRequire } from 'module';
 import path from 'path';
 
 import { MANIFEST_URL, EXPORTS_DIR } from '../config.js';
+import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
 
 const require = createRequire(import.meta.url);
 const { LZMA } = require('lzma');
@@ -17,7 +18,15 @@ export interface ManifestEntry {
 export async function downloadAndParseManifest(): Promise<ManifestEntry[]> {
   console.log(`[Import] Downloading manifest from ${MANIFEST_URL}`);
 
-  const response = await fetch(MANIFEST_URL);
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(MANIFEST_URL, {}, FETCH_TIMEOUT_MS.manifest);
+  } catch (error: unknown) {
+    if (isAbortError(error)) {
+      throw new Error(`Manifest fetch timed out after ${FETCH_TIMEOUT_MS.manifest}ms`);
+    }
+    throw error;
+  }
   if (!response.ok) {
     throw new Error(`Failed to download manifest: ${response.status} ${response.statusText}`);
   }

@@ -70,6 +70,10 @@ export interface StartupPipelineSummary {
     abilitiesFlagged?: number;
     fetchOk?: boolean;
   };
+  warframeMarketLinks: StepSummaryBase & {
+    rowsUpserted?: number;
+    slugCount?: number;
+  };
   blockingIssues: string[];
 }
 
@@ -224,6 +228,14 @@ export function printStartupPipelineSummary(s: StartupPipelineSummary): void {
   }
   if (hm.error) hmLines.push(`Error: ${hm.error}`);
   row('Helminth', hm.outcome, hmLines);
+
+  const wm = s.warframeMarketLinks;
+  const wmLines: string[] = [wm.detail];
+  if (wm.rowsUpserted !== undefined) {
+    wmLines.push(`Rows upserted: ${wm.rowsUpserted}, catalog slugs: ${wm.slugCount ?? 0}.`);
+  }
+  if (wm.error) wmLines.push(`Error: ${wm.error}`);
+  row('Warframe Market links', wm.outcome, wmLines);
 
   console.log(`${DIV}\n`);
 }
