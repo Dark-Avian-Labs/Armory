@@ -20,6 +20,10 @@ export function normalizeDisplayName(value: string): string {
   return withoutQualifier.trim();
 }
 
+export function isPrimeVariantName(value: string): boolean {
+  return /\s+prime$/i.test(normalizeDisplayName(value));
+}
+
 export function normalizeNameForKey(value: string): string {
   return normalizeDisplayName(value).toLowerCase();
 }
