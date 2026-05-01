@@ -11,6 +11,7 @@ import { syncHiddenCompanionWeaponsFromOverframe } from '../scraping/hiddenCompa
 import { scrapeIndex } from '../scraping/indexScraper.js';
 import { scrapeItems } from '../scraping/itemScraper.js';
 import { runWikiScrape } from '../scraping/wikiScraper.js';
+import { populateWarframeMarketLinksTable } from '../warframeMarket/populateWarframeMarketLinks.js';
 import { syncHelminthFlagsFromWiki } from './helminthWiki.js';
 import { downloadImages } from './images.js';
 import { runImportPipeline, listExportFiles } from './pipeline.js';
@@ -98,6 +99,7 @@ function emptySummary(start: number): StartupPipelineSummary {
     overframe: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     wiki: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     helminthWiki: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
+    warframeMarketLinks: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     blockingIssues: [],
   };
 }
@@ -239,6 +241,53 @@ export async function runStartupPipeline(
     summary.durationMs = Date.now() - startTime;
     if (cli) printStartupPipelineSummary(summary);
     return summary;
+  }
+
+  let warframeMarketLinkRowCount = 0;
+  try {
+    const db = getDb();
+    warframeMarketLinkRowCount = (
+      db.prepare('SELECT COUNT(*) as c FROM warframe_market_links').get() as { c: number }
+    ).c;
+  } catch {
+    warframeMarketLinkRowCount = 0;
+  }
+
+  const shouldRefreshWarframeMarket =
+    hasDbData() && (dataChanged || warframeMarketLinkRowCount === 0);
+
+  if (shouldRefreshWarframeMarket) {
+    log('[Warframe Market] Building trade link index from api.warframe.market...');
+    try {
+      const db = getDb();
+      const wmResult = await populateWarframeMarketLinksTable(db);
+      log(
+        `[Warframe Market] Done — ${wmResult.rowsUpserted} rows upserted, ${wmResult.slugCount} catalog slugs.`,
+      );
+      summary.warframeMarketLinks = {
+        outcome: 'ok',
+        detail: `Upserted ${wmResult.rowsUpserted} worksheet rows using ${wmResult.slugCount} market slugs.`,
+        rowsUpserted: wmResult.rowsUpserted,
+        slugCount: wmResult.slugCount,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      summary.warframeMarketLinks = {
+        outcome: 'failed',
+        detail: 'Could not refresh Warframe Market link index.',
+        error: msg,
+      };
+      err('[Warframe Market] Failed —', e);
+    }
+  } else {
+    const detail = !hasDbData()
+      ? 'Skipped — no game data in SQLite yet.'
+      : 'Skipped — link index already populated and export hashes unchanged.';
+    log(`[Warframe Market] ${detail}`);
+    summary.warframeMarketLinks = {
+      outcome: 'skipped',
+      detail,
+    };
   }
 
   if (dataChanged) {

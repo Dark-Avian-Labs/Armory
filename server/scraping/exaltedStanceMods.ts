@@ -3,6 +3,7 @@ import path from 'path';
 
 import { IMAGES_DIR } from '../config.js';
 import { getDb } from '../db/connection.js';
+import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
 
 const OVERFRAME_BASE_URL = 'https://overframe.gg';
 const OVERFRAME_MEDIA_BASE_URL = 'https://media.overframe.gg/128x';
@@ -99,7 +100,15 @@ async function ensureOverframeTextureInDataImages(texturePath: string): Promise<
   }
 
   const url = `${OVERFRAME_MEDIA_BASE_URL}${dbImagePath}`;
-  const response = await fetch(url);
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.binaryImage);
+  } catch (error: unknown) {
+    if (isAbortError(error)) {
+      return null;
+    }
+    throw error;
+  }
   if (!response.ok) return null;
 
   const bytes = Buffer.from(await response.arrayBuffer());
@@ -113,25 +122,19 @@ async function fetchOverframeStance(seed: ExaltedStanceSeed): Promise<OverframeS
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      try {
-        const response = await fetch(url, { signal: controller.signal });
-        if (!response.ok) return null;
+      const response = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.overframeDetailHtml);
+      if (!response.ok) return null;
 
-        const html = await response.text();
-        const marker = '<script id="__NEXT_DATA__" type="application/json">';
-        const markerStart = html.indexOf(marker);
-        if (markerStart < 0) return null;
-        const scriptEnd = html.indexOf('</script>', markerStart);
-        if (scriptEnd < 0) return null;
+      const html = await response.text();
+      const marker = '<script id="__NEXT_DATA__" type="application/json">';
+      const markerStart = html.indexOf(marker);
+      if (markerStart < 0) return null;
+      const scriptEnd = html.indexOf('</script>', markerStart);
+      if (scriptEnd < 0) return null;
 
-        const json = html.slice(markerStart + marker.length, scriptEnd);
-        const parsed = JSON.parse(json) as unknown;
-        return extractOverframeStanceData(parsed);
-      } finally {
-        clearTimeout(timeout);
-      }
+      const json = html.slice(markerStart + marker.length, scriptEnd);
+      const parsed = JSON.parse(json) as unknown;
+      return extractOverframeStanceData(parsed);
     } catch (error) {
       console.warn(
         `[exaltedStanceMods] fetch attempt ${attempt}/${maxAttempts} failed for ${seed.id}/${seed.slug}:`,

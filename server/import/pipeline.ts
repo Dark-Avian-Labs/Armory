@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { CONTENT_BASE_URL, EXPORTS_DIR, REQUIRED_EXPORTS } from '../config.js';
+import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
 import { downloadAndParseManifest, type ManifestEntry } from './manifest.js';
 
 export interface ImportStatus {
@@ -118,7 +119,17 @@ export async function runImportPipeline(
     });
 
     try {
-      const response = await fetch(url);
+      let response: Response;
+      try {
+        response = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.exportDownload);
+      } catch (error: unknown) {
+        if (isAbortError(error)) {
+          throw new Error(
+            `Export download timed out after ${FETCH_TIMEOUT_MS.exportDownload}ms (${entry.category})`,
+          );
+        }
+        throw error;
+      }
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }

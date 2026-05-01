@@ -3,6 +3,7 @@ import path from 'path';
 
 import { IMAGE_BASE_URL, IMAGES_DIR, EXPORTS_DIR } from '../config.js';
 import { getDb } from '../db/connection.js';
+import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
 
 export interface ImageDownloadResult {
   total: number;
@@ -95,7 +96,15 @@ async function downloadSingleImage(
 
   const url = `${IMAGE_BASE_URL}${textureLocation}`;
   try {
-    const response = await fetch(url);
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.binaryImage);
+    } catch (error: unknown) {
+      if (isAbortError(error)) {
+        throw new Error(`Image fetch timed out after ${FETCH_TIMEOUT_MS.binaryImage}ms`);
+      }
+      throw error;
+    }
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }

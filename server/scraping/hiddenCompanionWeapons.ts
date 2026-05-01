@@ -3,6 +3,7 @@ import path from 'path';
 
 import { IMAGES_DIR, PROJECT_ROOT } from '../config.js';
 import { getDb } from '../db/connection.js';
+import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
 
 const OVERFRAME_BASE_URL = 'https://overframe.gg';
 const BEAST_CLAWS_ICON_PATH = '/icons/beast-claws.png';
@@ -127,25 +128,19 @@ function extractWeaponDataFromNextData(nextData: unknown): OverframeWeaponData |
 async function fetchOverframeNextData(relativeUrl: string): Promise<OverframeWeaponData | null> {
   const url = `${OVERFRAME_BASE_URL}${relativeUrl}`;
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    try {
-      const response = await fetch(url, { signal: controller.signal });
-      if (!response.ok) return null;
+    const response = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.overframeDetailHtml);
+    if (!response.ok) return null;
 
-      const html = await response.text();
-      const marker = '<script id="__NEXT_DATA__" type="application/json">';
-      const markerStart = html.indexOf(marker);
-      if (markerStart < 0) return null;
-      const scriptEnd = html.indexOf('</script>', markerStart);
-      if (scriptEnd < 0) return null;
+    const html = await response.text();
+    const marker = '<script id="__NEXT_DATA__" type="application/json">';
+    const markerStart = html.indexOf(marker);
+    if (markerStart < 0) return null;
+    const scriptEnd = html.indexOf('</script>', markerStart);
+    if (scriptEnd < 0) return null;
 
-      const json = html.slice(markerStart + marker.length, scriptEnd);
-      const parsed = JSON.parse(json) as unknown;
-      return extractWeaponDataFromNextData(parsed);
-    } finally {
-      clearTimeout(timeout);
-    }
+    const json = html.slice(markerStart + marker.length, scriptEnd);
+    const parsed = JSON.parse(json) as unknown;
+    return extractWeaponDataFromNextData(parsed);
   } catch {
     // Ignore
     return null;
