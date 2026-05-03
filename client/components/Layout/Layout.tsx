@@ -7,7 +7,7 @@ import {
   useRef,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
   APP_DISPLAY_NAME,
@@ -31,6 +31,18 @@ const EquipmentGridModal = lazy(() =>
   import('./EquipmentGridModal').then((m) => ({ default: m.EquipmentGridModal })),
 );
 
+function isCompactModBuilderRoute(pathname: string): boolean {
+  if (pathname.startsWith('/builder/new/')) return true;
+  const parts = pathname.split('/').filter(Boolean);
+  return (
+    parts.length === 2 &&
+    parts[0] === 'builder' &&
+    parts[1] !== 'builds' &&
+    parts[1] !== 'my-builds' &&
+    parts[1] !== 'new'
+  );
+}
+
 function getNavLinkClass(isActive: boolean): string {
   return `inline-flex items-center rounded-2xl border px-4 py-2 text-sm transition-[color,background-color,border-color,box-shadow] duration-200 ${
     isActive
@@ -40,6 +52,8 @@ function getNavLinkClass(isActive: boolean): string {
 }
 
 export function Layout() {
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [showAddBuild, setShowAddBuild] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -145,6 +159,26 @@ export function Layout() {
   const isLoggedIn = account.isAuthenticated && profile !== null;
   const isAdmin = profile?.isAdmin === true;
   const avatarSrc = getProfileIconSrc(profile?.avatarId ?? 1);
+
+  const compactModBuilderUi =
+    searchParams.get('compact') === '1' && isCompactModBuilderRoute(location.pathname);
+
+  if (compactModBuilderUi) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[var(--color-bg-end)]">
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="relative z-10 mx-auto flex w-full flex-1 flex-col p-3"
+        >
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
