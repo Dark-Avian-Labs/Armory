@@ -51,6 +51,7 @@ import { ArcaneSlots, type ArcaneSlot, type Arcane } from './ArcaneSlots';
 import { ArchonShardSlots, type ShardSlotConfig, type ShardType } from './ArchonShardSlots';
 import { BuildLoadoutsPanel } from './BuildLoadoutsPanel';
 import { CapacityBar } from './CapacityBar';
+import { CompactBuildOverview } from './CompactBuildOverview';
 import { ElementOutput } from './ElementOutput';
 import { ModSlotGrid } from './ModSlotGrid';
 import { StatsPanel } from './StatsPanel';
@@ -79,6 +80,14 @@ const RivenBuilder = lazy(() =>
 );
 
 type RightPanelMode = 'mods' | 'helminth' | 'arcanes' | 'shards';
+
+type DocumentPictureInPictureApi = {
+  requestWindow(options?: { width?: number; height?: number }): Promise<Window>;
+};
+
+type WindowWithDocumentPictureInPicture = Window & {
+  documentPictureInPicture?: DocumentPictureInPictureApi;
+};
 
 function getAbilityName(warframe: Warframe | null, index: number): string {
   if (!warframe?.abilities) return `Ability ${index + 1}`;
@@ -199,6 +208,7 @@ export function ModBuilder() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const readOnly = searchParams.get('view') === '1';
+  const compactOverview = searchParams.get('compact') === '1';
   const { saveBuild: storageSave, getBuild, copyBuildFromId } = useBuildStorage();
 
   const [equipmentType, setEquipmentType] = useState<EquipmentType>(
@@ -577,8 +587,10 @@ export function ModBuilder() {
 
   useEffect(() => {
     if (!buildId || !loaded || isOwnBuild || readOnly) return;
-    navigate(`${buildEditPath(buildId)}?view=1`, { replace: true });
-  }, [buildId, loaded, isOwnBuild, readOnly, navigate]);
+    const next = new URLSearchParams(searchParams);
+    next.set('view', '1');
+    navigate(`${buildEditPath(buildId)}?${next.toString()}`, { replace: true });
+  }, [buildId, loaded, isOwnBuild, readOnly, navigate, searchParams]);
 
   const equippedMods = useMemo(
     () => hydratedSlots.filter((s) => s.mod).map((s) => s.mod!),
@@ -1112,12 +1124,30 @@ export function ModBuilder() {
   );
 
   const [rivenToastMessage, setRivenToastMessage] = useState<string | null>(null);
+  const [pipToastMessage, setPipToastMessage] = useState<string | null>(null);
+  const pipWindowRef = useRef<Window | null>(null);
 
   useEffect(() => {
     if (!rivenToastMessage) return undefined;
     const timer = window.setTimeout(() => setRivenToastMessage(null), 2500);
     return () => window.clearTimeout(timer);
   }, [rivenToastMessage]);
+
+  useEffect(() => {
+    if (!pipToastMessage) return undefined;
+    const timer = window.setTimeout(() => setPipToastMessage(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [pipToastMessage]);
+
+  useEffect(() => {
+    return () => {
+      const pipWindow = pipWindowRef.current;
+      if (pipWindow && !pipWindow.closed) {
+        pipWindow.close();
+      }
+      pipWindowRef.current = null;
+    };
+  }, []);
 
   const handleRivenClose = useCallback(() => {
     if (editingRivenSlot !== null && draftRivenSlot === editingRivenSlot) {
@@ -1152,6 +1182,65 @@ export function ModBuilder() {
     setSaveError(null);
     setShowSaveModal(true);
   };
+
+  const openBuildPip = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const existing = pipWindowRef.current;
+    if (existing && !existing.closed) {
+      existing.focus();
+      return;
+    }
+
+    const pipApi = (window as WindowWithDocumentPictureInPicture).documentPictureInPicture;
+    if (!pipApi?.requestWindow) {
+      setPipToastMessage('Picture-in-Picture is not supported in this browser.');
+      return;
+    }
+
+    try {
+      const pipWindow = await pipApi.requestWindow({
+        width: Math.min(Math.max(window.innerWidth, 700), 1280),
+        height: Math.min(Math.max(window.innerHeight, 500), 900),
+      });
+      pipWindowRef.current = pipWindow;
+      const pipUrl = new URL(window.location.href);
+      pipUrl.searchParams.set('view', '1');
+      pipUrl.searchParams.set('compact', '1');
+
+      const pipDoc = pipWindow.document;
+      pipDoc.title = `Armory - ${buildName}`;
+      pipDoc.documentElement.style.height = '100%';
+      pipDoc.body.style.margin = '0';
+      pipDoc.body.style.padding = '0';
+      pipDoc.body.style.minHeight = '100%';
+      pipDoc.body.style.background = '#090d18';
+
+      const iframe = pipDoc.createElement('iframe');
+      iframe.src = pipUrl.toString();
+      iframe.title = 'Armory Build';
+      iframe.style.width = '100%';
+      iframe.style.height = '100vh';
+      iframe.style.border = '0';
+      iframe.style.display = 'block';
+
+      pipDoc.body.innerHTML = '';
+      pipDoc.body.appendChild(iframe);
+      pipWindow.addEventListener(
+        'pagehide',
+        () => {
+          if (pipWindowRef.current === pipWindow) {
+            pipWindowRef.current = null;
+          }
+        },
+        { once: true },
+      );
+    } catch (error) {
+      console.error('[ModBuilder] Failed to open PiP window', error);
+      setPipToastMessage(
+        'Unable to open Picture-in-Picture. Your browser may require user interaction or block this page in PiP.',
+      );
+    }
+  }, [buildName]);
 
   const [compareToast, setCompareToast] = useState(false);
   const compareToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1309,6 +1398,31 @@ export function ModBuilder() {
     setRightPanelMode('mods');
   }, []);
 
+  if (compactOverview) {
+    if (!equipmentLoadError && (!loaded || !selectedEquipment)) {
+      return <div className="text-muted px-6 py-10 text-center text-sm">Loading build…</div>;
+    }
+    if (equipmentLoadError || !selectedEquipment) {
+      return (
+        <div className="error-msg px-6 py-10 text-center text-sm">
+          {equipmentLoadError ?? 'Equipment could not be loaded.'}
+        </div>
+      );
+    }
+
+    return (
+      <CompactBuildOverview
+        buildName={buildName}
+        equipmentName={selectedEquipment.name}
+        equipmentType={equipmentType}
+        slots={hydratedSlots}
+        arcaneSlots={arcaneSlots}
+        shardSlots={shardSlots}
+        shardTypes={shardTypes}
+      />
+    );
+  }
+
   return (
     <div
       className="mx-auto max-w-[2000px] space-y-6"
@@ -1325,19 +1439,32 @@ export function ModBuilder() {
               shardTypes={equipmentType === 'warframe' ? shardTypes : undefined}
               valenceBonus={effectiveValenceBonus}
               headerActions={
-                <button
-                  type="button"
-                  className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
-                  onClick={() => setShowShareModal(true)}
-                  title="Share build image"
-                >
-                  <img
-                    src={shareIcon}
-                    alt=""
-                    className="h-5 w-5 object-contain"
-                    draggable={false}
-                  />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
+                    onClick={() => setShowShareModal(true)}
+                    title="Share build image"
+                  >
+                    <img
+                      src={shareIcon}
+                      alt=""
+                      className="h-5 w-5 object-contain"
+                      draggable={false}
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary h-9 shrink-0 px-2 text-xs font-semibold"
+                    onClick={() => {
+                      void openBuildPip();
+                    }}
+                    title="Open build in Picture-in-Picture"
+                    aria-label="Open build in Picture-in-Picture"
+                  >
+                    PiP
+                  </button>
+                </div>
               }
               abilities={
                 equipmentType === 'warframe' ? (
@@ -1808,6 +1935,14 @@ export function ModBuilder() {
           data-tone="warning"
         >
           {rivenToastMessage}
+        </div>
+      )}
+      {pipToastMessage && (
+        <div
+          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-[bottom,transform,opacity] duration-300 ease-out ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
+          data-tone="warning"
+        >
+          {pipToastMessage}
         </div>
       )}
     </div>
