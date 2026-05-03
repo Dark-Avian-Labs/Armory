@@ -5,6 +5,7 @@ import { DamageTypeInlineText } from '../DamageTypeInlineText';
 import { GlassTooltip } from '../GlassTooltip';
 import { ArcaneCardPreview } from '../ModCard/ArcaneCardPreview';
 import { DEFAULT_ARCANE_LAYOUT, normalizeArcaneRarity } from '../ModCard/cardLayout';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 export interface Arcane {
   unique_name: string;
@@ -208,7 +209,7 @@ function ArcaneSlotCell({
                   className="border-muted/30 text-muted/30 hover:border-danger/50 hover:text-danger absolute right-8 flex h-3.25 w-3.25 items-center justify-center rounded-full border text-[7px] transition-colors disabled:pointer-events-none disabled:opacity-50"
                   title="Remove"
                 >
-                  ✕
+                  <MaterialSymbol name="close" style={{ fontSize: 10 }} />
                 </button>
               </div>
             )}

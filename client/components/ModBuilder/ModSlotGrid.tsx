@@ -14,6 +14,7 @@ import { polarityMatchForUi } from '../../utils/drain';
 import { isRivenMod } from '../../utils/riven';
 import { countEquippedUmbraSetMods, isUmbraSelfScalingSetMod } from '../../utils/umbraSet';
 import { ModCard, CardPreview, DEFAULT_LAYOUT } from '../ModCard';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 const POLARITY_CYCLE_FULL: (string | undefined)[] = [
   undefined,
@@ -523,7 +524,7 @@ function SlotCell({
                     className="border-glass-border bg-glass-active text-foreground hover:text-danger absolute right-[12px] flex h-[15px] w-[15px] items-center justify-center rounded-full border text-[7px] font-bold backdrop-blur-md transition-colors"
                     title="Remove"
                   >
-                    ✕
+                    <MaterialSymbol name="close" style={{ fontSize: 10 }} />
                   </button>
                 </div>
               </div>

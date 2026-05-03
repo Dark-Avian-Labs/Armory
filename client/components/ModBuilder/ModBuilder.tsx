@@ -1,7 +1,6 @@
 import { lazy, Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
-import shareIcon from '../../../icons/share.png';
 import { buildEditPath } from '../../app/paths';
 import { useCompare } from '../../context/CompareContext';
 import { useApi } from '../../hooks/useApi';
@@ -45,6 +44,7 @@ import { getEffectiveRivenDisposition } from '../../utils/riven';
 import { getRequiredExaltedStanceName, matchesSpecialItemType } from '../../utils/specialItems';
 import { getWeaponModCapacityBase, weaponSupportsValenceBonus } from '../../utils/weaponValence';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { Modal } from '../ui/Modal';
 import { AbilityBar } from './AbilityBar';
 import { ArcaneSlots, type ArcaneSlot, type Arcane } from './ArcaneSlots';
@@ -1445,24 +1445,20 @@ export function ModBuilder() {
                     className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
                     onClick={() => setShowShareModal(true)}
                     title="Share build image"
+                    aria-label="Share build image"
                   >
-                    <img
-                      src={shareIcon}
-                      alt=""
-                      className="h-5 w-5 object-contain"
-                      draggable={false}
-                    />
+                    <MaterialSymbol name="share" style={{ fontSize: 22 }} />
                   </button>
                   <button
                     type="button"
-                    className="btn btn-secondary h-9 shrink-0 px-2 text-xs font-semibold"
+                    className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
                     onClick={() => {
                       void openBuildPip();
                     }}
                     title="Open build in Picture-in-Picture"
                     aria-label="Open build in Picture-in-Picture"
                   >
-                    PiP
+                    <MaterialSymbol name="picture_in_picture" style={{ fontSize: 22 }} />
                   </button>
                 </div>
               }
@@ -1536,7 +1532,11 @@ export function ModBuilder() {
                     }`}
                     aria-hidden="true"
                   >
-                    {orokinReactor ? '\u2713' : '\u2715'}
+                    {orokinReactor ? (
+                      <MaterialSymbol name="check" filled style={{ fontSize: 15 }} />
+                    ) : (
+                      <MaterialSymbol name="close" style={{ fontSize: 15 }} />
+                    )}
                   </span>
                   Orokin Reactor
                 </button>
@@ -1583,7 +1583,11 @@ export function ModBuilder() {
                         }`}
                         aria-hidden="true"
                       >
-                        {buildIsPublic ? '\u2713' : '\u2715'}
+                        {buildIsPublic ? (
+                          <MaterialSymbol name="check" filled style={{ fontSize: 15 }} />
+                        ) : (
+                          <MaterialSymbol name="close" style={{ fontSize: 15 }} />
+                        )}
                       </span>
                       Public
                     </label>

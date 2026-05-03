@@ -30,6 +30,7 @@ import {
   normalizeArcaneRarity,
 } from '../ModCard/cardLayout';
 import { ModCard } from '../ModCard/ModCard';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { Modal } from '../ui/Modal';
 import { ShareHeroTitle } from './ShareHeroTitle';
 import { ShareRadarChart } from './ShareRadarChart';
@@ -336,10 +337,14 @@ function ShareReactorStamp({ active }: { active: boolean }) {
     <div className="flex flex-col items-center gap-0.5">
       <img src={orokinReactorImg} alt="" className="h-7 w-7 object-contain" draggable={false} />
       <span
-        className={`text-[13px] leading-none font-bold ${active ? 'text-emerald-400' : 'text-red-400/90'}`}
+        className={`inline-flex items-center justify-center ${active ? 'text-emerald-400' : 'text-red-400/90'}`}
         aria-hidden
       >
-        {active ? '\u2713' : '\u2717'}
+        {active ? (
+          <MaterialSymbol name="check" filled style={{ fontSize: 16 }} />
+        ) : (
+          <MaterialSymbol name="close" style={{ fontSize: 16 }} />
+        )}
       </span>
     </div>
   );

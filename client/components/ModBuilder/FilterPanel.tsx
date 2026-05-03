@@ -9,6 +9,7 @@ import { createRivenPlaceholderMod, getRivenWeaponType } from '../../utils/riven
 import { getRequiredExaltedStanceName } from '../../utils/specialItems';
 import { countEquippedUmbraSetModsFromModList } from '../../utils/umbraSet';
 import { ModCard, CardPreview, DEFAULT_LAYOUT } from '../ModCard';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface FilterPanelProps {
   equipmentType: EquipmentType;
@@ -288,7 +289,11 @@ export function FilterPanel({
               }`}
               aria-hidden="true"
             >
-              {showLockedOut ? '\u2713' : '\u2715'}
+              {showLockedOut ? (
+                <MaterialSymbol name="check" filled style={{ fontSize: 12 }} />
+              ) : (
+                <MaterialSymbol name="close" style={{ fontSize: 12 }} />
+              )}
             </span>
             Show locked
           </button>
@@ -307,7 +312,11 @@ export function FilterPanel({
               }`}
               aria-hidden="true"
             >
-              {expandMods ? '\u2713' : '\u2715'}
+              {expandMods ? (
+                <MaterialSymbol name="check" filled style={{ fontSize: 12 }} />
+              ) : (
+                <MaterialSymbol name="close" style={{ fontSize: 12 }} />
+              )}
             </span>
             Expand
           </button>
@@ -326,9 +335,10 @@ export function FilterPanel({
           <button
             type="button"
             onClick={() => setSearch('')}
+            aria-label="Clear mod search"
             className="text-muted hover:bg-glass-hover hover:text-foreground absolute top-1/2 right-2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-xs transition-colors"
           >
-            ✕
+            <MaterialSymbol name="close" style={{ fontSize: 14 }} />
           </button>
         )}
       </div>

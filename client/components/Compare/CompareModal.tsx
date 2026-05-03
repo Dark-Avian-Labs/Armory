@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useCompare, type CompareSnapshot } from '../../context/CompareContext';
 import { formatPercent } from '../../utils/damage';
 import { getElementColor } from '../../utils/elements';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface CompareModalProps {
   onClose: () => void;
@@ -147,17 +148,12 @@ export function CompareModal({ onClose }: CompareModalProps) {
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-foreground text-lg font-semibold">Build Comparison</h2>
           <button
-            className="text-muted hover:text-foreground rounded p-1 transition-colors"
+            type="button"
+            className="text-muted hover:text-foreground flex items-center justify-center rounded p-1 transition-colors"
             onClick={onClose}
+            aria-label="Close comparison"
           >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path
-                d="M5 5L15 15M15 5L5 15"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
+            <MaterialSymbol name="close" style={{ fontSize: 24 }} />
           </button>
         </div>
 

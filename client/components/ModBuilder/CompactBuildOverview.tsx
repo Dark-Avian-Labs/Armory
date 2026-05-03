@@ -15,7 +15,8 @@ import type { ArcaneSlot } from './ArcaneSlots';
 import type { ShardSlotConfig, ShardType } from './ArchonShardSlots';
 
 const MAIN_GRID_COLUMNS = 5;
-const MAIN_GRID_CELLS = MAIN_GRID_COLUMNS * 4;
+/** Three rows: aura/stance row + two general rows (fourth row was mostly empty in PiP). */
+const MAIN_GRID_CELLS = MAIN_GRID_COLUMNS * 3;
 const MAX_GENERAL_SLOTS = MAIN_GRID_CELLS - (3 + 2);
 
 const EFFECT_PREVIEW_MAX_CHARS = 14;

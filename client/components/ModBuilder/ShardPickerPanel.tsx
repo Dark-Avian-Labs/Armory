@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 import type { ShardType, ShardSlotConfig } from './ArchonShardSlots';
 
 interface ShardPickerPanelProps {
@@ -87,7 +88,7 @@ export function ShardPickerPanel({
             className="border-danger/40 text-danger/70 hover:border-danger hover:bg-danger/10 flex w-full items-center justify-between rounded-lg border border-dashed px-3 py-2 text-left text-sm transition-[color,background-color,border-color] duration-200"
           >
             <span>Remove Shard</span>
-            <span className="text-xs">&times;</span>
+            <MaterialSymbol name="close" style={{ fontSize: 16 }} />
           </button>
           {activeShard &&
             activeShard.buffs.map((buff) => {

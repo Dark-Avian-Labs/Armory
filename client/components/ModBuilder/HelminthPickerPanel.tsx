@@ -7,6 +7,7 @@ import {
   sanitizeDisplayTextKeepDamageTokens,
   splitDisplayTextByDamageTokens,
 } from '../../utils/damageTypeTokens';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface HelminthPickerPanelProps {
   replacingAbilityName: string;
@@ -95,7 +96,7 @@ export function HelminthPickerPanel({
               className="border-danger/40 hover:border-danger hover:bg-danger/10 flex w-full items-start gap-3 rounded-lg border border-dashed p-3 text-left transition-[color,background-color,border-color] duration-200"
             >
               <div className="bg-danger/10 text-danger/60 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
-                &times;
+                <MaterialSymbol name="close" style={{ fontSize: 22 }} />
               </div>
               <div className="min-w-0 pt-0.5">
                 <div className="text-danger/80 text-sm font-medium">Restore Original</div>

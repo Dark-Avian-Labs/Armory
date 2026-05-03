@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 
+import { MaterialSymbol } from './MaterialSymbol';
+
 export interface SelectDropdownOption {
   value: string;
   label: string;
@@ -119,8 +121,12 @@ export function SelectDropdown({
         <span className="min-w-0 flex-1 truncate" title={label}>
           <span className={value ? 'text-foreground' : 'text-muted'}>{label}</span>
         </span>
-        <span aria-hidden className="text-muted shrink-0 text-[10px]">
-          {open ? '▲' : '▼'}
+        <span aria-hidden className="text-muted inline-flex shrink-0 items-center justify-center">
+          {open ? (
+            <MaterialSymbol name="expand_less" style={{ fontSize: 16 }} />
+          ) : (
+            <MaterialSymbol name="expand_more" style={{ fontSize: 16 }} />
+          )}
         </span>
       </button>
       {open && (

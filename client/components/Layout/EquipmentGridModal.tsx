@@ -10,6 +10,7 @@ import {
   type EquipmentItem,
   type EquipmentPickerTab,
 } from '../BuildsCatalog/buildsCatalogUtils';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { Modal } from '../ui/Modal';
 
 interface EquipmentGridModalProps {
@@ -80,7 +81,7 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
             onClick={onClose}
             aria-label="Close equipment picker"
           >
-            &times;
+            <MaterialSymbol name="close" style={{ fontSize: 22 }} />
           </button>
         </div>
 
