@@ -19,7 +19,7 @@ export function MaterialSymbol({
         fontVariationSettings: `'FILL' ${filled ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
         ...style,
       }}
-      aria-hidden
+      aria-hidden="true"
       {...rest}
     >
       {name}
