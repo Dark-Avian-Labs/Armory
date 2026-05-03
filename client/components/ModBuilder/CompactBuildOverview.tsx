@@ -172,7 +172,7 @@ function buildMainCompactGrid(payload: {
   const exilus = sorted.find((s) => s.type === 'exilus');
 
   let cell0: CompactCellPayload = { kind: 'empty' };
-  let cell1: CompactCellPayload = { kind: 'empty' };
+  let cell1: CompactCellPayload;
   let cell2: CompactCellPayload = { kind: 'empty' };
 
   if (config.hasAura) {
