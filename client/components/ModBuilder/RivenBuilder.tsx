@@ -15,6 +15,7 @@ import {
   resolveRivenConfig,
   validateRivenConfig,
 } from '../../utils/riven';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { SelectDropdown } from '../ui/SelectDropdown';
 
 interface RivenBuilderProps {
@@ -119,8 +120,13 @@ export function RivenBuilder({
       <div className="modal max-w-lg" style={{ width: '90%' }} onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-foreground text-sm font-semibold">Riven Builder</h3>
-          <button className="text-muted hover:text-foreground text-lg" onClick={onClose}>
-            &times;
+          <button
+            type="button"
+            className="text-muted hover:text-foreground flex items-center justify-center p-1"
+            onClick={onClose}
+            aria-label="Close riven builder"
+          >
+            <MaterialSymbol name="close" style={{ fontSize: 22 }} />
           </button>
         </div>
 

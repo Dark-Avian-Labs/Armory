@@ -5,6 +5,7 @@ import { APP_PATHS, buildReadOnlyPath } from '../../app/paths';
 import { EQUIPMENT_TYPE_LABELS, type EquipmentType } from '../../types/warframe';
 import { apiFetch } from '../../utils/api';
 import { normalizeEquipmentName } from '../../utils/specialItems';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 type BuildListItem = {
   id: number;
@@ -114,7 +115,7 @@ export function BuildsByEquipmentPage() {
           onClick={() => navigate(APP_PATHS.buildsExplore)}
           aria-label="Back to equipment categories"
         >
-          ←
+          <MaterialSymbol name="arrow_back" style={{ fontSize: 22 }} />
         </button>
         <div className="min-w-0">
           <h1 className="text-foreground truncate text-lg font-semibold">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { buildNewPath } from '../../app/paths';
 import { apiFetch } from '../../utils/api';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface SearchResult {
   category: string;
@@ -129,7 +130,7 @@ export function SearchBar() {
         {query && (
           <button
             type="button"
-            className="text-muted hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 text-lg"
+            className="text-muted hover:text-foreground absolute top-1/2 right-2 flex -translate-y-1/2 items-center justify-center p-0.5"
             aria-label="Clear search"
             onClick={() => {
               setQuery('');
@@ -138,7 +139,7 @@ export function SearchBar() {
               setOpen(false);
             }}
           >
-            &times;
+            <MaterialSymbol name="close" style={{ fontSize: 20 }} />
           </button>
         )}
       </div>

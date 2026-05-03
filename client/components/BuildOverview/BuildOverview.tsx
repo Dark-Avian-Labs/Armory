@@ -16,6 +16,7 @@ import {
 import { apiFetch } from '../../utils/api';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
 import { matchesSpecialItemType } from '../../utils/specialItems';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface BuildsByCategory {
   type: EquipmentType;
@@ -496,10 +497,12 @@ export function BuildOverview() {
                 Link "{linkingBuild.name}" to Loadout
               </h3>
               <button
-                className="text-muted hover:text-foreground text-lg"
+                type="button"
+                className="text-muted hover:text-foreground flex items-center justify-center p-1"
                 onClick={() => setLinkingBuild(null)}
+                aria-label="Close"
               >
-                &times;
+                <MaterialSymbol name="close" style={{ fontSize: 22 }} />
               </button>
             </div>
             <div className="space-y-2">
@@ -540,11 +543,12 @@ export function BuildOverview() {
                 Add Build to "{linkingLoadout.name}"
               </h3>
               <button
-                className="text-muted hover:text-foreground text-lg"
+                type="button"
+                className="text-muted hover:text-foreground flex items-center justify-center p-1"
                 onClick={() => setLinkingLoadout(null)}
                 aria-label="Close add build dialog"
               >
-                &times;
+                <MaterialSymbol name="close" style={{ fontSize: 22 }} />
               </button>
             </div>
             {loadoutCompatibleBuilds.length === 0 ? (
@@ -687,7 +691,7 @@ function BuildRow({
             title="Link to loadout"
             aria-label="Link build to loadout"
           >
-            ⛓
+            <MaterialSymbol name="add_link" style={{ fontSize: 18 }} />
           </button>
         )}
         <button
@@ -698,7 +702,7 @@ function BuildRow({
           }}
           aria-label="Delete build"
         >
-          &times;
+          <MaterialSymbol name="close" style={{ fontSize: 18 }} />
         </button>
       </div>
     </div>
@@ -750,7 +754,13 @@ function LoadoutRow({
           }
         }}
       >
-        <span className="text-muted/50 text-xs">{expanded ? '▼' : '▶'}</span>
+        <span className="text-muted/50 inline-flex items-center justify-center">
+          {expanded ? (
+            <MaterialSymbol name="expand_more" style={{ fontSize: 16 }} />
+          ) : (
+            <MaterialSymbol name="chevron_right" style={{ fontSize: 16 }} />
+          )}
+        </span>
         <div className="min-w-0 flex-1">
           <span className="text-foreground text-sm font-medium">{loadout.name}</span>
           <span className="text-muted/50 ml-2 text-xs">{loadout.builds.length} builds</span>
@@ -763,7 +773,7 @@ function LoadoutRow({
           }}
           aria-label="Delete loadout"
         >
-          &times;
+          <MaterialSymbol name="close" style={{ fontSize: 18 }} />
         </button>
       </div>
 
@@ -806,7 +816,7 @@ function LoadoutRow({
                   className="text-muted/40 hover:text-danger opacity-0 transition-opacity group-hover:opacity-100"
                   aria-label={`Unlink ${getSlotLabel(slotType)}`}
                 >
-                  &times;
+                  <MaterialSymbol name="close" style={{ fontSize: 16 }} />
                 </button>
               </div>
             ))
