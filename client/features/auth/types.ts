@@ -12,7 +12,6 @@ export interface RemoteAuthUser {
   is_admin: boolean;
   display_name?: string;
   email?: string;
-  avatar?: number | string;
 }
 
 export interface RemoteAuthState {
@@ -30,7 +29,6 @@ export interface AppAccountProfile {
   isAdmin: boolean;
   displayName: string;
   email: string;
-  avatarId: number;
 }
 
 export interface AppAccountState {

@@ -453,7 +453,7 @@ function SlotCell({
                   scale={SLOT_SCALE}
                 />
                 <div
-                  className="absolute left-0 flex w-full items-center justify-center"
+                  className={`absolute left-0 flex w-full items-center justify-center${readOnly ? ' pointer-events-none' : ''}`}
                   style={{
                     top:
                       Math.round(
@@ -461,7 +461,7 @@ function SlotCell({
                       ) - 5,
                     height: 16,
                   }}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={readOnly ? undefined : (e) => e.stopPropagation()}
                 >
                   {(slot.mod.fusion_limit ?? 0) > 0 && (
                     <button
@@ -611,7 +611,10 @@ function SlotCell({
         </>
       )}
       {readOnly ? (
-        <div className="absolute inset-0 z-[200] cursor-default rounded-lg" aria-hidden="true" />
+        <div
+          className="pointer-events-none absolute inset-0 z-[200] cursor-default rounded-lg"
+          aria-hidden="true"
+        />
       ) : null}
     </div>
   );

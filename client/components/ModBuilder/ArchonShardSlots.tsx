@@ -114,19 +114,19 @@ export function ArchonShardSlots({
                     />
                   </button>
                 </GlassTooltip>
-                <button
-                  type="button"
-                  disabled={readOnly}
-                  tabIndex={readOnly ? -1 : undefined}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemove(i);
-                  }}
-                  className="border-muted/30 text-muted/30 hover:border-danger/50 hover:text-danger absolute -right-1 -bottom-1 flex h-3.25 w-3.25 items-center justify-center rounded-full border text-[7px] transition-colors disabled:pointer-events-none disabled:opacity-50"
-                  title="Remove"
-                >
-                  <MaterialSymbol name="close" style={{ fontSize: 10 }} />
-                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(i);
+                    }}
+                    className="border-muted/30 text-muted/30 hover:border-danger/50 hover:text-danger absolute -right-1 -bottom-1 flex h-3.25 w-3.25 items-center justify-center rounded-full border text-[7px] transition-colors"
+                    title="Remove"
+                  >
+                    <MaterialSymbol name="close" style={{ fontSize: 10 }} />
+                  </button>
+                )}
               </div>
             );
           }

@@ -21,7 +21,6 @@ import feathers from '../../assets/feathers.png';
 import { useCompare } from '../../context/CompareContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getProfileIconSrc } from '../../utils/profileIcons';
 import { CompareBar } from '../Compare/CompareBar';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -159,7 +158,6 @@ export function Layout() {
   const profile = account.profile;
   const isLoggedIn = account.isAuthenticated && profile !== null;
   const isAdmin = profile?.isAdmin === true;
-  const avatarSrc = getProfileIconSrc(profile?.avatarId ?? 1);
 
   const compactModBuilderUi =
     searchParams.get('compact') === '1' && isCompactModBuilderRoute(location.pathname);
@@ -238,7 +236,7 @@ export function Layout() {
             <div ref={menuRef} className="relative">
               <button
                 type="button"
-                className="icon-toggle-btn profile-avatar-btn"
+                className="icon-toggle-btn"
                 ref={menuButtonRef}
                 aria-haspopup="menu"
                 aria-expanded={userMenuOpen}
@@ -252,7 +250,7 @@ export function Layout() {
                   }
                 }}
               >
-                <img src={avatarSrc} alt="" className="profile-avatar-image" />
+                <MaterialSymbol name="person" filled />
               </button>
               {userMenuOpen && (
                 <Menu baseClass="user-menu">

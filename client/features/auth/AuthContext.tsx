@@ -16,7 +16,6 @@ import {
   clearCsrfToken,
   UnauthorizedError,
 } from '../../utils/api';
-import { normalizeAvatarId } from '../../utils/profileIcons';
 import { getStoredProfile, mergeStoredProfile } from '../profile/profileStore';
 import type {
   AppAccountProfile,
@@ -71,7 +70,6 @@ function buildProfile(user: RemoteAuthUser): AppAccountProfile {
     isAdmin: user.is_admin,
     displayName: stored?.displayName || user.display_name || user.username,
     email: user.email || '',
-    avatarId: normalizeAvatarId(user.avatar),
   };
 }
 

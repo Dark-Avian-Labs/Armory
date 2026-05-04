@@ -891,22 +891,26 @@ export function ModBuilder() {
     [getDefaultRivenConfig],
   );
 
-  const handleSetRankChange = useCallback((slotIndex: number, setRank: number) => {
-    setSlots((prev) => {
-      const targetSlot = prev.find((s) => s.index === slotIndex);
-      if (!targetSlot) return prev;
+  const handleSetRankChange = useCallback(
+    (slotIndex: number, setRank: number) => {
+      if (readOnly) return;
+      setSlots((prev) => {
+        const targetSlot = prev.find((s) => s.index === slotIndex);
+        if (!targetSlot) return prev;
 
-      const setName = getSetName(targetSlot);
-      if (!setName) {
-        return prev.map((s) => (s.index === slotIndex ? { ...s, setRank } : s));
-      }
+        const setName = getSetName(targetSlot);
+        if (!setName) {
+          return prev.map((s) => (s.index === slotIndex ? { ...s, setRank } : s));
+        }
 
-      const currentRank = targetSlot.setRank ?? 1;
-      const delta = setRank - currentRank;
-      if (delta === 0) return prev;
-      return applySetRankDelta(prev, setName, delta, currentRank);
-    });
-  }, []);
+        const currentRank = targetSlot.setRank ?? 1;
+        const delta = setRank - currentRank;
+        if (delta === 0) return prev;
+        return applySetRankDelta(prev, setName, delta, currentRank);
+      });
+    },
+    [readOnly],
+  );
 
   const handleModSwap = useCallback((sourceIndex: number, targetIndex: number) => {
     if (sourceIndex === targetIndex) return;
@@ -964,27 +968,35 @@ export function ModBuilder() {
     });
   }, []);
 
-  const handleModRemove = useCallback((slotIndex: number) => {
-    setSlots((prev) => {
-      const updated = prev.map((s) =>
-        s.index === slotIndex
-          ? {
-              ...s,
-              mod: undefined,
-              rank: undefined,
-              setRank: undefined,
-              riven_config: undefined,
-              riven_art_path: undefined,
-            }
-          : s,
-      );
-      return applySetPieceDelta(prev, updated);
-    });
-  }, []);
+  const handleModRemove = useCallback(
+    (slotIndex: number) => {
+      if (readOnly) return;
+      setSlots((prev) => {
+        const updated = prev.map((s) =>
+          s.index === slotIndex
+            ? {
+                ...s,
+                mod: undefined,
+                rank: undefined,
+                setRank: undefined,
+                riven_config: undefined,
+                riven_art_path: undefined,
+              }
+            : s,
+        );
+        return applySetPieceDelta(prev, updated);
+      });
+    },
+    [readOnly],
+  );
 
-  const handleRankChange = useCallback((slotIndex: number, rank: number) => {
-    setSlots((prev) => prev.map((s) => (s.index === slotIndex ? { ...s, rank } : s)));
-  }, []);
+  const handleRankChange = useCallback(
+    (slotIndex: number, rank: number) => {
+      if (readOnly) return;
+      setSlots((prev) => prev.map((s) => (s.index === slotIndex ? { ...s, rank } : s)));
+    },
+    [readOnly],
+  );
 
   const modCapacityBase = useMemo(
     () => getWeaponModCapacityBase(selectedEquipment ?? undefined),
@@ -1011,6 +1023,7 @@ export function ModBuilder() {
 
   const handleArcaneSlotClick = useCallback(
     (slotIndex: number) => {
+      if (readOnly) return;
       if (activeArcaneSlot === slotIndex && rightPanelMode === 'arcanes') {
         setActiveArcaneSlot(null);
         setRightPanelMode('mods');
@@ -1023,7 +1036,7 @@ export function ModBuilder() {
         setRightPanelMode('arcanes');
       }
     },
-    [activeArcaneSlot, rightPanelMode],
+    [activeArcaneSlot, rightPanelMode, readOnly],
   );
 
   const handleArcaneSelect = useCallback(
@@ -1040,26 +1053,35 @@ export function ModBuilder() {
     [activeArcaneSlot],
   );
 
-  const handleArcaneRemove = useCallback((slotIndex: number) => {
-    setArcaneSlots((prev) => {
-      const next = [...prev];
-      next[slotIndex] = { rank: 0 };
-      return next;
-    });
-  }, []);
+  const handleArcaneRemove = useCallback(
+    (slotIndex: number) => {
+      if (readOnly) return;
+      setArcaneSlots((prev) => {
+        const next = [...prev];
+        next[slotIndex] = { rank: 0 };
+        return next;
+      });
+    },
+    [readOnly],
+  );
 
-  const handleArcaneRankChange = useCallback((slotIndex: number, rank: number) => {
-    setArcaneSlots((prev) => {
-      const next = [...prev];
-      if (next[slotIndex]) {
-        next[slotIndex] = { ...next[slotIndex], rank };
-      }
-      return next;
-    });
-  }, []);
+  const handleArcaneRankChange = useCallback(
+    (slotIndex: number, rank: number) => {
+      if (readOnly) return;
+      setArcaneSlots((prev) => {
+        const next = [...prev];
+        if (next[slotIndex]) {
+          next[slotIndex] = { ...next[slotIndex], rank };
+        }
+        return next;
+      });
+    },
+    [readOnly],
+  );
 
   const handleShardSlotClick = useCallback(
     (slotIndex: number) => {
+      if (readOnly) return;
       if (activeShardSlot === slotIndex && rightPanelMode === 'shards') {
         setActiveShardSlot(null);
         setRightPanelMode('mods');
@@ -1072,7 +1094,7 @@ export function ModBuilder() {
         setRightPanelMode('shards');
       }
     },
-    [activeShardSlot, rightPanelMode],
+    [activeShardSlot, rightPanelMode, readOnly],
   );
 
   const handleShardSelect = useCallback(
@@ -1093,13 +1115,17 @@ export function ModBuilder() {
     [activeShardSlot],
   );
 
-  const handleShardRemove = useCallback((slotIndex: number) => {
-    setShardSlots((prev) => {
-      const next = [...prev];
-      next[slotIndex] = { tauforged: false };
-      return next;
-    });
-  }, []);
+  const handleShardRemove = useCallback(
+    (slotIndex: number) => {
+      if (readOnly) return;
+      setShardSlots((prev) => {
+        const next = [...prev];
+        next[slotIndex] = { tauforged: false };
+        return next;
+      });
+    },
+    [readOnly],
+  );
 
   const handleRivenSave = useCallback(
     (config: RivenConfig) => {
@@ -1657,12 +1683,7 @@ export function ModBuilder() {
             <div className="glass-shell p-4">
               <div className="flex min-h-[136px] items-start justify-between gap-3 overflow-visible">
                 {supportsArcanes && (
-                  <div
-                    className={readOnly ? 'opacity-95' : undefined}
-                    tabIndex={readOnly ? -1 : undefined}
-                    inert={readOnly}
-                    aria-hidden={readOnly ? true : undefined}
-                  >
+                  <div className={readOnly ? 'opacity-95' : undefined}>
                     <ArcaneSlots
                       readOnly={readOnly}
                       slotCount={arcaneSlotCount}
@@ -1682,12 +1703,7 @@ export function ModBuilder() {
                   </div>
                 )}
                 {equipmentType === 'warframe' && (
-                  <div
-                    className={readOnly ? 'opacity-95' : undefined}
-                    tabIndex={readOnly ? -1 : undefined}
-                    inert={readOnly}
-                    aria-hidden={readOnly ? true : undefined}
-                  >
+                  <div className={readOnly ? 'opacity-95' : undefined}>
                     <ArchonShardSlots
                       readOnly={readOnly}
                       slots={shardSlots}
