@@ -145,7 +145,7 @@ function ArcaneSlotCell({
         ref={slotRef}
         style={{
           width: SLOT_W,
-          height: arcane ? SLOT_H + RANK_ROW_H : SLOT_H,
+          height: arcane && maxRank > 0 && !readOnly ? SLOT_H + RANK_ROW_H : SLOT_H,
           marginBottom: 4,
         }}
         className={`relative rounded-lg ${readOnly ? 'cursor-default' : 'cursor-pointer'} ${isActive ? 'ring-accent ring-1' : ''}`}
@@ -175,38 +175,32 @@ function ArcaneSlotCell({
                 maxRank={maxRank}
               />
             </div>
-            {maxRank > 0 && (
+            {!readOnly && maxRank > 0 && (
               <div
                 className="relative flex items-center justify-center gap-1"
                 style={{ height: RANK_ROW_H }}
-                onClick={readOnly ? undefined : (e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
               >
                 <button
                   type="button"
-                  disabled={readOnly}
-                  tabIndex={readOnly ? -1 : undefined}
                   onClick={() => onRankChange(Math.max(0, slot.rank - 1))}
-                  className="border-muted/30 text-muted hover:border-foreground/50 hover:text-foreground flex h-3 w-6 items-center justify-center rounded-full border text-[9px] font-bold transition-colors disabled:pointer-events-none disabled:opacity-50"
+                  className="border-muted/30 text-muted hover:border-foreground/50 hover:text-foreground flex h-3 w-6 items-center justify-center rounded-full border text-[9px] font-bold transition-colors"
                   title="Decrease rank"
                 >
                   −
                 </button>
                 <button
                   type="button"
-                  disabled={readOnly}
-                  tabIndex={readOnly ? -1 : undefined}
                   onClick={() => onRankChange(Math.min(maxRank, slot.rank + 1))}
-                  className="border-muted/30 text-muted hover:border-foreground/50 hover:text-foreground flex h-3 w-6 items-center justify-center rounded-full border text-[9px] font-bold transition-colors disabled:pointer-events-none disabled:opacity-50"
+                  className="border-muted/30 text-muted hover:border-foreground/50 hover:text-foreground flex h-3 w-6 items-center justify-center rounded-full border text-[9px] font-bold transition-colors"
                   title="Increase rank"
                 >
                   +
                 </button>
                 <button
                   type="button"
-                  disabled={readOnly}
-                  tabIndex={readOnly ? -1 : undefined}
                   onClick={() => onRemove()}
-                  className="border-muted/30 text-muted/30 hover:border-danger/50 hover:text-danger absolute right-8 flex h-3.25 w-3.25 items-center justify-center rounded-full border text-[7px] transition-colors disabled:pointer-events-none disabled:opacity-50"
+                  className="border-muted/30 text-muted/30 hover:border-danger/50 hover:text-danger absolute right-8 flex h-3.25 w-3.25 items-center justify-center rounded-full border text-[7px] transition-colors"
                   title="Remove"
                 >
                   <MaterialSymbol name="close" style={{ fontSize: 10 }} />
