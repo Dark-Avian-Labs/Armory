@@ -409,17 +409,7 @@ export function CompactBuildOverview({
       roDoc?.disconnect();
       roNode?.disconnect();
     };
-  }, [
-    pipEmbed,
-    updatePipScale,
-    slots,
-    arcaneSlots,
-    shardSlots,
-    equipmentType,
-    buildName,
-    equipmentName,
-    showShards,
-  ]);
+  }, [pipEmbed, updatePipScale]);
 
   const inner = (
     <div
