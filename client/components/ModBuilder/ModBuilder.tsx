@@ -1233,20 +1233,24 @@ export function ModBuilder() {
       const pipUrl = new URL(window.location.href);
       pipUrl.searchParams.set('view', '1');
       pipUrl.searchParams.set('compact', '1');
+      pipUrl.searchParams.set('pip', '1');
 
       const pipDoc = pipWindow.document;
       pipDoc.title = `Armory - ${buildName}`;
       pipDoc.documentElement.style.height = '100%';
+      pipDoc.documentElement.style.overflow = 'hidden';
       pipDoc.body.style.margin = '0';
       pipDoc.body.style.padding = '0';
+      pipDoc.body.style.height = '100%';
       pipDoc.body.style.minHeight = '100%';
+      pipDoc.body.style.overflow = 'hidden';
       pipDoc.body.style.background = '#090d18';
 
       const iframe = pipDoc.createElement('iframe');
       iframe.src = pipUrl.toString();
       iframe.title = 'Armory Build';
       iframe.style.width = '100%';
-      iframe.style.height = '100vh';
+      iframe.style.height = '100%';
       iframe.style.border = '0';
       iframe.style.display = 'block';
 
@@ -1446,6 +1450,7 @@ export function ModBuilder() {
         arcaneSlots={arcaneSlots}
         shardSlots={shardSlots}
         shardTypes={shardTypes}
+        pipEmbed={searchParams.get('pip') === '1'}
       />
     );
   }

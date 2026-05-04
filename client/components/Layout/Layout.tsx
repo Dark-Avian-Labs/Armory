@@ -171,7 +171,7 @@ export function Layout() {
         <main
           id="main-content"
           tabIndex={-1}
-          className="relative z-10 mx-auto flex w-full flex-1 flex-col p-3"
+          className="relative z-10 mx-auto flex min-h-0 w-full flex-1 flex-col p-3"
         >
           <Outlet />
         </main>
