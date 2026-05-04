@@ -828,6 +828,7 @@ export function ModBuilder() {
 
   const handleModDrop = useCallback(
     (slotIndex: number, mod: Mod) => {
+      if (readOnly) return;
       const isRivenPlaceholder = mod.unique_name === RIVEN_PLACEHOLDER_UNIQUE;
       openRivenEditorForSlotRef.current = null;
       placedNewRivenRef.current = false;
@@ -888,7 +889,7 @@ export function ModBuilder() {
       }
       setSearchResetKey((k) => k + 1);
     },
-    [getDefaultRivenConfig],
+    [getDefaultRivenConfig, readOnly],
   );
 
   const handleSetRankChange = useCallback(
