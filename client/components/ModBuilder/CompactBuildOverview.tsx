@@ -1,3 +1,5 @@
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+
 import type { EquipmentType, Mod, ModSlot } from '../../types/warframe';
 import { EQUIPMENT_SLOT_CONFIGS } from '../../types/warframe';
 import { getMaxRank } from '../../utils/arcaneUtils';
@@ -15,7 +17,6 @@ import type { ArcaneSlot } from './ArcaneSlots';
 import type { ShardSlotConfig, ShardType } from './ArchonShardSlots';
 
 const MAIN_GRID_COLUMNS = 5;
-/** Three rows: aura/stance row + two general rows (fourth row was mostly empty in PiP). */
 const MAIN_GRID_CELLS = MAIN_GRID_COLUMNS * 3;
 const MAX_GENERAL_SLOTS = MAIN_GRID_CELLS - (3 + 2);
 
@@ -331,6 +332,7 @@ export interface CompactBuildOverviewProps {
   arcaneSlots: ArcaneSlot[];
   shardSlots: ShardSlotConfig[];
   shardTypes: ShardType[];
+  pipEmbed?: boolean;
 }
 
 export function CompactBuildOverview({
@@ -341,6 +343,7 @@ export function CompactBuildOverview({
   arcaneSlots,
   shardSlots,
   shardTypes,
+  pipEmbed = false,
 }: CompactBuildOverviewProps) {
   const gridCells = buildMainCompactGrid({
     equipmentType,
@@ -349,9 +352,88 @@ export function CompactBuildOverview({
   });
 
   const showShards = equipmentType === 'warframe';
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [pipScale, setPipScale] = useState(1);
 
-  return (
-    <div className="compact-build-overview mx-auto w-full max-w-[720px] space-y-3 px-3 py-4">
+  const updatePipScale = useCallback(() => {
+    if (!pipEmbed || typeof window === 'undefined' || window.parent === window) {
+      setPipScale(1);
+      return;
+    }
+    const node = measureRef.current;
+    if (!node) return;
+    try {
+      const parentWin = window.parent;
+      const pad = 12;
+      const pw = parentWin.innerWidth;
+      const ph = parentWin.innerHeight;
+      const cw = node.offsetWidth;
+      const ch = node.offsetHeight;
+      if (cw < 1 || ch < 1) return;
+      const factor = Math.min((pw - pad * 2) / cw, (ph - pad * 2) / ch);
+      setPipScale(Math.min(Math.max(factor, 0.12), 4));
+    } catch {
+      setPipScale(1);
+    }
+  }, [pipEmbed]);
+
+  useLayoutEffect(() => {
+    if (!pipEmbed || typeof window === 'undefined' || window.parent === window) {
+      return undefined;
+    }
+    let parentWin: Window;
+    try {
+      parentWin = window.parent;
+      void parentWin.innerWidth;
+    } catch {
+      return undefined;
+    }
+    const onResize = () => updatePipScale();
+    parentWin.addEventListener('resize', onResize);
+    let roDoc: ResizeObserver | null = null;
+    try {
+      roDoc = new ResizeObserver(onResize);
+      roDoc.observe(parentWin.document.documentElement);
+    } catch {
+      roDoc = null;
+    }
+    const node = measureRef.current;
+    const roNode = node ? new ResizeObserver(onResize) : null;
+    if (node && roNode) {
+      roNode.observe(node);
+    }
+    const id = requestAnimationFrame(() => updatePipScale());
+    return () => {
+      cancelAnimationFrame(id);
+      parentWin.removeEventListener('resize', onResize);
+      roDoc?.disconnect();
+      roNode?.disconnect();
+    };
+  }, [
+    pipEmbed,
+    updatePipScale,
+    slots,
+    arcaneSlots,
+    shardSlots,
+    equipmentType,
+    buildName,
+    equipmentName,
+    showShards,
+  ]);
+
+  const inner = (
+    <div
+      ref={measureRef}
+      className="compact-build-overview mx-auto w-full max-w-[720px] space-y-3 px-3 py-4"
+      style={
+        pipEmbed
+          ? {
+              transform: `scale(${pipScale})`,
+              transformOrigin: 'center center',
+            }
+          : undefined
+      }
+    >
       <div className="space-y-0.5 border-b border-[var(--color-glass-border)] pb-3">
         <h1 className="text-[length:clamp(13px,3vw,16px)] font-semibold text-[var(--color-foreground)]">
           {buildName}
@@ -384,6 +466,16 @@ export function CompactBuildOverview({
           <ShardStrip shardSlots={shardSlots} shardTypes={shardTypes} />
         </section>
       ) : null}
+    </div>
+  );
+
+  if (!pipEmbed) {
+    return inner;
+  }
+
+  return (
+    <div className="box-border flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden">
+      {inner}
     </div>
   );
 }
