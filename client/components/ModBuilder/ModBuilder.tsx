@@ -42,6 +42,7 @@ import {
 } from '../../utils/riven';
 import { getEffectiveRivenDisposition } from '../../utils/riven';
 import {
+  augmentExaltedStanceModForDisplay,
   getRequiredExaltedStanceName,
   matchesSpecialItemType,
   weaponOmitsExilusSlot,
@@ -617,19 +618,19 @@ export function ModBuilder() {
         !isPostureMod(mod) &&
         mod.name.trim().toLowerCase() === selectedRequiredExaltedStanceName.toLowerCase(),
     );
-    if (found) {
-      return found;
-    }
     const syntheticUniqueName = `/Synthetic/SpecialItems/Stances/${selectedEquipment.name.trim().toLowerCase().replace(/\s+/g, '-')}`;
-    return {
-      unique_name: syntheticUniqueName,
-      name: selectedRequiredExaltedStanceName,
-      type: 'STANCE',
-      compat_name: selectedEquipment.name,
-      rarity: 'COMMON',
-      base_drain: 0,
-      fusion_limit: 5,
-    } satisfies Mod;
+    const base =
+      found ??
+      ({
+        unique_name: syntheticUniqueName,
+        name: selectedRequiredExaltedStanceName,
+        type: 'STANCE',
+        compat_name: selectedEquipment.name,
+        rarity: 'COMMON',
+        base_drain: 0,
+        fusion_limit: 5,
+      } satisfies Mod);
+    return augmentExaltedStanceModForDisplay(base);
   }, [selectedEquipment, selectedRequiredExaltedStanceName, stanceData?.items]);
   const rivenWeaponType = useMemo<RivenWeaponType | null>(
     () => getRivenWeaponType(equipmentType, selectedEquipment?.name),

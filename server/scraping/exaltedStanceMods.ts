@@ -61,6 +61,48 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     rarity: 'RARE',
     description: 'Stance: Summon the iron staff and unleash fury.',
   },
+  {
+    id: 7356,
+    slug: 'whipclaw',
+    name: 'Whipclaw',
+    compatName: 'Whipclaw',
+    rarity: 'COMMON',
+    description:
+      'Stance: Khora lashes the ground with her whip, striking foes at range and lifting vulnerable targets.',
+  },
+  {
+    id: 2403,
+    slug: 'garuda-talons',
+    name: 'Garuda Talons',
+    compatName: 'Garuda Talons',
+    rarity: 'COMMON',
+    description: 'Stance: Garuda extends her talons when no melee weapon is equipped.',
+  },
+  {
+    id: 2273,
+    slug: 'diwata',
+    name: 'Razorwing',
+    compatName: 'Diwata',
+    rarity: 'COMMON',
+    description:
+      'Stance: While Razorwing is active, Titania wields the Diwata exalted heavy blade.',
+  },
+  {
+    id: 7358,
+    slug: 'shattered-lash',
+    name: 'Shattered Lash',
+    compatName: 'Shattered Lash',
+    rarity: 'COMMON',
+    description: 'Stance: Gara extends a blade of hardened glass to slice through enemies.',
+  },
+  {
+    id: 7350,
+    slug: 'shadow-clones',
+    name: 'Shadow Clones',
+    compatName: 'Shadow Clones',
+    rarity: 'COMMON',
+    description: 'Stance: Strike alongside manifested shadow clones.',
+  },
 ];
 
 interface OverframeStanceData {

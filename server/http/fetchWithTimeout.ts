@@ -4,7 +4,6 @@ export const FETCH_TIMEOUT_MS = {
   binaryImage: 60_000,
   htmlPage: 60_000,
   warframeMarketItems: 120_000,
-  /** Overframe Next.js HTML (stance/arsenal detail, hidden weapon pages) */
   overframeDetailHtml: 8_000,
 } as const;
 
