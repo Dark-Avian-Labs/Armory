@@ -156,7 +156,14 @@ function getSlotLabel(slotType: string): string {
   if (slotType === 'special_secondary') return 'Secondary (Special)';
   if (slotType === 'special_melee') return 'Melee (Special)';
 
-  return LOADOUT_SLOT_TYPES.find((slot) => slot.key === slotType)?.label ?? slotType;
+  const loadoutLabel = LOADOUT_SLOT_TYPES.find((slot) => slot.key === slotType)?.label;
+  if (loadoutLabel) return loadoutLabel;
+
+  if (slotType in EQUIPMENT_TYPE_LABELS) {
+    return EQUIPMENT_TYPE_LABELS[slotType as EquipmentType];
+  }
+
+  return slotType;
 }
 
 export function BuildOverview() {

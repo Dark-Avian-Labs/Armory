@@ -1401,22 +1401,11 @@ export function ModBuilder() {
     ? `/images${selectedEquipment.image_path}`
     : undefined;
 
-  useEffect(() => {
-    if (!selectedIsCompanionWeapon) return;
-    setSlots((prev) => {
-      if (!prev.some((slot) => slot.type === 'exilus')) {
-        return prev;
-      }
-      return prev
-        .filter((slot) => slot.type !== 'exilus')
-        .map((slot, index) => ({ ...slot, index }));
-    });
-  }, [selectedIsCompanionWeapon]);
-
   const selectedOmitsExilus = weaponOmitsExilusSlot(selectedEquipment?.name, equipmentType);
+  const shouldOmitExilus = selectedIsCompanionWeapon || selectedOmitsExilus;
 
   useEffect(() => {
-    if (!selectedOmitsExilus) return;
+    if (!shouldOmitExilus) return;
     setSlots((prev) => {
       if (!prev.some((slot) => slot.type === 'exilus')) {
         return prev;
@@ -1425,7 +1414,7 @@ export function ModBuilder() {
         .filter((slot) => slot.type !== 'exilus')
         .map((slot, index) => ({ ...slot, index }));
     });
-  }, [selectedOmitsExilus]);
+  }, [shouldOmitExilus]);
 
   const hasSelection =
     activeSlotIndex !== undefined ||
