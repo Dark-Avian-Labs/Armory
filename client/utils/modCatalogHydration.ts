@@ -1,5 +1,6 @@
 import type { Mod, ModSlot } from '../types/warframe';
 import { isRivenMod } from './riven';
+import { ARMORY_STANCE_WIKI_IMAGE_PREFIX } from './specialItems';
 
 function preferCatalogOptional<T extends string | undefined>(
   stored: T | null | undefined,
@@ -12,6 +13,14 @@ function preferCatalogOptional<T extends string | undefined>(
 export function catalogKeyForMod(mod: Pick<Mod, 'name' | 'type'>): string {
   const t = (mod.type ?? '').trim().toUpperCase();
   return `${mod.name ?? ''}|||${t}`;
+}
+
+function mergeModImagePath(stored: Mod, catalog: Mod): string | undefined {
+  const st = stored.image_path?.trim();
+  const cat = catalog.image_path?.trim();
+  if (cat?.startsWith(ARMORY_STANCE_WIKI_IMAGE_PREFIX)) return cat;
+  if (st?.startsWith(ARMORY_STANCE_WIKI_IMAGE_PREFIX)) return st;
+  return preferCatalogOptional(stored.image_path, catalog.image_path);
 }
 
 export function mergeModWithCatalog(stored: Mod, catalog?: Mod): Mod {
@@ -28,7 +37,7 @@ export function mergeModWithCatalog(stored: Mod, catalog?: Mod): Mod {
     base_drain: stored.base_drain ?? catalog.base_drain,
     polarity: preferCatalogOptional(stored.polarity, catalog.polarity),
     rarity: preferCatalogOptional(stored.rarity, catalog.rarity),
-    image_path: preferCatalogOptional(stored.image_path, catalog.image_path),
+    image_path: mergeModImagePath(stored, catalog),
     compat_name: preferCatalogOptional(stored.compat_name, catalog.compat_name),
     type: preferCatalogOptional(stored.type, catalog.type),
     is_utility: stored.is_utility ?? catalog.is_utility,

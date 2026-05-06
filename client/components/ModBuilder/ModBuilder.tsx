@@ -246,7 +246,6 @@ export function ModBuilder() {
   const [activeShardSlot, setActiveShardSlot] = useState<number | null>(null);
   const [editingRivenSlot, setEditingRivenSlot] = useState<number | null>(null);
   const [draftRivenSlot, setDraftRivenSlot] = useState<number | null>(null);
-  const autoInstalledStanceKeyRef = useRef<string | null>(null);
   const prevRightPanelModeRef = useRef<RightPanelMode | null>(null);
 
   const routeKey = `${buildId ?? ''}|${routeEqType ?? ''}|${equipmentId ?? ''}`;
@@ -254,7 +253,6 @@ export function ModBuilder() {
   useEffect(() => {
     if (prevRouteKey.current === routeKey) return;
     prevRouteKey.current = routeKey;
-    autoInstalledStanceKeyRef.current = null;
     setSelectedEquipment(null);
     setSlots([]);
     setOrokinReactor(false);
@@ -317,7 +315,9 @@ export function ModBuilder() {
 
   const { data: shardData } = useApi<{ shards: ShardType[] }>('/api/archon-shards');
   const shardTypes = shardData?.shards || [];
-  const { data: stanceData } = useApi<{ items: Mod[] }>('/api/mods?types=STANCE');
+  const { data: stanceData, loading: stanceListLoading } = useApi<{ items: Mod[] }>(
+    '/api/mods?types=STANCE',
+  );
 
   const modCatalogTypes = getModTypesForEquipment(equipmentType);
   const modCatalogUrl =
@@ -642,6 +642,11 @@ export function ModBuilder() {
         !isPostureMod(mod) &&
         mod.name.trim().toLowerCase() === selectedRequiredExaltedStanceName.toLowerCase(),
     );
+
+    if (!found && stanceListLoading) {
+      return null;
+    }
+
     const syntheticUniqueName = `/Synthetic/SpecialItems/Stances/${selectedEquipment.name.trim().toLowerCase().replace(/\s+/g, '-')}`;
     const base =
       found ??
@@ -655,7 +660,7 @@ export function ModBuilder() {
         fusion_limit: 5,
       } satisfies Mod);
     return augmentExaltedStanceModForDisplay(base, selectedEquipment.image_path);
-  }, [selectedEquipment, selectedRequiredExaltedStanceName, stanceData?.items]);
+  }, [selectedEquipment, selectedRequiredExaltedStanceName, stanceData?.items, stanceListLoading]);
   const rivenWeaponType = useMemo<RivenWeaponType | null>(
     () => getRivenWeaponType(equipmentType, selectedEquipment?.name),
     [equipmentType, selectedEquipment?.name],
@@ -762,24 +767,20 @@ export function ModBuilder() {
     if (!selectedRequiredExaltedStanceName || !autoInstallStanceMod) {
       return;
     }
-    const autoInstallKey = `${equipmentType}:${selectedEquipment.unique_name}`;
-    if (autoInstalledStanceKeyRef.current === autoInstallKey) {
-      return;
-    }
 
-    let didInstall = false;
     setSlots((prev) => {
       const stanceSlot = prev.find((slot) => slot.type === 'stance');
-      if (!stanceSlot || stanceSlot.mod) {
+      if (!stanceSlot) {
         return prev;
       }
 
-      const modType = (autoInstallStanceMod.type || '').toUpperCase();
+      const target = autoInstallStanceMod;
+
+      const modType = (target.type || '').toUpperCase();
       if (
         modType !== 'STANCE' ||
-        isPostureMod(autoInstallStanceMod) ||
-        autoInstallStanceMod.name.trim().toLowerCase() !==
-          selectedRequiredExaltedStanceName.toLowerCase()
+        isPostureMod(target) ||
+        target.name.trim().toLowerCase() !== selectedRequiredExaltedStanceName.toLowerCase()
       ) {
         return prev;
       }
@@ -787,27 +788,40 @@ export function ModBuilder() {
       const currentMods = prev
         .filter((slot) => slot.mod && slot.index !== stanceSlot.index)
         .map((slot) => slot.mod!);
-      if (isModLockedOut(autoInstallStanceMod, currentMods)) {
+      if (isModLockedOut(target, currentMods)) {
         return prev;
       }
 
-      didInstall = true;
+      const current = stanceSlot.mod;
+
+      const matchesTarget =
+        current &&
+        current.unique_name === target.unique_name &&
+        (current.image_path ?? '') === (target.image_path ?? '');
+      if (matchesTarget) {
+        return prev;
+      }
+
+      /** Allow upgrading synthetic placeholder once `/api/mods?types=STANCE` returns the real row (wiki image_path). */
+      const mayReplaceWithAuto =
+        !current || current.unique_name.startsWith('/Synthetic/SpecialItems/Stances/');
+
+      if (current && !mayReplaceWithAuto) {
+        return prev;
+      }
+
       const updated = prev.map((slot) =>
         slot.index === stanceSlot.index
           ? {
               ...slot,
-              mod: autoInstallStanceMod,
-              rank: autoInstallStanceMod.fusion_limit ?? 0,
-              setRank: autoInstallStanceMod.set_stats ? 1 : undefined,
+              mod: target,
+              rank: target.fusion_limit ?? 0,
+              setRank: target.set_stats ? 1 : undefined,
             }
           : slot,
       );
       return applySetPieceDelta(prev, updated);
     });
-
-    if (didInstall) {
-      autoInstalledStanceKeyRef.current = autoInstallKey;
-    }
   }, [
     buildId,
     equipmentType,
