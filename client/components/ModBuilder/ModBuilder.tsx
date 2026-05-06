@@ -630,7 +630,7 @@ export function ModBuilder() {
         base_drain: 0,
         fusion_limit: 5,
       } satisfies Mod);
-    return augmentExaltedStanceModForDisplay(base);
+    return augmentExaltedStanceModForDisplay(base, selectedEquipment.image_path);
   }, [selectedEquipment, selectedRequiredExaltedStanceName, stanceData?.items]);
   const rivenWeaponType = useMemo<RivenWeaponType | null>(
     () => getRivenWeaponType(equipmentType, selectedEquipment?.name),
