@@ -17,6 +17,8 @@ interface ExaltedStanceSeed {
   rarity: 'COMMON' | 'RARE';
   description: string;
   wikiPageTitle?: string;
+  /** When wiki file is not `{PascalCase(name)}Modx256.png` (e.g. Razorwing → Diwata). */
+  wikiModImageFile?: string;
 }
 
 const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
@@ -96,6 +98,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     description:
       'Stance: While Razorwing is active, Titania wields the Diwata exalted heavy blade.',
     wikiPageTitle: 'Diwata',
+    wikiModImageFile: 'DiwataModx256.png',
   },
   {
     id: 7358,
@@ -310,15 +313,19 @@ export async function syncExaltedStanceModsFromOverframe(
         const wikiImagePath = await fetchWikiImageForExaltedStanceMod(
           seed.wikiPageTitle,
           scraped.uniqueName,
+          seed.name,
+          seed.wikiModImageFile ?? null,
+          onProgress,
         );
         if (wikiImagePath) {
           updateImagePath.run(wikiImagePath, scraped.uniqueName);
           wikiImagesApplied += 1;
         }
       } catch (error) {
-        console.warn(
-          `[exaltedStanceMods] wiki image failed for ${seed.name}:`,
-          error instanceof Error ? error.message : error,
+        onProgress?.(
+          `[exaltedStanceMods] wiki image failed for ${seed.name}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
         );
       }
     }
@@ -330,10 +337,6 @@ export async function syncExaltedStanceModsFromOverframe(
   return { found, insertedOrUpdated, wikiImagesApplied };
 }
 
-/**
- * When exports did not change, the full Overframe+wiki stance sync is skipped. This still refreshes
- * infobox images from the Warframe Wiki for rows already in `mods` (matched by stance `name`).
- */
 export async function syncExaltedStanceWikiImagesOnly(
   onProgress?: (msg: string) => void,
 ): Promise<{ attempted: number; applied: number }> {
@@ -361,15 +364,19 @@ export async function syncExaltedStanceWikiImagesOnly(
       const wikiImagePath = await fetchWikiImageForExaltedStanceMod(
         seed.wikiPageTitle,
         row.unique_name,
+        seed.name,
+        seed.wikiModImageFile ?? null,
+        onProgress,
       );
       if (wikiImagePath) {
         updateImagePath.run(wikiImagePath, row.unique_name);
         applied += 1;
       }
     } catch (error) {
-      console.warn(
-        `[exaltedStanceMods] wiki-only image failed for ${seed.name}:`,
-        error instanceof Error ? error.message : error,
+      onProgress?.(
+        `[exaltedStanceMods] wiki-only image failed for ${seed.name}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
     }
   }
