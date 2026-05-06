@@ -15,7 +15,7 @@ import {
 } from '../../types/warframe';
 import { apiFetch } from '../../utils/api';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
-import { matchesSpecialItemType } from '../../utils/specialItems';
+import { matchesSpecialItemType, meleeWeaponOmitsExilusSlot } from '../../utils/specialItems';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface BuildsByCategory {
@@ -40,6 +40,7 @@ function getPolarizedSlotCount(build: StoredBuild): number {
 function buildDefaultPolarities(
   equipmentType: EquipmentType,
   equipment: EquipmentPolaritySource,
+  equipmentName?: string,
 ): SlotPolarity[] {
   const config = EQUIPMENT_SLOT_CONFIGS[equipmentType] || EQUIPMENT_SLOT_CONFIGS.warframe;
   const defaults: SlotPolarity[] = [];
@@ -90,7 +91,9 @@ function buildDefaultPolarities(
     defaults.push({ type: 'general', polarity: generalPolarities[i] });
   }
 
-  if (config.hasExilus) {
+  const skipMeleeExilus = equipmentType === 'melee' && meleeWeaponOmitsExilusSlot(equipmentName);
+
+  if (config.hasExilus && !skipMeleeExilus) {
     const polarity = hasArtifactSlots
       ? polarityFromAP(artifactSlots[9])
       : equipment.exilus_polarity || undefined;
@@ -116,7 +119,7 @@ function getUsedFormaCost(
     };
   }
 
-  const defaults = buildDefaultPolarities(build.equipment_type, equipment);
+  const defaults = buildDefaultPolarities(build.equipment_type, equipment, build.equipment_name);
   const desired: SlotPolarity[] = (Array.isArray(build.slots) ? build.slots : []).map((slot) => ({
     type: slot.type,
     polarity: slot.polarity,

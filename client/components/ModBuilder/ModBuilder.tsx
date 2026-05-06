@@ -41,7 +41,11 @@ import {
   RIVEN_PLACEHOLDER_UNIQUE,
 } from '../../utils/riven';
 import { getEffectiveRivenDisposition } from '../../utils/riven';
-import { getRequiredExaltedStanceName, matchesSpecialItemType } from '../../utils/specialItems';
+import {
+  getRequiredExaltedStanceName,
+  matchesSpecialItemType,
+  meleeWeaponOmitsExilusSlot,
+} from '../../utils/specialItems';
 import { getWeaponModCapacityBase, weaponSupportsValenceBonus } from '../../utils/weaponValence';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -628,8 +632,8 @@ export function ModBuilder() {
     } satisfies Mod;
   }, [selectedEquipment, selectedRequiredExaltedStanceName, stanceData?.items]);
   const rivenWeaponType = useMemo<RivenWeaponType | null>(
-    () => getRivenWeaponType(equipmentType),
-    [equipmentType],
+    () => getRivenWeaponType(equipmentType, selectedEquipment?.name),
+    [equipmentType, selectedEquipment?.name],
   );
 
   useEffect(() => {
@@ -708,7 +712,9 @@ export function ModBuilder() {
       });
     }
 
-    if (config.hasExilus && !isSelectedCompanionWeapon) {
+    const omitExilus =
+      equipmentType === 'melee' && meleeWeaponOmitsExilusSlot(selectedEquipment.name);
+    if (config.hasExilus && !isSelectedCompanionWeapon && !omitExilus) {
       const warframe = selectedEquipment as Warframe;
       const pol = hasArtifactSlots
         ? polarityFromAP(artifactSlots[9])
@@ -1408,6 +1414,21 @@ export function ModBuilder() {
     });
   }, [selectedIsCompanionWeapon]);
 
+  const selectedMeleeOmitsExilus =
+    equipmentType === 'melee' && meleeWeaponOmitsExilusSlot(selectedEquipment?.name);
+
+  useEffect(() => {
+    if (!selectedMeleeOmitsExilus) return;
+    setSlots((prev) => {
+      if (!prev.some((slot) => slot.type === 'exilus')) {
+        return prev;
+      }
+      return prev
+        .filter((slot) => slot.type !== 'exilus')
+        .map((slot, index) => ({ ...slot, index }));
+    });
+  }, [selectedMeleeOmitsExilus]);
+
   const hasSelection =
     activeSlotIndex !== undefined ||
     activeArcaneSlot !== null ||
@@ -1947,7 +1968,7 @@ export function ModBuilder() {
       {editingRivenSlot !== null && rivenWeaponType ? (
         <Suspense fallback={<LazySuspenseFallback />}>
           <RivenBuilder
-            availableStats={getRivenStatsForType(equipmentType)}
+            availableStats={getRivenStatsForType(equipmentType, selectedEquipment?.name)}
             weaponType={rivenWeaponType}
             weaponDisposition={rivenDisposition}
             config={slots.find((s) => s.index === editingRivenSlot)?.riven_config}

@@ -255,7 +255,7 @@ export function FilterPanel({
     },
     [onModSelect],
   );
-  const rivenWeaponType = getRivenWeaponType(equipmentType);
+  const rivenWeaponType = getRivenWeaponType(equipmentType, equipment?.name);
   const canShowRivenPlaceholder = targetSlotType !== 'stance' && targetSlotType !== 'exilus';
   const rivenArt = useMemo(() => {
     const preferredName = getRivenArtNameForType(equipmentType);
