@@ -30,15 +30,15 @@
     "cookie-parser": "^1.4.7",
     "csrf-sync": "^4.2.1",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.4.1",
+    "express-rate-limit": "^8.5.0",
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
     "html-to-image": "^1.11.13",
     "lzma": "^2.3.2",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "react-router-dom": "^7.14.2",
-    "zod": "^4.4.2"
+    "react-router-dom": "^7.15.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.4",
