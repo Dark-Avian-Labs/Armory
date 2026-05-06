@@ -29,6 +29,7 @@ export interface StartupPipelineSummary {
   exaltedStanceMods: StepSummaryBase & {
     found?: number;
     insertedOrUpdated?: number;
+    wikiImagesApplied?: number;
   };
   images: StepSummaryBase & {
     total?: number;
@@ -161,7 +162,11 @@ export function printStartupPipelineSummary(s: StartupPipelineSummary): void {
   row('Exalted Stances', es.outcome, [
     es.detail,
     ...(es.found !== undefined
-      ? [`Found: ${es.found}, updated: ${es.insertedOrUpdated ?? 0}.`]
+      ? [
+          `Found: ${es.found}, updated: ${es.insertedOrUpdated ?? 0}` +
+            (es.wikiImagesApplied !== undefined ? `, wiki images: ${es.wikiImagesApplied}` : '') +
+            '.',
+        ]
       : []),
     ...(es.error ? [`Error: ${es.error}`] : []),
   ]);
