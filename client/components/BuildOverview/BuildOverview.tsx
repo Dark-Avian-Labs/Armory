@@ -70,7 +70,8 @@ function buildDefaultPolarities(
     defaults.push({ type: 'stance', polarity });
   }
   if (config.hasPosture) {
-    defaults.push({ type: 'posture', polarity: undefined });
+    const polarity = hasArtifactSlots ? polarityFromAP(artifactSlots[8]) : undefined;
+    defaults.push({ type: 'posture', polarity });
   }
 
   const generalPolarities: (string | undefined)[] = (() => {

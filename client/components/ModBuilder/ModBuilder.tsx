@@ -682,7 +682,8 @@ export function ModBuilder() {
       newSlots.push({ index: idx++, type: 'stance', polarity: pol });
     }
     if (config.hasPosture) {
-      newSlots.push({ index: idx++, type: 'posture' });
+      const pol = hasArtifactSlots ? polarityFromAP(artifactSlots[8]) : undefined;
+      newSlots.push({ index: idx++, type: 'posture', polarity: pol });
     }
 
     const generalPolarities: (string | undefined)[] = (() => {
