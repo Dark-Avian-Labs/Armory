@@ -16,7 +16,12 @@ import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface FilterPanelProps {
   equipmentType: EquipmentType;
-  equipment?: { unique_name: string; name: string; product_category?: string };
+  equipment?: {
+    unique_name: string;
+    name: string;
+    product_category?: string;
+    image_path?: string;
+  };
   equippedMods: Mod[];
   onModSelect: (mod: Mod) => void;
   onModRemove?: () => void;
@@ -52,15 +57,18 @@ function getSyntheticSpecialItemStanceMods(
 
   const syntheticUniqueName = `/Synthetic/SpecialItems/Stances/${normalizedEquipmentName.replace(/\s+/g, '-')}`;
   return [
-    augmentExaltedStanceModForDisplay({
-      unique_name: syntheticUniqueName,
-      name: stanceName,
-      type: 'STANCE',
-      compat_name: equipment.name,
-      rarity: 'COMMON',
-      base_drain: 0,
-      fusion_limit: 5,
-    }),
+    augmentExaltedStanceModForDisplay(
+      {
+        unique_name: syntheticUniqueName,
+        name: stanceName,
+        type: 'STANCE',
+        compat_name: equipment.name,
+        rarity: 'COMMON',
+        base_drain: 0,
+        fusion_limit: 5,
+      },
+      equipment.image_path,
+    ),
   ];
 }
 
