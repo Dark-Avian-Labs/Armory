@@ -43,6 +43,26 @@ describe('mergeModWithCatalog', () => {
     expect(merged.set_stats).toBe(catalog.set_stats);
     expect(merged.mod_set).toBe(catalog.mod_set);
   });
+
+  it('prefers catalog Armory wiki stance image over stored snapshot paths', () => {
+    const wikiPath = '/ArmoryWiki/StanceMod/Lotus/Whipclaw.png';
+    const catalog: Mod = {
+      unique_name: '/Lotus/Stances/Whipclaw',
+      name: 'Whipclaw',
+      type: 'STANCE',
+      image_path: wikiPath,
+      fusion_limit: 3,
+    };
+    const stored: Mod = {
+      unique_name: '/Lotus/Stances/Whipclaw',
+      name: 'Whipclaw',
+      type: 'STANCE',
+      image_path: '/Lotus/Weapons/SomeExport.webp',
+      fusion_limit: 3,
+    };
+    const merged = mergeModWithCatalog(stored, catalog);
+    expect(merged.image_path).toBe(wikiPath);
+  });
 });
 
 describe('hydrateSlotsWithModCatalog', () => {

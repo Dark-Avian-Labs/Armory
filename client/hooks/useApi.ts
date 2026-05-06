@@ -11,7 +11,7 @@ interface ApiState<T> {
 
 export function useApi<T>(url: string | null): ApiState<T> {
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(url));
   const [error, setError] = useState<string | null>(null);
   const [trigger, setTrigger] = useState(0);
 
@@ -20,6 +20,7 @@ export function useApi<T>(url: string | null): ApiState<T> {
   useEffect(() => {
     if (!url) {
       setData(null);
+      setLoading(false);
       return undefined;
     }
 
