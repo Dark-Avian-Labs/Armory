@@ -21,8 +21,9 @@ export function classifyArcaneCompatTags(
     tags.add('amp');
   }
   if (
-    uniqueName.includes('/operatorarmour/') ||
-    (uniqueName.includes('/operator') && !uniqueName.includes('/operatoramps/')) ||
+    (uniqueName.includes('/operator') &&
+      !uniqueName.includes('/operatoramps/') &&
+      !uniqueName.includes('/operatorarmour/')) ||
     name.startsWith('magus ') ||
     name.includes(' operator ')
   ) {
@@ -38,24 +39,19 @@ export function classifyArcaneCompatTags(
     tags.add('melee');
     tags.add('weapon');
   }
-  if (
-    name.startsWith('primary ') ||
-    name.includes(' primary ') ||
-    uniqueName.includes('primary') ||
-    uniqueName.includes('rifle') ||
-    uniqueName.includes('shotgun')
-  ) {
+  if (name.startsWith('primary ') || name.startsWith('fractalized ')) {
     tags.add('primary');
   }
   if (
     name.startsWith('secondary ') ||
-    name.includes(' secondary ') ||
-    uniqueName.includes('secondary') ||
-    uniqueName.includes('pistol')
+    name.startsWith('akimbo ') ||
+    name.startsWith('cascadia ') ||
+    name.startsWith('conjunction ') ||
+    uniqueName.includes('secondary')
   ) {
     tags.add('secondary');
   }
-  if (name.startsWith('melee ') || name.includes(' melee ') || uniqueName.includes('melee')) {
+  if (name.startsWith('melee ') || name.includes(' melee ')) {
     tags.add('melee');
   }
   if (

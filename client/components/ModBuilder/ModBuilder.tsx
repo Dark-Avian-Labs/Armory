@@ -41,7 +41,11 @@ import {
   RIVEN_PLACEHOLDER_UNIQUE,
 } from '../../utils/riven';
 import { getEffectiveRivenDisposition } from '../../utils/riven';
-import { getRequiredExaltedStanceName, matchesSpecialItemType } from '../../utils/specialItems';
+import {
+  getRequiredExaltedStanceName,
+  matchesSpecialItemType,
+  weaponOmitsExilusSlot,
+} from '../../utils/specialItems';
 import { getWeaponModCapacityBase, weaponSupportsValenceBonus } from '../../utils/weaponValence';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -628,8 +632,8 @@ export function ModBuilder() {
     } satisfies Mod;
   }, [selectedEquipment, selectedRequiredExaltedStanceName, stanceData?.items]);
   const rivenWeaponType = useMemo<RivenWeaponType | null>(
-    () => getRivenWeaponType(equipmentType),
-    [equipmentType],
+    () => getRivenWeaponType(equipmentType, selectedEquipment?.name),
+    [equipmentType, selectedEquipment?.name],
   );
 
   useEffect(() => {
@@ -682,7 +686,8 @@ export function ModBuilder() {
       newSlots.push({ index: idx++, type: 'stance', polarity: pol });
     }
     if (config.hasPosture) {
-      newSlots.push({ index: idx++, type: 'posture' });
+      const pol = hasArtifactSlots ? polarityFromAP(artifactSlots[8]) : undefined;
+      newSlots.push({ index: idx++, type: 'posture', polarity: pol });
     }
 
     const generalPolarities: (string | undefined)[] = (() => {
@@ -707,7 +712,8 @@ export function ModBuilder() {
       });
     }
 
-    if (config.hasExilus && !isSelectedCompanionWeapon) {
+    const omitExilus = weaponOmitsExilusSlot(selectedEquipment.name, equipmentType);
+    if (config.hasExilus && !isSelectedCompanionWeapon && !omitExilus) {
       const warframe = selectedEquipment as Warframe;
       const pol = hasArtifactSlots
         ? polarityFromAP(artifactSlots[9])
@@ -1395,8 +1401,11 @@ export function ModBuilder() {
     ? `/images${selectedEquipment.image_path}`
     : undefined;
 
+  const selectedOmitsExilus = weaponOmitsExilusSlot(selectedEquipment?.name, equipmentType);
+  const shouldOmitExilus = selectedIsCompanionWeapon || selectedOmitsExilus;
+
   useEffect(() => {
-    if (!selectedIsCompanionWeapon) return;
+    if (!shouldOmitExilus) return;
     setSlots((prev) => {
       if (!prev.some((slot) => slot.type === 'exilus')) {
         return prev;
@@ -1405,7 +1414,7 @@ export function ModBuilder() {
         .filter((slot) => slot.type !== 'exilus')
         .map((slot, index) => ({ ...slot, index }));
     });
-  }, [selectedIsCompanionWeapon]);
+  }, [shouldOmitExilus]);
 
   const hasSelection =
     activeSlotIndex !== undefined ||
@@ -1946,7 +1955,7 @@ export function ModBuilder() {
       {editingRivenSlot !== null && rivenWeaponType ? (
         <Suspense fallback={<LazySuspenseFallback />}>
           <RivenBuilder
-            availableStats={getRivenStatsForType(equipmentType)}
+            availableStats={getRivenStatsForType(equipmentType, selectedEquipment?.name)}
             weaponType={rivenWeaponType}
             weaponDisposition={rivenDisposition}
             config={slots.find((s) => s.index === editingRivenSlot)?.riven_config}

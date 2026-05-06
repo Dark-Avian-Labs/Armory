@@ -15,7 +15,7 @@ import {
 } from '../../types/warframe';
 import { apiFetch } from '../../utils/api';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
-import { matchesSpecialItemType } from '../../utils/specialItems';
+import { matchesSpecialItemType, weaponOmitsExilusSlot } from '../../utils/specialItems';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface BuildsByCategory {
@@ -40,6 +40,7 @@ function getPolarizedSlotCount(build: StoredBuild): number {
 function buildDefaultPolarities(
   equipmentType: EquipmentType,
   equipment: EquipmentPolaritySource,
+  equipmentName?: string,
 ): SlotPolarity[] {
   const config = EQUIPMENT_SLOT_CONFIGS[equipmentType] || EQUIPMENT_SLOT_CONFIGS.warframe;
   const defaults: SlotPolarity[] = [];
@@ -70,7 +71,8 @@ function buildDefaultPolarities(
     defaults.push({ type: 'stance', polarity });
   }
   if (config.hasPosture) {
-    defaults.push({ type: 'posture', polarity: undefined });
+    const polarity = hasArtifactSlots ? polarityFromAP(artifactSlots[8]) : undefined;
+    defaults.push({ type: 'posture', polarity });
   }
 
   const generalPolarities: (string | undefined)[] = (() => {
@@ -89,7 +91,9 @@ function buildDefaultPolarities(
     defaults.push({ type: 'general', polarity: generalPolarities[i] });
   }
 
-  if (config.hasExilus) {
+  const skipExilus = weaponOmitsExilusSlot(equipmentName, equipmentType);
+
+  if (config.hasExilus && !skipExilus) {
     const polarity = hasArtifactSlots
       ? polarityFromAP(artifactSlots[9])
       : equipment.exilus_polarity || undefined;
@@ -115,7 +119,7 @@ function getUsedFormaCost(
     };
   }
 
-  const defaults = buildDefaultPolarities(build.equipment_type, equipment);
+  const defaults = buildDefaultPolarities(build.equipment_type, equipment, build.equipment_name);
   const desired: SlotPolarity[] = (Array.isArray(build.slots) ? build.slots : []).map((slot) => ({
     type: slot.type,
     polarity: slot.polarity,
@@ -152,7 +156,14 @@ function getSlotLabel(slotType: string): string {
   if (slotType === 'special_secondary') return 'Secondary (Special)';
   if (slotType === 'special_melee') return 'Melee (Special)';
 
-  return LOADOUT_SLOT_TYPES.find((slot) => slot.key === slotType)?.label ?? slotType;
+  const loadoutLabel = LOADOUT_SLOT_TYPES.find((slot) => slot.key === slotType)?.label;
+  if (loadoutLabel) return loadoutLabel;
+
+  if (slotType in EQUIPMENT_TYPE_LABELS) {
+    return EQUIPMENT_TYPE_LABELS[slotType as EquipmentType];
+  }
+
+  return slotType;
 }
 
 export function BuildOverview() {

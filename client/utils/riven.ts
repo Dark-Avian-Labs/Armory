@@ -6,6 +6,7 @@ import type {
   RivenWeaponType,
   Weapon,
 } from '../types/warframe';
+import { weaponOmitsRivenMod } from './specialItems';
 
 export const RIVEN_PLACEHOLDER_UNIQUE = '__RIVEN_PLACEHOLDER__';
 export const RIVEN_MOD_UNIQUE = '__RIVEN_MOD__';
@@ -123,7 +124,13 @@ const RIVEN_ROLL_RULES: Record<string, RivenRollRule> = {
   '3-1': { positiveMultiplier: 0.9375, negativeMultiplier: 0.75 },
 };
 
-export function getRivenWeaponType(equipmentType: EquipmentType): RivenWeaponType | null {
+export function getRivenWeaponType(
+  equipmentType: EquipmentType,
+  equipmentName?: string | null,
+): RivenWeaponType | null {
+  if (weaponOmitsRivenMod(equipmentName, equipmentType)) {
+    return null;
+  }
   if (
     equipmentType === 'primary' ||
     equipmentType === 'secondary' ||
@@ -135,8 +142,8 @@ export function getRivenWeaponType(equipmentType: EquipmentType): RivenWeaponTyp
   return null;
 }
 
-export function getRivenStatsForType(type: EquipmentType): string[] {
-  const weaponType = getRivenWeaponType(type);
+export function getRivenStatsForType(type: EquipmentType, equipmentName?: string | null): string[] {
+  const weaponType = getRivenWeaponType(type, equipmentName);
   if (!weaponType) return [];
   return Object.keys(BASELINES[weaponType]);
 }
