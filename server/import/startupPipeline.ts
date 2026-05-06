@@ -6,7 +6,10 @@ import { getDb } from '../db/connection.js';
 import { processExports, backfillModDescriptions } from '../db/queries.js';
 import { createAppSchema } from '../db/schema.js';
 import { mergeScrapedData } from '../scraping/dataMerger.js';
-import { syncExaltedStanceModsFromOverframe } from '../scraping/exaltedStanceMods.js';
+import {
+  syncExaltedStanceModsFromOverframe,
+  syncExaltedStanceWikiImagesOnly,
+} from '../scraping/exaltedStanceMods.js';
 import { syncHiddenCompanionWeaponsFromOverframe } from '../scraping/hiddenCompanionWeapons.js';
 import { scrapeIndex } from '../scraping/indexScraper.js';
 import { scrapeItems } from '../scraping/itemScraper.js';
@@ -312,11 +315,39 @@ export async function runStartupPipeline(
       summary.exaltedStanceMods = { outcome: 'failed', detail: 'Sync failed.', error: msg };
       err('[Exalted Stances] Sync failed —', e);
     }
+  } else if (hasDbData()) {
+    log(
+      '[Exalted Stances] Export unchanged — refreshing Warframe Wiki infobox images for exalted stances...',
+    );
+    try {
+      const result = await syncExaltedStanceWikiImagesOnly((msg) => {
+        log(`[Exalted Stances] ${msg}`);
+      });
+      log(
+        `[Exalted Stances] Wiki images done — ${result.applied} applied, ${result.attempted} attempted.`,
+      );
+      summary.exaltedStanceMods = {
+        outcome: 'ok',
+        detail:
+          'Export unchanged; refreshed stance card art from wiki where infobox images are available.',
+        found: 0,
+        insertedOrUpdated: 0,
+        wikiImagesApplied: result.applied,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      summary.exaltedStanceMods = {
+        outcome: 'failed',
+        detail: 'Wiki-only exalted stance image refresh failed.',
+        error: msg,
+      };
+      err('[Exalted Stances] Wiki-only image refresh failed —', e);
+    }
   } else {
-    log('[Exalted Stances] Skipped — no data changes this run.');
+    log('[Exalted Stances] Skipped — no data in database yet.');
     summary.exaltedStanceMods = {
       outcome: 'skipped',
-      detail: 'No data changes detected; skipped re-fetch.',
+      detail: 'No data changes and no game data loaded; skipped.',
     };
   }
 

@@ -133,11 +133,9 @@ export function CardPreview({
         textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.5)',
       }}
     >
-      <div
-        className="absolute inset-0 overflow-hidden"
-        style={{ transform: `translateY(${L.cardOffsetY * s}px)` }}
-      >
-        <div className="absolute inset-0 overflow-hidden" style={{ zIndex: 0 }}>
+      {/* Do not put overflow-hidden on this translated layer — it clips collapsed cards to a sliver in browsers. */}
+      <div className="absolute inset-0" style={{ transform: `translateY(${L.cardOffsetY * s}px)` }}>
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: 0 }}>
           <img
             src={getModAsset(rarity, 'Background')}
             alt="bg"
