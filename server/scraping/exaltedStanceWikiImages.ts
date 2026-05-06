@@ -9,13 +9,19 @@ import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchW
 const WIKI_BASE = 'https://wiki.warframe.com';
 
 const WIKI_FETCH_HEADERS = {
-  Accept: 'text/html,application/json;q=0.9,*/*;q=0.8',
+  Accept: 'text/html,application/json;q=0.9,image/*;q=0.8,*/*;q=0.7',
   'User-Agent':
     'ArmoryWarframeDataImporter/1.0 (Warframe wiki infobox images for exalted stance mods; open-source)',
 } as const;
 
 export interface WikiExaltedStanceImageSeed {
   wikiPageTitle: string;
+}
+
+export function wikiModCardFileNameFromStanceName(stanceModName: string): string {
+  const words = stanceModName.trim().split(/\s+/).filter(Boolean);
+  const pascal = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
+  return `${pascal}Modx256.png`;
 }
 
 function toWikiArticleUrl(title: string): string {
@@ -68,8 +74,7 @@ async function resolveFullWikiImageUrl(imageSrc: string): Promise<string | null>
 
     if (segments.length >= 2 && /\.(png|jpe?g|webp)$/i.test(segments[0] ?? '')) {
       const baseFile = segments[0];
-      const direct = `${WIKI_BASE}/images/${baseFile}`;
-      return direct;
+      return `${WIKI_BASE}/images/${baseFile}`;
     }
 
     const last = segments[segments.length - 1] ?? '';
@@ -144,29 +149,10 @@ function diskPathForModUniqueName(
   return { diskPath, dbImagePath };
 }
 
-export async function fetchWikiImageForExaltedStanceMod(
-  wikiPageTitle: string,
+async function downloadWikiImageToDisk(
+  fullUrl: string,
   uniqueName: string,
 ): Promise<string | null> {
-  const html = await fetchWikiHtml(wikiPageTitle);
-  if (!html) return null;
-
-  const rawSrc = pickInfoboxImageSrc(html);
-  if (!rawSrc) {
-    console.warn(`[exaltedStanceWikiImages] no infobox image on wiki page "${wikiPageTitle}"`);
-    return null;
-  }
-
-  const fullUrl = await resolveFullWikiImageUrl(rawSrc);
-  if (!fullUrl) {
-    console.warn(`[exaltedStanceWikiImages] could not resolve full image URL from "${rawSrc}"`);
-    return null;
-  }
-
-  const urlPath = new URL(fullUrl).pathname;
-  const extMatch = urlPath.match(/\.(png|jpe?g|webp)$/i);
-  const ext = extMatch ? `.${extMatch[1]!.toLowerCase()}` : '.png';
-
   let response: Response;
   try {
     response = await fetchWithTimeout(
@@ -178,15 +164,90 @@ export async function fetchWikiImageForExaltedStanceMod(
     if (isAbortError(error)) return null;
     throw error;
   }
-  if (!response.ok) {
-    console.warn(`[exaltedStanceWikiImages] HTTP ${response.status} for ${fullUrl}`);
-    return null;
-  }
+  if (!response.ok) return null;
+
+  const urlPath = new URL(fullUrl).pathname;
+  const extMatch = urlPath.match(/\.(png|jpe?g|webp)$/i);
+  const ext = extMatch ? `.${extMatch[1]!.toLowerCase()}` : '.png';
 
   const buffer = Buffer.from(await response.arrayBuffer());
   const { diskPath, dbImagePath } = diskPathForModUniqueName(uniqueName, ext);
   fs.mkdirSync(path.dirname(diskPath), { recursive: true });
   fs.writeFileSync(diskPath, buffer);
-
   return dbImagePath;
+}
+
+async function tryDownloadByWikiFileName(
+  fileName: string,
+  uniqueName: string,
+  label: string,
+  onProgress?: (msg: string) => void,
+): Promise<string | null> {
+  const directUrl = `${WIKI_BASE}/images/${fileName}`;
+  let saved = await downloadWikiImageToDisk(directUrl, uniqueName);
+  if (saved) {
+    onProgress?.(`[exaltedStanceWikiImages] ${label}: ${fileName} (direct)`);
+    return saved;
+  }
+
+  const fromApi = await queryWikiFileDownloadUrl(fileName);
+  if (fromApi) {
+    saved = await downloadWikiImageToDisk(fromApi, uniqueName);
+    if (saved) {
+      onProgress?.(`[exaltedStanceWikiImages] ${label}: ${fileName} (via api)`);
+      return saved;
+    }
+  }
+
+  return null;
+}
+
+export async function fetchWikiImageForExaltedStanceMod(
+  wikiPageTitle: string,
+  uniqueName: string,
+  stanceModName?: string,
+  wikiImageFileOverride?: string | null,
+  onProgress?: (msg: string) => void,
+): Promise<string | null> {
+  if (wikiImageFileOverride?.trim()) {
+    const s = await tryDownloadByWikiFileName(
+      wikiImageFileOverride.trim(),
+      uniqueName,
+      'override',
+      onProgress,
+    );
+    if (s) return s;
+  }
+
+  if (stanceModName?.trim()) {
+    const conventional = wikiModCardFileNameFromStanceName(stanceModName);
+    const s = await tryDownloadByWikiFileName(conventional, uniqueName, 'convention', onProgress);
+    if (s) return s;
+  }
+
+  const html = await fetchWikiHtml(wikiPageTitle);
+  if (!html) {
+    onProgress?.(`[exaltedStanceWikiImages] could not load wiki page "${wikiPageTitle}"`);
+    return null;
+  }
+
+  const rawSrc = pickInfoboxImageSrc(html);
+  if (!rawSrc) {
+    onProgress?.(
+      `[exaltedStanceWikiImages] no image: convention/override failed and no infobox img on "${wikiPageTitle}"`,
+    );
+    return null;
+  }
+
+  const fullUrl = await resolveFullWikiImageUrl(rawSrc);
+  if (!fullUrl) {
+    onProgress?.(`[exaltedStanceWikiImages] could not resolve full image URL from "${rawSrc}"`);
+    return null;
+  }
+
+  const saved = await downloadWikiImageToDisk(fullUrl, uniqueName);
+  if (saved) {
+    onProgress?.(`[exaltedStanceWikiImages] infobox: ${wikiPageTitle}`);
+  }
+  return saved;
 }
