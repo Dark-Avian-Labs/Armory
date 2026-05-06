@@ -329,3 +329,51 @@ export async function syncExaltedStanceModsFromOverframe(
   );
   return { found, insertedOrUpdated, wikiImagesApplied };
 }
+
+/**
+ * When exports did not change, the full Overframe+wiki stance sync is skipped. This still refreshes
+ * infobox images from the Warframe Wiki for rows already in `mods` (matched by stance `name`).
+ */
+export async function syncExaltedStanceWikiImagesOnly(
+  onProgress?: (msg: string) => void,
+): Promise<{ attempted: number; applied: number }> {
+  const db = getDb();
+  const selectUnique = db.prepare(
+    `SELECT unique_name FROM mods WHERE name = ? AND upper(trim(type)) = 'STANCE' LIMIT 1`,
+  );
+  const updateImagePath = db.prepare(`UPDATE mods SET image_path = ? WHERE unique_name = ?`);
+
+  let attempted = 0;
+  let applied = 0;
+
+  for (const seed of EXALTED_STANCE_SEEDS) {
+    if (!seed.wikiPageTitle) continue;
+
+    const row = selectUnique.get(seed.name) as { unique_name: string } | undefined;
+    if (!row?.unique_name) {
+      onProgress?.(`Wiki image skip (no STANCE row in DB): ${seed.name}`);
+      continue;
+    }
+
+    attempted += 1;
+    onProgress?.(`Wiki image: ${seed.name} (${seed.wikiPageTitle})`);
+    try {
+      const wikiImagePath = await fetchWikiImageForExaltedStanceMod(
+        seed.wikiPageTitle,
+        row.unique_name,
+      );
+      if (wikiImagePath) {
+        updateImagePath.run(wikiImagePath, row.unique_name);
+        applied += 1;
+      }
+    } catch (error) {
+      console.warn(
+        `[exaltedStanceMods] wiki-only image failed for ${seed.name}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
+  onProgress?.(`Wiki-only exalted stance images complete: ${applied}/${attempted} applied`);
+  return { attempted, applied };
+}
