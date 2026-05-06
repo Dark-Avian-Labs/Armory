@@ -6,7 +6,10 @@ import { getModTypesForEquipment, NO_MOD_TYPES_FOR_EQUIPMENT } from '../../utils
 import { filterCompatibleMods, isModLockedOut, isPostureMod } from '../../utils/modFiltering';
 import { isWeaponExilusMod } from '../../utils/modMetadata';
 import { createRivenPlaceholderMod, getRivenWeaponType } from '../../utils/riven';
-import { getRequiredExaltedStanceName } from '../../utils/specialItems';
+import {
+  augmentExaltedStanceModForDisplay,
+  getRequiredExaltedStanceName,
+} from '../../utils/specialItems';
 import { countEquippedUmbraSetModsFromModList } from '../../utils/umbraSet';
 import { ModCard, CardPreview, DEFAULT_LAYOUT } from '../ModCard';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -49,7 +52,7 @@ function getSyntheticSpecialItemStanceMods(
 
   const syntheticUniqueName = `/Synthetic/SpecialItems/Stances/${normalizedEquipmentName.replace(/\s+/g, '-')}`;
   return [
-    {
+    augmentExaltedStanceModForDisplay({
       unique_name: syntheticUniqueName,
       name: stanceName,
       type: 'STANCE',
@@ -57,7 +60,7 @@ function getSyntheticSpecialItemStanceMods(
       rarity: 'COMMON',
       base_drain: 0,
       fusion_limit: 5,
-    },
+    }),
   ];
 }
 

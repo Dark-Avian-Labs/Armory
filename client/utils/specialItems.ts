@@ -1,4 +1,4 @@
-import type { EquipmentType } from '../types/warframe';
+import type { EquipmentType, Mod } from '../types/warframe';
 
 const SPECIAL_PRIMARY_NAMES = new Set(['Artemis Bow', 'Artemis Bow Prime', 'Neutralizer']);
 
@@ -124,6 +124,42 @@ export function getRequiredExaltedStanceName(equipmentName?: string | null): str
   if (!equipmentName) return null;
   const lookupName = normalizeLookupName(equipmentName);
   return REQUIRED_EXALTED_STANCES_BY_EQUIPMENT[lookupName] ?? null;
+}
+
+/** Flavor text for exalted stance mods when the DB row is missing or the client uses a synthetic stub. */
+const EXALTED_STANCE_CARD_FALLBACK: Record<string, string> = {
+  'Serene Storm':
+    'Stance: With his Restraint eroded, Baruuk commands the Desert Wind to deliver powerful radial strikes with his fists and feet.',
+  Razorwing: 'Stance: While Razorwing is active, Titania wields the Diwata exalted heavy blade.',
+  'Exalted Blade': 'Stance: Summon a sword of pure light and immense power.',
+  'Ravenous Wraith':
+    "Stance: When the Death Well fills, Sevagoth's Shadow form is ready to be released. Tear the enemy asunder with melee-focused abilities.",
+  'Primal Fury': 'Stance: Summon the iron staff and unleash fury.',
+  Hysteria:
+    'Stance: Valkyr is imbued with energy and becomes a ball of vicious rage, capable of unleashing a torrent of deadly claw attacks.',
+  'Garuda Talons': 'Stance: Garuda extends her talons when no melee weapon is equipped.',
+  'Shadow Clones': 'Stance: Strike alongside manifested shadow clones.',
+  'Shattered Lash': 'Stance: Gara extends a blade of hardened glass to slice through enemies.',
+  Whipclaw:
+    'Stance: Khora lashes the ground with her whip, striking foes at range and lifting vulnerable targets.',
+};
+
+/**
+ * Ensures stance mods for special exalted weapons have card description (and default polarity) when the
+ * record is a `/Synthetic/...` stub or an incomplete import row.
+ */
+export function augmentExaltedStanceModForDisplay(mod: Mod): Mod {
+  if ((mod.type || '').toUpperCase() !== 'STANCE') return mod;
+  const fallback = EXALTED_STANCE_CARD_FALLBACK[mod.name];
+  if (!fallback) return mod;
+  const isSyntheticStub = mod.unique_name.startsWith('/Synthetic/SpecialItems/Stances/');
+  const missingDescription = !mod.description?.trim();
+  if (!isSyntheticStub && !missingDescription) return mod;
+  return {
+    ...mod,
+    polarity: mod.polarity ?? 'AP_POWER',
+    ...(missingDescription ? { description: JSON.stringify([fallback]) } : {}),
+  };
 }
 
 export function weaponOmitsExilusSlot(
