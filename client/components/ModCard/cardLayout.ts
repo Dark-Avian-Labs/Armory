@@ -308,7 +308,7 @@ export function getArcaneAsset(rarity?: string | ArcaneRarity): string {
 
 export const DEFAULT_LAYOUT: CardLayout = {
   cardWidth: 256,
-  cardHeight: 346,
+  cardHeight: 354,
   collapsedHeight: 116,
   cardOffsetY: -58,
 

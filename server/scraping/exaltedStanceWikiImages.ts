@@ -8,6 +8,8 @@ import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchW
 
 const WIKI_BASE = 'https://wiki.warframe.com';
 
+const ARMORY_STANCE_WIKI_ROOT_SEGMENTS = ['ArmoryWiki', 'StanceMod'] as const;
+
 const WIKI_FETCH_HEADERS = {
   Accept: 'text/html,application/json;q=0.9,image/*;q=0.8,*/*;q=0.7',
   'User-Agent':
@@ -139,13 +141,21 @@ async function fetchWikiHtml(pageTitle: string): Promise<string | null> {
   return response.text();
 }
 
-function diskPathForModUniqueName(
+function diskPathForExaltedStanceWikiImage(
   uniqueName: string,
   ext: string,
 ): { diskPath: string; dbImagePath: string } {
   const safeName = uniqueName.replace(/^\//, '').replace(/[<>:"|?*]/g, '_');
-  const dbImagePath = `/${safeName.replace(/\\/g, '/')}${ext}`;
-  const diskPath = path.join(IMAGES_DIR, `${safeName}${ext}`);
+  const segments = safeName.split(/[/\\]+/).filter(Boolean);
+  const fileBase = (segments.length > 0 ? segments.pop()! : 'stance') + ext;
+  const diskPath = path.join(
+    IMAGES_DIR,
+    ...ARMORY_STANCE_WIKI_ROOT_SEGMENTS,
+    ...segments,
+    fileBase,
+  );
+  const dbSuffix = [...segments, fileBase].join('/');
+  const dbImagePath = `/ArmoryWiki/StanceMod/${dbSuffix}`;
   return { diskPath, dbImagePath };
 }
 
@@ -171,7 +181,7 @@ async function downloadWikiImageToDisk(
   const ext = extMatch ? `.${extMatch[1]!.toLowerCase()}` : '.png';
 
   const buffer = Buffer.from(await response.arrayBuffer());
-  const { diskPath, dbImagePath } = diskPathForModUniqueName(uniqueName, ext);
+  const { diskPath, dbImagePath } = diskPathForExaltedStanceWikiImage(uniqueName, ext);
   fs.mkdirSync(path.dirname(diskPath), { recursive: true });
   fs.writeFileSync(diskPath, buffer);
   return dbImagePath;
