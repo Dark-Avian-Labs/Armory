@@ -44,7 +44,7 @@ import { getEffectiveRivenDisposition } from '../../utils/riven';
 import {
   getRequiredExaltedStanceName,
   matchesSpecialItemType,
-  meleeWeaponOmitsExilusSlot,
+  weaponOmitsExilusSlot,
 } from '../../utils/specialItems';
 import { getWeaponModCapacityBase, weaponSupportsValenceBonus } from '../../utils/weaponValence';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
@@ -712,8 +712,7 @@ export function ModBuilder() {
       });
     }
 
-    const omitExilus =
-      equipmentType === 'melee' && meleeWeaponOmitsExilusSlot(selectedEquipment.name);
+    const omitExilus = weaponOmitsExilusSlot(selectedEquipment.name, equipmentType);
     if (config.hasExilus && !isSelectedCompanionWeapon && !omitExilus) {
       const warframe = selectedEquipment as Warframe;
       const pol = hasArtifactSlots
@@ -1414,11 +1413,10 @@ export function ModBuilder() {
     });
   }, [selectedIsCompanionWeapon]);
 
-  const selectedMeleeOmitsExilus =
-    equipmentType === 'melee' && meleeWeaponOmitsExilusSlot(selectedEquipment?.name);
+  const selectedOmitsExilus = weaponOmitsExilusSlot(selectedEquipment?.name, equipmentType);
 
   useEffect(() => {
-    if (!selectedMeleeOmitsExilus) return;
+    if (!selectedOmitsExilus) return;
     setSlots((prev) => {
       if (!prev.some((slot) => slot.type === 'exilus')) {
         return prev;
@@ -1427,7 +1425,7 @@ export function ModBuilder() {
         .filter((slot) => slot.type !== 'exilus')
         .map((slot, index) => ({ ...slot, index }));
     });
-  }, [selectedMeleeOmitsExilus]);
+  }, [selectedOmitsExilus]);
 
   const hasSelection =
     activeSlotIndex !== undefined ||

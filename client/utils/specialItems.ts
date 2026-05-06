@@ -126,10 +126,23 @@ export function getRequiredExaltedStanceName(equipmentName?: string | null): str
   return REQUIRED_EXALTED_STANCES_BY_EQUIPMENT[lookupName] ?? null;
 }
 
-export function meleeWeaponOmitsExilusSlot(name: string | undefined | null): boolean {
+export function weaponOmitsExilusSlot(
+  name: string | undefined | null,
+  equipmentType: EquipmentType,
+): boolean {
   if (!name) return false;
   const normalized = normalizeEquipmentName(name);
-  return MELEE_WEAPON_NAMES_WITHOUT_EXILUS.has(normalized);
+  if (equipmentType === 'melee' && MELEE_WEAPON_NAMES_WITHOUT_EXILUS.has(normalized)) {
+    return true;
+  }
+  const necramechMappedType = SPECIAL_NECRAMECH_SELECTION_TYPE[normalized];
+  if (
+    (equipmentType === 'archgun' || equipmentType === 'archmelee') &&
+    necramechMappedType === equipmentType
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function weaponOmitsRivenMod(

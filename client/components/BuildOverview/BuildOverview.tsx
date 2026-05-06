@@ -15,7 +15,7 @@ import {
 } from '../../types/warframe';
 import { apiFetch } from '../../utils/api';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
-import { matchesSpecialItemType, meleeWeaponOmitsExilusSlot } from '../../utils/specialItems';
+import { matchesSpecialItemType, weaponOmitsExilusSlot } from '../../utils/specialItems';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface BuildsByCategory {
@@ -91,9 +91,9 @@ function buildDefaultPolarities(
     defaults.push({ type: 'general', polarity: generalPolarities[i] });
   }
 
-  const skipMeleeExilus = equipmentType === 'melee' && meleeWeaponOmitsExilusSlot(equipmentName);
+  const skipExilus = weaponOmitsExilusSlot(equipmentName, equipmentType);
 
-  if (config.hasExilus && !skipMeleeExilus) {
+  if (config.hasExilus && !skipExilus) {
     const polarity = hasArtifactSlots
       ? polarityFromAP(artifactSlots[9])
       : equipment.exilus_polarity || undefined;
