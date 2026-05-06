@@ -169,6 +169,7 @@ apiRouter.get('/search', (req: Request, res: Response) => {
 
 const MOD_JUNK_SEGMENTS = ['/Beginner/', '/Intermediate/', '/Nemesis/'];
 const MOD_JUNK_SUFFIXES = ['SubMod'];
+const ARMORY_STANCE_WIKI_IMAGE_PREFIX = '/ArmoryWiki/StanceMod/';
 
 const MOD_API_SELECT_LIST = `m.*,
   ms_member.set_unique_name AS _set_unique_from_member,
@@ -473,6 +474,7 @@ apiRouter.get('/mods', (req: Request, res: Response) => {
       unique_name: string;
       name: string;
       type: string;
+      image_path?: string;
     }>;
 
     const cleaned = normalizedRows.filter((r) => {
@@ -488,6 +490,14 @@ apiRouter.get('/mods', (req: Request, res: Response) => {
       if (!existing) {
         byKey.set(key, mod);
       } else {
+        const existingWiki = (existing.image_path ?? '').startsWith(
+          ARMORY_STANCE_WIKI_IMAGE_PREFIX,
+        );
+        const currentWiki = (mod.image_path ?? '').startsWith(ARMORY_STANCE_WIKI_IMAGE_PREFIX);
+        if (!existingWiki && currentWiki) {
+          byKey.set(key, mod);
+          continue;
+        }
         const existingIsExpert = existing.unique_name.includes('/Expert/');
         const currentIsExpert = mod.unique_name.includes('/Expert/');
         if (existingIsExpert && !currentIsExpert) {

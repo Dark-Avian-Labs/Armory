@@ -187,17 +187,30 @@ export async function downloadImages(
 
 function updateDbImagePaths(pathMap: Map<string, string>): void {
   const db = getDb();
-  const tables = ['warframes', 'weapons', 'companions', 'mods', 'arcanes', 'abilities'];
-
-  const stmts = tables.map((table) =>
-    db.prepare(`UPDATE ${table} SET image_path = ? WHERE unique_name = ?`),
-  );
+  const stmts = {
+    warframes: db.prepare(`UPDATE warframes SET image_path = ? WHERE unique_name = ?`),
+    weapons: db.prepare(`UPDATE weapons SET image_path = ? WHERE unique_name = ?`),
+    companions: db.prepare(`UPDATE companions SET image_path = ? WHERE unique_name = ?`),
+    mods: db.prepare(
+      `UPDATE mods
+       SET image_path = CASE
+         WHEN image_path LIKE '/ArmoryWiki/StanceMod/%' THEN image_path
+         ELSE ?
+       END
+       WHERE unique_name = ?`,
+    ),
+    arcanes: db.prepare(`UPDATE arcanes SET image_path = ? WHERE unique_name = ?`),
+    abilities: db.prepare(`UPDATE abilities SET image_path = ? WHERE unique_name = ?`),
+  } as const;
 
   const tx = db.transaction(() => {
     for (const [uniqueName, imagePath] of pathMap) {
-      for (const stmt of stmts) {
-        stmt.run(imagePath, uniqueName);
-      }
+      stmts.warframes.run(imagePath, uniqueName);
+      stmts.weapons.run(imagePath, uniqueName);
+      stmts.companions.run(imagePath, uniqueName);
+      stmts.mods.run(imagePath, uniqueName);
+      stmts.arcanes.run(imagePath, uniqueName);
+      stmts.abilities.run(imagePath, uniqueName);
     }
   });
 
