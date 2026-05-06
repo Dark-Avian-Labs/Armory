@@ -4,6 +4,7 @@ import path from 'path';
 import { IMAGES_DIR } from '../config.js';
 import { getDb } from '../db/connection.js';
 import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import { fetchWikiImageForExaltedStanceMod } from './exaltedStanceWikiImages.js';
 
 const OVERFRAME_BASE_URL = 'https://overframe.gg';
 const OVERFRAME_MEDIA_BASE_URL = 'https://media.overframe.gg/128x';
@@ -15,6 +16,7 @@ interface ExaltedStanceSeed {
   compatName: string;
   rarity: 'COMMON' | 'RARE';
   description: string;
+  wikiPageTitle?: string;
 }
 
 const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
@@ -26,6 +28,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     rarity: 'COMMON',
     description:
       'Stance: Valkyr is imbued with energy and becomes a ball of vicious rage, capable of unleashing a torrent of deadly claw attacks on unsuspecting foes.',
+    wikiPageTitle: 'Hysteria (Ability)',
   },
   {
     id: 7444,
@@ -35,6 +38,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     rarity: 'COMMON',
     description:
       'Stance: With his Restraint eroded, Baruuk commands the Desert Wind to deliver powerful radial strikes with his fists and feet. Each moment commanding the storm restores his Restraint.',
+    wikiPageTitle: 'Serene Storm',
   },
   {
     id: 7440,
@@ -43,6 +47,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     compatName: 'Exalted Blade',
     rarity: 'COMMON',
     description: 'Stance: Summon a sword of pure light and immense power.',
+    wikiPageTitle: 'Exalted Blade (Ability)',
   },
   {
     id: 7450,
@@ -52,6 +57,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     rarity: 'COMMON',
     description:
       "Stance: When the Death Well fills, Sevagoth's Shadow form is ready to be released. Tear the enemy asunder with a collection of melee-focused abilities.",
+    wikiPageTitle: 'Ravenous Wraith',
   },
   {
     id: 7441,
@@ -60,6 +66,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     compatName: 'Iron Staff',
     rarity: 'RARE',
     description: 'Stance: Summon the iron staff and unleash fury.',
+    wikiPageTitle: 'Primal Fury',
   },
   {
     id: 7356,
@@ -69,6 +76,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     rarity: 'COMMON',
     description:
       'Stance: Khora lashes the ground with her whip, striking foes at range and lifting vulnerable targets.',
+    wikiPageTitle: 'Whipclaw',
   },
   {
     id: 2403,
@@ -77,6 +85,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     compatName: 'Garuda Talons',
     rarity: 'COMMON',
     description: 'Stance: Garuda extends her talons when no melee weapon is equipped.',
+    wikiPageTitle: 'Garuda Talons',
   },
   {
     id: 2273,
@@ -86,6 +95,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     rarity: 'COMMON',
     description:
       'Stance: While Razorwing is active, Titania wields the Diwata exalted heavy blade.',
+    wikiPageTitle: 'Diwata',
   },
   {
     id: 7358,
@@ -94,6 +104,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     compatName: 'Shattered Lash',
     rarity: 'COMMON',
     description: 'Stance: Gara extends a blade of hardened glass to slice through enemies.',
+    wikiPageTitle: 'Shattered Lash',
   },
   {
     id: 7350,
@@ -102,6 +113,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
     compatName: 'Shadow Clones',
     rarity: 'COMMON',
     description: 'Stance: Strike alongside manifested shadow clones.',
+    wikiPageTitle: 'Shadow Clones',
   },
 ];
 
@@ -194,7 +206,7 @@ async function fetchOverframeStance(seed: ExaltedStanceSeed): Promise<OverframeS
 
 export async function syncExaltedStanceModsFromOverframe(
   onProgress?: (msg: string) => void,
-): Promise<{ found: number; insertedOrUpdated: number }> {
+): Promise<{ found: number; insertedOrUpdated: number; wikiImagesApplied: number }> {
   const db = getDb();
   const upsert = db.prepare(`
     INSERT INTO mods (
@@ -250,6 +262,8 @@ export async function syncExaltedStanceModsFromOverframe(
 
   let found = 0;
   let insertedOrUpdated = 0;
+  let wikiImagesApplied = 0;
+  const updateImagePath = db.prepare(`UPDATE mods SET image_path = ? WHERE unique_name = ?`);
 
   for (const seed of EXALTED_STANCE_SEEDS) {
     onProgress?.(`Overframe exalted stance sync: fetching ${seed.name} (${seed.id})`);
@@ -289,10 +303,29 @@ export async function syncExaltedStanceModsFromOverframe(
     if (result.changes > 0) {
       insertedOrUpdated += result.changes;
     }
+
+    if (seed.wikiPageTitle) {
+      onProgress?.(`Wiki infobox image: ${seed.name} (${seed.wikiPageTitle})`);
+      try {
+        const wikiImagePath = await fetchWikiImageForExaltedStanceMod(
+          seed.wikiPageTitle,
+          scraped.uniqueName,
+        );
+        if (wikiImagePath) {
+          updateImagePath.run(wikiImagePath, scraped.uniqueName);
+          wikiImagesApplied += 1;
+        }
+      } catch (error) {
+        console.warn(
+          `[exaltedStanceMods] wiki image failed for ${seed.name}:`,
+          error instanceof Error ? error.message : error,
+        );
+      }
+    }
   }
 
   onProgress?.(
-    `Overframe exalted stance sync complete: ${found} found, ${insertedOrUpdated} rows changed`,
+    `Overframe exalted stance sync complete: ${found} found, ${insertedOrUpdated} rows changed, wiki images ${wikiImagesApplied}`,
   );
-  return { found, insertedOrUpdated };
+  return { found, insertedOrUpdated, wikiImagesApplied };
 }

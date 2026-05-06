@@ -350,10 +350,34 @@ export function ModBuilder() {
     return m;
   }, [modCatalogData?.items]);
 
-  const hydratedSlots = useMemo(
-    () => hydrateSlotsWithModCatalog(slots, modCatalogByUnique, modCatalogByNameAndType),
-    [slots, modCatalogByUnique, modCatalogByNameAndType],
-  );
+  const hydratedSlots = useMemo(() => {
+    const hydrated = hydrateSlotsWithModCatalog(slots, modCatalogByUnique, modCatalogByNameAndType);
+    if (equipmentType !== 'melee' || !selectedEquipment?.name) {
+      return hydrated;
+    }
+    const exaltedStanceName = getRequiredExaltedStanceName(selectedEquipment.name);
+    if (!exaltedStanceName) {
+      return hydrated;
+    }
+    return hydrated.map((slot) => {
+      if (slot.type !== 'stance' || !slot.mod) {
+        return slot;
+      }
+      const mod = slot.mod;
+      if (mod.name.trim().toLowerCase() !== exaltedStanceName.toLowerCase()) {
+        return slot;
+      }
+      const augmented = augmentExaltedStanceModForDisplay(mod, selectedEquipment.image_path);
+      return augmented === mod ? slot : { ...slot, mod: augmented };
+    });
+  }, [
+    slots,
+    modCatalogByUnique,
+    modCatalogByNameAndType,
+    equipmentType,
+    selectedEquipment?.name,
+    selectedEquipment?.image_path,
+  ]);
 
   const supportsValence = useMemo(
     () =>
@@ -1754,6 +1778,7 @@ export function ModBuilder() {
                                 unique_name: selectedEquipment.unique_name,
                                 name: selectedEquipment.name,
                                 product_category: (selectedEquipment as Weapon).product_category,
+                                image_path: selectedEquipment.image_path,
                               }
                             : undefined
                         }

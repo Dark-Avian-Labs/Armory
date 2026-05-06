@@ -296,12 +296,16 @@ export async function runStartupPipeline(
       const result = await syncExaltedStanceModsFromOverframe((msg) => {
         log(`[Exalted Stances] ${msg}`);
       });
-      log(`[Exalted Stances] Done — ${result.found} found, ${result.insertedOrUpdated} updated.`);
+      log(
+        `[Exalted Stances] Done — ${result.found} found, ${result.insertedOrUpdated} updated, ` +
+          `${result.wikiImagesApplied} wiki images.`,
+      );
       summary.exaltedStanceMods = {
         outcome: 'ok',
         detail: `Fetched ${result.found} stances, updated ${result.insertedOrUpdated} rows.`,
         found: result.found,
         insertedOrUpdated: result.insertedOrUpdated,
+        wikiImagesApplied: result.wikiImagesApplied,
       };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

@@ -1,0 +1,192 @@
+import fs from 'fs';
+import path from 'path';
+
+import * as cheerio from 'cheerio';
+
+import { IMAGES_DIR } from '../config.js';
+import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+
+const WIKI_BASE = 'https://wiki.warframe.com';
+
+const WIKI_FETCH_HEADERS = {
+  Accept: 'text/html,application/json;q=0.9,*/*;q=0.8',
+  'User-Agent':
+    'ArmoryWarframeDataImporter/1.0 (Warframe wiki infobox images for exalted stance mods; open-source)',
+} as const;
+
+export interface WikiExaltedStanceImageSeed {
+  wikiPageTitle: string;
+}
+
+function toWikiArticleUrl(title: string): string {
+  const underscored = title.trim().replace(/\s+/g, '_');
+  return `${WIKI_BASE}/w/${encodeURIComponent(underscored)}`;
+}
+
+async function queryWikiFileDownloadUrl(fileName: string): Promise<string | null> {
+  const api = new URL(`${WIKI_BASE}/api.php`);
+  api.searchParams.set('action', 'query');
+  api.searchParams.set('titles', `File:${fileName}`);
+  api.searchParams.set('prop', 'imageinfo');
+  api.searchParams.set('iiprop', 'url');
+  api.searchParams.set('format', 'json');
+
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      api.toString(),
+      { headers: WIKI_FETCH_HEADERS },
+      FETCH_TIMEOUT_MS.htmlPage,
+    );
+  } catch (error: unknown) {
+    if (isAbortError(error)) return null;
+    throw error;
+  }
+  if (!response.ok) return null;
+
+  const data = (await response.json()) as {
+    query?: { pages?: Record<string, { imageinfo?: Array<{ url?: string }> }> };
+  };
+  const pages = data.query?.pages;
+  if (!pages) return null;
+  for (const page of Object.values(pages)) {
+    const url = page.imageinfo?.[0]?.url;
+    if (typeof url === 'string' && url.length > 0) {
+      return url.split('?')[0];
+    }
+  }
+  return null;
+}
+
+async function resolveFullWikiImageUrl(imageSrc: string): Promise<string | null> {
+  const absolute = new URL(imageSrc, WIKI_BASE).href;
+  const pathname = new URL(absolute).pathname;
+
+  if (pathname.includes('/images/thumb/')) {
+    const rest = pathname.slice(pathname.indexOf('/images/thumb/') + '/images/thumb/'.length);
+    const segments = rest.split('/').filter(Boolean);
+
+    if (segments.length >= 2 && /\.(png|jpe?g|webp)$/i.test(segments[0] ?? '')) {
+      const baseFile = segments[0];
+      const direct = `${WIKI_BASE}/images/${baseFile}`;
+      return direct;
+    }
+
+    const last = segments[segments.length - 1] ?? '';
+    const pxMatch = /^(\d+)px-(.+)$/i.exec(last);
+    const fileFromPx = pxMatch?.[2];
+    if (fileFromPx) {
+      const fromApi = await queryWikiFileDownloadUrl(fileFromPx);
+      if (fromApi) return fromApi;
+      return `${WIKI_BASE}/images/${fileFromPx}`;
+    }
+
+    if (segments.length >= 2) {
+      const candidate = segments[segments.length - 2];
+      if (/\.(png|jpe?g|webp)$/i.test(candidate)) {
+        const fromApi = await queryWikiFileDownloadUrl(candidate);
+        if (fromApi) return fromApi;
+        return `${WIKI_BASE}/images/${candidate}`;
+      }
+    }
+    return null;
+  }
+
+  if (pathname.startsWith('/images/') && !pathname.includes('/thumb/')) {
+    return `${WIKI_BASE}${pathname}`;
+  }
+
+  return null;
+}
+
+function pickInfoboxImageSrc(html: string): string | null {
+  const $ = cheerio.load(html);
+  const selectors = [
+    'aside.portable-infobox img',
+    'table.infobox img',
+    '.infobox img',
+    '.mw-parser-output .infobox img',
+  ];
+  for (const sel of selectors) {
+    const img = $(sel).first();
+    const src = img.attr('src') ?? img.attr('data-src');
+    if (src && /\/images\//i.test(src)) {
+      return src;
+    }
+  }
+  return null;
+}
+
+async function fetchWikiHtml(pageTitle: string): Promise<string | null> {
+  const url = toWikiArticleUrl(pageTitle);
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      url,
+      { headers: WIKI_FETCH_HEADERS },
+      FETCH_TIMEOUT_MS.htmlPage,
+    );
+  } catch (error: unknown) {
+    if (isAbortError(error)) return null;
+    throw error;
+  }
+  if (!response.ok) return null;
+  return response.text();
+}
+
+function diskPathForModUniqueName(
+  uniqueName: string,
+  ext: string,
+): { diskPath: string; dbImagePath: string } {
+  const safeName = uniqueName.replace(/^\//, '').replace(/[<>:"|?*]/g, '_');
+  const dbImagePath = `/${safeName.replace(/\\/g, '/')}${ext}`;
+  const diskPath = path.join(IMAGES_DIR, `${safeName}${ext}`);
+  return { diskPath, dbImagePath };
+}
+
+export async function fetchWikiImageForExaltedStanceMod(
+  wikiPageTitle: string,
+  uniqueName: string,
+): Promise<string | null> {
+  const html = await fetchWikiHtml(wikiPageTitle);
+  if (!html) return null;
+
+  const rawSrc = pickInfoboxImageSrc(html);
+  if (!rawSrc) {
+    console.warn(`[exaltedStanceWikiImages] no infobox image on wiki page "${wikiPageTitle}"`);
+    return null;
+  }
+
+  const fullUrl = await resolveFullWikiImageUrl(rawSrc);
+  if (!fullUrl) {
+    console.warn(`[exaltedStanceWikiImages] could not resolve full image URL from "${rawSrc}"`);
+    return null;
+  }
+
+  const urlPath = new URL(fullUrl).pathname;
+  const extMatch = urlPath.match(/\.(png|jpe?g|webp)$/i);
+  const ext = extMatch ? `.${extMatch[1]!.toLowerCase()}` : '.png';
+
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(
+      fullUrl,
+      { headers: WIKI_FETCH_HEADERS },
+      FETCH_TIMEOUT_MS.binaryImage,
+    );
+  } catch (error: unknown) {
+    if (isAbortError(error)) return null;
+    throw error;
+  }
+  if (!response.ok) {
+    console.warn(`[exaltedStanceWikiImages] HTTP ${response.status} for ${fullUrl}`);
+    return null;
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const { diskPath, dbImagePath } = diskPathForModUniqueName(uniqueName, ext);
+  fs.mkdirSync(path.dirname(diskPath), { recursive: true });
+  fs.writeFileSync(diskPath, buffer);
+
+  return dbImagePath;
+}
