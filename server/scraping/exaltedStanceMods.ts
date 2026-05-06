@@ -8,6 +8,7 @@ import { fetchWikiImageForExaltedStanceMod } from './exaltedStanceWikiImages.js'
 
 const OVERFRAME_BASE_URL = 'https://overframe.gg';
 const OVERFRAME_MEDIA_BASE_URL = 'https://media.overframe.gg/128x';
+const ARMORY_WIKI_STANCE_IMAGE_SQL_PREFIX = '/ArmoryWiki/StanceMod';
 
 interface ExaltedStanceSeed {
   id: number;
@@ -17,7 +18,6 @@ interface ExaltedStanceSeed {
   rarity: 'COMMON' | 'RARE';
   description: string;
   wikiPageTitle?: string;
-  /** When wiki file is not `{PascalCase(name)}Modx256.png` (e.g. Razorwing → Diwata). */
   wikiModImageFile?: string;
 }
 
@@ -258,7 +258,11 @@ export async function syncExaltedStanceModsFromOverframe(
       is_augment = excluded.is_augment,
       subtype = excluded.subtype,
       description = excluded.description,
-      image_path = COALESCE(excluded.image_path, mods.image_path),
+      image_path = CASE
+        WHEN mods.image_path LIKE '${ARMORY_WIKI_STANCE_IMAGE_SQL_PREFIX}%'
+        THEN mods.image_path
+        ELSE COALESCE(excluded.image_path, mods.image_path)
+      END,
       codex_secret = excluded.codex_secret,
       exclude_from_codex = excluded.exclude_from_codex
   `);
