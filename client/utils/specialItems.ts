@@ -1,5 +1,7 @@
 import type { EquipmentType, Mod } from '../types/warframe';
 
+export const ARMORY_STANCE_WIKI_IMAGE_PREFIX = '/ArmoryWiki/StanceMod/' as const;
+
 const SPECIAL_PRIMARY_NAMES = new Set(['Artemis Bow', 'Artemis Bow Prime', 'Neutralizer']);
 
 const SPECIAL_SECONDARY_NAMES = new Set([
@@ -152,13 +154,26 @@ export function augmentExaltedStanceModForDisplay(
   if (!fallback) return mod;
   const isSyntheticStub = mod.unique_name.startsWith('/Synthetic/SpecialItems/Stances/');
   const missingDescription = !mod.description?.trim();
-  const preferredImagePath = equipmentImagePath?.trim() || undefined;
-  if (!isSyntheticStub && !missingDescription && !preferredImagePath) return mod;
+  const equipmentArt = equipmentImagePath?.trim() || undefined;
+  const persistedStanceArt = mod.image_path?.trim() || undefined;
+
+  // One stance row is shared by normal and Prime exalted weapons; prefer catalog art so the card
+  // does not flip between variant-specific equipment thumbnails.
+  if (persistedStanceArt) {
+    return {
+      ...mod,
+      polarity: mod.polarity ?? 'AP_POWER',
+      ...(missingDescription ? { description: JSON.stringify([fallback]) } : {}),
+      image_path: persistedStanceArt,
+    };
+  }
+
+  if (!isSyntheticStub && !missingDescription && !equipmentArt) return mod;
   return {
     ...mod,
     polarity: mod.polarity ?? 'AP_POWER',
     ...(missingDescription ? { description: JSON.stringify([fallback]) } : {}),
-    ...(preferredImagePath ? { image_path: preferredImagePath } : {}),
+    ...(equipmentArt ? { image_path: equipmentArt } : {}),
   };
 }
 
