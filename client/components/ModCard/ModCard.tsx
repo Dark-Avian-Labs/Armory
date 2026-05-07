@@ -6,7 +6,13 @@ import { calculateEffectiveDrain, polarityMatchForUi } from '../../utils/drain';
 import { getModCardDisplayTexts } from '../../utils/modDisplayText';
 import { isPostureMod } from '../../utils/modFiltering';
 import { isRivenMod } from '../../utils/riven';
-import { DEFAULT_LAYOUT, dbRarityToCardRarity, dbPolarityToIconName } from './cardLayout';
+import {
+  CARD_HOVER_TILT_MAX_DEG,
+  DEFAULT_LAYOUT,
+  dbRarityToCardRarity,
+  dbPolarityToIconName,
+  getRarityFoilColor,
+} from './cardLayout';
 import { CardPreview } from './CardPreview';
 
 const WINDOW_REPOSITION_LISTENERS: AddEventListenerOptions = { capture: true, passive: true };
@@ -277,11 +283,12 @@ function CollapsedHoverExpand({
   'layout' | 'collapsed' | 'showGuides' | 'showOutlines'
 >) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
-  const [tilt, setTilt] = useState<{ rx: number; ry: number }>({
+  const [tilt, setTilt] = useState<{ rx: number; ry: number; px: number; py: number }>({
     rx: 0,
     ry: 0,
+    px: 0.5,
+    py: 0.5,
   });
-  const TILT_MAX_DEG = 15;
 
   useEffect(() => {
     const node = cardRef.current;
@@ -323,13 +330,13 @@ function CollapsedHoverExpand({
       if (rect.width <= 0 || rect.height <= 0) return;
       const px = (event.clientX - rect.left) / rect.width;
       const py = (event.clientY - rect.top) / rect.height;
-      const ry = (px - 0.5) * 2 * TILT_MAX_DEG;
-      const rx = (0.5 - py) * 2 * TILT_MAX_DEG;
-      setTilt({ rx, ry });
+      const ry = (px - 0.5) * 2 * CARD_HOVER_TILT_MAX_DEG;
+      const rx = (0.5 - py) * 2 * CARD_HOVER_TILT_MAX_DEG;
+      setTilt({ rx, ry, px, py });
     };
 
     const onLeave = (): void => {
-      setTilt({ rx: 0, ry: 0 });
+      setTilt({ rx: 0, ry: 0, px: 0.5, py: 0.5 });
     };
 
     node.addEventListener('mousemove', onMove);
@@ -350,11 +357,19 @@ function CollapsedHoverExpand({
     >
       <div
         className="mod-selector-tilt"
-        style={{
-          transform: `rotateX(${tilt.rx.toFixed(2)}deg) rotateY(${tilt.ry.toFixed(2)}deg)`,
-        }}
+        style={
+          {
+            transform: `rotateX(${tilt.rx.toFixed(2)}deg) rotateY(${tilt.ry.toFixed(2)}deg)`,
+            '--tilt-rotate-x': `${tilt.rx.toFixed(2)}deg`,
+            '--tilt-rotate-y': `${tilt.ry.toFixed(2)}deg`,
+            '--tilt-x': `${(tilt.px * 100).toFixed(1)}%`,
+            '--tilt-y': `${(tilt.py * 100).toFixed(1)}%`,
+            '--foil-color': getRarityFoilColor(previewProps.rarity),
+          } as React.CSSProperties
+        }
       >
         <CardPreview layout={layout} {...previewProps} />
+        <div className="mod-card-foil" aria-hidden />
       </div>
     </div>,
     document.body,
