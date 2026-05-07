@@ -19,7 +19,7 @@ import {
   CARD_HOVER_TILT_MAX_DEG,
   DEFAULT_LAYOUT,
   dbRarityToCardRarity,
-  getRarityFoilColor,
+  getCardFoilStyle,
 } from '../ModCard';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
@@ -357,7 +357,10 @@ function SlotCell({
       ? 'Riven'
       : dbRarityToCardRarity(slot.mod.rarity, slot.mod.name || slot.mod.unique_name)
     : 'Empty';
-  const slotFoilColor = getRarityFoilColor(slotModRarity);
+  const slotFoilStyle = getCardFoilStyle(slotModRarity, {
+    ...DEFAULT_LAYOUT,
+    scale: SLOT_SCALE,
+  });
 
   const polarityLabel = slot.polarity ? POLARITY_LABELS[slot.polarity] || slot.polarity : 'None';
   const slotIconName =
@@ -457,7 +460,7 @@ function SlotCell({
                 style={
                   {
                     width: SLOT_W,
-                    '--foil-color': slotFoilColor,
+                    ...slotFoilStyle,
                   } as React.CSSProperties
                 }
                 onMouseMove={(event) => applyCardTiltFromMouse(event.currentTarget, event)}
