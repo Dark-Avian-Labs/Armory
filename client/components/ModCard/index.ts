@@ -10,6 +10,7 @@ export {
   DAMAGE_COLORS,
   getRarityBorderColor,
   getRarityFoilColor,
+  getCardFoilStyle,
   getModAsset,
   getArcaneAsset,
   normalizeArcaneRarity,

@@ -73,6 +73,23 @@ export function getRarityFoilColor(rarity: Rarity): string {
   }
 }
 
+export function getCardFoilStyle(
+  rarity: Rarity,
+  layout: CardLayout = DEFAULT_LAYOUT,
+): Record<string, string> {
+  const s = layout.scale;
+  const xPx = ((layout.cardWidth - layout.bgWidth) / 2 + layout.bgOffsetX) * s;
+  const yPx = (layout.cardOffsetY + layout.bgOffsetY) * s;
+  const wPx = layout.bgWidth * s;
+  const hPx = layout.bgHeight * s;
+  return {
+    '--foil-color': getRarityFoilColor(rarity),
+    '--foil-mask-image': `url('${getModAsset(rarity, 'Background')}')`,
+    '--foil-mask-position': `${xPx.toFixed(1)}px ${yPx.toFixed(1)}px`,
+    '--foil-mask-size': `${wPx.toFixed(1)}px ${hPx.toFixed(1)}px`,
+  };
+}
+
 export function getModAsset(rarity: Rarity, part: string, modSet?: string): string {
   if (modSet && part === 'FrameTop') {
     const setFolder = modSet.split('/').pop();

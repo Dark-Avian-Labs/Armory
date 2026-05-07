@@ -911,19 +911,19 @@ html.ui-shadow:not(.dark) .glass-light {
 }
 
 .mod-card-foil {
-  --foil-mid: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 42%, transparent);
+  --foil-mid: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 28%, transparent);
   --foil-peak: color-mix(
     in oklch,
-    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 25%, white) 70%,
+    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 25%, white) 50%,
     transparent
   );
   --foil-edge: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 0%, transparent);
   --foil-spot-hot: color-mix(
     in oklch,
-    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 30%, white) 50%,
+    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 30%, white) 36%,
     transparent
   );
-  --foil-spot-warm: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 18%, transparent);
+  --foil-spot-warm: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 12%, transparent);
 
   position: absolute;
   inset: 0;
@@ -946,12 +946,18 @@ html.ui-shadow:not(.dark) .glass-light {
       var(--foil-spot-warm) 28%,
       transparent 60%
     );
+  mask-image: var(--foil-mask-image, none);
+  mask-position: var(--foil-mask-position, 0 0);
+  mask-size: var(--foil-mask-size, 100% 100%);
+  mask-repeat: no-repeat;
+  -webkit-mask-image: var(--foil-mask-image, none);
+  -webkit-mask-position: var(--foil-mask-position, 0 0);
+  -webkit-mask-size: var(--foil-mask-size, 100% 100%);
+  -webkit-mask-repeat: no-repeat;
   mix-blend-mode: color-dodge;
   animation: mod-card-foil-shimmer 4.2s ease-in-out infinite;
 }
 
-/* color-dodge clips to white against light backdrops; screen lightens more
-   gently and avoids blow-out in light theme. */
 html:not(.dark) .mod-card-foil {
   mix-blend-mode: screen;
 }

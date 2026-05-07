@@ -11,7 +11,7 @@ import {
   DEFAULT_LAYOUT,
   dbRarityToCardRarity,
   dbPolarityToIconName,
-  getRarityFoilColor,
+  getCardFoilStyle,
 } from './cardLayout';
 import { CardPreview } from './CardPreview';
 
@@ -364,7 +364,7 @@ function CollapsedHoverExpand({
             '--tilt-rotate-y': `${tilt.ry.toFixed(2)}deg`,
             '--tilt-x': `${(tilt.px * 100).toFixed(1)}%`,
             '--tilt-y': `${(tilt.py * 100).toFixed(1)}%`,
-            '--foil-color': getRarityFoilColor(previewProps.rarity),
+            ...getCardFoilStyle(previewProps.rarity, layout),
           } as React.CSSProperties
         }
       >
