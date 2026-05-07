@@ -1,3 +1,5 @@
+export const CARD_HOVER_TILT_MAX_DEG = 22;
+
 export const RARITIES = [
   'Empty',
   'Common',
@@ -57,6 +59,17 @@ export function getRarityBorderColor(rarity: Rarity): string {
       return 'var(--color-unavailable)';
     default:
       return 'var(--color-muted)';
+  }
+}
+
+export function getRarityFoilColor(rarity: Rarity): string {
+  switch (rarity) {
+    case 'Common':
+      return 'var(--color-rarity-uncommon)';
+    case 'Riven':
+      return 'var(--color-riven-light)';
+    default:
+      return getRarityBorderColor(rarity);
   }
 }
 

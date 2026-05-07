@@ -13,7 +13,14 @@ import {
 import { polarityMatchForUi } from '../../utils/drain';
 import { isRivenMod } from '../../utils/riven';
 import { countEquippedUmbraSetMods, isUmbraSelfScalingSetMod } from '../../utils/umbraSet';
-import { ModCard, CardPreview, DEFAULT_LAYOUT } from '../ModCard';
+import {
+  ModCard,
+  CardPreview,
+  CARD_HOVER_TILT_MAX_DEG,
+  DEFAULT_LAYOUT,
+  dbRarityToCardRarity,
+  getRarityFoilColor,
+} from '../ModCard';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 const POLARITY_CYCLE_FULL: (string | undefined)[] = [
@@ -52,8 +59,6 @@ const POLARITY_ICONS: Record<string, string> = {
   AP_ANY: 'universal',
 };
 
-const CARD_HOVER_TILT_MAX_DEG = 15;
-
 function applyCardTiltFromMouse(target: HTMLElement, event: React.MouseEvent<HTMLElement>): void {
   const rect = target.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return;
@@ -63,11 +68,15 @@ function applyCardTiltFromMouse(target: HTMLElement, event: React.MouseEvent<HTM
   const rotateX = (0.5 - py) * 2 * CARD_HOVER_TILT_MAX_DEG;
   target.style.setProperty('--tilt-rotate-x', `${rotateX.toFixed(2)}deg`);
   target.style.setProperty('--tilt-rotate-y', `${rotateY.toFixed(2)}deg`);
+  target.style.setProperty('--tilt-x', `${(px * 100).toFixed(1)}%`);
+  target.style.setProperty('--tilt-y', `${(py * 100).toFixed(1)}%`);
 }
 
 function resetCardTilt(target: HTMLElement): void {
   target.style.setProperty('--tilt-rotate-x', '0deg');
   target.style.setProperty('--tilt-rotate-y', '0deg');
+  target.style.setProperty('--tilt-x', '50%');
+  target.style.setProperty('--tilt-y', '50%');
 }
 
 interface ModSlotGridProps {
@@ -343,6 +352,13 @@ function SlotCell({
 
   const slotModIsUmbra = slot.mod ? isUmbraSelfScalingSetMod(slot.mod) : false;
 
+  const slotModRarity = slot.mod
+    ? (slot.mod.type || '').toUpperCase() === 'RIVEN'
+      ? 'Riven'
+      : dbRarityToCardRarity(slot.mod.rarity, slot.mod.name || slot.mod.unique_name)
+    : 'Empty';
+  const slotFoilColor = getRarityFoilColor(slotModRarity);
+
   const polarityLabel = slot.polarity ? POLARITY_LABELS[slot.polarity] || slot.polarity : 'None';
   const slotIconName =
     slot.type === 'aura'
@@ -438,7 +454,12 @@ function SlotCell({
             {!formaMode && (
               <div
                 className="mod-slot-expanded relative"
-                style={{ width: SLOT_W }}
+                style={
+                  {
+                    width: SLOT_W,
+                    '--foil-color': slotFoilColor,
+                  } as React.CSSProperties
+                }
                 onMouseMove={(event) => applyCardTiltFromMouse(event.currentTarget, event)}
                 onMouseLeave={(event) => resetCardTilt(event.currentTarget)}
               >
@@ -452,6 +473,7 @@ function SlotCell({
                   collapsed={false}
                   scale={SLOT_SCALE}
                 />
+                <div className="mod-card-foil" aria-hidden />
                 <div
                   className={`absolute left-0 flex w-full items-center justify-center${readOnly ? ' pointer-events-none' : ''}`}
                   style={{

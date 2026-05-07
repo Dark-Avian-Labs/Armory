@@ -905,8 +905,65 @@ html.ui-shadow:not(.dark) .glass-light {
 }
 
 .mod-selector-tilt {
+  position: relative;
   transform-style: preserve-3d;
   transition: transform 0.12s ease-out;
+}
+
+.mod-card-foil {
+  --foil-mid: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 42%, transparent);
+  --foil-peak: color-mix(
+    in oklch,
+    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 25%, white) 70%,
+    transparent
+  );
+  --foil-edge: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 0%, transparent);
+  --foil-spot-hot: color-mix(
+    in oklch,
+    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 30%, white) 50%,
+    transparent
+  );
+  --foil-spot-warm: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 18%, transparent);
+
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: var(--mod-card-radius, 0);
+  background-image:
+    linear-gradient(
+      calc(110deg + var(--tilt-rotate-y, 0deg) * -1.4),
+      var(--foil-edge) 0%,
+      var(--foil-edge) 32%,
+      var(--foil-mid) 45%,
+      var(--foil-peak) 50%,
+      var(--foil-mid) 55%,
+      var(--foil-edge) 68%,
+      var(--foil-edge) 100%
+    ),
+    radial-gradient(
+      circle at var(--tilt-x, 50%) var(--tilt-y, 50%),
+      var(--foil-spot-hot) 0%,
+      var(--foil-spot-warm) 28%,
+      transparent 60%
+    );
+  mix-blend-mode: color-dodge;
+  animation: mod-card-foil-shimmer 4.2s ease-in-out infinite;
+}
+
+/* color-dodge clips to white against light backdrops; screen lightens more
+   gently and avoids blow-out in light theme. */
+html:not(.dark) .mod-card-foil {
+  mix-blend-mode: screen;
+}
+
+@keyframes mod-card-foil-shimmer {
+  0%,
+  100% {
+    filter: hue-rotate(-6deg) brightness(1);
+  }
+  50% {
+    filter: hue-rotate(6deg) brightness(1.12);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
