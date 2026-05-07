@@ -350,6 +350,11 @@ function CollapsedHoverExpand({
 
   if (!pos) return null;
 
+  const stripFade = Math.max(
+    0,
+    1 - Math.max(Math.abs(tilt.rx), Math.abs(tilt.ry)) / (CARD_HOVER_TILT_MAX_DEG / 2),
+  );
+
   return createPortal(
     <div
       className="mod-selector-expand pointer-events-none fixed z-[9999]"
@@ -364,6 +369,7 @@ function CollapsedHoverExpand({
             '--tilt-rotate-y': `${tilt.ry.toFixed(2)}deg`,
             '--tilt-x': `${(tilt.px * 100).toFixed(1)}%`,
             '--tilt-y': `${(tilt.py * 100).toFixed(1)}%`,
+            '--strip-fade': stripFade.toFixed(3),
             ...getCardFoilStyle(previewProps.rarity, layout),
           } as React.CSSProperties
         }
