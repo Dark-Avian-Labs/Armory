@@ -911,13 +911,18 @@ html.ui-shadow:not(.dark) .glass-light {
 }
 
 .mod-card-foil {
-  --foil-mid: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 28%, transparent);
-  --foil-peak: color-mix(
+  --foil-mid: color-mix(
     in oklch,
-    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 25%, white) 50%,
+    var(--foil-color, oklch(78% 0.12 75)) calc(28% * var(--strip-fade, 1)),
     transparent
   );
-  --foil-edge: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 0%, transparent);
+  --foil-peak: color-mix(
+    in oklch,
+    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 25%, white)
+      calc(50% * var(--strip-fade, 1)),
+    transparent
+  );
+  --foil-edge: transparent;
   --foil-spot-hot: color-mix(
     in oklch,
     color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 30%, white) 36%,

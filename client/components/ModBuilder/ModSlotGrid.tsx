@@ -59,6 +59,11 @@ const POLARITY_ICONS: Record<string, string> = {
   AP_ANY: 'universal',
 };
 
+function computeStripFade(rotateX: number, rotateY: number): number {
+  const tiltMag = Math.max(Math.abs(rotateX), Math.abs(rotateY));
+  return Math.max(0, 1 - tiltMag / (CARD_HOVER_TILT_MAX_DEG / 2));
+}
+
 function applyCardTiltFromMouse(target: HTMLElement, event: React.MouseEvent<HTMLElement>): void {
   const rect = target.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return;
@@ -70,6 +75,7 @@ function applyCardTiltFromMouse(target: HTMLElement, event: React.MouseEvent<HTM
   target.style.setProperty('--tilt-rotate-y', `${rotateY.toFixed(2)}deg`);
   target.style.setProperty('--tilt-x', `${(px * 100).toFixed(1)}%`);
   target.style.setProperty('--tilt-y', `${(py * 100).toFixed(1)}%`);
+  target.style.setProperty('--strip-fade', computeStripFade(rotateX, rotateY).toFixed(3));
 }
 
 function resetCardTilt(target: HTMLElement): void {
@@ -77,6 +83,7 @@ function resetCardTilt(target: HTMLElement): void {
   target.style.setProperty('--tilt-rotate-y', '0deg');
   target.style.setProperty('--tilt-x', '50%');
   target.style.setProperty('--tilt-y', '50%');
+  target.style.setProperty('--strip-fade', '1');
 }
 
 interface ModSlotGridProps {
