@@ -157,8 +157,6 @@ export function augmentExaltedStanceModForDisplay(
   const equipmentArt = equipmentImagePath?.trim() || undefined;
   const persistedStanceArt = mod.image_path?.trim() || undefined;
 
-  // One stance row is shared by normal and Prime exalted weapons; prefer catalog art so the card
-  // does not flip between variant-specific equipment thumbnails.
   if (persistedStanceArt) {
     return {
       ...mod,

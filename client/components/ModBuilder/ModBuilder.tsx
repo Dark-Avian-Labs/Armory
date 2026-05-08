@@ -802,7 +802,6 @@ export function ModBuilder() {
         return prev;
       }
 
-      /** Allow upgrading synthetic placeholder once `/api/mods?types=STANCE` returns the real row (wiki image_path). */
       const mayReplaceWithAuto =
         !current || current.unique_name.startsWith('/Synthetic/SpecialItems/Stances/');
 
