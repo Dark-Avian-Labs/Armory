@@ -13,14 +13,19 @@ interface SearchResult {
   equipment_type?: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
-  let timer: ReturnType<typeof setTimeout>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((...args: any[]) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), ms);
-  }) as T;
+function debounce<TArgs extends unknown[]>(
+  fn: (...args: TArgs) => void,
+  ms: number,
+): (...args: TArgs) => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return (...args: TArgs) => {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
+      fn(...args);
+    }, ms);
+  };
 }
 
 export function SearchBar() {
@@ -114,7 +119,10 @@ export function SearchBar() {
     <div ref={wrapperRef} className="relative">
       <div className="search-wrapper relative">
         <input
-          type="text"
+          id="armory-header-search"
+          name="search"
+          type="search"
+          autoComplete="off"
           className="search-box w-52"
           placeholder="Search..."
           aria-label="Search equipment"

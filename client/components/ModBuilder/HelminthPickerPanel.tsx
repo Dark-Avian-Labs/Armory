@@ -74,7 +74,11 @@ export function HelminthPickerPanel({
       </div>
 
       <input
-        type="text"
+        id="armory-helminth-picker-search"
+        name="search"
+        type="search"
+        autoComplete="off"
+        aria-label="Search helminth abilities"
         placeholder="Search helminth abilities..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}

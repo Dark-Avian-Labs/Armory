@@ -336,7 +336,11 @@ export function FilterPanel({
 
       <div className="relative mb-3">
         <input
-          type="text"
+          id="armory-mod-filter-search"
+          name="search"
+          type="search"
+          autoComplete="off"
+          aria-label="Search mods"
           placeholder="Search mods..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
