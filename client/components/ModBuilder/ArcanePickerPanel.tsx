@@ -76,7 +76,11 @@ export function ArcanePickerPanel({
       </div>
 
       <input
-        type="text"
+        id="armory-arcane-picker-search"
+        name="search"
+        type="search"
+        autoComplete="off"
+        aria-label="Search arcanes"
         placeholder="Search arcanes..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}

@@ -107,7 +107,11 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
         </div>
 
         <input
-          type="text"
+          id="armory-equipment-grid-search"
+          name="search"
+          type="search"
+          autoComplete="off"
+          aria-label="Search equipment in picker"
           placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}

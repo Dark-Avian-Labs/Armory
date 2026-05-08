@@ -160,7 +160,11 @@ export function BuildsCatalogPage() {
         </div>
 
         <input
-          type="text"
+          id="armory-builds-catalog-search"
+          name="search"
+          type="search"
+          autoComplete="off"
+          aria-label="Search builds catalog"
           placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
