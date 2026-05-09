@@ -40,6 +40,36 @@ describe('Bow mod compatibility', () => {
     expect(filterCompatibleMods([velocity], 'primary', artemis)).toHaveLength(1);
   });
 
+  it('accepts rifle-compat mods when Artemis Bow product_category is missing', () => {
+    const terminalVelocity: Mod = {
+      unique_name: '/lotus/upgrades/mods/rifle/bowspeedprojectilemod',
+      name: 'Terminal Velocity',
+      type: 'Rifle Mod',
+      compat_name: 'Rifle',
+    };
+    const artemisWithoutCategory = {
+      unique_name: '/Lotus/Powersuits/Oberon/IronForest/IronForestWeaponBow',
+      name: 'Artemis Bow',
+    };
+    expect(filterCompatibleMods([terminalVelocity], 'primary', artemisWithoutCategory)).toHaveLength(1);
+  });
+
+  it('accepts rifle-compat mods when Artemis Bow is exported as SpecialItems', () => {
+    const terminalVelocity: Mod = {
+      unique_name: '/Lotus/Upgrades/Mods/Rifle/WeaponProjectileSpeedMod',
+      name: 'Terminal Velocity',
+      type: 'PRIMARY',
+      compat_name: 'Rifle',
+      is_utility: 1,
+    };
+    const artemisSpecialItems = {
+      unique_name: '/Lotus/Powersuits/Ranger/ExaltedBow',
+      name: 'Artemis Bow',
+      product_category: 'SpecialItems',
+    };
+    expect(filterCompatibleMods([terminalVelocity], 'primary', artemisSpecialItems)).toHaveLength(1);
+  });
+
   it('still accepts mods tagged Bow-only', () => {
     const bowOnly: Mod = {
       unique_name: '/lotus/upgrades/mods/rifle/examplebowmod',
@@ -83,6 +113,54 @@ describe('Bow mod compatibility', () => {
       product_category: 'Bow',
     };
     expect(filterCompatibleMods([sinisterReach], 'primary', artemis)).toHaveLength(0);
+  });
+
+  it('does not accept beam-only Rifle utility mods when bow category is inferred', () => {
+    const sinisterReach: Mod = {
+      unique_name: '/lotus/upgrades/mods/rifle/beamrangemod',
+      name: 'Sinister Reach',
+      type: 'Rifle Mod',
+      compat_name: 'Rifle',
+    };
+    const artemisWithoutCategory = {
+      unique_name: '/Lotus/Powersuits/Oberon/IronForest/IronForestWeaponBow',
+      name: 'Artemis Bow',
+    };
+    expect(filterCompatibleMods([sinisterReach], 'primary', artemisWithoutCategory)).toHaveLength(0);
+  });
+
+  it('does not accept beam-only Rifle utility mods on Artemis Bow exported as SpecialItems', () => {
+    const sinisterReach: Mod = {
+      unique_name: '/Lotus/Upgrades/Mods/Rifle/WeaponBeamDistanceMod',
+      name: 'Sinister Reach',
+      type: 'PRIMARY',
+      compat_name: 'PRIMARY',
+      is_utility: 1,
+    };
+    const artemisSpecialItems = {
+      unique_name: '/Lotus/Powersuits/Ranger/ExaltedBow',
+      name: 'Artemis Bow',
+      product_category: 'SpecialItems',
+    };
+    expect(filterCompatibleMods([sinisterReach], 'primary', artemisSpecialItems)).toHaveLength(0);
+  });
+});
+
+describe('SpecialItems primary category inference', () => {
+  it('treats Neutralizer (ExaltedSniper) as sniper for compat matching', () => {
+    const sniperOnlyMod: Mod = {
+      unique_name: '/Lotus/Upgrades/Mods/Rifle/WeaponSnipersConvertAmmoMod',
+      name: 'Sniper Ammo Mutation',
+      type: 'PRIMARY',
+      compat_name: 'Sniper',
+      is_utility: 1,
+    };
+    const neutralizer = {
+      unique_name: '/Lotus/Powersuits/Frumentarius/ExaltedSniper',
+      name: 'Neutralizer',
+      product_category: 'SpecialItems',
+    };
+    expect(filterCompatibleMods([sniperOnlyMod], 'primary', neutralizer)).toHaveLength(1);
   });
 });
 

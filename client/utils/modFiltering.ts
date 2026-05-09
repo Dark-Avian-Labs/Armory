@@ -570,14 +570,52 @@ function isPrimaryWeaponModExportType(modType: string): boolean {
   return ['RIFLE', 'SNIPER', 'SHOTGUN', 'BOW', 'LAUNCHER', 'ASSAULT RIFLE'].includes(t);
 }
 
+function resolvePrimaryWeaponCategory(equipment?: {
+  unique_name: string;
+  name: string;
+  product_category?: string;
+}): string {
+  const category = equipment?.product_category?.trim() ?? '';
+  if (category && category !== 'SpecialItems') return category;
+  if (!equipment) return '';
+
+  const name = equipment.name.toLowerCase();
+  const path = equipment.unique_name.replace(/\\/g, '/').toLowerCase();
+  const searchable = `${name} ${path}`;
+
+  if (
+    searchable.includes('exaltedbow') ||
+    searchable.includes('weaponbow') ||
+    searchable.includes('/bow/') ||
+    searchable.includes(' bow')
+  ) {
+    return 'Bow';
+  }
+  if (searchable.includes('/sniper/') || searchable.includes('sniper')) {
+    return 'Sniper';
+  }
+  if (
+    searchable.includes('/launcher/') ||
+    searchable.includes('/launchers/') ||
+    searchable.includes('launcher')
+  ) {
+    return 'Launcher';
+  }
+  if (searchable.includes('/shotgun/') || searchable.includes('shotgun')) {
+    return 'Shotgun';
+  }
+
+  return '';
+}
+
 function isBeamOnlyPrimaryMod(mod: Mod): boolean {
   return mod.name.trim().toLowerCase() === 'sinister reach';
 }
 
-function shouldExcludeBowPrimaryMod(mod: Mod, category: string, compatUpper: string): boolean {
+function shouldExcludeBowPrimaryMod(mod: Mod, category: string, _compatUpper: string): boolean {
   if (category !== 'Bow') return false;
   if (!isBeamOnlyPrimaryMod(mod)) return false;
-  return compatUpper === 'RIFLE' || compatUpper.startsWith('RIFLE ');
+  return true;
 }
 
 const GENERIC_TYPE_PRIMARY_COMPAT_NAMES = new Set([
@@ -603,6 +641,10 @@ function isPrimaryModCompatible(
   }
 
   const compatUpper = compat.toUpperCase();
+  const category = resolvePrimaryWeaponCategory(equipment);
+  if (shouldExcludeBowPrimaryMod(mod, category, compatUpper)) {
+    return false;
+  }
 
   if (compatUpper === 'PRIMARY') return true;
 
@@ -610,10 +652,6 @@ function isPrimaryModCompatible(
     return false;
   }
 
-  const category = equipment?.product_category || '';
-  if (shouldExcludeBowPrimaryMod(mod, category, compatUpper)) {
-    return false;
-  }
   if (category === 'SentinelWeapons') {
     if (compatUpper === 'RIFLE' || compatUpper === 'ASSAULT RIFLE' || compatUpper === 'SHOTGUN') {
       return true;
