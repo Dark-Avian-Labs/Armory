@@ -42,6 +42,9 @@ export function classifyArcaneCompatTags(
   if (name.startsWith('primary ') || name.startsWith('fractalized ')) {
     tags.add('primary');
   }
+  if (name.includes('longbow') || uniqueName.includes('longbow')) {
+    tags.add('primary');
+  }
   if (
     name.startsWith('secondary ') ||
     name.startsWith('akimbo ') ||

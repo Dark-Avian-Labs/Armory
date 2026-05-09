@@ -106,7 +106,7 @@ export function isModLockedOut(candidate: Mod, equippedMods: Mod[]): boolean {
 export const WEAPON_CATEGORY_TO_MOD_COMPAT: Record<string, string[]> = {
   LongGuns: ['Rifle', 'PRIMARY', 'Assault Rifle'],
   Shotgun: ['Shotgun', 'PRIMARY'],
-  Bow: ['Bow', 'PRIMARY'],
+  Bow: ['Bow', 'PRIMARY', 'Rifle', 'Assault Rifle'],
   Sniper: ['Sniper', 'PRIMARY'],
   Launcher: ['Launcher', 'PRIMARY', 'Rifle', 'Assault Rifle'],
 
@@ -624,7 +624,10 @@ function isPrimaryModCompatible(
     if (identityName && compatUpper === identityName) return true;
   }
 
-  if (compatUpper.startsWith('RIFLE') && (category === 'LongGuns' || category === 'Launcher')) {
+  if (
+    compatUpper.startsWith('RIFLE') &&
+    (category === 'LongGuns' || category === 'Launcher' || category === 'Bow')
+  ) {
     return true;
   }
   if (compatUpper.startsWith('SHOTGUN') && category === 'Shotgun') return true;
