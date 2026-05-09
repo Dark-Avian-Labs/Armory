@@ -29,3 +29,8 @@ export const AUTH_PROFILE_URL = readTrimmedEnv(
   import.meta.env.VITE_AUTH_PROFILE_URL as string | undefined,
   '/auth/profile',
 );
+
+export const APP_VERSION = readTrimmedEnv(
+  import.meta.env.VITE_APP_VERSION as string | undefined,
+  'dev',
+);

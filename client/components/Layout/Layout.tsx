@@ -11,6 +11,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from
 
 import {
   APP_DISPLAY_NAME,
+  APP_VERSION,
   AUTH_PROFILE_URL,
   LEGAL_ENTITY_NAME,
   LEGAL_PAGE_URL,
@@ -21,6 +22,7 @@ import feathers from '../../assets/feathers.png';
 import { useCompare } from '../../context/CompareContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
+import { useStaleBundlePrompt } from '../../hooks/useStaleBundlePrompt';
 import { CompareBar } from '../Compare/CompareBar';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -158,6 +160,7 @@ export function Layout() {
   const profile = account.profile;
   const isLoggedIn = account.isAuthenticated && profile !== null;
   const isAdmin = profile?.isAdmin === true;
+  const bundleStale = useStaleBundlePrompt(APP_VERSION);
 
   const compactModBuilderUi =
     searchParams.get('compact') === '1' && isCompactModBuilderRoute(location.pathname);
@@ -189,10 +192,35 @@ export function Layout() {
       </div>
       <header className="relative z-30 h-[100px] px-6">
         <div className="mx-auto grid h-full w-full max-w-[2000px] grid-cols-[1fr_auto_1fr] items-center gap-4">
-          <Link to={APP_PATHS.home} className="brand-lockup w-fit">
-            <img src={feathers} alt="Dark Avian Labs feather mark" className="brand-lockup__icon" />
-            <span className="brand-lockup__title brand-lockup--fx">{APP_DISPLAY_NAME}</span>
-          </Link>
+          <div className="flex w-fit max-w-full min-w-0 flex-col gap-0.5 justify-self-start">
+            <Link to={APP_PATHS.home} className="brand-lockup w-fit">
+              <img
+                src={feathers}
+                alt="Dark Avian Labs feather mark"
+                className="brand-lockup__icon"
+              />
+              <span className="brand-lockup__title brand-lockup--fx">{APP_DISPLAY_NAME}</span>
+            </Link>
+            <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5">
+              <span
+                className="text-muted font-mono text-[10px] leading-none tracking-wide opacity-70"
+                title={`Client ${APP_VERSION}`}
+              >
+                v{APP_VERSION}
+              </span>
+              {bundleStale ? (
+                <button
+                  type="button"
+                  className="text-muted hover:text-foreground rounded px-1.5 py-0.5 font-mono text-[10px] leading-none tracking-wide underline decoration-current/25 underline-offset-2 transition-colors hover:decoration-current/45"
+                  onClick={() => {
+                    window.location.reload();
+                  }}
+                >
+                  Reload
+                </button>
+              ) : null}
+            </div>
+          </div>
 
           <div className="justify-self-center">{isLoggedIn ? <SearchBar /> : null}</div>
 
