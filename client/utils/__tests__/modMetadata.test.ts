@@ -22,4 +22,13 @@ describe('isWeaponExilusMod', () => {
       } as Mod),
     ).toBe(true);
   });
+
+  it('detects known weapon exilus names when isUtility is missing', () => {
+    expect(
+      isWeaponExilusMod({
+        unique_name: '/Lotus/Upgrades/Mods/Rifle/BowFlightSpeedMod',
+        name: 'Terminal Velocity',
+      } as Mod),
+    ).toBe(true);
+  });
 });
