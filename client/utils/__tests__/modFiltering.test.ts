@@ -17,6 +17,60 @@ describe('normalizeWeaponIdentityName', () => {
   });
 });
 
+describe('Bow mod compatibility', () => {
+  it('accepts Rifle and Assault Rifle compat mods (shared with LongGuns arsenal slot)', () => {
+    const rifleMod: Mod = {
+      unique_name: '/lotus/upgrades/mods/rifle/convertammoriflemod',
+      name: 'Rifle Ammo Mutation',
+      type: 'Rifle Mod',
+      compat_name: 'Rifle',
+    };
+    const velocity: Mod = {
+      unique_name: '/lotus/upgrades/mods/rifle/bowspeedprojectilemod',
+      name: 'Terminal Velocity',
+      type: 'Rifle Mod',
+      compat_name: 'Rifle',
+    };
+    const artemis = {
+      unique_name: '/Lotus/Powersuits/Oberon/IronForest/IronForestWeaponBow',
+      name: 'Artemis Bow',
+      product_category: 'Bow',
+    };
+    expect(filterCompatibleMods([rifleMod], 'primary', artemis)).toHaveLength(1);
+    expect(filterCompatibleMods([velocity], 'primary', artemis)).toHaveLength(1);
+  });
+
+  it('still accepts mods tagged Bow-only', () => {
+    const bowOnly: Mod = {
+      unique_name: '/lotus/upgrades/mods/rifle/examplebowmod',
+      name: 'Example Bow Mod',
+      type: 'Rifle Mod',
+      compat_name: 'Bow',
+    };
+    const paris = {
+      unique_name: '/Lotus/Weapons/Tenno/Bow/Bow',
+      name: 'Paris',
+      product_category: 'Bow',
+    };
+    expect(filterCompatibleMods([bowOnly], 'primary', paris)).toHaveLength(1);
+  });
+
+  it('does not accept Shotgun-compat mods', () => {
+    const shotgunMod: Mod = {
+      unique_name: '/lotus/upgrades/mods/shotgun/test',
+      name: 'Test',
+      type: 'Shotgun Mod',
+      compat_name: 'Shotgun',
+    };
+    const bow = {
+      unique_name: '/Lotus/Weapons/Tenno/Bow/Bow',
+      name: 'Paris',
+      product_category: 'Bow',
+    };
+    expect(filterCompatibleMods([shotgunMod], 'primary', bow)).toHaveLength(0);
+  });
+});
+
 describe('Launcher mod compatibility', () => {
   it('accepts primary mods whose export type is "Rifle Mod"', () => {
     const mod: Mod = {
