@@ -16,6 +16,7 @@ import {
   requirePageGameAccess,
 } from './auth/middleware.js';
 import {
+  APP_VERSION,
   PORT,
   HOST,
   SESSION_SECRET,
@@ -76,6 +77,7 @@ const baselineLimiter = rateLimit({
   legacyHeaders: false,
   skip: (req) =>
     req.path === '/healthz' ||
+    req.path === '/api/version' ||
     req.path === '/favicon.ico' ||
     req.path.startsWith('/images/') ||
     req.path.startsWith('/icons/') ||
@@ -139,6 +141,11 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api/auth', authLimiter);
+
+app.get('/api/version', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ version: APP_VERSION });
+});
 
 const appApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
