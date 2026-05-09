@@ -69,6 +69,21 @@ describe('Bow mod compatibility', () => {
     };
     expect(filterCompatibleMods([shotgunMod], 'primary', bow)).toHaveLength(0);
   });
+
+  it('does not accept beam-only Rifle utility mods on bows', () => {
+    const sinisterReach: Mod = {
+      unique_name: '/lotus/upgrades/mods/rifle/beamrangemod',
+      name: 'Sinister Reach',
+      type: 'Rifle Mod',
+      compat_name: 'Rifle',
+    };
+    const artemis = {
+      unique_name: '/Lotus/Powersuits/Oberon/IronForest/IronForestWeaponBow',
+      name: 'Artemis Bow',
+      product_category: 'Bow',
+    };
+    expect(filterCompatibleMods([sinisterReach], 'primary', artemis)).toHaveLength(0);
+  });
 });
 
 describe('Launcher mod compatibility', () => {

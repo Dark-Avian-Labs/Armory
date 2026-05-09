@@ -570,6 +570,16 @@ function isPrimaryWeaponModExportType(modType: string): boolean {
   return ['RIFLE', 'SNIPER', 'SHOTGUN', 'BOW', 'LAUNCHER', 'ASSAULT RIFLE'].includes(t);
 }
 
+function isBeamOnlyPrimaryMod(mod: Mod): boolean {
+  return mod.name.trim().toLowerCase() === 'sinister reach';
+}
+
+function shouldExcludeBowPrimaryMod(mod: Mod, category: string, compatUpper: string): boolean {
+  if (category !== 'Bow') return false;
+  if (!isBeamOnlyPrimaryMod(mod)) return false;
+  return compatUpper === 'RIFLE' || compatUpper.startsWith('RIFLE ');
+}
+
 const GENERIC_TYPE_PRIMARY_COMPAT_NAMES = new Set([
   'SNIPER',
   'RIFLE',
@@ -581,7 +591,7 @@ const GENERIC_TYPE_PRIMARY_COMPAT_NAMES = new Set([
 ]);
 
 function isPrimaryModCompatible(
-  _mod: Mod,
+  mod: Mod,
   modType: string,
   compat: string,
   equipment?: { unique_name: string; name: string; product_category?: string },
@@ -601,6 +611,9 @@ function isPrimaryModCompatible(
   }
 
   const category = equipment?.product_category || '';
+  if (shouldExcludeBowPrimaryMod(mod, category, compatUpper)) {
+    return false;
+  }
   if (category === 'SentinelWeapons') {
     if (compatUpper === 'RIFLE' || compatUpper === 'ASSAULT RIFLE' || compatUpper === 'SHOTGUN') {
       return true;
