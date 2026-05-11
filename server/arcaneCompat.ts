@@ -39,10 +39,12 @@ export function classifyArcaneCompatTags(
     tags.add('melee');
     tags.add('weapon');
   }
-  if (name.startsWith('primary ') || name.startsWith('fractalized ')) {
-    tags.add('primary');
-  }
-  if (name.includes('longbow') || uniqueName.includes('longbow')) {
+  if (
+    name.startsWith('primary ') ||
+    name.startsWith('fractalized ') ||
+    name.includes('longbow') ||
+    uniqueName.includes('longbow')
+  ) {
     tags.add('primary');
   }
   if (
@@ -57,31 +59,23 @@ export function classifyArcaneCompatTags(
   if (name.startsWith('melee ') || name.includes(' melee ')) {
     tags.add('melee');
   }
+  const lacksPrimarySecondaryMelee =
+    !tags.has('primary') && !tags.has('secondary') && !tags.has('melee');
   if (
     name.startsWith('residual ') ||
     name.startsWith('theorem ') ||
-    (name.includes('merciless') &&
-      !tags.has('primary') &&
-      !tags.has('secondary') &&
-      !tags.has('melee')) ||
-    (name.includes('dexterity') &&
-      !tags.has('primary') &&
-      !tags.has('secondary') &&
-      !tags.has('melee')) ||
-    (name.includes('deadhead') &&
-      !tags.has('primary') &&
-      !tags.has('secondary') &&
-      !tags.has('melee'))
+    (lacksPrimarySecondaryMelee &&
+      (name.includes('merciless') || name.includes('dexterity') || name.includes('deadhead')))
   ) {
     tags.add('weapon');
   }
 
   if (uniqueName.includes('/zariman/')) {
-    if (name.includes('amp ')) tags.add('amp');
-    if (name.includes('operator ')) tags.add('operator');
-    if (name.includes('primary')) tags.add('primary');
-    if (name.includes('secondary')) tags.add('secondary');
-    if (name.includes('melee')) tags.add('melee');
+    if (/\bamp\b/i.test(name)) tags.add('amp');
+    if (/\boperator\b/i.test(name)) tags.add('operator');
+    if (/\bprimary\b/i.test(name)) tags.add('primary');
+    if (/\bsecondary\b/i.test(name)) tags.add('secondary');
+    if (/\bmelee\b/i.test(name)) tags.add('melee');
   }
 
   if (

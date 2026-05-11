@@ -130,7 +130,7 @@ export function filterCompatibleMods(
 export function isPostureMod(mod: Mod): boolean {
   return (
     (mod.type || '').toUpperCase() === 'STANCE' &&
-    mod.unique_name.includes('/BeastWeapons/Stances/')
+    (mod.unique_name ?? '').includes('/BeastWeapons/Stances/')
   );
 }
 
@@ -512,13 +512,13 @@ function isWarframeModCompatible(
     const equipName = equipment.name.replace(/\s+PRIME$/i, '').toUpperCase();
     if (compat.toUpperCase() === equipName) return true;
 
-    if (mod.subtype && equipment.unique_name) {
-      if (
-        equipment.unique_name.includes(mod.subtype) ||
-        mod.subtype.includes(equipment.unique_name.replace(/prime/gi, ''))
-      ) {
-        return true;
-      }
+    if (
+      mod.subtype &&
+      equipment.unique_name &&
+      (equipment.unique_name.includes(mod.subtype) ||
+        mod.subtype.includes(equipment.unique_name.replace(/prime/gi, '')))
+    ) {
+      return true;
     }
   }
 
@@ -564,8 +564,7 @@ function isPrimaryWeaponModExportType(modType: string): boolean {
   const t = modType
     .toUpperCase()
     .trim()
-    .replace(/\s+MOD$/i, '')
-    .trim();
+    .replace(/\s+MOD$/i, '');
   if (t === 'PRIMARY') return true;
   return ['RIFLE', 'SNIPER', 'SHOTGUN', 'BOW', 'LAUNCHER', 'ASSAULT RIFLE'].includes(t);
 }

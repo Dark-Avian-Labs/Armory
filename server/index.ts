@@ -44,6 +44,8 @@ const SQLiteStore = require('better-sqlite3-session-store')(session);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.trim().replace(/\/+$/, '');
+
 ensureDataDirs();
 createAppSchema();
 
@@ -237,12 +239,15 @@ app.get('/readyz', (_req, res) => {
   }
 });
 
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.trim().replace(/\/+$/, '');
 const clientDir = path.resolve(__dirname, '..', 'client');
 
 function sendLegalSpa(res: express.Response): void {
   if (NODE_ENV !== 'production') {
-    res.status(503).send('Auth service URL is not configured.');
+    res
+      .status(503)
+      .send(
+        'Set AUTH_SERVICE_URL to your auth service base URL to redirect to hosted legal content in development.',
+      );
     return;
   }
   res.sendFile(path.join(clientDir, 'index.html'));
