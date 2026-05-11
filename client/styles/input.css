@@ -757,22 +757,108 @@ html:not(.dark) .archon-shard-filled-bg--tau {
 }
 
 .bg-art {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.bg-art__layer {
+  margin: 0;
   white-space: pre;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  line-height: 1.2;
   color: color-mix(
     in oklab,
     var(--color-foreground) calc(var(--ascii-opacity) * 100%),
     transparent
   );
-  z-index: 0;
-  pointer-events: none;
-  user-select: none;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 10px;
-  line-height: 1.2;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+}
+
+.bg-art--wave {
+  display: grid;
+  place-items: center;
+  --bg-art-wave-angle: 180deg;
+  --bg-art-wave-p: 0.08;
+  --bg-art-wave-half: 2.5%;
+  --bg-art-wave-feather: 0.8%;
+}
+
+.bg-art--wave .bg-art__layer {
+  grid-area: 1 / 1;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+}
+
+.bg-art__layer--base {
+  -webkit-mask-image: linear-gradient(
+    var(--bg-art-wave-angle),
+    #000 0%,
+    #000 calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half) - var(--bg-art-wave-feather)),
+    rgba(0, 0, 0, 0.45) calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half)),
+    transparent calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half) * 0.5),
+    transparent calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half) * 0.5),
+    rgba(0, 0, 0, 0.45) calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half)),
+    #000 calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half) + var(--bg-art-wave-feather)),
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    var(--bg-art-wave-angle),
+    #000 0%,
+    #000 calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half) - var(--bg-art-wave-feather)),
+    rgba(0, 0, 0, 0.45) calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half)),
+    transparent calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half) * 0.5),
+    transparent calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half) * 0.5),
+    rgba(0, 0, 0, 0.45) calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half)),
+    #000 calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half) + var(--bg-art-wave-feather)),
+    #000 100%
+  );
+}
+
+.bg-art__layer--alt {
+  -webkit-mask-image: linear-gradient(
+    var(--bg-art-wave-angle),
+    transparent 0%,
+    transparent
+      calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half) - var(--bg-art-wave-feather)),
+    rgba(0, 0, 0, 0.55) calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half)),
+    #000 calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half) * 0.5),
+    #000 calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half) * 0.5),
+    rgba(0, 0, 0, 0.55) calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half)),
+    transparent
+      calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half) + var(--bg-art-wave-feather)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    var(--bg-art-wave-angle),
+    transparent 0%,
+    transparent
+      calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half) - var(--bg-art-wave-feather)),
+    rgba(0, 0, 0, 0.55) calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half)),
+    #000 calc(var(--bg-art-wave-p) * 100% - var(--bg-art-wave-half) * 0.5),
+    #000 calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half) * 0.5),
+    rgba(0, 0, 0, 0.55) calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half)),
+    transparent
+      calc(var(--bg-art-wave-p) * 100% + var(--bg-art-wave-half) + var(--bg-art-wave-feather)),
+    transparent 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-art--wave .bg-art__layer {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .bg-art__layer--alt {
+    opacity: 0;
+  }
 }
 
 @keyframes slide-up {

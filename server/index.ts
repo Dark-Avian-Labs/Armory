@@ -134,6 +134,55 @@ app.use((req, res, next) => {
   next();
 });
 
+const CSRF_PROTECTED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+function isSameHostOrigin(req: express.Request, origin: string): boolean {
+  try {
+    const parsedOrigin = new URL(origin);
+    const hostHeader = req.headers.host;
+    if (typeof hostHeader !== 'string' || hostHeader.length === 0) {
+      return false;
+    }
+    return parsedOrigin.host === hostHeader;
+  } catch {
+    return false;
+  }
+}
+
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (!CSRF_PROTECTED_METHODS.has(req.method.toUpperCase())) {
+    next();
+    return;
+  }
+
+  const secFetchSiteHeader = req.headers['sec-fetch-site'];
+  const secFetchSite = Array.isArray(secFetchSiteHeader)
+    ? secFetchSiteHeader[0]
+    : secFetchSiteHeader;
+  if (typeof secFetchSite === 'string' && secFetchSite.toLowerCase() === 'cross-site') {
+    res.status(403).json({ error: 'Cross-site request blocked', code: 'CSRF_ORIGIN_INVALID' });
+    return;
+  }
+
+  const originHeader = req.headers.origin;
+  const origin = Array.isArray(originHeader) ? originHeader[0] : originHeader;
+  if (typeof origin === 'string' && origin.length > 0) {
+    const allowedOrigins = new Set<string>();
+    if (AUTH_SERVICE_URL) {
+      try {
+        allowedOrigins.add(new URL(AUTH_SERVICE_URL).origin);
+      } catch {
+        // ignore
+      }
+    }
+    if (!allowedOrigins.has(origin) && !isSameHostOrigin(req, origin)) {
+      res.status(403).json({ error: 'Origin not allowed', code: 'CSRF_ORIGIN_INVALID' });
+      return;
+    }
+  }
+
+  next();
+});
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
