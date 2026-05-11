@@ -15,7 +15,7 @@ const SPECIAL_SECONDARY_NAMES = new Set([
   'Regulators Prime',
 ]);
 
-const MELEE_WEAPON_NAMES_WITHOUT_EXILUS = new Set([
+const MELEE_EXALTED_NAMES_SHARED = [
   'Shadow Clones',
   'Shadow Clones Prime',
   'Landslide Fists',
@@ -24,9 +24,11 @@ const MELEE_WEAPON_NAMES_WITHOUT_EXILUS = new Set([
   'Shattered Lash Prime',
   'Whipclaw',
   'Whipclaw Prime',
-]);
+] as const;
 
-const SPECIAL_MELEE_NAMES = new Set([
+const MELEE_WEAPON_NAMES_WITHOUT_EXILUS = new Set<string>(MELEE_EXALTED_NAMES_SHARED);
+
+const SPECIAL_MELEE_NAMES = new Set<string>([
   'Desert Wind',
   'Desert Wind Prime',
   'Diwata',
@@ -38,18 +40,11 @@ const SPECIAL_MELEE_NAMES = new Set([
   'Garuda Prime Talons',
   'Iron Staff',
   'Iron Staff Prime',
-  'Landslide Fists',
-  'Landslide Fists Prime',
   'Shadow Claws',
   'Shadow Claws Prime',
-  'Shadow Clones',
-  'Shadow Clones Prime',
-  'Shattered Lash',
-  'Shattered Lash Prime',
   'Valkyr Talons',
   'Valkyr Prime Talons',
-  'Whipclaw',
-  'Whipclaw Prime',
+  ...MELEE_EXALTED_NAMES_SHARED,
 ]);
 
 const SPECIAL_NECRAMECH_SELECTION_TYPE: Record<string, EquipmentType> = {
