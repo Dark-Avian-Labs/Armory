@@ -17,7 +17,6 @@ import {
   LEGAL_PAGE_URL,
 } from '../../app/config';
 import { APP_PATHS, buildNewPath } from '../../app/paths';
-import bgArt from '../../assets/background.txt?raw';
 import feathers from '../../assets/feathers.png';
 import { useCompare } from '../../context/CompareContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -27,6 +26,7 @@ import { CompareBar } from '../Compare/CompareBar';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { Menu } from '../ui/Menu';
+import { AsciiWaveBackground } from './AsciiWaveBackground';
 import { SearchBar } from './SearchBar';
 
 const EquipmentGridModal = lazy(() =>
@@ -187,9 +187,7 @@ export function Layout() {
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
-      <div className="bg-art" aria-hidden="true">
-        {bgArt}
-      </div>
+      <AsciiWaveBackground />
       <header className="relative z-30 h-[100px] px-6">
         <div className="mx-auto grid h-full w-full max-w-[2000px] grid-cols-[1fr_auto_1fr] items-center gap-4">
           <div className="flex w-fit max-w-full min-w-0 flex-col gap-0.5 justify-self-start">
