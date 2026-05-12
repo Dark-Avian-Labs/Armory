@@ -73,6 +73,9 @@ export const CENTRAL_DB_PATH = process.env.CENTRAL_DB_PATH || path.join(DATA_DIR
 
 const _port = parseInt(process.env.PORT || '3002', 10);
 export const PORT = Number.isFinite(_port) && _port > 0 ? _port : 3002;
+const _shutdownTimeoutMs = parseInt(process.env.SHUTDOWN_TIMEOUT_MS || '10000', 10);
+export const SHUTDOWN_TIMEOUT_MS =
+  Number.isFinite(_shutdownTimeoutMs) && _shutdownTimeoutMs > 0 ? _shutdownTimeoutMs : 10_000;
 export const HOST = process.env.HOST || '127.0.0.1';
 export const NODE_ENV = process.env.NODE_ENV || 'development';
 const rawSessionSecret =

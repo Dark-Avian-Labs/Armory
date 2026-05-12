@@ -31,6 +31,7 @@ import {
   PROJECT_ROOT,
   IMAGES_DIR,
   ensureDataDirs,
+  SHUTDOWN_TIMEOUT_MS,
 } from './config.js';
 import { createCentralSchema } from './db/centralSchema.js';
 import { closeAll, getCentralDb } from './db/connection.js';
@@ -316,18 +317,19 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`[${APP_NAME}] Server running on http://${HOST}:${PORT} (${NODE_ENV})`);
 });
 
-const SHUTDOWN_TIMEOUT_MS = 10_000;
 function shutdown(): void {
   let done = false;
   function closeAndExit(): void {
     if (done) return;
     done = true;
+    let exitCode = 0;
     try {
       closeAll();
     } catch (err) {
       console.error('[Shutdown] Failed to close DB connections:', err);
+      exitCode = 1;
     }
-    process.exit(0); // eslint-disable-line n/no-process-exit -- required for graceful shutdown
+    process.exit(exitCode); // eslint-disable-line n/no-process-exit -- required for graceful shutdown
   }
   const timeout = setTimeout(() => closeAndExit(), SHUTDOWN_TIMEOUT_MS);
   server.close(() => {
