@@ -421,6 +421,36 @@ describe('Melee stance compatibility aliases', () => {
   });
 });
 
+describe('Companion sentinel name-specific mods (Prime = base)', () => {
+  it('matches precepts tagged for base sentinel to the Prime variant', () => {
+    const negateLike: Mod = {
+      unique_name: '/Lotus/Upgrades/Mods/Sentinel/SentinelNegateMod',
+      name: 'Negate',
+      type: 'SENTINEL',
+      compat_name: 'Wyrm',
+    };
+    const wyrmPrime = {
+      unique_name: '/Lotus/Types/Sentinels/SentinelPrecepts/WyrmPrime',
+      name: 'Wyrm Prime',
+    };
+    expect(filterCompatibleMods([negateLike], 'companion', wyrmPrime)).toHaveLength(1);
+  });
+
+  it('still matches when equipment is the non-Prime sentinel', () => {
+    const negateLike: Mod = {
+      unique_name: '/Lotus/Upgrades/Mods/Sentinel/SentinelNegateMod',
+      name: 'Negate',
+      type: 'SENTINEL',
+      compat_name: 'Wyrm',
+    };
+    const wyrm = {
+      unique_name: '/Lotus/Types/Sentinels/SentinelPrecepts/Wyrm',
+      name: 'Wyrm',
+    };
+    expect(filterCompatibleMods([negateLike], 'companion', wyrm)).toHaveLength(1);
+  });
+});
+
 describe('filterCompatibleMods with malformed or incomplete records', () => {
   it('returns no mods when mod type is empty string (cannot classify primary mod)', () => {
     const mod: Mod = {

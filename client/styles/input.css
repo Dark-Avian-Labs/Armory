@@ -575,6 +575,19 @@ html.ui-shadow:not(.dark) {
     backdrop-filter: blur(14px);
   }
 
+  .modal.modal--popover-host {
+    overflow: visible;
+    max-height: none;
+    padding: 0;
+  }
+
+  .modal.modal--popover-host > .modal--popover-host-scroll {
+    padding: 24px;
+    max-height: min(90vh, 900px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .modal.armory-import-modal {
     max-width: min(960px, 94vw);
   }

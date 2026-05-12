@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  formatRivenLine,
   getDispositionPips,
   getEffectiveRivenDisposition,
+  getRivenBaselineValue,
   getRivenStatBounds,
+  getRivenStatsForType,
   resolveRivenConfig,
   verifyAndAdjustRivenConfig,
 } from '../riven';
@@ -19,6 +22,31 @@ describe('getEffectiveRivenDisposition', () => {
 
   it('returns null when neither is set', () => {
     expect(getEffectiveRivenDisposition({})).toBeNull();
+  });
+});
+
+describe('faction damage (racial) riven stats', () => {
+  it('lists Damage to Grineer/Corpus/Infested for weapon riven types', () => {
+    for (const type of ['primary', 'secondary', 'melee', 'archgun'] as const) {
+      const stats = getRivenStatsForType(type, 'Test Weapon');
+      expect(stats).toContain('Damage to Grineer');
+      expect(stats).toContain('Damage to Corpus');
+      expect(stats).toContain('Damage to Infested');
+    }
+  });
+
+  it('uses elemental-tier baselines for faction damage by weapon class', () => {
+    expect(getRivenBaselineValue('Damage to Grineer', 'primary')).toBe(90);
+    expect(getRivenBaselineValue('Damage to Corpus', 'secondary')).toBe(90);
+    expect(getRivenBaselineValue('Damage to Infested', 'melee')).toBe(90);
+    expect(getRivenBaselineValue('Damage to Grineer', 'archgun')).toBe(119.7);
+  });
+
+  it('formats faction lines with a percent suffix like other scaling stats', () => {
+    expect(formatRivenLine({ stat: 'Damage to Grineer', value: 45.2, isNegative: false })).toBe(
+      '+45.2% Damage to Grineer',
+    );
+    expect(formatRivenLine({ stat: 'Damage to Corpus', value: 0.6, isNegative: true })).toBe('-0.6% Damage to Corpus');
   });
 });
 

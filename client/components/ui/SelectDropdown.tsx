@@ -134,9 +134,9 @@ export function SelectDropdown({
           id={listboxId}
           role="listbox"
           onKeyDown={handleListboxKeyDown}
-          className="select-dropdown-menu absolute top-full left-0 z-[240] mt-1 max-h-56 w-full min-w-[12rem] overflow-hidden"
+          className="select-dropdown-menu absolute top-full left-0 z-[240] mt-1 max-h-56 w-full min-w-[12rem]"
         >
-          <div className="custom-scroll max-h-48 overflow-y-auto">
+          <div className="custom-scroll max-h-48 overflow-x-hidden overflow-y-auto rounded-[10px]">
             {options.map((opt, i) => {
               const isSelected = opt.value === value;
               const isFocused = focusedIndex === i;

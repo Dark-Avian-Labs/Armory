@@ -744,6 +744,7 @@ function isCompanionModCompatible(
 ): boolean {
   const compatUpper = compat.toUpperCase();
   const normalizedName = equipment?.name.replace(/\s+/g, ' ').toUpperCase() || '';
+  const baseCompanionName = normalizedName.replace(/\s+PRIME$/i, '');
   const companionSubtype = getCompanionSubtype(equipment);
 
   if (
@@ -753,7 +754,7 @@ function isCompanionModCompatible(
     modType === 'HELMINTH CHARGER'
   ) {
     if (!equipment || !companionSubtype) return false;
-    if (compatUpper === normalizedName) return true;
+    if (compatUpper === normalizedName || compatUpper === baseCompanionName) return true;
 
     if (modType === 'HELMINTH CHARGER') {
       return companionSubtype === 'helminth' && compatUpper === 'HELMINTH CHARGER';

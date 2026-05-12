@@ -39,6 +39,9 @@ const PRIMARY_BASELINES = {
   Cold: 90,
   Electricity: 90,
   Toxin: 90,
+  'Damage to Grineer': 90,
+  'Damage to Corpus': 90,
+  'Damage to Infested': 90,
 } as const satisfies BaselineMap;
 
 const SECONDARY_BASELINES = {
@@ -63,6 +66,9 @@ const SECONDARY_BASELINES = {
   Cold: 90,
   Electricity: 90,
   Toxin: 90,
+  'Damage to Grineer': 90,
+  'Damage to Corpus': 90,
+  'Damage to Infested': 90,
 } as const satisfies BaselineMap;
 
 const MELEE_BASELINES = {
@@ -85,6 +91,9 @@ const MELEE_BASELINES = {
   Cold: 90,
   Electricity: 90,
   Toxin: 90,
+  'Damage to Grineer': 90,
+  'Damage to Corpus': 90,
+  'Damage to Infested': 90,
 } as const satisfies BaselineMap;
 
 const ARCHGUN_BASELINES = {
@@ -108,6 +117,9 @@ const ARCHGUN_BASELINES = {
   Cold: 119.7,
   Electricity: 119.7,
   Toxin: 119.7,
+  'Damage to Grineer': 119.7,
+  'Damage to Corpus': 119.7,
+  'Damage to Infested': 119.7,
 } as const satisfies BaselineMap;
 
 const BASELINES = {
