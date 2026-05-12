@@ -170,7 +170,8 @@ export function getEffectiveRivenDisposition(
   weapon: Pick<Weapon, 'omega_attenuation' | 'riven_disposition'>,
 ): number | null {
   const v = weapon.omega_attenuation ?? weapon.riven_disposition;
-  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+  if (v !== undefined && Number.isFinite(v)) return v;
+  return null;
 }
 
 export function getDispositionPips(value: number): number {
@@ -204,10 +205,6 @@ export const RIVEN_DISPOSITION_MAX = 1.55;
 
 export function clampDisposition(disposition: number): number {
   return clamp(disposition, RIVEN_DISPOSITION_MIN, RIVEN_DISPOSITION_MAX);
-}
-
-function isFlatRivenStat(stat: string): boolean {
-  return stat === 'Range' || stat === 'Initial Combo' || stat === 'Punch Through';
 }
 
 export function getRivenStatBounds(
@@ -248,9 +245,6 @@ export function getRivenStatBounds(
   const pos = rollRule.positiveMultiplier;
   const max = base * d * 1.1 * pos;
   const min = base * d * 0.9 * pos;
-  if (!isFlatRivenStat(stat)) {
-    return { min, max };
-  }
   return { min, max };
 }
 
