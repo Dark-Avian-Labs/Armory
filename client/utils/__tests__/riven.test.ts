@@ -35,18 +35,28 @@ describe('faction damage (racial) riven stats', () => {
     }
   });
 
-  it('uses elemental-tier baselines for faction damage by weapon class', () => {
-    expect(getRivenBaselineValue('Damage to Grineer', 'primary')).toBe(90);
-    expect(getRivenBaselineValue('Damage to Corpus', 'secondary')).toBe(90);
-    expect(getRivenBaselineValue('Damage to Infested', 'melee')).toBe(90);
-    expect(getRivenBaselineValue('Damage to Grineer', 'archgun')).toBe(119.7);
+  it('uses wiki x0.45 base for faction damage on all weapon riven types', () => {
+    expect(getRivenBaselineValue('Damage to Grineer', 'primary')).toBe(0.45);
+    expect(getRivenBaselineValue('Damage to Corpus', 'secondary')).toBe(0.45);
+    expect(getRivenBaselineValue('Damage to Infested', 'melee')).toBe(0.45);
+    expect(getRivenBaselineValue('Damage to Grineer', 'archgun')).toBe(0.45);
   });
 
-  it('formats faction lines with a percent suffix like other scaling stats', () => {
-    expect(formatRivenLine({ stat: 'Damage to Grineer', value: 45.2, isNegative: false })).toBe(
-      '+45.2% Damage to Grineer',
+  it('formats faction lines as in-game multipliers (xN), not percentages', () => {
+    expect(formatRivenLine({ stat: 'Damage to Grineer', value: 1.25, isNegative: false })).toBe(
+      'x1.3 Damage to Grineer',
     );
-    expect(formatRivenLine({ stat: 'Damage to Corpus', value: 0.6, isNegative: true })).toBe('-0.6% Damage to Corpus');
+    expect(formatRivenLine({ stat: 'Damage to Corpus', value: -0.6, isNegative: true })).toBe('x0.6 Damage to Corpus');
+  });
+
+  it('allows x0.6 curse in wiki-style multiplier band at 1.245 disposition (3+1 roll)', () => {
+    const rollRule3Pos1Neg = { positiveMultiplier: 0.9375, negativeMultiplier: 0.75 };
+    const bounds = getRivenStatBounds('Damage to Corpus', 'primary', 1.245, true, rollRule3Pos1Neg);
+    expect(bounds).not.toBeNull();
+    const lo = Math.min(Math.abs(bounds!.min), Math.abs(bounds!.max));
+    const hi = Math.max(Math.abs(bounds!.min), Math.abs(bounds!.max));
+    expect(0.6).toBeGreaterThanOrEqual(lo - 1e-6);
+    expect(0.6).toBeLessThanOrEqual(hi + 1e-6);
   });
 });
 

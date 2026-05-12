@@ -1,10 +1,25 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
+import { createPortal } from 'react-dom';
 
 import { MaterialSymbol } from './MaterialSymbol';
 
 export interface SelectDropdownOption {
   value: string;
   label: string;
+}
+
+interface MenuRect {
+  top: number;
+  left: number;
+  width: number;
+  maxHeight: number;
 }
 
 interface SelectDropdownProps {
@@ -20,6 +35,10 @@ interface SelectDropdownProps {
   disabled?: boolean;
 }
 
+const MENU_GAP_PX = 4;
+const VIEWPORT_MARGIN_PX = 8;
+const MENU_MAX_HEIGHT_PX = 224;
+
 export function SelectDropdown({
   value,
   options,
@@ -33,15 +52,47 @@ export function SelectDropdown({
   disabled,
 }: SelectDropdownProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [focusedIndex, setFocusedIndex] = useState(0);
+  const [menuRect, setMenuRect] = useState<MenuRect | null>(null);
+
+  const updateMenuPosition = useCallback(() => {
+    const btn = buttonRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - r.bottom - MENU_GAP_PX - VIEWPORT_MARGIN_PX;
+    const maxHeight = Math.min(MENU_MAX_HEIGHT_PX, Math.max(80, spaceBelow));
+    setMenuRect({
+      top: r.bottom + MENU_GAP_PX,
+      left: r.left,
+      width: r.width,
+      maxHeight,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuRect(null);
+      return;
+    }
+    updateMenuPosition();
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [open, options.length, updateMenuPosition]);
 
   useEffect(() => {
     if (!open) return undefined;
     const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        onOpenChange(false);
-      }
+      const t = e.target as Node;
+      if (rootRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t)) return;
+      onOpenChange(false);
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
@@ -97,9 +148,71 @@ export function SelectDropdown({
     }
   };
 
+  const menuNode =
+    open &&
+    menuRect &&
+    typeof document !== 'undefined' &&
+    createPortal(
+      <div
+        ref={menuRef}
+        id={listboxId}
+        role="listbox"
+        onKeyDown={handleListboxKeyDown}
+        style={{
+          position: 'fixed',
+          top: menuRect.top,
+          left: menuRect.left,
+          right: 'auto',
+          width: menuRect.width,
+          minWidth: '12rem',
+          zIndex: 10000,
+        }}
+        className="select-dropdown-menu"
+      >
+        <div
+          className="custom-scroll overflow-x-hidden overflow-y-auto rounded-[10px]"
+          style={{ maxHeight: menuRect.maxHeight }}
+        >
+          {options.map((opt, i) => {
+            const isSelected = opt.value === value;
+            const isFocused = focusedIndex === i;
+            return (
+              <button
+                key={opt.value === '' ? '__empty__' : opt.value}
+                ref={(el) => {
+                  optionRefs.current[i] = el;
+                }}
+                type="button"
+                role="option"
+                tabIndex={isFocused ? 0 : -1}
+                aria-selected={isSelected}
+                className={`select-dropdown-item text-xs outline-none ${
+                  isSelected ? 'is-selected' : ''
+                }`}
+                onFocus={() => setFocusedIndex(i)}
+                onKeyDown={(ev) => {
+                  if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                  }
+                }}
+                onClick={() => {
+                  onChange(opt.value);
+                  onOpenChange(false);
+                }}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>,
+      document.body,
+    );
+
   return (
     <div ref={rootRef} className={`relative min-w-0 ${className}`}>
       <button
+        ref={buttonRef}
         type="button"
         id={buttonId}
         className="form-input flex w-full cursor-pointer items-center justify-between gap-2 py-2 text-left text-xs disabled:cursor-not-allowed disabled:opacity-50"
@@ -129,48 +242,7 @@ export function SelectDropdown({
           )}
         </span>
       </button>
-      {open && (
-        <div
-          id={listboxId}
-          role="listbox"
-          onKeyDown={handleListboxKeyDown}
-          className="select-dropdown-menu absolute top-full left-0 z-[240] mt-1 max-h-56 w-full min-w-[12rem]"
-        >
-          <div className="custom-scroll max-h-48 overflow-x-hidden overflow-y-auto rounded-[10px]">
-            {options.map((opt, i) => {
-              const isSelected = opt.value === value;
-              const isFocused = focusedIndex === i;
-              return (
-                <button
-                  key={opt.value === '' ? '__empty__' : opt.value}
-                  ref={(el) => {
-                    optionRefs.current[i] = el;
-                  }}
-                  type="button"
-                  role="option"
-                  tabIndex={isFocused ? 0 : -1}
-                  aria-selected={isSelected}
-                  className={`select-dropdown-item text-xs outline-none ${
-                    isSelected ? 'is-selected' : ''
-                  }`}
-                  onFocus={() => setFocusedIndex(i)}
-                  onKeyDown={(ev) => {
-                    if (ev.key === 'Enter' || ev.key === ' ') {
-                      ev.preventDefault();
-                    }
-                  }}
-                  onClick={() => {
-                    onChange(opt.value);
-                    onOpenChange(false);
-                  }}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {menuNode}
     </div>
   );
 }

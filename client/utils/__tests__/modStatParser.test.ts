@@ -51,6 +51,11 @@ describe('parseModEffects', () => {
       expect(effects.baseDamage).toBeCloseTo(0.6);
       expect(effects.multishot).toBeCloseTo(0.6);
     });
+
+    it('parses riven faction damage as multiplier (xN Damage to …)', () => {
+      const mod = makeMod(['x0.6 Damage to Corpus']);
+      expect(parseModEffects(mod, 0).factionDamage).toBeCloseTo(-0.4);
+    });
   });
 
   describe('warframe stats', () => {

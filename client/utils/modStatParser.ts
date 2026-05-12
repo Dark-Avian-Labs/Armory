@@ -128,6 +128,12 @@ export interface ParseModEffectsOptions {
 }
 
 function applyStatLineToEffects(line: string, effects: StatEffects): void {
+  const factionMult = line.match(/^x([\d.]+)\s+Damage to\b/i);
+  if (factionMult) {
+    effects.factionDamage += parseFloat(factionMult[1]) - 1;
+    return;
+  }
+
   for (const { regex, key } of STAT_PATTERNS) {
     const match = line.match(regex);
     if (match) {
