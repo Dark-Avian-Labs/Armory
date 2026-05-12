@@ -17,6 +17,18 @@ type RivenRollRule = {
   negativeMultiplier: number;
 };
 
+export const FACTION_RIVEN_BASE = 0.45;
+
+export const FACTION_RIVEN_STATS = [
+  'Damage to Grineer',
+  'Damage to Corpus',
+  'Damage to Infested',
+] as const;
+
+export function isFactionRivenStat(stat: string): boolean {
+  return (FACTION_RIVEN_STATS as readonly string[]).includes(stat);
+}
+
 const PRIMARY_BASELINES = {
   Damage: 165,
   Multishot: 90,
@@ -39,9 +51,6 @@ const PRIMARY_BASELINES = {
   Cold: 90,
   Electricity: 90,
   Toxin: 90,
-  'Damage to Grineer': 90,
-  'Damage to Corpus': 90,
-  'Damage to Infested': 90,
 } as const satisfies BaselineMap;
 
 const SECONDARY_BASELINES = {
@@ -66,9 +75,6 @@ const SECONDARY_BASELINES = {
   Cold: 90,
   Electricity: 90,
   Toxin: 90,
-  'Damage to Grineer': 90,
-  'Damage to Corpus': 90,
-  'Damage to Infested': 90,
 } as const satisfies BaselineMap;
 
 const MELEE_BASELINES = {
@@ -91,9 +97,6 @@ const MELEE_BASELINES = {
   Cold: 90,
   Electricity: 90,
   Toxin: 90,
-  'Damage to Grineer': 90,
-  'Damage to Corpus': 90,
-  'Damage to Infested': 90,
 } as const satisfies BaselineMap;
 
 const ARCHGUN_BASELINES = {
@@ -117,9 +120,6 @@ const ARCHGUN_BASELINES = {
   Cold: 119.7,
   Electricity: 119.7,
   Toxin: 119.7,
-  'Damage to Grineer': 119.7,
-  'Damage to Corpus': 119.7,
-  'Damage to Infested': 119.7,
 } as const satisfies BaselineMap;
 
 const BASELINES = {
@@ -157,10 +157,11 @@ export function getRivenWeaponType(
 export function getRivenStatsForType(type: EquipmentType, equipmentName?: string | null): string[] {
   const weaponType = getRivenWeaponType(type, equipmentName);
   if (!weaponType) return [];
-  return Object.keys(BASELINES[weaponType]);
+  return [...Object.keys(BASELINES[weaponType]), ...FACTION_RIVEN_STATS];
 }
 
 export function getRivenBaselineValue(stat: string, weaponType: RivenWeaponType): number | null {
+  if (isFactionRivenStat(stat)) return FACTION_RIVEN_BASE;
   const baselineMap = BASELINES[weaponType] as BaselineMap;
   return baselineMap[stat] ?? null;
 }
@@ -219,6 +220,22 @@ export function getRivenStatBounds(
   const base = getRivenBaselineValue(stat, weaponType);
   if (base == null) return null;
   const d = clampDisposition(disposition);
+
+  if (isFactionRivenStat(stat)) {
+    if (isNegative) {
+      if (rollRule.negativeMultiplier <= 0) return null;
+      const mag = rollRule.negativeMultiplier;
+      const fMax = base * d * 1.1 * mag;
+      const fMin = base * d * 0.9 * mag;
+      const multLo = 1 - fMax;
+      const multHi = 1 - fMin;
+      return { min: -multHi, max: -multLo };
+    }
+    const pos = rollRule.positiveMultiplier;
+    const fMin = base * d * 0.9 * pos;
+    const fMax = base * d * 1.1 * pos;
+    return { min: 1 + fMin, max: 1 + fMax };
+  }
 
   if (isNegative) {
     if (rollRule.negativeMultiplier <= 0) return null;
@@ -352,11 +369,12 @@ export function resolveRivenConfig(
 
   const inferredRanks: number[] = [];
   for (const s of adjustedPositives) {
+    if (isFactionRivenStat(s.stat)) continue;
     const bounds = getRivenStatBounds(s.stat, ctx.weaponType, disp, false, rollRule);
     if (!bounds || bounds.max <= 0) continue;
     inferredRanks.push(9 * (Math.abs(s.value) / bounds.max) - 1);
   }
-  if (adjustedNegative?.stat) {
+  if (adjustedNegative?.stat && !isFactionRivenStat(adjustedNegative.stat)) {
     const bounds = getRivenStatBounds(adjustedNegative.stat, ctx.weaponType, disp, true, rollRule);
     if (bounds && bounds.min < 0) {
       const maxAbs = Math.abs(bounds.min);
@@ -433,7 +451,15 @@ export function validateRivenConfig(config: RivenConfig): string | null {
   return null;
 }
 
+function formatRivenMultiplierSegment(value: number): string {
+  const m = Math.abs(value).toFixed(1).replace(/\.0$/, '');
+  return `x${m}`;
+}
+
 export function formatRivenLine(stat: RivenStat): string {
+  if (isFactionRivenStat(stat.stat)) {
+    return `${formatRivenMultiplierSegment(stat.value)} ${stat.stat}`;
+  }
   const magnitude = Math.abs(stat.value).toFixed(1).replace(/\.0$/, '');
   const sign = stat.isNegative ? '-' : '+';
   const isFlat =
