@@ -21,13 +21,13 @@ import feathers from '../../assets/feathers.png';
 import { useCompare } from '../../context/CompareContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
-import { useStaleBundlePrompt } from '../../hooks/useStaleBundlePrompt';
 import { CompareBar } from '../Compare/CompareBar';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { Menu } from '../ui/Menu';
 import { AsciiWaveBackground } from './AsciiWaveBackground';
 import { SearchBar } from './SearchBar';
+import { StaleClientUpdateBanner } from './StaleClientUpdateBanner';
 
 const EquipmentGridModal = lazy(() =>
   import('./EquipmentGridModal').then((m) => ({ default: m.EquipmentGridModal })),
@@ -160,8 +160,6 @@ export function Layout() {
   const profile = account.profile;
   const isLoggedIn = account.isAuthenticated && profile !== null;
   const isAdmin = profile?.isAdmin === true;
-  const bundleStale = useStaleBundlePrompt(APP_VERSION);
-
   const compactModBuilderUi =
     searchParams.get('compact') === '1' && isCompactModBuilderRoute(location.pathname);
 
@@ -178,6 +176,7 @@ export function Layout() {
         >
           <Outlet />
         </main>
+        <StaleClientUpdateBanner appVersion={APP_VERSION} />
       </div>
     );
   }
@@ -206,17 +205,6 @@ export function Layout() {
               >
                 v{APP_VERSION}
               </span>
-              {bundleStale ? (
-                <button
-                  type="button"
-                  className="text-muted hover:text-foreground rounded px-1.5 py-0.5 font-mono text-[10px] leading-none tracking-wide underline decoration-current/25 underline-offset-2 transition-colors hover:decoration-current/45"
-                  onClick={() => {
-                    window.location.reload();
-                  }}
-                >
-                  Reload
-                </button>
-              ) : null}
             </div>
           </div>
 
@@ -352,6 +340,8 @@ export function Layout() {
           </a>
         </div>
       </footer>
+
+      <StaleClientUpdateBanner appVersion={APP_VERSION} />
     </div>
   );
 }
