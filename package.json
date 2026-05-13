@@ -24,7 +24,7 @@
     "@fontsource-variable/geist-mono": "^5.2.7",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/material-symbols-rounded": "^5.2.44",
-    "better-sqlite3": "^12.9.0",
+    "better-sqlite3": "^12.10.0",
     "better-sqlite3-session-store": "^0.1.0",
     "cheerio": "^1.2.0",
     "clsx": "^2.1.1",
