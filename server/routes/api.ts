@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { requireAdmin } from '../auth/middleware.js';
+import { effectiveArmoryGameAdmin, fetchRemoteAuthState } from '../auth/remoteAuth.js';
 import { getCentralDb, getDb } from '../db/connection.js';
 import {
   getAdminImportSnapshot,
@@ -1198,7 +1199,7 @@ apiRouter.get('/builds/:id/loadouts', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/builds/:id', (req: Request, res: Response) => {
+apiRouter.get('/builds/:id', async (req: Request, res: Response) => {
   try {
     const db = getDb();
     if (!req.session.user_id) {
@@ -1220,12 +1221,14 @@ apiRouter.get('/builds/:id', (req: Request, res: Response) => {
     const sessionUserId = req.session.user_id;
     const isOwner = row.user_id === sessionUserId;
     const vis = row.visibility ?? 'private';
-    if (!isOwner && vis !== 'public' && vis !== 'unlisted') {
+    const authState = await fetchRemoteAuthState(req);
+    const isGameAdmin = effectiveArmoryGameAdmin(authState);
+    if (!isOwner && vis !== 'public' && vis !== 'unlisted' && !isGameAdmin) {
       res.status(404).json({ error: 'Build not found' });
       return;
     }
 
-    const canEdit = isOwner;
+    const canEdit = isOwner || isGameAdmin;
 
     res.json({
       build: toBuildResponse(row),
@@ -1285,7 +1288,7 @@ apiRouter.post('/builds', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.put('/builds/:id', (req: Request, res: Response) => {
+apiRouter.put('/builds/:id', async (req: Request, res: Response) => {
   try {
     const db = getDb();
     if (!req.session.user_id) {
@@ -1311,10 +1314,26 @@ apiRouter.put('/builds/:id', (req: Request, res: Response) => {
     const visibility =
       visRaw === 'public' || visRaw === 'private' || visRaw === 'unlisted' ? visRaw : 'private';
 
-    db.prepare(
-      `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, updated_at = datetime('now')
+    const authState = await fetchRemoteAuthState(req);
+    const isGameAdmin = effectiveArmoryGameAdmin(authState);
+    const result = isGameAdmin
+      ? db
+          .prepare(
+            `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, updated_at = datetime('now')
+       WHERE id = ?`,
+          )
+          .run(name, JSON.stringify(modConfigResult.data), visibility, id)
+      : db
+          .prepare(
+            `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, updated_at = datetime('now')
        WHERE id = ? AND user_id = ?`,
-    ).run(name, JSON.stringify(modConfigResult.data), visibility, id, req.session.user_id);
+          )
+          .run(name, JSON.stringify(modConfigResult.data), visibility, id, req.session.user_id);
+
+    if (result.changes < 1) {
+      res.status(404).json({ error: 'Build not found' });
+      return;
+    }
 
     res.json({ success: true });
   } catch (err) {
@@ -1322,7 +1341,7 @@ apiRouter.put('/builds/:id', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.delete('/builds/:id', (req: Request, res: Response) => {
+apiRouter.delete('/builds/:id', async (req: Request, res: Response) => {
   try {
     const db = getDb();
     if (!req.session.user_id) {
@@ -1335,7 +1354,30 @@ apiRouter.delete('/builds/:id', (req: Request, res: Response) => {
       res.status(400).json({ error: 'Invalid build id' });
       return;
     }
-    db.prepare('DELETE FROM builds WHERE id = ? AND user_id = ?').run(id, req.session.user_id);
+    const authState = await fetchRemoteAuthState(req);
+    const isGameAdmin = effectiveArmoryGameAdmin(authState);
+    const uid = req.session.user_id;
+
+    const changes = db.transaction(() => {
+      const row = isGameAdmin
+        ? (db.prepare('SELECT id FROM builds WHERE id = ?').get(id) as { id: number } | undefined)
+        : (db.prepare('SELECT id FROM builds WHERE id = ? AND user_id = ?').get(id, uid) as
+            | { id: number }
+            | undefined);
+      if (!row) {
+        return 0;
+      }
+      db.prepare('DELETE FROM loadout_builds WHERE build_id = ?').run(id);
+      const buildResult = isGameAdmin
+        ? db.prepare('DELETE FROM builds WHERE id = ?').run(id)
+        : db.prepare('DELETE FROM builds WHERE id = ? AND user_id = ?').run(id, uid);
+      return buildResult.changes;
+    })();
+
+    if (changes < 1) {
+      res.status(404).json({ error: 'Build not found' });
+      return;
+    }
     res.json({ success: true });
   } catch (err) {
     sendInternalError(res, 'builds.delete', err);
