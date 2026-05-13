@@ -66,11 +66,15 @@ export interface RemoteAuthUser {
   is_admin: boolean;
 }
 
+export type AppRoleAssignment = { app_id: string; role: 'user' | 'admin' };
+
 export interface RemoteAuthState {
   authenticated: boolean;
   has_game_access: boolean;
   user: RemoteAuthUser | null;
+  /** @deprecated Prefer app_roles; kept empty for backward compatibility. */
   permissions: string[];
+  app_roles: AppRoleAssignment[];
   auth_service_error?: boolean;
   auth_rate_limited?: boolean;
   auth_retry_after_sec?: number;
@@ -170,6 +174,7 @@ export async function fetchRemoteAuthState(
             has_game_access: false,
             user: null,
             permissions: [],
+            app_roles: [],
             auth_service_error: true,
             auth_rate_limited: true,
             auth_retry_after_sec: retryAfterSec,
@@ -181,6 +186,7 @@ export async function fetchRemoteAuthState(
             has_game_access: false,
             user: null,
             permissions: [],
+            app_roles: [],
             auth_service_error: true,
           };
         }
@@ -189,25 +195,49 @@ export async function fetchRemoteAuthState(
           has_game_access: false,
           user: null,
           permissions: [],
+          app_roles: [],
         };
       }
-      const rawBody = await upstream.json();
-      const body: Partial<RemoteAuthState> =
-        rawBody && typeof rawBody === 'object' ? (rawBody as Partial<RemoteAuthState>) : {};
+      const rawBody: unknown = await upstream.json();
+      const body = (rawBody && typeof rawBody === 'object' ? rawBody : {}) as Record<
+        string,
+        unknown
+      >;
       const user = body.user;
+      const appRolesRaw = body.app_roles;
+      const app_roles: AppRoleAssignment[] = Array.isArray(appRolesRaw)
+        ? appRolesRaw
+            .filter(
+              (entry): entry is { app_id: string; role: string } =>
+                entry !== null &&
+                typeof entry === 'object' &&
+                typeof (entry as { app_id?: string }).app_id === 'string' &&
+                typeof (entry as { role?: string }).role === 'string',
+            )
+            .map((entry) => ({
+              app_id: entry.app_id.trim().toLowerCase(),
+              role: entry.role === 'admin' ? ('admin' as const) : ('user' as const),
+            }))
+        : [];
       return {
         authenticated: body.authenticated === true,
         has_game_access: body.has_game_access === true,
         user:
           user &&
-          typeof user.id === 'number' &&
-          typeof user.username === 'string' &&
-          typeof user.is_admin === 'boolean'
-            ? user
+          typeof user === 'object' &&
+          typeof (user as { id?: unknown }).id === 'number' &&
+          typeof (user as { username?: unknown }).username === 'string' &&
+          typeof (user as { is_admin?: unknown }).is_admin === 'boolean'
+            ? {
+                id: (user as { id: number }).id,
+                username: (user as { username: string }).username,
+                is_admin: (user as { is_admin: boolean }).is_admin,
+              }
             : null,
         permissions: Array.isArray(body.permissions)
           ? body.permissions.filter((p): p is string => typeof p === 'string')
           : [],
+        app_roles,
       };
     } catch {
       return {
@@ -215,6 +245,7 @@ export async function fetchRemoteAuthState(
         has_game_access: false,
         user: null,
         permissions: [],
+        app_roles: [],
         auth_service_error: true,
       };
     } finally {
@@ -223,6 +254,13 @@ export async function fetchRemoteAuthState(
   })();
 
   return await cache[cacheKey];
+}
+
+export function effectiveArmoryGameAdmin(state: RemoteAuthState): boolean {
+  if (!state.authenticated || !state.user) return false;
+  if (state.user.is_admin) return true;
+  const forGame = state.app_roles.find((r) => r.app_id === GAME_ID);
+  return forGame?.role === 'admin';
 }
 
 export async function syncSessionFromAuth(req: Request): Promise<RemoteAuthState> {

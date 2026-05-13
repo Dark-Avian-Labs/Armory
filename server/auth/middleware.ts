@@ -160,7 +160,7 @@ export async function authStatus(req: Request, res: Response): Promise<void> {
     authenticated: true,
     has_game_access: state.has_game_access,
     user: state.user,
-    permissions: state.permissions,
+    app_roles: state.app_roles,
   });
 }
 
