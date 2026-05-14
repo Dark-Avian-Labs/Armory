@@ -131,6 +131,9 @@ export function CardPreview({
         transition: collapsed ? 'none' : 'height 0.2s ease-out',
         outline: showOutlines ? '1px dashed rgba(255,255,255,0.2)' : 'none',
         textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.5)',
+        /* Preview is decorative only; frames/art must not steal hits from sibling controls
+           (e.g. ModSlotGrid rank strip). Chrome 148+ hit-tests large imgs over those buttons. */
+        pointerEvents: 'none',
       }}
     >
       <div className="absolute inset-0" style={{ transform: `translateY(${L.cardOffsetY * s}px)` }}>
@@ -534,8 +537,6 @@ export function CardPreview({
             left: 0,
             width: L.cardWidth * s,
             top: (collapsed ? L.collapsedRankOffsetY : L.rankOffsetY) * s,
-            /* Decorative ★ row; must not capture hits (ModSlotGrid stacks controls as siblings). */
-            pointerEvents: 'none',
           }}
         >
           <div className="relative flex items-center" style={{ gap: L.rankStarGap * s }}>
