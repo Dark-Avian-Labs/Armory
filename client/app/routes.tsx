@@ -21,6 +21,11 @@ const BuildsByEquipmentPage = lazy(() =>
     default: mod.BuildsByEquipmentPage,
   })),
 );
+const LoadoutDetailPage = lazy(() =>
+  import('../components/Loadout/LoadoutDetailPage').then((mod) => ({
+    default: mod.LoadoutDetailPage,
+  })),
+);
 const ModBuilder = lazy(() =>
   import('../components/ModBuilder/ModBuilder').then((mod) => ({
     default: mod.ModBuilder,
@@ -133,6 +138,7 @@ export function AppRoutes() {
               path="/builder/builds/:equipmentType/:equipmentUniqueName"
               element={<BuildsByEquipmentPage />}
             />
+            <Route path="/builder/loadouts/:loadoutId" element={<LoadoutDetailPage />} />
             <Route path={APP_PATHS.buildsExplore} element={<BuildsCatalogPage />} />
             <Route path={APP_PATHS.myBuilds} element={<BuildOverview />} />
             <Route path={APP_PATHS.buildNew} element={<ModBuilder />} />
