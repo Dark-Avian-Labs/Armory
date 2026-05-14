@@ -66,11 +66,6 @@ export function isCapacitySlot(type: SlotType): boolean {
   return type === 'aura' || type === 'stance' || type === 'posture';
 }
 
-export function effectiveModSlotRank(slot: ModSlot): number {
-  if (!slot.mod) return 0;
-  return slot.rank ?? slot.mod.fusion_limit ?? 0;
-}
-
 export function calculateTotalCapacity(
   slots: ModSlot[],
   baseCapacity: number = 30,
@@ -90,7 +85,7 @@ export function calculateTotalCapacity(
 
     const drain = calculateEffectiveDrain(
       slot.mod.base_drain ?? 0,
-      effectiveModSlotRank(slot),
+      slot.rank ?? slot.mod.fusion_limit ?? 0,
       slot.mod.fusion_limit ?? 0,
       slot.polarity,
       slot.mod.polarity,

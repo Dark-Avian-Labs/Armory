@@ -817,7 +817,7 @@ html:not(.dark) .archon-shard-filled-bg--tau {
   z-index: 1;
 }
 
-.mod-slot-card--peek {
+.mod-slot-card:hover {
   z-index: 80;
 }
 
@@ -839,7 +839,7 @@ html:not(.dark) .archon-shard-filled-bg--tau {
     opacity 0s 0.3s;
 }
 
-.mod-slot-card--peek .mod-slot-expanded {
+.mod-slot-card:hover .mod-slot-expanded {
   opacity: 1;
   transform: translate(-50%, -50%) scaleY(1) rotateX(var(--tilt-rotate-x))
     rotateY(var(--tilt-rotate-y));

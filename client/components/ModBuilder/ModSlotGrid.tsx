@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import { useState, useEffect, useRef, useMemo } from 'react';
 
 import {
@@ -11,7 +10,7 @@ import {
   type ModSlot,
   type SlotType,
 } from '../../types/warframe';
-import { effectiveModSlotRank, polarityMatchForUi } from '../../utils/drain';
+import { polarityMatchForUi } from '../../utils/drain';
 import { isRivenMod } from '../../utils/riven';
 import { countEquippedUmbraSetMods, isUmbraSelfScalingSetMod } from '../../utils/umbraSet';
 import {
@@ -333,7 +332,6 @@ interface SlotCellProps {
 const SLOT_SCALE = 0.75;
 const SLOT_W = Math.round(DEFAULT_LAYOUT.cardWidth * SLOT_SCALE);
 const SLOT_H = Math.round(DEFAULT_LAYOUT.collapsedHeight * SLOT_SCALE);
-const SLOT_POINTER_ROOT_H = Math.ceil(DEFAULT_LAYOUT.cardHeight * SLOT_SCALE) + 40;
 
 function SlotCell({
   slot,
@@ -353,20 +351,13 @@ function SlotCell({
 }: SlotCellProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [slotPeek, setSlotPeek] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsDragging(false);
   }, [slot.mod?.unique_name]);
 
-  useEffect(() => {
-    setSlotPeek(false);
-  }, [readOnly, formaMode, slot.mod?.unique_name]);
-
   const slotModIsUmbra = slot.mod ? isUmbraSelfScalingSetMod(slot.mod) : false;
-
-  const modRank = effectiveModSlotRank(slot);
 
   const slotModRarity = slot.mod
     ? (slot.mod.type || '').toUpperCase() === 'RIVEN'
@@ -399,7 +390,7 @@ function SlotCell({
       JSON.stringify({
         ...slot.mod,
         __sourceSlotIndex: slot.index,
-        __sourceRank: modRank,
+        __sourceRank: slot.rank,
       }),
     );
     e.dataTransfer.effectAllowed = 'move';
@@ -447,199 +438,133 @@ function SlotCell({
     >
       {slot.mod ? (
         <>
-          {formaMode ? (
-            <>
+          <div
+            className={`absolute left-0 select-none ${!formaMode ? 'mod-slot-card' : ''}`}
+            style={{
+              width: SLOT_W,
+              bottom: 0,
+              cursor: canDrag ? 'grab' : undefined,
+            }}
+            draggable={canDrag || undefined}
+            onDragStart={canDrag ? handleSlotDragStart : undefined}
+            onDragEnd={canDrag ? handleSlotDragEnd : undefined}
+          >
+            <div className="pointer-events-none">
+              <ModCard
+                mod={slot.mod}
+                rank={slot.rank ?? 0}
+                setRank={slot.setRank}
+                slotType={slot.type}
+                slotPolarity={slot.polarity}
+                umbraSetEquippedCount={umbraSetEquippedCount}
+                collapsed
+                scale={SLOT_SCALE}
+              />
+            </div>
+            {!formaMode && (
               <div
-                className="absolute bottom-0 left-0 select-none"
-                style={{ width: SLOT_W }}
-                draggable={canDrag || undefined}
-                onDragStart={canDrag ? handleSlotDragStart : undefined}
-                onDragEnd={canDrag ? handleSlotDragEnd : undefined}
+                className="mod-slot-expanded relative"
+                style={
+                  {
+                    width: SLOT_W,
+                    ...slotFoilStyle,
+                  } as React.CSSProperties
+                }
+                onMouseMove={(event) => applyCardTiltFromMouse(event.currentTarget, event)}
+                onMouseLeave={(event) => resetCardTilt(event.currentTarget)}
               >
-                <div className="pointer-events-none">
-                  <ModCard
-                    mod={slot.mod}
-                    rank={modRank}
-                    setRank={slot.setRank}
-                    slotType={slot.type}
-                    slotPolarity={slot.polarity}
-                    umbraSetEquippedCount={umbraSetEquippedCount}
-                    collapsed
-                    scale={SLOT_SCALE}
-                  />
-                </div>
-              </div>
-              {slot.polarity && (
-                <div className="pointer-events-none absolute top-1 right-1 z-10">
-                  <PolarityIcon polarity={slot.polarity} mod={slot.mod} size={12} />
-                </div>
-              )}
-            </>
-          ) : (
-            <div
-              className={clsx(
-                'mod-slot-card absolute bottom-0 left-0 select-none',
-                slotPeek && 'mod-slot-card--peek',
-              )}
-              style={{
-                width: SLOT_W,
-                height: SLOT_POINTER_ROOT_H,
-                cursor: canDrag ? 'grab' : undefined,
-              }}
-              draggable={canDrag || undefined}
-              onDragStart={canDrag ? handleSlotDragStart : undefined}
-              onDragEnd={canDrag ? handleSlotDragEnd : undefined}
-              onPointerEnter={readOnly ? undefined : () => setSlotPeek(true)}
-              onPointerLeave={
-                readOnly
-                  ? undefined
-                  : (e) => {
-                      const next = e.relatedTarget;
-                      if (next instanceof Node && e.currentTarget.contains(next)) return;
-                      setSlotPeek(false);
-                    }
-              }
-            >
-              {slot.polarity && (
+                <ModCard
+                  mod={slot.mod}
+                  rank={slot.rank ?? 0}
+                  setRank={slot.setRank}
+                  slotType={slot.type}
+                  slotPolarity={slot.polarity}
+                  umbraSetEquippedCount={umbraSetEquippedCount}
+                  collapsed={false}
+                  scale={SLOT_SCALE}
+                />
+                <div className="mod-card-foil" aria-hidden />
                 <div
-                  className="pointer-events-none absolute z-[5]"
-                  style={{ right: 4, bottom: SLOT_H - 10 }}
+                  className={`absolute left-0 flex w-full items-center justify-center${readOnly ? ' pointer-events-none' : ''}`}
+                  style={{
+                    top:
+                      Math.round(
+                        (DEFAULT_LAYOUT.rankOffsetY + DEFAULT_LAYOUT.cardOffsetY) * SLOT_SCALE,
+                      ) - 5,
+                    height: 16,
+                  }}
+                  onClick={readOnly ? undefined : (e) => e.stopPropagation()}
                 >
-                  <PolarityIcon polarity={slot.polarity} mod={slot.mod} size={12} />
-                </div>
-              )}
-              <div
-                className="absolute bottom-0 left-0"
-                style={{ width: SLOT_W, height: SLOT_H, position: 'relative' }}
-              >
-                <div className="pointer-events-none relative z-[1]">
-                  <ModCard
-                    mod={slot.mod}
-                    rank={modRank}
-                    setRank={slot.setRank}
-                    slotType={slot.type}
-                    slotPolarity={slot.polarity}
-                    umbraSetEquippedCount={umbraSetEquippedCount}
-                    collapsed
-                    scale={SLOT_SCALE}
-                  />
-                </div>
-                <div
-                  className="mod-slot-expanded relative"
-                  style={
-                    {
-                      width: SLOT_W,
-                      ...slotFoilStyle,
-                    } as React.CSSProperties
-                  }
-                  onMouseMove={(event) => applyCardTiltFromMouse(event.currentTarget, event)}
-                  onMouseLeave={(event) => resetCardTilt(event.currentTarget)}
-                >
-                  <ModCard
-                    mod={slot.mod}
-                    rank={modRank}
-                    setRank={slot.setRank}
-                    slotType={slot.type}
-                    slotPolarity={slot.polarity}
-                    umbraSetEquippedCount={umbraSetEquippedCount}
-                    collapsed={false}
-                    scale={SLOT_SCALE}
-                  />
-                  <div className="mod-card-foil" aria-hidden />
-                  <div
-                    className={`mod-slot-rank-controls absolute left-0 z-40 flex w-full items-center justify-center${readOnly ? ' pointer-events-none' : ''}`}
-                    style={{
-                      top:
-                        Math.round(
-                          (DEFAULT_LAYOUT.rankOffsetY + DEFAULT_LAYOUT.cardOffsetY) * SLOT_SCALE,
-                        ) - 5,
-                      height: 16,
+                  {(slot.mod.fusion_limit ?? 0) > 0 && (
+                    <button
+                      onClick={() => onRankChange(Math.max(0, (slot.rank ?? 0) - 1))}
+                      className="border-glass-border bg-glass-active text-foreground hover:bg-glass-hover absolute left-[32px] flex h-[14px] w-[22px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
+                      title="Decrease rank"
+                    >
+                      −
+                    </button>
+                  )}
+                  {(slot.mod.fusion_limit ?? 0) > 0 && (
+                    <button
+                      onClick={() =>
+                        onRankChange(Math.min(slot.mod!.fusion_limit ?? 0, (slot.rank ?? 0) + 1))
+                      }
+                      className="border-glass-border bg-glass-active text-foreground hover:bg-glass-hover absolute right-[32px] flex h-[14px] w-[22px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
+                      title="Increase rank"
+                    >
+                      +
+                    </button>
+                  )}
+                  {slot.mod!.set_stats &&
+                    (slot.mod!.set_num_in_set ?? 0) > 0 &&
+                    !slotModIsUmbra && (
+                      <>
+                        <button
+                          onClick={() => onSetRankChange(Math.max(1, (slot.setRank ?? 1) - 1))}
+                          className="border-warning/30 bg-glass-active text-warning hover:bg-glass-hover absolute left-[52px] flex h-[14px] w-[16px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
+                          title="Decrease set rank"
+                        >
+                          −
+                        </button>
+                        <button
+                          onClick={() =>
+                            onSetRankChange(
+                              Math.min(slot.mod!.set_num_in_set ?? 0, (slot.setRank ?? 1) + 1),
+                            )
+                          }
+                          className="border-warning/30 bg-glass-active text-warning hover:bg-glass-hover absolute right-[52px] flex h-[14px] w-[16px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
+                          title="Increase set rank"
+                        >
+                          +
+                        </button>
+                      </>
+                    )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditRiven?.();
                     }}
-                    onClick={readOnly ? undefined : (e) => e.stopPropagation()}
+                    className={`border-glass-border bg-glass-active text-foreground hover:text-accent absolute left-[12px] flex h-[15px] w-[15px] items-center justify-center rounded-full border text-[7px] font-bold backdrop-blur-md transition-colors ${
+                      isRivenMod(slot.mod) ? '' : 'hidden'
+                    }`}
+                    title="Edit Riven"
                   >
-                    {(slot.mod.fusion_limit ?? 0) > 0 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRankChange(Math.max(0, modRank - 1));
-                        }}
-                        className="border-glass-border bg-glass-active text-foreground hover:bg-glass-hover absolute left-[32px] flex h-[14px] w-[22px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
-                        title="Decrease rank"
-                      >
-                        −
-                      </button>
-                    )}
-                    {(slot.mod.fusion_limit ?? 0) > 0 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRankChange(Math.min(slot.mod!.fusion_limit ?? 0, modRank + 1));
-                        }}
-                        className="border-glass-border bg-glass-active text-foreground hover:bg-glass-hover absolute right-[32px] flex h-[14px] w-[22px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
-                        title="Increase rank"
-                      >
-                        +
-                      </button>
-                    )}
-                    {slot.mod!.set_stats &&
-                      (slot.mod!.set_num_in_set ?? 0) > 0 &&
-                      !slotModIsUmbra && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSetRankChange(Math.max(1, (slot.setRank ?? 1) - 1));
-                            }}
-                            className="border-warning/30 bg-glass-active text-warning hover:bg-glass-hover absolute left-[52px] flex h-[14px] w-[16px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
-                            title="Decrease set rank"
-                          >
-                            −
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSetRankChange(
-                                Math.min(slot.mod!.set_num_in_set ?? 0, (slot.setRank ?? 1) + 1),
-                              );
-                            }}
-                            className="border-warning/30 bg-glass-active text-warning hover:bg-glass-hover absolute right-[52px] flex h-[14px] w-[16px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
-                            title="Increase set rank"
-                          >
-                            +
-                          </button>
-                        </>
-                      )}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditRiven?.();
-                      }}
-                      className={`border-glass-border bg-glass-active text-foreground hover:text-accent absolute left-[12px] flex h-[15px] w-[15px] items-center justify-center rounded-full border text-[7px] font-bold backdrop-blur-md transition-colors ${
-                        isRivenMod(slot.mod) ? '' : 'hidden'
-                      }`}
-                      title="Edit Riven"
-                    >
-                      E
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemove();
-                      }}
-                      className="border-glass-border bg-glass-active text-foreground hover:text-danger absolute right-[12px] flex h-[15px] w-[15px] items-center justify-center rounded-full border text-[7px] font-bold backdrop-blur-md transition-colors"
-                      title="Remove"
-                    >
-                      <MaterialSymbol name="close" style={{ fontSize: 10 }} />
-                    </button>
-                  </div>
+                    E
+                  </button>
+                  <button
+                    onClick={onRemove}
+                    className="border-glass-border bg-glass-active text-foreground hover:text-danger absolute right-[12px] flex h-[15px] w-[15px] items-center justify-center rounded-full border text-[7px] font-bold backdrop-blur-md transition-colors"
+                    title="Remove"
+                  >
+                    <MaterialSymbol name="close" style={{ fontSize: 10 }} />
+                  </button>
                 </div>
               </div>
+            )}
+          </div>
+          {slot.polarity && (
+            <div className="absolute top-1 right-1 z-10">
+              <PolarityIcon polarity={slot.polarity} mod={slot.mod} size={12} />
             </div>
           )}
           {formaMode && (

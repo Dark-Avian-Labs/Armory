@@ -3,7 +3,6 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { EquipmentType, Mod, ModSlot } from '../../types/warframe';
 import { EQUIPMENT_SLOT_CONFIGS } from '../../types/warframe';
 import { getMaxRank } from '../../utils/arcaneUtils';
-import { effectiveModSlotRank } from '../../utils/drain';
 import { isPostureMod } from '../../utils/modFiltering';
 import { isRivenMod } from '../../utils/riven';
 import { formatShardBuffDescription } from '../../utils/shardBuffFormat';
@@ -109,7 +108,7 @@ function compactCellFromModSlot(slot?: ModSlot): CompactCellPayload {
   const mod = slot.mod;
   const { borderColorVar, background } = compactStyleForMod(mod);
   const total = mod.fusion_limit ?? 0;
-  const rank = effectiveModSlotRank(slot);
+  const rank = slot.rank ?? 0;
   const stars = total > 0 ? { filled: Math.min(Math.max(rank, 0), total), total } : undefined;
   return {
     kind: 'filled',
