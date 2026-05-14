@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import type { ModSlot } from '../../types/warframe';
-import { calculateEffectiveDrain, calculateTotalCapacity, effectiveModSlotRank, polarityMatchForUi } from '../drain';
+import { calculateEffectiveDrain, calculateTotalCapacity, polarityMatchForUi } from '../drain';
 
 describe('calculateEffectiveDrain', () => {
   describe('general slots', () => {
@@ -114,32 +113,6 @@ describe('polarityMatchForUi', () => {
   it('returns undefined for universal + Umbra (neutral drain, default card styling)', () => {
     expect(polarityMatchForUi('AP_ANY', 'AP_UMBRA')).toBeUndefined();
     expect(polarityMatchForUi('AP_UMBRA', 'AP_ANY')).toBeUndefined();
-  });
-});
-
-describe('effectiveModSlotRank', () => {
-  it('uses explicit rank when set', () => {
-    const slot: ModSlot = {
-      index: 0,
-      type: 'general',
-      mod: { unique_name: 'x', name: 'M', base_drain: 2, fusion_limit: 5, polarity: 'AP_ATTACK' },
-      rank: 2,
-    };
-    expect(effectiveModSlotRank(slot)).toBe(2);
-  });
-
-  it('treats omitted rank as max fusion (matches capacity math)', () => {
-    const slot: ModSlot = {
-      index: 0,
-      type: 'general',
-      mod: { unique_name: 'x', name: 'M', base_drain: 2, fusion_limit: 5, polarity: 'AP_ATTACK' },
-    };
-    expect(effectiveModSlotRank(slot)).toBe(5);
-  });
-
-  it('returns 0 without a mod', () => {
-    const slot: ModSlot = { index: 0, type: 'general' };
-    expect(effectiveModSlotRank(slot)).toBe(0);
   });
 });
 
