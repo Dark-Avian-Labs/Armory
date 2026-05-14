@@ -4,7 +4,7 @@ import { WORKSHEET_ORDER, loadArmoryWorksheetSources } from './armorySources.js'
 import { isPrimeVariantName, resolveCanonicalKey } from './canonical.js';
 import { fetchWarframeMarketSlugSet } from './fetchWarframeMarketSlugs.js';
 import type { MarketLinkKind, WorksheetCategory } from './resolveHref.js';
-import { resolveMarketHref } from './resolveHref.js';
+import { resolveMarketHref, warframeMarketSellHrefUsesPrimeOnlyItemSlug } from './resolveHref.js';
 
 export interface PopulateWarframeMarketLinksResult {
   rowsUpserted: number;
@@ -39,7 +39,16 @@ export async function populateWarframeMarketLinksTable(
     for (const displayName of names) {
       const canonicalKey = resolveCanonicalKey(displayName);
       if (!canonicalKey) continue;
-      const { href, kind } = resolveMarketHref(displayName, worksheet, wmSlugs);
+      const resolved = resolveMarketHref(displayName, worksheet, wmSlugs);
+      let { href, kind } = resolved;
+      if (
+        !isPrimeVariantName(displayName) &&
+        href &&
+        warframeMarketSellHrefUsesPrimeOnlyItemSlug(href)
+      ) {
+        href = null;
+        kind = null;
+      }
 
       const outer =
         mergedByCanonicalKey.get(canonicalKey) ?? new Map<WorksheetCategory, MergedRow>();

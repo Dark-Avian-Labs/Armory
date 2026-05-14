@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveMarketHref } from './resolveHref.js';
+import { resolveMarketHref, warframeMarketSellHrefUsesPrimeOnlyItemSlug } from './resolveHref.js';
 
 function setOf(...slugs: string[]): ReadonlySet<string> {
   return new Set(slugs);
@@ -53,5 +53,20 @@ describe('resolveMarketHref', () => {
     const r = resolveMarketHref('Totally Fake Item Xyz', 'Accessories', new Set());
     expect(r.href).toBeNull();
     expect(r.kind).toBeNull();
+  });
+});
+
+describe('warframeMarketSellHrefUsesPrimeOnlyItemSlug', () => {
+  it('detects Strun Prime set listing', () => {
+    expect(warframeMarketSellHrefUsesPrimeOnlyItemSlug('https://warframe.market/items/strun_prime_set?type=sell')).toBe(
+      true,
+    );
+  });
+
+  it('returns false for non-prime slugs', () => {
+    expect(
+      warframeMarketSellHrefUsesPrimeOnlyItemSlug('https://warframe.market/items/strun_wraith_set?type=sell'),
+    ).toBe(false);
+    expect(warframeMarketSellHrefUsesPrimeOnlyItemSlug(null)).toBe(false);
   });
 });
