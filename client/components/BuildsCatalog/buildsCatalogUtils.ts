@@ -117,7 +117,8 @@ export async function loadEquipmentItemsForTab(
       return !cat || cat === 'Suits';
     });
   } else if (activeTab === 'secondary') {
-    list = list.filter((i) => i.slot === 0);
+    // Pistols use slot 0; exalted secondaries (e.g. Noctua, Regulators) are SpecialItems with slot 7.
+    list = list.filter((i) => i.slot === 0 || i.selection_type === 'secondary');
   } else if (activeTab === 'companion_weapon') {
     list = list
       .map((item) => ({

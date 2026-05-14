@@ -1,5 +1,11 @@
 import { lazy, Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  useBlocker,
+  type BlockerFunction,
+} from 'react-router-dom';
 
 import { buildEditPath } from '../../app/paths';
 import { useCompare } from '../../context/CompareContext';
@@ -201,6 +207,36 @@ function applySetRankDelta(
   });
 }
 
+function modBuilderPersistFingerprint(args: {
+  buildName: string;
+  buildDescription: string;
+  buildIsPublic: boolean;
+  equipmentType: EquipmentType;
+  equipmentUniqueName: string;
+  currentBuildId?: string;
+  slots: ModSlot[];
+  helminthConfig: BuildConfig['helminth'] | undefined;
+  arcaneSlots: ArcaneSlot[];
+  shardSlots: ShardSlotConfig[];
+  orokinReactor: boolean;
+  valenceBonus: ValenceBonus | null;
+}): string {
+  return JSON.stringify({
+    n: args.buildName,
+    d: args.buildDescription,
+    p: args.buildIsPublic,
+    et: args.equipmentType,
+    eu: args.equipmentUniqueName,
+    id: args.currentBuildId ?? '',
+    s: args.slots,
+    h: args.helminthConfig,
+    a: args.arcaneSlots,
+    sh: args.shardSlots,
+    o: args.orokinReactor,
+    v: args.valenceBonus,
+  });
+}
+
 export function ModBuilder() {
   const {
     buildId,
@@ -252,9 +288,16 @@ export function ModBuilder() {
 
   const routeKey = `${buildId ?? ''}|${routeEqType ?? ''}|${equipmentId ?? ''}`;
   const prevRouteKey = useRef(routeKey);
+  const dirtyRouteCapturedRef = useRef<string | null>(null);
+  const allowNavigationBypassRef = useRef(false);
+  const livePersistFingerprintRef = useRef('');
+  const [dirtyBaseline, setDirtyBaseline] = useState<string | null>(null);
+
   useEffect(() => {
     if (prevRouteKey.current === routeKey) return;
     prevRouteKey.current = routeKey;
+    dirtyRouteCapturedRef.current = null;
+    setDirtyBaseline(null);
     setSelectedEquipment(null);
     setSlots([]);
     setOrokinReactor(false);
@@ -413,6 +456,23 @@ export function ModBuilder() {
     () => (supportsValence ? (valenceBonus ?? DEFAULT_VALENCE_BONUS) : null),
     [supportsValence, valenceBonus],
   );
+
+  livePersistFingerprintRef.current = modBuilderPersistFingerprint({
+    buildName,
+    buildDescription,
+    buildIsPublic,
+    equipmentType,
+    equipmentUniqueName: selectedEquipment?.unique_name ?? '',
+    currentBuildId,
+    slots,
+    helminthConfig,
+    arcaneSlots,
+    shardSlots,
+    orokinReactor,
+    valenceBonus: effectiveValenceBonus,
+  });
+
+  const isDirty = dirtyBaseline !== null && livePersistFingerprintRef.current !== dirtyBaseline;
 
   const { addSnapshot, snapshots: compareSnapshots } = useCompare();
 
@@ -621,11 +681,67 @@ export function ModBuilder() {
   }, [loaded, buildId, getBuild, isOwnBuild]);
 
   useEffect(() => {
+    if (
+      compactOverview ||
+      readOnly ||
+      !isOwnBuild ||
+      equipmentLoadError ||
+      !loaded ||
+      !selectedEquipment
+    ) {
+      return undefined;
+    }
+    if (dirtyRouteCapturedRef.current === routeKey) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      if (dirtyRouteCapturedRef.current === routeKey) return;
+      dirtyRouteCapturedRef.current = routeKey;
+      setDirtyBaseline(livePersistFingerprintRef.current);
+    }, 1);
+    return () => window.clearTimeout(timer);
+  }, [
+    compactOverview,
+    readOnly,
+    isOwnBuild,
+    equipmentLoadError,
+    loaded,
+    selectedEquipment,
+    routeKey,
+  ]);
+
+  useEffect(() => {
     if (!buildId || !loaded || isOwnBuild || readOnly) return;
     const next = new URLSearchParams(searchParams);
     next.set('view', '1');
     navigate(`${buildEditPath(buildId)}?${next.toString()}`, { replace: true });
   }, [buildId, loaded, isOwnBuild, readOnly, navigate, searchParams]);
+
+  const shouldBlockNavigation = useCallback<BlockerFunction>(
+    ({ currentLocation, nextLocation }) => {
+      if (allowNavigationBypassRef.current) {
+        allowNavigationBypassRef.current = false;
+        return false;
+      }
+      if (!isDirty || readOnly || !isOwnBuild || compactOverview) return false;
+      return (
+        `${currentLocation.pathname}${currentLocation.search}` !==
+        `${nextLocation.pathname}${nextLocation.search}`
+      );
+    },
+    [isDirty, readOnly, isOwnBuild, compactOverview],
+  );
+
+  const navigationBlocker = useBlocker(shouldBlockNavigation);
+
+  useEffect(() => {
+    if (!isDirty || readOnly || !isOwnBuild || compactOverview) return undefined;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isDirty, readOnly, isOwnBuild, compactOverview]);
 
   const equippedMods = useMemo(
     () => hydratedSlots.filter((s) => s.mod).map((s) => s.mod!),
@@ -1380,7 +1496,13 @@ export function ModBuilder() {
         setCurrentBuildId(newId);
         setIsOwnBuild(true);
         setShowSaveModal(false);
+        allowNavigationBypassRef.current = true;
         navigate(buildEditPath(newId), { replace: true });
+        queueMicrotask(() => {
+          if (allowNavigationBypassRef.current) {
+            allowNavigationBypassRef.current = false;
+          }
+        });
         setSaveToast(true);
         setTimeout(() => setSaveToast(false), 2500);
         return;
@@ -1415,6 +1537,23 @@ export function ModBuilder() {
       setCurrentBuildId(saved.id);
       setIsOwnBuild(true);
       setShowSaveModal(false);
+
+      setDirtyBaseline(
+        modBuilderPersistFingerprint({
+          buildName: finalName,
+          buildDescription: typeof saved.description === 'string' ? saved.description : '',
+          buildIsPublic: saved.visibility === 'public',
+          equipmentType: saved.equipment_type,
+          equipmentUniqueName: saved.equipment_unique_name,
+          currentBuildId: saved.id,
+          slots,
+          helminthConfig,
+          arcaneSlots,
+          shardSlots,
+          orokinReactor,
+          valenceBonus: effectiveValenceBonus,
+        }),
+      );
 
       setSaveToast(true);
       setTimeout(() => setSaveToast(false), 2500);
@@ -1930,6 +2069,38 @@ export function ModBuilder() {
           </div>
         </div>
       </div>
+
+      {navigationBlocker.state === 'blocked' ? (
+        <Modal
+          open
+          onClose={() => navigationBlocker.reset()}
+          ariaLabelledBy="unsaved-build-nav-title"
+          className="glass-modal-surface max-w-md p-5 shadow-2xl"
+        >
+          <h3 id="unsaved-build-nav-title" className="text-foreground text-base font-semibold">
+            Unsaved changes
+          </h3>
+          <p className="text-muted mt-2 text-sm">
+            You have not saved this build. If you leave now, your changes will be lost.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => navigationBlocker.reset()}
+              className="border-glass-border text-muted hover:border-glass-border-hover hover:text-foreground rounded-lg border px-3 py-1.5 text-sm transition-colors"
+            >
+              Stay
+            </button>
+            <button
+              type="button"
+              onClick={() => navigationBlocker.proceed()}
+              className="border-danger/50 bg-danger/10 text-danger hover:bg-danger/20 rounded-lg border px-3 py-1.5 text-sm transition-colors"
+            >
+              Leave without saving
+            </button>
+          </div>
+        </Modal>
+      ) : null}
 
       {showSaveModal && (
         <Modal
