@@ -849,11 +849,6 @@ html:not(.dark) .archon-shard-filled-bg--tau {
     opacity 0.12s;
 }
 
-.mod-slot-card .mod-slot-expanded .mod-slot-rank-controls {
-  pointer-events: auto;
-  z-index: 40;
-}
-
 .mod-slot-card img {
   -webkit-user-drag: none;
 }
