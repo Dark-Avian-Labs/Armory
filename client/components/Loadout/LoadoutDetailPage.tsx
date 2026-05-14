@@ -296,10 +296,6 @@ function LoadoutBuildSummaryCard({
 
       {wfCalc ? (
         <dl className="text-muted grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
-          <dt>Strength</dt>
-          <dd className="text-foreground text-right font-medium">
-            {wfCalc.abilityStrength.modded.toFixed(0)}%
-          </dd>
           <dt>Duration</dt>
           <dd className="text-foreground text-right font-medium">
             {wfCalc.abilityDuration.modded.toFixed(0)}%
@@ -311,6 +307,10 @@ function LoadoutBuildSummaryCard({
           <dt>Range</dt>
           <dd className="text-foreground text-right font-medium">
             {wfCalc.abilityRange.modded.toFixed(0)}%
+          </dd>
+          <dt>Strength</dt>
+          <dd className="text-foreground text-right font-medium">
+            {wfCalc.abilityStrength.modded.toFixed(0)}%
           </dd>
         </dl>
       ) : null}

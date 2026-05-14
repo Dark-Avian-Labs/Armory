@@ -5,6 +5,7 @@ import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { requireAdmin } from '../auth/middleware.js';
 import { effectiveArmoryGameAdmin, fetchRemoteAuthState } from '../auth/remoteAuth.js';
 import { getCentralDb, getDb } from '../db/connection.js';
+import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
 import {
   getAdminImportSnapshot,
   startAdminImportJob,
@@ -619,8 +620,8 @@ apiRouter.get('/helminth-abilities', (_req: Request, res: Response) => {
     const db = getDb();
     const rows = db
       .prepare('SELECT * FROM abilities WHERE is_helminth_extractable = 1 ORDER BY name')
-      .all() as Array<Record<string, unknown>>;
-    res.json({ items: rows });
+      .all() as Array<Record<string, unknown> & { unique_name: string; name?: string }>;
+    res.json({ items: dedupeHelminthAbilityRows(rows) });
   } catch (err) {
     sendInternalError(res, 'helminthAbilities.list', err);
   }

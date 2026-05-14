@@ -1,6 +1,8 @@
 import type Database from 'better-sqlite3';
 import * as cheerio from 'cheerio';
 
+import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
+
 const HELMINTH_WIKI_URL = 'https://wiki.warframe.com/w/Helminth';
 const HELMINTH_WIKI_USER_AGENT =
   process.env.HELMINTH_WIKI_USER_AGENT?.trim() ||
@@ -99,13 +101,14 @@ export async function syncHelminthFlagsFromWiki(
     .prepare(`SELECT unique_name, name FROM abilities WHERE name IS NOT NULL AND TRIM(name) != ''`)
     .all() as Array<{ unique_name: string; name: string }>;
 
-  const toUpdate: string[] = [];
+  const matched: Array<{ unique_name: string; name: string }> = [];
   for (const row of rows) {
     const key = normalizeAbilityName(row.name);
     if (key && names.has(key)) {
-      toUpdate.push(row.unique_name);
+      matched.push(row);
     }
   }
+  const toUpdate = dedupeHelminthAbilityRows(matched).map((r) => r.unique_name);
 
   const resetAll = db.prepare('UPDATE abilities SET is_helminth_extractable = 0');
   const stmt = db.prepare('UPDATE abilities SET is_helminth_extractable = 1 WHERE unique_name = ?');
