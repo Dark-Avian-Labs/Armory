@@ -17,6 +17,7 @@ import { getMaxRank } from '../../utils/arcaneUtils';
 import { extractArchonShardBonuses } from '../../utils/archonShardBonuses';
 import { calculateBuildDamage, formatDamage } from '../../utils/damage';
 import { calculateWeaponDps } from '../../utils/damageCalc';
+import { effectiveModSlotRank } from '../../utils/drain';
 import { getElementColor } from '../../utils/elements';
 import type { FormaCount } from '../../utils/formaCounter';
 import { formatShardBuffDescription } from '../../utils/shardBuffFormat';
@@ -192,7 +193,7 @@ function ModShareColumnList({ slots, modScale }: { slots: ModSlot[]; modScale: n
         >
           <ModCard
             mod={slot.mod!}
-            rank={slot.rank ?? 0}
+            rank={effectiveModSlotRank(slot)}
             setRank={slot.setRank}
             slotType={slot.type}
             slotPolarity={slot.polarity}

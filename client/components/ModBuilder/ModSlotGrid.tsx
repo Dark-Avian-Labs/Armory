@@ -10,7 +10,7 @@ import {
   type ModSlot,
   type SlotType,
 } from '../../types/warframe';
-import { polarityMatchForUi } from '../../utils/drain';
+import { effectiveModSlotRank, polarityMatchForUi } from '../../utils/drain';
 import { isRivenMod } from '../../utils/riven';
 import { countEquippedUmbraSetMods, isUmbraSelfScalingSetMod } from '../../utils/umbraSet';
 import {
@@ -359,6 +359,8 @@ function SlotCell({
 
   const slotModIsUmbra = slot.mod ? isUmbraSelfScalingSetMod(slot.mod) : false;
 
+  const modRank = effectiveModSlotRank(slot);
+
   const slotModRarity = slot.mod
     ? (slot.mod.type || '').toUpperCase() === 'RIVEN'
       ? 'Riven'
@@ -390,7 +392,7 @@ function SlotCell({
       JSON.stringify({
         ...slot.mod,
         __sourceSlotIndex: slot.index,
-        __sourceRank: slot.rank,
+        __sourceRank: modRank,
       }),
     );
     e.dataTransfer.effectAllowed = 'move';
@@ -452,7 +454,7 @@ function SlotCell({
             <div className="pointer-events-none">
               <ModCard
                 mod={slot.mod}
-                rank={slot.rank ?? 0}
+                rank={modRank}
                 setRank={slot.setRank}
                 slotType={slot.type}
                 slotPolarity={slot.polarity}
@@ -475,7 +477,7 @@ function SlotCell({
               >
                 <ModCard
                   mod={slot.mod}
-                  rank={slot.rank ?? 0}
+                  rank={modRank}
                   setRank={slot.setRank}
                   slotType={slot.type}
                   slotPolarity={slot.polarity}
@@ -497,7 +499,7 @@ function SlotCell({
                 >
                   {(slot.mod.fusion_limit ?? 0) > 0 && (
                     <button
-                      onClick={() => onRankChange(Math.max(0, (slot.rank ?? 0) - 1))}
+                      onClick={() => onRankChange(Math.max(0, modRank - 1))}
                       className="border-glass-border bg-glass-active text-foreground hover:bg-glass-hover absolute left-[32px] flex h-[14px] w-[22px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
                       title="Decrease rank"
                     >
@@ -507,7 +509,7 @@ function SlotCell({
                   {(slot.mod.fusion_limit ?? 0) > 0 && (
                     <button
                       onClick={() =>
-                        onRankChange(Math.min(slot.mod!.fusion_limit ?? 0, (slot.rank ?? 0) + 1))
+                        onRankChange(Math.min(slot.mod!.fusion_limit ?? 0, modRank + 1))
                       }
                       className="border-glass-border bg-glass-active text-foreground hover:bg-glass-hover absolute right-[32px] flex h-[14px] w-[22px] items-center justify-center rounded-full border text-[9px] font-bold backdrop-blur-md transition-colors"
                       title="Increase rank"

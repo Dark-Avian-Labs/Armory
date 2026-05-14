@@ -1,4 +1,5 @@
 import type { Mod, ModSlot } from '../types/warframe';
+import { effectiveModSlotRank } from './drain';
 import { isRivenMod } from './riven';
 import {
   countEquippedUmbraSetMods,
@@ -194,7 +195,7 @@ export function aggregateAllMods(slots: ModSlot[], _options?: AggregateOptions):
 
   for (const slot of slots) {
     if (!slot.mod) continue;
-    const rank = slot.rank ?? slot.mod.fusion_limit ?? 0;
+    const rank = effectiveModSlotRank(slot);
     const effects = parseModEffects(slot.mod, rank, { umbraSetEquippedCount });
     for (const key of Object.keys(total) as (keyof StatEffects)[]) {
       total[key] += effects[key];
