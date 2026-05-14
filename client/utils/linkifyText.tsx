@@ -11,19 +11,32 @@ export function linkifyPlainText(text: string): ReactNode[] {
     if (m.index > last) {
       nodes.push(text.slice(last, m.index));
     }
-    const href = m[0];
-    nodes.push(
-      <a
-        key={`u-${key++}`}
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-accent decoration-accent/40 hover:decoration-accent underline underline-offset-2"
-      >
-        {href}
-      </a>,
-    );
-    last = m.index + href.length;
+    const raw = m[0];
+    let urlCore = raw;
+    while (urlCore.length > 0 && /[.,:;?!]$/.test(urlCore)) {
+      urlCore = urlCore.slice(0, -1);
+    }
+    const trailingPunct = raw.slice(urlCore.length);
+    if (urlCore.length > 0) {
+      nodes.push(
+        <a
+          key={`u-${key++}`}
+          href={urlCore}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent decoration-accent/40 hover:decoration-accent underline underline-offset-2"
+        >
+          {urlCore}
+          <span className="sr-only"> (opens in a new tab)</span>
+        </a>,
+      );
+    } else {
+      nodes.push(raw);
+    }
+    if (trailingPunct.length > 0) {
+      nodes.push(trailingPunct);
+    }
+    last = m.index + raw.length;
   }
   if (last < text.length) {
     nodes.push(text.slice(last));

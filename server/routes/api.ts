@@ -1531,40 +1531,25 @@ apiRouter.put('/builds/:id', async (req: Request, res: Response) => {
 
     const authState = await fetchRemoteAuthState(req);
     const isGameAdmin = effectiveArmoryGameAdmin(authState);
-    const result = isGameAdmin
-      ? description === undefined
-        ? db
-            .prepare(
-              `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, updated_at = datetime('now')
-       WHERE id = ?`,
-            )
-            .run(name, JSON.stringify(modConfigResult.data), visibility, id)
-        : db
-            .prepare(
-              `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, description = ?, updated_at = datetime('now')
-       WHERE id = ?`,
-            )
-            .run(name, JSON.stringify(modConfigResult.data), visibility, description, id)
-      : description === undefined
-        ? db
-            .prepare(
-              `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, updated_at = datetime('now')
-       WHERE id = ? AND user_id = ?`,
-            )
-            .run(name, JSON.stringify(modConfigResult.data), visibility, id, req.session.user_id)
-        : db
-            .prepare(
-              `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, description = ?, updated_at = datetime('now')
-       WHERE id = ? AND user_id = ?`,
-            )
-            .run(
-              name,
-              JSON.stringify(modConfigResult.data),
-              visibility,
-              description,
-              id,
-              req.session.user_id,
-            );
+
+    let sql = 'UPDATE builds SET name = ?, mod_config = ?, visibility = ?';
+    const params: Array<string | number | null> = [
+      name,
+      JSON.stringify(modConfigResult.data),
+      visibility,
+    ];
+    if (description !== undefined) {
+      sql += ', description = ?';
+      params.push(description);
+    }
+    sql += ", updated_at = datetime('now') WHERE id = ?";
+    params.push(id);
+    if (!isGameAdmin) {
+      sql += ' AND user_id = ?';
+      params.push(req.session.user_id);
+    }
+
+    const result = db.prepare(sql).run(...params);
 
     if (result.changes < 1) {
       res.status(404).json({ error: 'Build not found' });
