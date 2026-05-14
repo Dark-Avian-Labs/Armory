@@ -21,6 +21,7 @@ import {
 } from '../../utils/buildCatalogCategory';
 import type { EquipmentLookupRow } from '../../utils/buildCatalogCategory';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
+import { linkifyPlainText } from '../../utils/linkifyText';
 import { weaponOmitsExilusSlot } from '../../utils/specialItems';
 import {
   TAB_ORDER,
@@ -735,7 +736,7 @@ function LoadoutRow({
   equipmentLookup: Record<string, EquipmentPolaritySource>;
   updateLoadout: (
     id: string,
-    patch: { name?: string; visibility?: BuildVisibility },
+    patch: { name?: string; visibility?: BuildVisibility; description?: string },
   ) => Promise<void>;
   publishLoadout: (id: string) => Promise<void>;
   refreshBuilds: () => Promise<StoredBuild[]>;
@@ -748,6 +749,10 @@ function LoadoutRow({
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publicBusy, setPublicBusy] = useState(false);
+  const [descriptionModalOpen, setDescriptionModalOpen] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState('');
+  const [descriptionBusy, setDescriptionBusy] = useState(false);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
 
   const privateLinkedBuilds = useMemo(() => {
     return loadout.builds
@@ -844,16 +849,32 @@ function LoadoutRow({
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
-          <label className="text-muted flex cursor-pointer items-center gap-1.5 text-xs">
+          <label
+            className={`btn btn-secondary inline-flex cursor-pointer items-center gap-2 text-xs ${
+              publicBusy ? 'pointer-events-none opacity-60' : ''
+            }`}
+          >
             <input
               type="checkbox"
-              className="accent-accent h-3.5 w-3.5"
+              className="sr-only"
               checked={isPublic}
               disabled={publicBusy}
               onChange={(e) => {
                 void handlePublicToggle(e.target.checked);
               }}
             />
+            <span
+              className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
+                isPublic ? 'bg-success/20 text-success' : 'bg-muted/10 text-muted/50'
+              }`}
+              aria-hidden="true"
+            >
+              {isPublic ? (
+                <MaterialSymbol name="check" filled style={{ fontSize: 15 }} />
+              ) : (
+                <MaterialSymbol name="close" style={{ fontSize: 15 }} />
+              )}
+            </span>
             Public
           </label>
           <button
@@ -869,6 +890,11 @@ function LoadoutRow({
 
       {expanded && (
         <div className="border-glass-divider bg-glass/30 border-t px-6 py-2">
+          {loadout.description?.trim() ? (
+            <div className="text-foreground/90 border-glass-border mb-3 rounded-lg border border-dashed px-3 py-2 text-xs leading-relaxed break-words whitespace-pre-wrap">
+              {linkifyPlainText(loadout.description)}
+            </div>
+          ) : null}
           {linkedBuildRows.length === 0 ? (
             <div className="text-muted/40 py-2 text-xs">No builds added yet.</div>
           ) : (
@@ -918,7 +944,18 @@ function LoadoutRow({
               );
             })
           )}
-          <div className="pt-2">
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setDescriptionDraft(loadout.description ?? '');
+                setDescriptionError(null);
+                setDescriptionModalOpen(true);
+              }}
+              className="text-accent hover:bg-accent/10 rounded px-2 py-1 text-xs"
+            >
+              {loadout.description?.trim() ? 'Edit description' : 'Add description'}
+            </button>
             <button
               type="button"
               onClick={onAddBuild}
@@ -929,6 +966,81 @@ function LoadoutRow({
           </div>
         </div>
       )}
+
+      {descriptionModalOpen ? (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (!descriptionBusy) setDescriptionModalOpen(false);
+          }}
+        >
+          <div
+            className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
+            tabIndex={0}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="loadout-description-title"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && !descriptionBusy) setDescriptionModalOpen(false);
+            }}
+          >
+            <h3
+              id="loadout-description-title"
+              className="text-foreground mb-2 text-sm font-semibold"
+            >
+              Loadout description
+            </h3>
+            <p className="text-muted mb-3 text-xs">
+              Plain text only. URLs will become links when someone views this loadout.
+            </p>
+            <textarea
+              value={descriptionDraft}
+              onChange={(e) => setDescriptionDraft(e.target.value)}
+              className="border-glass-border bg-glass/40 text-foreground placeholder:text-muted/50 focus:border-accent/50 mb-3 min-h-[8rem] w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none"
+              placeholder="Notes for this loadout…"
+              aria-label="Loadout description"
+              disabled={descriptionBusy}
+            />
+            {descriptionError ? (
+              <p className="text-danger mb-3 text-xs" role="alert">
+                {descriptionError}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={descriptionBusy}
+                onClick={() => setDescriptionModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-accent btn-sm"
+                disabled={descriptionBusy}
+                onClick={() => {
+                  void (async () => {
+                    setDescriptionError(null);
+                    setDescriptionBusy(true);
+                    try {
+                      await updateLoadout(loadout.id, { description: descriptionDraft });
+                      setDescriptionModalOpen(false);
+                    } catch (e) {
+                      setDescriptionError(e instanceof Error ? e.message : 'Failed to save');
+                    } finally {
+                      setDescriptionBusy(false);
+                    }
+                  })();
+                }}
+              >
+                {descriptionBusy ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {publishOpen ? (
         <div

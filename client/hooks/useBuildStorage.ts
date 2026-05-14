@@ -47,6 +47,7 @@ export function useBuildStorage() {
               if (v === 'public' || v === 'private' || v === 'unlisted') return v;
               return 'private';
             })(),
+            description: typeof row.description === 'string' ? row.description : undefined,
           } as StoredBuild;
         })
         .filter((build) => build.id.length > 0);
@@ -78,6 +79,7 @@ export function useBuildStorage() {
       equipmentName: string,
       equipmentImage?: string,
       visibility?: BuildVisibility,
+      description?: string,
     ): Promise<StoredBuild> => {
       const normalizedSlots = config.slots.map((slot) =>
         slot.riven_config
@@ -105,6 +107,7 @@ export function useBuildStorage() {
                 name: configWithMeta.name,
                 mod_config: configWithMeta,
                 visibility: vis,
+                description: description ?? '',
               }
             : {
                 name: configWithMeta.name,
@@ -112,6 +115,7 @@ export function useBuildStorage() {
                 equipment_unique_name: configWithMeta.equipment_unique_name,
                 mod_config: configWithMeta,
                 visibility: vis,
+                description: description ?? '',
               },
         ),
       });
@@ -152,6 +156,7 @@ export function useBuildStorage() {
         id: savedId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        description: description ?? (config as StoredBuild).description,
       } as StoredBuild;
     },
     [refresh],

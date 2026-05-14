@@ -18,7 +18,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@dotenvx/dotenvx": "^1.65.0",
+    "@dotenvx/dotenvx": "^1.65.1",
     "@fontsource-variable/cascadia-mono": "^5.2.2",
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource-variable/geist-mono": "^5.2.7",
@@ -69,5 +69,5 @@
     "node": ">=25.0.0",
     "pnpm": ">=11.0.0"
   },
-  "packageManager": "pnpm@11.1.1"
+  "packageManager": "pnpm@11.1.2"
 }

@@ -357,6 +357,18 @@ export function createAppSchema(): void {
       column: 'market_href_prime',
       sql: 'ALTER TABLE warframe_market_links ADD COLUMN market_href_prime TEXT',
     },
+    {
+      id: '20260514_builds_description',
+      table: 'builds',
+      column: 'description',
+      sql: 'ALTER TABLE builds ADD COLUMN description TEXT',
+    },
+    {
+      id: '20260514_loadouts_description',
+      table: 'loadouts',
+      column: 'description',
+      sql: 'ALTER TABLE loadouts ADD COLUMN description TEXT',
+    },
   ];
   const ALLOWED_MIGRATION_TABLES = new Set(migrations.map((migration) => migration.table));
   for (const m of migrations) {
