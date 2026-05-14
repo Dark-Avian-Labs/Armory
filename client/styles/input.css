@@ -818,7 +818,7 @@ html:not(.dark) .archon-shard-filled-bg--tau {
 }
 
 .mod-slot-card:hover,
-.mod-slot-card--peek {
+[data-edge-mod-slots] .mod-slot-card--peek {
   z-index: 80;
 }
 
@@ -840,8 +840,13 @@ html:not(.dark) .archon-shard-filled-bg--tau {
     opacity 0s 0.3s;
 }
 
+/* Edge experiment only: neutralize ghost hits from expanded descendants while collapsed. */
+[data-edge-mod-slots] .mod-slot-card:not(:hover):not(.mod-slot-card--peek) .mod-slot-expanded * {
+  pointer-events: none !important;
+}
+
 .mod-slot-card:hover .mod-slot-expanded,
-.mod-slot-card--peek .mod-slot-expanded {
+[data-edge-mod-slots] .mod-slot-card--peek .mod-slot-expanded {
   opacity: 1;
   transform: translate(-50%, -50%) scaleY(1) rotateX(var(--tilt-rotate-x))
     rotateY(var(--tilt-rotate-y));
