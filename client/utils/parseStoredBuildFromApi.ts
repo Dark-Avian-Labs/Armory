@@ -9,7 +9,7 @@ export function parseStoredBuildFromApi(row: Record<string, unknown>): StoredBui
       : ({} as Partial<StoredBuild>);
 
   const visRaw = row.visibility;
-  const visibility: BuildVisibility | undefined =
+  const visibility: BuildVisibility =
     visRaw === 'public' || visRaw === 'private' || visRaw === 'unlisted' ? visRaw : 'private';
 
   return {

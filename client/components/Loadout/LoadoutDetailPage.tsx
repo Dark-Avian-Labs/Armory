@@ -249,7 +249,7 @@ function LoadoutBuildSummaryCard({
       if (!Array.isArray(parsed)) return [];
       return parsed
         .map((a) =>
-          a && typeof a === 'object' && a && 'name' in a
+          a != null && typeof a === 'object' && 'name' in a
             ? String((a as { name?: string }).name)
             : '',
         )

@@ -13,9 +13,9 @@ export type EquipmentLookupRow = {
   slot?: number | null;
 };
 
-export function getBuildPickerCategory(
+export function getBuildPickerCategory<T extends EquipmentLookupRow>(
   build: StoredBuild,
-  equipmentByUniqueName: Record<string, EquipmentLookupRow>,
+  equipmentByUniqueName: Record<string, T>,
 ): EquipmentPickerTab {
   const rec = equipmentByUniqueName[build.equipment_unique_name];
   if (
@@ -35,9 +35,9 @@ export function getBuildPickerCategory(
   return build.equipment_type as EquipmentPickerTab;
 }
 
-export function getSlotTypeForBuild(
+export function getSlotTypeForBuild<T extends EquipmentLookupRow>(
   build: StoredBuild,
-  equipmentLookup?: Record<string, EquipmentLookupRow>,
+  equipmentLookup?: Record<string, T>,
 ): string | null {
   if (matchesSpecialItemType(build.equipment_name, build.equipment_type)) {
     if (build.equipment_type === 'primary') return 'special_primary';
@@ -95,10 +95,10 @@ export function formatLoadoutSlotTypeLabel(slotType: string): string {
   return slotType;
 }
 
-export function getLoadoutSlotDisplayLabel(
+export function getLoadoutSlotDisplayLabel<T extends EquipmentLookupRow>(
   build: StoredBuild,
   storedSlotType: string,
-  equipmentLookup: Record<string, EquipmentLookupRow>,
+  equipmentLookup: Record<string, T>,
 ): string {
   const effective = getSlotTypeForBuild(build, equipmentLookup) ?? storedSlotType;
   return formatLoadoutSlotTypeLabel(effective);

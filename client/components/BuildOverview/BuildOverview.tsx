@@ -18,8 +18,8 @@ import {
   getBuildPickerCategory,
   getLoadoutSlotDisplayLabel,
   getSlotTypeForBuild,
-  type EquipmentLookupRow,
 } from '../../utils/buildCatalogCategory';
+import type { EquipmentLookupRow } from '../../utils/buildCatalogCategory';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
 import { weaponOmitsExilusSlot } from '../../utils/specialItems';
 import {
@@ -35,12 +35,7 @@ interface BuildsByCategory {
   builds: StoredBuild[];
 }
 
-interface EquipmentPolaritySource {
-  unique_name: string;
-  name?: string;
-  product_category?: string;
-  sentinel?: number;
-  slot?: number | null;
+interface EquipmentPolaritySource extends EquipmentLookupRow {
   artifact_slots?: string;
   polarities?: string;
   aura_polarity?: string;
@@ -225,10 +220,9 @@ export function BuildOverview() {
   }, [builds, equipmentLookup]);
 
   const grouped = useMemo<BuildsByCategory[]>(() => {
-    const lookup = equipmentLookup as Record<string, EquipmentLookupRow>;
     const map = new Map<EquipmentPickerTab, StoredBuild[]>();
     for (const b of builds) {
-      const cat = getBuildPickerCategory(b, lookup);
+      const cat = getBuildPickerCategory(b, equipmentLookup);
       const list = map.get(cat) || [];
       list.push(b);
       map.set(cat, list);
@@ -263,17 +257,16 @@ export function BuildOverview() {
 
   const loadoutCompatibleBuilds = useMemo(() => {
     if (!linkingLoadout) return [] as StoredBuild[];
-    const lookup = equipmentLookup as Record<string, EquipmentLookupRow>;
     const usedSlotTypes = new Set(
       linkingLoadout.builds.map((lb) => {
         const b = builds.find((x) => x.id === lb.build_id);
         if (!b) return lb.slot_type;
-        return getSlotTypeForBuild(b, lookup) ?? lb.slot_type;
+        return getSlotTypeForBuild(b, equipmentLookup) ?? lb.slot_type;
       }),
     );
     return builds
       .filter((build) => {
-        const slotType = getSlotTypeForBuild(build, lookup);
+        const slotType = getSlotTypeForBuild(build, equipmentLookup);
         if (!slotType) return false;
         return !usedSlotTypes.has(slotType);
       })
@@ -282,10 +275,9 @@ export function BuildOverview() {
 
   const handleLinkBuildToLoadout = async (loadoutId: string) => {
     if (!linkingBuild) return;
-    const lookup = equipmentLookup as Record<string, EquipmentLookupRow>;
 
     try {
-      const slotType = getSlotTypeForBuild(linkingBuild, lookup);
+      const slotType = getSlotTypeForBuild(linkingBuild, equipmentLookup);
       if (!slotType) {
         window.alert('This build type is not supported in loadouts yet.');
         return;
@@ -301,10 +293,9 @@ export function BuildOverview() {
 
   const handleLinkCompatibleBuildClick = async (build: StoredBuild) => {
     if (!linkingLoadout) return;
-    const lookup = equipmentLookup as Record<string, EquipmentLookupRow>;
 
     try {
-      const slotType = getSlotTypeForBuild(build, lookup);
+      const slotType = getSlotTypeForBuild(build, equipmentLookup);
       if (!slotType) {
         window.alert('This build type is not supported in loadouts yet.');
         return;
@@ -590,10 +581,7 @@ export function BuildOverview() {
                     </div>
                     <span className="text-muted/50 ml-3 shrink-0 text-[10px]">
                       {formatLoadoutSlotTypeLabel(
-                        getSlotTypeForBuild(
-                          build,
-                          equipmentLookup as Record<string, EquipmentLookupRow>,
-                        ) ?? '',
+                        getSlotTypeForBuild(build, equipmentLookup) ?? '',
                       )}
                     </span>
                   </button>
@@ -760,7 +748,6 @@ function LoadoutRow({
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publicBusy, setPublicBusy] = useState(false);
-  const lookup = equipmentLookup as Record<string, EquipmentLookupRow>;
 
   const privateLinkedBuilds = useMemo(() => {
     return loadout.builds
@@ -886,7 +873,7 @@ function LoadoutRow({
             <div className="text-muted/40 py-2 text-xs">No builds added yet.</div>
           ) : (
             linkedBuildRows.map(({ build, slotType }) => {
-              const slotLabel = getLoadoutSlotDisplayLabel(build, slotType, lookup);
+              const slotLabel = getLoadoutSlotDisplayLabel(build, slotType, equipmentLookup);
               return (
                 <div
                   key={`${slotType}:${build.id}`}
