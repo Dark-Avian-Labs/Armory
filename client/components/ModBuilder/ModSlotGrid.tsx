@@ -479,14 +479,6 @@ function SlotCell({
                 }
                 onMouseMove={(event) => applyCardTiltFromMouse(event.currentTarget, event)}
                 onMouseLeave={(event) => resetCardTilt(event.currentTarget)}
-                onClick={
-                  readOnly
-                    ? undefined
-                    : (e) => {
-                        e.stopPropagation();
-                        onClick?.();
-                      }
-                }
               >
                 <ModCard
                   mod={slot.mod}
@@ -500,7 +492,7 @@ function SlotCell({
                 />
                 <div className="mod-card-foil" aria-hidden />
                 <div
-                  className={`mod-slot-rank-controls absolute left-0 flex w-full items-center justify-center${readOnly ? ' pointer-events-none' : ''}`}
+                  className={`mod-slot-rank-controls absolute left-0 z-40 flex w-full items-center justify-center${readOnly ? ' pointer-events-none' : ''}`}
                   style={{
                     top:
                       Math.round(
