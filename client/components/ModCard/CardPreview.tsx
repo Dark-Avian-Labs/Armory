@@ -534,6 +534,8 @@ export function CardPreview({
             left: 0,
             width: L.cardWidth * s,
             top: (collapsed ? L.collapsedRankOffsetY : L.rankOffsetY) * s,
+            /* Decorative ★ row; must not capture hits (ModSlotGrid stacks controls as siblings). */
+            pointerEvents: 'none',
           }}
         >
           <div className="relative flex items-center" style={{ gap: L.rankStarGap * s }}>
