@@ -28,6 +28,7 @@ apiRouter.get('/warframes', (_req: Request, res: Response) => {
 });
 
 const MAX_NAME_LENGTH = 255;
+const MAX_DESCRIPTION_LENGTH = 8000;
 const COPY_PREFIX = 'Copy of ';
 
 const WEAPON_JUNK_PREFIXES = [
@@ -329,6 +330,20 @@ function parseNumericId(raw: string | string[] | undefined): number | null {
   return value;
 }
 
+function normalizeUserDescription(raw: unknown): string | null {
+  if (raw === undefined || raw === null) {
+    return null;
+  }
+  if (typeof raw !== 'string') {
+    return null;
+  }
+  const trimmed = raw.replaceAll('\0', '').trim();
+  if (!trimmed) {
+    return null;
+  }
+  return trimmed.slice(0, MAX_DESCRIPTION_LENGTH);
+}
+
 type BuildRow = {
   id: number;
   user_id: number;
@@ -339,6 +354,7 @@ type BuildRow = {
   created_at: string;
   updated_at: string;
   visibility?: string;
+  description?: string | null;
 };
 
 function parseBuildConfig(raw: string): Record<string, unknown> | null {
@@ -396,6 +412,7 @@ function toBuildListItem(row: BuildRow, ownerUsernames: Map<number, string | nul
     created_at: row.created_at,
     owner_user_id: row.user_id,
     owner_username: ownerUsernames.get(row.user_id) ?? null,
+    description: typeof row.description === 'string' ? row.description : null,
   };
 }
 
@@ -859,6 +876,7 @@ apiRouter.get('/loadouts/:id', async (req: Request, res: Response) => {
         name: loadout.name,
         user_id: loadout.user_id,
         visibility: vis,
+        description: typeof loadout.description === 'string' ? loadout.description : null,
         created_at: loadout.created_at,
         updated_at: loadout.updated_at,
         builds: buildsWithSlots,
@@ -922,8 +940,10 @@ apiRouter.put('/loadouts/:id', (req: Request, res: Response) => {
     const body = req.body as Record<string, unknown> | undefined;
     const hasName = body != null && Object.prototype.hasOwnProperty.call(body, 'name');
     const hasVisibility = body != null && Object.prototype.hasOwnProperty.call(body, 'visibility');
-    if (!hasName && !hasVisibility) {
-      res.status(400).json({ error: 'Provide at least name or visibility' });
+    const hasDescription =
+      body != null && Object.prototype.hasOwnProperty.call(body, 'description');
+    if (!hasName && !hasVisibility && !hasDescription) {
+      res.status(400).json({ error: 'Provide at least name, visibility, or description' });
       return;
     }
 
@@ -947,6 +967,12 @@ apiRouter.put('/loadouts/:id', (req: Request, res: Response) => {
       nextVisibility = visRaw;
     }
 
+    let nextDescription: string | null =
+      typeof existing.description === 'string' ? existing.description : null;
+    if (hasDescription) {
+      nextDescription = normalizeUserDescription(body?.description);
+    }
+
     if (nextVisibility === 'public' || nextVisibility === 'unlisted') {
       const blocked = db
         .prepare(
@@ -966,9 +992,14 @@ apiRouter.put('/loadouts/:id', (req: Request, res: Response) => {
     }
 
     db.prepare(
-      "UPDATE loadouts SET name = ?, visibility = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
-    ).run(nextName, nextVisibility, parsedId, uid);
-    res.json({ success: true, name: nextName, visibility: nextVisibility });
+      "UPDATE loadouts SET name = ?, visibility = ?, description = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+    ).run(nextName, nextVisibility, nextDescription, parsedId, uid);
+    res.json({
+      success: true,
+      name: nextName,
+      visibility: nextVisibility,
+      description: nextDescription,
+    });
   } catch (err) {
     sendInternalError(res, 'loadouts.update', err);
   }
@@ -1076,33 +1107,36 @@ apiRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
     }
 
     const sourceLoadout = db.prepare('SELECT * FROM loadouts WHERE id = ?').get(id) as
-      | { id: number; user_id: number; name: string }
+      | Record<string, unknown>
       | undefined;
     if (!sourceLoadout) {
       res.status(404).json({ error: 'Loadout not found' });
       return;
     }
-    if (sourceLoadout.user_id !== req.session.user_id) {
+    const sourceUserId = sourceLoadout.user_id;
+    if (typeof sourceUserId !== 'number' || sourceUserId !== req.session.user_id) {
       res.status(403).json({ error: 'Forbidden' });
       return;
     }
 
     const requestedName = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
     const requestedNameTruncated = requestedName.slice(0, MAX_NAME_LENGTH);
+    const sourceName =
+      typeof sourceLoadout.name === 'string' ? sourceLoadout.name.trim() : 'Loadout';
     const copyName =
       requestedNameTruncated.length > 0
         ? requestedNameTruncated
-        : `${COPY_PREFIX}${sourceLoadout.name.trim().slice(0, MAX_NAME_LENGTH - COPY_PREFIX.length)}`;
+        : `${COPY_PREFIX}${sourceName.slice(0, MAX_NAME_LENGTH - COPY_PREFIX.length)}`;
 
     const newLoadoutId = db.transaction(() => {
       const createdLoadout = db
-        .prepare('INSERT INTO loadouts (user_id, name) VALUES (?, ?)')
-        .run(req.session.user_id, copyName);
+        .prepare('INSERT INTO loadouts (user_id, name, description) VALUES (?, ?, ?)')
+        .run(req.session.user_id, copyName, normalizeUserDescription(sourceLoadout.description));
       const newId = Number(createdLoadout.lastInsertRowid);
 
       const sourceLinks = db
         .prepare('SELECT build_id, slot_type FROM loadout_builds WHERE loadout_id = ?')
-        .all(sourceLoadout.id) as Array<{
+        .all(id) as Array<{
         build_id: number;
         slot_type: string;
       }>;
@@ -1116,8 +1150,8 @@ apiRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
         }
         const copiedBuild = db
           .prepare(
-            `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+            `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, description, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, 'private', ?, datetime('now'), datetime('now'))`,
           )
           .run(
             req.session.user_id,
@@ -1125,6 +1159,7 @@ apiRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
             sourceBuild.equipment_type,
             sourceBuild.equipment_unique_name,
             sourceBuild.mod_config,
+            normalizeUserDescription(sourceBuild.description),
           );
         db.prepare(
           'INSERT OR REPLACE INTO loadout_builds (loadout_id, build_id, slot_type) VALUES (?, ?, ?)',
@@ -1425,6 +1460,7 @@ apiRouter.post('/builds', (req: Request, res: Response) => {
     const visRaw = req.body?.visibility;
     const visibility =
       visRaw === 'public' || visRaw === 'private' || visRaw === 'unlisted' ? visRaw : 'private';
+    const description = normalizeUserDescription(req.body?.description);
 
     const modConfigResult = ModConfigSchema.safeParse(mod_config);
     if (
@@ -1443,8 +1479,8 @@ apiRouter.post('/builds', (req: Request, res: Response) => {
 
     const result = db
       .prepare(
-        `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+        `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, description, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       )
       .run(
         req.session.user_id,
@@ -1453,6 +1489,7 @@ apiRouter.post('/builds', (req: Request, res: Response) => {
         equipment_unique_name,
         JSON.stringify(modConfigResult.data),
         visibility,
+        description,
       );
 
     res.json({ success: true, id: result.lastInsertRowid });
@@ -1486,22 +1523,48 @@ apiRouter.put('/builds/:id', async (req: Request, res: Response) => {
     }
     const visibility =
       visRaw === 'public' || visRaw === 'private' || visRaw === 'unlisted' ? visRaw : 'private';
+    const bodyRecord = req.body as Record<string, unknown>;
+    const hasDescription = Object.prototype.hasOwnProperty.call(bodyRecord, 'description');
+    const description = hasDescription
+      ? normalizeUserDescription(bodyRecord.description)
+      : undefined;
 
     const authState = await fetchRemoteAuthState(req);
     const isGameAdmin = effectiveArmoryGameAdmin(authState);
     const result = isGameAdmin
-      ? db
-          .prepare(
-            `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, updated_at = datetime('now')
+      ? description === undefined
+        ? db
+            .prepare(
+              `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, updated_at = datetime('now')
        WHERE id = ?`,
-          )
-          .run(name, JSON.stringify(modConfigResult.data), visibility, id)
-      : db
-          .prepare(
-            `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, updated_at = datetime('now')
+            )
+            .run(name, JSON.stringify(modConfigResult.data), visibility, id)
+        : db
+            .prepare(
+              `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, description = ?, updated_at = datetime('now')
+       WHERE id = ?`,
+            )
+            .run(name, JSON.stringify(modConfigResult.data), visibility, description, id)
+      : description === undefined
+        ? db
+            .prepare(
+              `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, updated_at = datetime('now')
        WHERE id = ? AND user_id = ?`,
-          )
-          .run(name, JSON.stringify(modConfigResult.data), visibility, id, req.session.user_id);
+            )
+            .run(name, JSON.stringify(modConfigResult.data), visibility, id, req.session.user_id)
+        : db
+            .prepare(
+              `UPDATE builds SET name = ?, mod_config = ?, visibility = ?, description = ?, updated_at = datetime('now')
+       WHERE id = ? AND user_id = ?`,
+            )
+            .run(
+              name,
+              JSON.stringify(modConfigResult.data),
+              visibility,
+              description,
+              id,
+              req.session.user_id,
+            );
 
     if (result.changes < 1) {
       res.status(404).json({ error: 'Build not found' });
@@ -1584,8 +1647,8 @@ apiRouter.post('/builds/:id/copy', (req: Request, res: Response) => {
 
     const result = db
       .prepare(
-        `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'private', datetime('now'), datetime('now'))`,
+        `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, description, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'private', ?, datetime('now'), datetime('now'))`,
       )
       .run(
         req.session.user_id,
@@ -1593,6 +1656,7 @@ apiRouter.post('/builds/:id/copy', (req: Request, res: Response) => {
         source.equipment_type,
         source.equipment_unique_name,
         source.mod_config,
+        normalizeUserDescription(source.description),
       );
 
     res.json({ success: true, id: result.lastInsertRowid });

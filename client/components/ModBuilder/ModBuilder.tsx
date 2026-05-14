@@ -54,6 +54,7 @@ import { Modal } from '../ui/Modal';
 import { AbilityBar } from './AbilityBar';
 import { ArcaneSlots, type ArcaneSlot, type Arcane } from './ArcaneSlots';
 import { ArchonShardSlots, type ShardSlotConfig, type ShardType } from './ArchonShardSlots';
+import { BuildDescriptionPanel } from './BuildDescriptionPanel';
 import { BuildLoadoutsPanel } from './BuildLoadoutsPanel';
 import { CapacityBar } from './CapacityBar';
 import { CompactBuildOverview } from './CompactBuildOverview';
@@ -224,6 +225,7 @@ export function ModBuilder() {
   const [orokinReactor, setOrokinReactor] = useState(false);
   const [valenceBonus, setValenceBonus] = useState<ValenceBonus | null>(null);
   const [buildName, setBuildName] = useState('New Build');
+  const [buildDescription, setBuildDescription] = useState('');
   const [currentBuildId, setCurrentBuildId] = useState<string | undefined>(buildId);
   const [targetEquipmentUniqueName, setTargetEquipmentUniqueName] = useState<string | null>(null);
   const [helminthConfig, setHelminthConfig] = useState<BuildConfig['helminth'] | undefined>();
@@ -257,6 +259,7 @@ export function ModBuilder() {
     setSlots([]);
     setOrokinReactor(false);
     setBuildName('New Build');
+    setBuildDescription('');
     setCurrentBuildId(buildId);
     setTargetEquipmentUniqueName(null);
     setIsOwnBuild(true);
@@ -472,6 +475,7 @@ export function ModBuilder() {
           equipment_unique_name: string;
           mod_config?: Partial<BuildConfig>;
           visibility?: string;
+          description?: string | null;
         };
         can_edit?: boolean;
       };
@@ -485,6 +489,7 @@ export function ModBuilder() {
       if (!alive) return;
       setEquipmentType(body.build.equipment_type);
       setBuildName(typeof config.name === 'string' ? config.name : body.build.name);
+      setBuildDescription(typeof body.build.description === 'string' ? body.build.description : '');
       setTargetEquipmentUniqueName(body.build.equipment_unique_name);
       setCurrentBuildId(String(body.build.id));
       setIsOwnBuild(body.can_edit === true);
@@ -515,6 +520,7 @@ export function ModBuilder() {
       if (stored) {
         setEquipmentType(stored.equipment_type);
         setBuildName(stored.name);
+        setBuildDescription(typeof stored.description === 'string' ? stored.description : '');
         setTargetEquipmentUniqueName(stored.equipment_unique_name);
         setCurrentBuildId(stored.id);
         setIsOwnBuild(true);
@@ -1402,8 +1408,10 @@ export function ModBuilder() {
         selectedEquipment.name,
         imagePath,
         buildIsPublic ? 'public' : 'private',
+        buildDescription,
       );
       setBuildIsPublic(saved.visibility === 'public');
+      setBuildDescription(typeof saved.description === 'string' ? saved.description : '');
       setCurrentBuildId(saved.id);
       setIsOwnBuild(true);
       setShowSaveModal(false);
@@ -1509,7 +1517,7 @@ export function ModBuilder() {
       className="mx-auto max-w-[2000px] space-y-6"
       onClick={hasSelection ? handleBackgroundClick : undefined}
     >
-      <div className="flex flex-col gap-6 2xl:flex-row">
+      <div className="flex flex-col gap-6 2xl:flex-row 2xl:items-stretch">
         <div className="w-full shrink-0 space-y-4 2xl:w-72">
           {selectedEquipment && (
             <StatsPanel
@@ -1586,8 +1594,8 @@ export function ModBuilder() {
           )}
         </div>
 
-        <div className="w-full shrink-0 space-y-4 2xl:w-[820px]">
-          <div className="glass-shell p-4 sm:p-5">
+        <div className="flex min-h-0 w-full shrink-0 flex-col gap-4 2xl:w-[820px]">
+          <div className="glass-shell shrink-0 p-4 sm:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
@@ -1681,61 +1689,65 @@ export function ModBuilder() {
             </div>
           </div>
 
-          <CapacityBar
-            capacity={capacity}
-            formaCost={formaCost}
-            formaMode={formaMode}
-            onFormaToggle={readOnly ? undefined : () => setFormaMode((p) => !p)}
-          />
-
-          {selectedEquipment ? (
-            <ModSlotGrid
-              slots={hydratedSlots}
-              onDrop={handleModDrop}
-              onSwap={handleModSwap}
-              onRemove={handleModRemove}
-              onRankChange={handleRankChange}
-              onSetRankChange={handleSetRankChange}
-              onEditRiven={(slotIndex) => {
-                if (readOnly) return;
-                const slot = slots.find((s) => s.index === slotIndex);
-                if (!slot?.mod || !isRivenMod(slot.mod)) return;
-                setEditingRivenSlot(slotIndex);
-                setDraftRivenSlot(null);
-              }}
-              activeSlotIndex={readOnly ? undefined : activeSlotIndex}
-              onSlotClick={(slotIndex, slotType) => {
-                if (readOnly) return;
-                if (activeSlotIndex === slotIndex) {
-                  setActiveSlotType(undefined);
-                  setActiveSlotIndex(undefined);
-                } else {
-                  setActiveSlotType(slotType);
-                  setActiveSlotIndex(slotIndex);
-                }
-                setRightPanelMode('mods');
-                setActiveAbilityIndex(null);
-                setActiveArcaneSlot(null);
-                setActiveShardSlot(null);
-              }}
+          <div className="shrink-0">
+            <CapacityBar
+              capacity={capacity}
+              formaCost={formaCost}
               formaMode={formaMode}
-              onPolarityChange={handlePolarityChange}
-              equipmentType={equipmentType}
-              readOnly={readOnly}
+              onFormaToggle={readOnly ? undefined : () => setFormaMode((p) => !p)}
             />
-          ) : (
-            <div className="glass-shell empty-state">
-              <h2 className="empty-state__title">Preparing equipment</h2>
-              <p className="empty-state__body">
-                {equipmentLoadError
-                  ? `Failed to load equipment: ${equipmentLoadError}`
-                  : 'Loading equipment and assembling the builder surface.'}
-              </p>
-            </div>
-          )}
+          </div>
+
+          <div className="shrink-0">
+            {selectedEquipment ? (
+              <ModSlotGrid
+                slots={hydratedSlots}
+                onDrop={handleModDrop}
+                onSwap={handleModSwap}
+                onRemove={handleModRemove}
+                onRankChange={handleRankChange}
+                onSetRankChange={handleSetRankChange}
+                onEditRiven={(slotIndex) => {
+                  if (readOnly) return;
+                  const slot = slots.find((s) => s.index === slotIndex);
+                  if (!slot?.mod || !isRivenMod(slot.mod)) return;
+                  setEditingRivenSlot(slotIndex);
+                  setDraftRivenSlot(null);
+                }}
+                activeSlotIndex={readOnly ? undefined : activeSlotIndex}
+                onSlotClick={(slotIndex, slotType) => {
+                  if (readOnly) return;
+                  if (activeSlotIndex === slotIndex) {
+                    setActiveSlotType(undefined);
+                    setActiveSlotIndex(undefined);
+                  } else {
+                    setActiveSlotType(slotType);
+                    setActiveSlotIndex(slotIndex);
+                  }
+                  setRightPanelMode('mods');
+                  setActiveAbilityIndex(null);
+                  setActiveArcaneSlot(null);
+                  setActiveShardSlot(null);
+                }}
+                formaMode={formaMode}
+                onPolarityChange={handlePolarityChange}
+                equipmentType={equipmentType}
+                readOnly={readOnly}
+              />
+            ) : (
+              <div className="glass-shell empty-state">
+                <h2 className="empty-state__title">Preparing equipment</h2>
+                <p className="empty-state__body">
+                  {equipmentLoadError
+                    ? `Failed to load equipment: ${equipmentLoadError}`
+                    : 'Loading equipment and assembling the builder surface.'}
+                </p>
+              </div>
+            )}
+          </div>
 
           {selectedEquipment && (
-            <div className="glass-shell p-4">
+            <div className="glass-shell shrink-0 p-4">
               <div className="flex min-h-[136px] items-start justify-between gap-3 overflow-visible">
                 {supportsArcanes && (
                   <div className={readOnly ? 'opacity-95' : undefined}>
@@ -1772,6 +1784,15 @@ export function ModBuilder() {
               </div>
             </div>
           )}
+
+          {selectedEquipment ? (
+            <BuildDescriptionPanel
+              value={buildDescription}
+              onChange={setBuildDescription}
+              readOnly={readOnly}
+              className="min-h-0"
+            />
+          ) : null}
         </div>
 
         <div className="min-w-0 flex-1">

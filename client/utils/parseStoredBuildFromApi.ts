@@ -29,5 +29,6 @@ export function parseStoredBuildFromApi(row: Record<string, unknown>): StoredBui
     created_at: String(row.created_at ?? new Date().toISOString()),
     updated_at: String(row.updated_at ?? new Date().toISOString()),
     visibility,
+    description: typeof row.description === 'string' ? row.description : undefined,
   } as StoredBuild;
 }

@@ -16,6 +16,7 @@ export interface Loadout {
   created_at: string;
   updated_at: string;
   visibility: BuildVisibility;
+  description?: string;
 }
 
 export const LOADOUT_SLOT_TYPES = [
@@ -66,6 +67,7 @@ export function useLoadoutStorage() {
         created_at: String(row.created_at ?? new Date().toISOString()),
         updated_at: String(row.updated_at ?? new Date().toISOString()),
         visibility: mapVisibility(row.visibility),
+        description: typeof row.description === 'string' ? row.description : undefined,
       })) as Loadout[];
       const filtered = mapped.filter((loadout) => loadout.id.length > 0);
       setLoadouts(filtered);
@@ -130,9 +132,16 @@ export function useLoadoutStorage() {
   );
 
   const updateLoadout = useCallback(
-    async (id: string, patch: { name?: string; visibility?: BuildVisibility }) => {
-      if (patch.name === undefined && patch.visibility === undefined) {
-        throw new Error('updateLoadout requires name and/or visibility');
+    async (
+      id: string,
+      patch: { name?: string; visibility?: BuildVisibility; description?: string },
+    ) => {
+      if (
+        patch.name === undefined &&
+        patch.visibility === undefined &&
+        patch.description === undefined
+      ) {
+        throw new Error('updateLoadout requires name, visibility, and/or description');
       }
       const response = await apiFetch(`/api/loadouts/${id}`, {
         method: 'PUT',

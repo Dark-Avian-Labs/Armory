@@ -10,6 +10,7 @@ import {
   getLoadoutSlotDisplayLabel,
 } from '../../utils/buildCatalogCategory';
 import { calculateWeaponDps } from '../../utils/damageCalc';
+import { linkifyPlainText } from '../../utils/linkifyText';
 import { parseStoredBuildFromApi } from '../../utils/parseStoredBuildFromApi';
 import { calculateWarframeStats } from '../../utils/warframeCalc';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -38,6 +39,7 @@ export function LoadoutDetailPage() {
   const { loadoutId } = useParams<{ loadoutId: string }>();
   const navigate = useNavigate();
   const [loadoutName, setLoadoutName] = useState('');
+  const [loadoutDescription, setLoadoutDescription] = useState('');
   const [visibility, setVisibility] = useState<string>('private');
   const [isOwn, setIsOwn] = useState(false);
   const [entries, setEntries] = useState<Array<{ slot_type: string; build: StoredBuild }>>([]);
@@ -104,6 +106,7 @@ export function LoadoutDetailPage() {
           loadout?: {
             name?: string;
             visibility?: string;
+            description?: string | null;
             builds?: Array<{ slot_type: string; build?: Record<string, unknown> }>;
           };
           is_own?: boolean;
@@ -116,6 +119,7 @@ export function LoadoutDetailPage() {
           return;
         }
         setLoadoutName(typeof lo.name === 'string' ? lo.name : 'Loadout');
+        setLoadoutDescription(typeof lo.description === 'string' ? lo.description : '');
         setVisibility(typeof lo.visibility === 'string' ? lo.visibility : 'private');
         setIsOwn(body.is_own === true);
         const raw = Array.isArray(lo.builds) ? lo.builds : [];
@@ -187,15 +191,22 @@ export function LoadoutDetailPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {entries.map(({ slot_type, build }) => (
-            <LoadoutBuildSummaryCard
-              key={`${slot_type}:${build.id}`}
-              build={build}
-              slotLabel={getLoadoutSlotDisplayLabel(build, slot_type, lookupRows)}
-              equipmentRow={equipmentLookup[build.equipment_unique_name]}
-            />
-          ))}
+        <div className="space-y-4">
+          {loadoutDescription.trim() ? (
+            <div className="glass-shell text-foreground/90 border-glass-border border border-dashed px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap">
+              {linkifyPlainText(loadoutDescription)}
+            </div>
+          ) : null}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {entries.map(({ slot_type, build }) => (
+              <LoadoutBuildSummaryCard
+                key={`${slot_type}:${build.id}`}
+                build={build}
+                slotLabel={getLoadoutSlotDisplayLabel(build, slot_type, lookupRows)}
+                equipmentRow={equipmentLookup[build.equipment_unique_name]}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
