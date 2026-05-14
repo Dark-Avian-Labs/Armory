@@ -215,10 +215,7 @@ export function ModBuilder() {
   const [searchParams] = useSearchParams();
   const readOnly = searchParams.get('view') === '1';
   const compactOverview = searchParams.get('compact') === '1';
-  const modSlotPointerPeek = useMemo(
-    () => shouldUseModSlotPointerPeek(searchParams),
-    [searchParams],
-  );
+  const edgeModSlotPeek = useMemo(() => shouldUseModSlotPointerPeek(searchParams), [searchParams]);
   const { saveBuild: storageSave, getBuild, copyBuildFromId } = useBuildStorage();
 
   const [equipmentType, setEquipmentType] = useState<EquipmentType>(
@@ -1727,7 +1724,7 @@ export function ModBuilder() {
               onPolarityChange={handlePolarityChange}
               equipmentType={equipmentType}
               readOnly={readOnly}
-              usePointerPeekModSlots={modSlotPointerPeek}
+              usePointerPeekModSlots={edgeModSlotPeek}
             />
           ) : (
             <div className="glass-shell empty-state">
