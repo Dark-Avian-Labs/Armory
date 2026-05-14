@@ -11,7 +11,6 @@ export function stripKnownModeQualifier(value: string): string {
 
 const PAREN_PRIME_SUFFIX = '(prime)';
 
-/** Strips trailing `(Prime)` or whitespace + `Prime` without `\s*…$` regex (ReDoS-safe). */
 export function stripPrimeSuffix(value: string): string {
   let s = value.trimEnd();
   const lower = s.toLowerCase();

@@ -66,7 +66,6 @@ export function isCapacitySlot(type: SlotType): boolean {
   return type === 'aura' || type === 'stance' || type === 'posture';
 }
 
-/** Fusion rank for UI and controls: explicit `slot.rank`, else max (`fusion_limit`) when omitted in saved builds. */
 export function effectiveModSlotRank(slot: ModSlot): number {
   if (!slot.mod) return 0;
   return slot.rank ?? slot.mod.fusion_limit ?? 0;
