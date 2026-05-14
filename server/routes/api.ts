@@ -795,7 +795,7 @@ apiRouter.get('/loadouts', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/loadouts/:id', (req: Request, res: Response) => {
+apiRouter.get('/loadouts/:id', async (req: Request, res: Response) => {
   try {
     const db = getDb();
     if (!req.session.user_id) {
@@ -815,19 +815,55 @@ apiRouter.get('/loadouts/:id', (req: Request, res: Response) => {
       res.status(404).json({ error: 'Loadout not found' });
       return;
     }
-    if (loadout.user_id !== req.session.user_id) {
-      res.status(403).json({ error: 'Forbidden' });
+    const uid = req.session.user_id;
+    const ownerUserId = loadout.user_id;
+    const ownerUserIdNum =
+      typeof ownerUserId === 'number' && Number.isFinite(ownerUserId) ? ownerUserId : 0;
+    const isOwner = ownerUserIdNum === uid;
+    const vis = typeof loadout.visibility === 'string' ? loadout.visibility : 'private';
+    if (!isOwner && vis !== 'public' && vis !== 'unlisted') {
+      res.status(404).json({ error: 'Loadout not found' });
       return;
     }
-    const links = db.prepare('SELECT * FROM loadout_builds WHERE loadout_id = ?').all(id) as Array<
-      Record<string, unknown>
-    >;
+
+    const authState = await fetchRemoteAuthState(req);
+    const isGameAdmin = effectiveArmoryGameAdmin(authState);
+
+    const linkRows = db
+      .prepare('SELECT build_id, slot_type FROM loadout_builds WHERE loadout_id = ?')
+      .all(id) as Array<{ build_id: number; slot_type: string }>;
+
+    const buildsWithSlots: Array<{ slot_type: string; build: Record<string, unknown> }> = [];
+    for (const link of linkRows) {
+      const buildRow = db.prepare('SELECT * FROM builds WHERE id = ?').get(link.build_id) as
+        | BuildRow
+        | undefined;
+      if (!buildRow) continue;
+      const buildVis = buildRow.visibility ?? 'private';
+      const canSeeBuild =
+        isOwner ||
+        isGameAdmin ||
+        buildRow.user_id === uid ||
+        buildVis === 'public' ||
+        buildVis === 'unlisted';
+      if (!canSeeBuild) continue;
+      buildsWithSlots.push({
+        slot_type: link.slot_type,
+        build: toBuildResponse(buildRow),
+      });
+    }
 
     res.json({
       loadout: {
-        ...loadout,
-        builds: links,
+        id: loadout.id,
+        name: loadout.name,
+        user_id: loadout.user_id,
+        visibility: vis,
+        created_at: loadout.created_at,
+        updated_at: loadout.updated_at,
+        builds: buildsWithSlots,
       },
+      is_own: isOwner,
     });
   } catch (err) {
     sendInternalError(res, 'loadouts.getById', err);
@@ -874,22 +910,126 @@ apiRouter.put('/loadouts/:id', (req: Request, res: Response) => {
       res.status(400).json({ error: 'Invalid loadout id' });
       return;
     }
-    const { name } = req.body;
-    if (typeof name !== 'string' || name.trim().length === 0) {
-      res.status(400).json({ error: 'Invalid name' });
+    const uid = req.session.user_id;
+    const existing = db
+      .prepare('SELECT * FROM loadouts WHERE id = ? AND user_id = ?')
+      .get(parsedId, uid) as Record<string, unknown> | undefined;
+    if (!existing) {
+      res.status(404).json({ error: 'Loadout not found' });
       return;
     }
-    const trimmedName = name.trim();
-    if (trimmedName.length > 255) {
-      res.status(400).json({ error: 'Invalid name' });
+
+    const body = req.body as Record<string, unknown> | undefined;
+    const hasName = body != null && Object.prototype.hasOwnProperty.call(body, 'name');
+    const hasVisibility = body != null && Object.prototype.hasOwnProperty.call(body, 'visibility');
+    if (!hasName && !hasVisibility) {
+      res.status(400).json({ error: 'Provide at least name or visibility' });
       return;
     }
+
+    let nextName = String(existing.name ?? '').trim();
+    if (hasName) {
+      const name = body?.name;
+      if (typeof name !== 'string' || name.trim().length === 0 || name.trim().length > 255) {
+        res.status(400).json({ error: 'Invalid name' });
+        return;
+      }
+      nextName = name.trim();
+    }
+
+    let nextVisibility = String(existing.visibility ?? 'private');
+    if (hasVisibility) {
+      const visRaw = body?.visibility;
+      if (visRaw !== 'public' && visRaw !== 'private' && visRaw !== 'unlisted') {
+        res.status(400).json({ error: 'Invalid visibility' });
+        return;
+      }
+      nextVisibility = visRaw;
+    }
+
+    if (nextVisibility === 'public' || nextVisibility === 'unlisted') {
+      const blocked = db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM loadout_builds lb
+           INNER JOIN builds b ON b.id = lb.build_id
+           WHERE lb.loadout_id = ?
+             AND COALESCE(b.visibility, 'private') NOT IN ('public', 'unlisted')`,
+        )
+        .get(parsedId) as { c: number } | undefined;
+      if (blocked && blocked.c > 0) {
+        res.status(400).json({
+          error:
+            'Every build in this loadout must be public or unlisted before the loadout can be public or unlisted.',
+        });
+        return;
+      }
+    }
+
     db.prepare(
-      "UPDATE loadouts SET name = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
-    ).run(trimmedName, parsedId, req.session.user_id);
-    res.json({ success: true });
+      "UPDATE loadouts SET name = ?, visibility = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+    ).run(nextName, nextVisibility, parsedId, uid);
+    res.json({ success: true, name: nextName, visibility: nextVisibility });
   } catch (err) {
     sendInternalError(res, 'loadouts.update', err);
+  }
+});
+
+apiRouter.post('/loadouts/:id/publish', (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    if (!req.session.user_id) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const loadoutId = parseNumericId(req.params.id);
+    if (loadoutId === null) {
+      res.status(400).json({ error: 'Invalid loadout id' });
+      return;
+    }
+    const uid = req.session.user_id;
+    const owned = db
+      .prepare('SELECT id FROM loadouts WHERE id = ? AND user_id = ?')
+      .get(loadoutId, uid) as { id: number } | undefined;
+    if (!owned) {
+      res.status(404).json({ error: 'Loadout not found' });
+      return;
+    }
+    const links = db
+      .prepare('SELECT build_id FROM loadout_builds WHERE loadout_id = ?')
+      .all(loadoutId) as Array<{ build_id: number }>;
+    if (links.length === 0) {
+      res.status(400).json({ error: 'Add at least one build to the loadout before publishing.' });
+      return;
+    }
+    try {
+      db.transaction(() => {
+        for (const { build_id } of links) {
+          const result = db
+            .prepare(
+              "UPDATE builds SET visibility = 'public', updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+            )
+            .run(build_id, uid);
+          if (result.changes < 1) {
+            throw new Error('LOADOUT_BUILD_NOT_OWNED');
+          }
+        }
+        db.prepare(
+          "UPDATE loadouts SET visibility = 'public', updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+        ).run(loadoutId, uid);
+      })();
+    } catch (e) {
+      if (e instanceof Error && e.message === 'LOADOUT_BUILD_NOT_OWNED') {
+        res.status(400).json({
+          error:
+            'This loadout references a build you do not own; remove it or copy the build before publishing.',
+        });
+        return;
+      }
+      throw e;
+    }
+    res.json({ success: true });
+  } catch (err) {
+    sendInternalError(res, 'loadouts.publish', err);
   }
 });
 
@@ -1142,7 +1282,40 @@ apiRouter.get('/builds/by-equipment', (req: Request, res: Response) => {
       .all(equipmentType, equipmentUniqueName) as BuildRow[];
 
     const ownerUsernames = getOwnerUsernames(rows.map((r) => r.user_id));
-    res.json({ builds: rows.map((row) => toBuildListItem(row, ownerUsernames)) });
+
+    const loadoutRows = db
+      .prepare(
+        `SELECT DISTINCT l.id, l.name, l.user_id, l.visibility, l.updated_at
+         FROM loadouts l
+         INNER JOIN loadout_builds lb ON lb.loadout_id = l.id
+         INNER JOIN builds b ON b.id = lb.build_id
+         WHERE b.equipment_type = ? AND b.equipment_unique_name = ?
+           AND (COALESCE(l.visibility, 'private') IN ('public', 'unlisted') OR l.user_id = ?)
+         ORDER BY l.updated_at DESC`,
+      )
+      .all(equipmentType, equipmentUniqueName, req.session.user_id) as Array<{
+      id: number;
+      name: string;
+      user_id: number;
+      visibility: string | null;
+      updated_at: string;
+    }>;
+
+    const loadoutOwnerNames = getOwnerUsernames(loadoutRows.map((r) => r.user_id));
+    const loadouts = loadoutRows.map((row) => ({
+      id: String(row.id),
+      name: row.name,
+      owner_user_id: row.user_id,
+      owner_username: loadoutOwnerNames.get(row.user_id) ?? null,
+      visibility: row.visibility ?? 'private',
+      updated_at: row.updated_at,
+      is_own: row.user_id === req.session.user_id,
+    }));
+
+    res.json({
+      builds: rows.map((row) => toBuildListItem(row, ownerUsernames)),
+      loadouts,
+    });
   } catch (err) {
     sendInternalError(res, 'builds.byEquipment', err);
   }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
+import type { BuildVisibility } from '../types/warframe';
 import { apiFetch } from '../utils/api';
 import { getApiErrorDetails } from '../utils/apiErrorUtils';
 
@@ -14,6 +15,7 @@ export interface Loadout {
   builds: LoadoutBuild[];
   created_at: string;
   updated_at: string;
+  visibility: BuildVisibility;
 }
 
 export const LOADOUT_SLOT_TYPES = [
@@ -27,6 +29,11 @@ export const LOADOUT_SLOT_TYPES = [
   { key: 'archgun', label: 'Arch-Gun' },
   { key: 'archmelee', label: 'Arch-Melee' },
 ] as const;
+
+function mapVisibility(raw: unknown): BuildVisibility {
+  if (raw === 'public' || raw === 'private' || raw === 'unlisted') return raw;
+  return 'private';
+}
 
 export function useLoadoutStorage() {
   const [loadouts, setLoadouts] = useState<Loadout[]>([]);
@@ -58,6 +65,7 @@ export function useLoadoutStorage() {
           : [],
         created_at: String(row.created_at ?? new Date().toISOString()),
         updated_at: String(row.updated_at ?? new Date().toISOString()),
+        visibility: mapVisibility(row.visibility),
       })) as Loadout[];
       const filtered = mapped.filter((loadout) => loadout.id.length > 0);
       setLoadouts(filtered);
@@ -99,6 +107,7 @@ export function useLoadoutStorage() {
         builds: [],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        visibility: 'private',
       };
       const refreshedLoadouts = await refresh();
       return refreshedLoadouts.find((candidate) => candidate.id === createdId) ?? loadout;
@@ -114,6 +123,38 @@ export function useLoadoutStorage() {
       if (!response.ok) {
         const details = await getApiErrorDetails(response);
         throw new Error(`Failed to delete loadout ${id}: ${details}`);
+      }
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const updateLoadout = useCallback(
+    async (id: string, patch: { name?: string; visibility?: BuildVisibility }) => {
+      if (patch.name === undefined && patch.visibility === undefined) {
+        throw new Error('updateLoadout requires name and/or visibility');
+      }
+      const response = await apiFetch(`/api/loadouts/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(patch),
+      });
+      if (!response.ok) {
+        const details = await getApiErrorDetails(response);
+        throw new Error(details);
+      }
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const publishLoadout = useCallback(
+    async (id: string) => {
+      const response = await apiFetch(`/api/loadouts/${id}/publish`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const details = await getApiErrorDetails(response);
+        throw new Error(details);
       }
       await refresh();
     },
@@ -149,9 +190,12 @@ export function useLoadoutStorage() {
 
   const unlinkBuild = useCallback(
     async (loadoutId: string, slotType: string) => {
-      const response = await apiFetch(`/api/loadouts/${loadoutId}/builds/${slotType}`, {
-        method: 'DELETE',
-      });
+      const response = await apiFetch(
+        `/api/loadouts/${loadoutId}/builds/${encodeURIComponent(slotType)}`,
+        {
+          method: 'DELETE',
+        },
+      );
       if (!response.ok) {
         const details = await getApiErrorDetails(response);
         throw new Error(
@@ -176,6 +220,8 @@ export function useLoadoutStorage() {
     error: loadoutError,
     createLoadout,
     deleteLoadout,
+    updateLoadout,
+    publishLoadout,
     linkBuild,
     unlinkBuild,
     getLoadout,

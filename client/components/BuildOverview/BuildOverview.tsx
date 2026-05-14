@@ -3,29 +3,39 @@ import { useNavigate } from 'react-router-dom';
 
 import { buildEditPath } from '../../app/paths';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
-import { useLoadoutStorage, LOADOUT_SLOT_TYPES, type Loadout } from '../../hooks/useLoadoutStorage';
+import { useLoadoutStorage, type Loadout } from '../../hooks/useLoadoutStorage';
 import {
-  EQUIPMENT_TYPE_LABELS,
-  EQUIPMENT_TYPE_ORDER,
   EQUIPMENT_SLOT_CONFIGS,
   POLARITIES,
+  type BuildVisibility,
   type StoredBuild,
   type EquipmentType,
   type PolarityKey,
 } from '../../types/warframe';
 import { apiFetch } from '../../utils/api';
+import {
+  formatLoadoutSlotTypeLabel,
+  getBuildPickerCategory,
+  getLoadoutSlotDisplayLabel,
+  getSlotTypeForBuild,
+} from '../../utils/buildCatalogCategory';
+import type { EquipmentLookupRow } from '../../utils/buildCatalogCategory';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
-import { matchesSpecialItemType, weaponOmitsExilusSlot } from '../../utils/specialItems';
+import { weaponOmitsExilusSlot } from '../../utils/specialItems';
+import {
+  TAB_ORDER,
+  TAB_LABELS,
+  type EquipmentPickerTab,
+} from '../BuildsCatalog/buildsCatalogUtils';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface BuildsByCategory {
-  type: EquipmentType;
+  type: EquipmentPickerTab;
   label: string;
   builds: StoredBuild[];
 }
 
-interface EquipmentPolaritySource {
-  unique_name: string;
+interface EquipmentPolaritySource extends EquipmentLookupRow {
   artifact_slots?: string;
   polarities?: string;
   aura_polarity?: string;
@@ -128,47 +138,17 @@ function getUsedFormaCost(
   return calculateFormaCount(defaults, desired);
 }
 
-function getSlotTypeForBuild(build: StoredBuild): string | null {
-  if (matchesSpecialItemType(build.equipment_name, build.equipment_type)) {
-    if (build.equipment_type === 'primary') return 'special_primary';
-    if (build.equipment_type === 'secondary') return 'special_secondary';
-    if (build.equipment_type === 'melee') return 'special_melee';
-  }
-
-  const equipmentType = build.equipment_type;
-  switch (equipmentType) {
-    case 'warframe':
-    case 'primary':
-    case 'secondary':
-    case 'melee':
-    case 'companion':
-    case 'archwing':
-    case 'archgun':
-    case 'archmelee':
-      return equipmentType;
-    default:
-      return null;
-  }
-}
-
-function getSlotLabel(slotType: string): string {
-  if (slotType === 'special_primary') return 'Primary (Special)';
-  if (slotType === 'special_secondary') return 'Secondary (Special)';
-  if (slotType === 'special_melee') return 'Melee (Special)';
-
-  const loadoutLabel = LOADOUT_SLOT_TYPES.find((slot) => slot.key === slotType)?.label;
-  if (loadoutLabel) return loadoutLabel;
-
-  if (slotType in EQUIPMENT_TYPE_LABELS) {
-    return EQUIPMENT_TYPE_LABELS[slotType as EquipmentType];
-  }
-
-  return slotType;
-}
-
 export function BuildOverview() {
-  const { builds, loading, deleteBuild } = useBuildStorage();
-  const { loadouts, createLoadout, deleteLoadout, linkBuild, unlinkBuild } = useLoadoutStorage();
+  const { builds, loading, deleteBuild, refresh: refreshBuilds } = useBuildStorage();
+  const {
+    loadouts,
+    createLoadout,
+    deleteLoadout,
+    linkBuild,
+    unlinkBuild,
+    updateLoadout,
+    publishLoadout,
+  } = useLoadoutStorage();
   const navigate = useNavigate();
   const [equipmentLookup, setEquipmentLookup] = useState<Record<string, EquipmentPolaritySource>>(
     {},
@@ -240,21 +220,22 @@ export function BuildOverview() {
   }, [builds, equipmentLookup]);
 
   const grouped = useMemo<BuildsByCategory[]>(() => {
-    const map = new Map<EquipmentType, StoredBuild[]>();
+    const map = new Map<EquipmentPickerTab, StoredBuild[]>();
     for (const b of builds) {
-      const list = map.get(b.equipment_type) || [];
+      const cat = getBuildPickerCategory(b, equipmentLookup);
+      const list = map.get(cat) || [];
       list.push(b);
-      map.set(b.equipment_type, list);
+      map.set(cat, list);
     }
 
-    return EQUIPMENT_TYPE_ORDER.filter((t) => map.has(t)).map((t) => ({
+    return TAB_ORDER.filter((t) => map.has(t)).map((t) => ({
       type: t,
-      label: EQUIPMENT_TYPE_LABELS[t],
+      label: TAB_LABELS[t],
       builds: map
         .get(t)!
         .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()),
     }));
-  }, [builds]);
+  }, [builds, equipmentLookup]);
 
   const handleCreateLoadout = async () => {
     const trimmedName = newLoadoutName.trim();
@@ -276,21 +257,32 @@ export function BuildOverview() {
 
   const loadoutCompatibleBuilds = useMemo(() => {
     if (!linkingLoadout) return [] as StoredBuild[];
-    const usedSlotTypes = new Set(linkingLoadout.builds.map((b) => b.slot_type));
+    const usedSlotTypes = new Set(
+      linkingLoadout.builds.map((lb) => {
+        const b = builds.find((x) => x.id === lb.build_id);
+        if (!b) return lb.slot_type;
+        return getSlotTypeForBuild(b, equipmentLookup) ?? lb.slot_type;
+      }),
+    );
     return builds
       .filter((build) => {
-        const slotType = getSlotTypeForBuild(build);
+        const slotType = getSlotTypeForBuild(build, equipmentLookup);
         if (!slotType) return false;
         return !usedSlotTypes.has(slotType);
       })
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-  }, [builds, linkingLoadout]);
+  }, [builds, linkingLoadout, equipmentLookup]);
 
   const handleLinkBuildToLoadout = async (loadoutId: string) => {
     if (!linkingBuild) return;
 
     try {
-      await linkBuild(loadoutId, linkingBuild.id, linkingBuild.equipment_type);
+      const slotType = getSlotTypeForBuild(linkingBuild, equipmentLookup);
+      if (!slotType) {
+        window.alert('This build type is not supported in loadouts yet.');
+        return;
+      }
+      await linkBuild(loadoutId, linkingBuild.id, slotType);
       setLinkingBuild(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to link build to loadout';
@@ -303,7 +295,7 @@ export function BuildOverview() {
     if (!linkingLoadout) return;
 
     try {
-      const slotType = getSlotTypeForBuild(build);
+      const slotType = getSlotTypeForBuild(build, equipmentLookup);
       if (!slotType) {
         window.alert('This build type is not supported in loadouts yet.');
         return;
@@ -348,6 +340,10 @@ export function BuildOverview() {
                     key={loadout.id}
                     loadout={loadout}
                     getBuildById={getBuildById}
+                    equipmentLookup={equipmentLookup}
+                    updateLoadout={updateLoadout}
+                    publishLoadout={publishLoadout}
+                    refreshBuilds={refreshBuilds}
                     onDelete={async () => {
                       if (!confirm(`Delete loadout "${loadout.name}"?`)) {
                         return;
@@ -584,7 +580,9 @@ export function BuildOverview() {
                       <div className="text-muted truncate text-xs">{build.equipment_name}</div>
                     </div>
                     <span className="text-muted/50 ml-3 shrink-0 text-[10px]">
-                      {getSlotLabel(getSlotTypeForBuild(build) ?? '')}
+                      {formatLoadoutSlotTypeLabel(
+                        getSlotTypeForBuild(build, equipmentLookup) ?? '',
+                      )}
                     </span>
                   </button>
                 ))}
@@ -723,6 +721,10 @@ function BuildRow({
 function LoadoutRow({
   loadout,
   getBuildById,
+  equipmentLookup,
+  updateLoadout,
+  publishLoadout,
+  refreshBuilds,
   onDelete,
   onNavigate,
   onUnlink,
@@ -730,12 +732,73 @@ function LoadoutRow({
 }: {
   loadout: Loadout;
   getBuildById: (id: string) => StoredBuild | undefined;
+  equipmentLookup: Record<string, EquipmentPolaritySource>;
+  updateLoadout: (
+    id: string,
+    patch: { name?: string; visibility?: BuildVisibility },
+  ) => Promise<void>;
+  publishLoadout: (id: string) => Promise<void>;
+  refreshBuilds: () => Promise<StoredBuild[]>;
   onDelete: () => void;
   onNavigate: (buildId: string) => void;
   onUnlink: (slotType: string) => void;
   onAddBuild: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publicBusy, setPublicBusy] = useState(false);
+
+  const privateLinkedBuilds = useMemo(() => {
+    return loadout.builds
+      .map((l) => getBuildById(l.build_id))
+      .filter((b): b is StoredBuild => Boolean(b))
+      .filter((b) => b.visibility !== 'public' && b.visibility !== 'unlisted');
+  }, [loadout.builds, getBuildById]);
+
+  const isPublic = loadout.visibility === 'public';
+
+  const handlePublicToggle = async (next: boolean) => {
+    if (!next) {
+      setPublicBusy(true);
+      try {
+        await updateLoadout(loadout.id, { visibility: 'private' });
+      } catch (e) {
+        window.alert(e instanceof Error ? e.message : 'Failed to update loadout');
+      } finally {
+        setPublicBusy(false);
+      }
+      return;
+    }
+    if (privateLinkedBuilds.length === 0) {
+      setPublicBusy(true);
+      try {
+        await updateLoadout(loadout.id, { visibility: 'public' });
+      } catch (e) {
+        window.alert(e instanceof Error ? e.message : 'Failed to update loadout');
+      } finally {
+        setPublicBusy(false);
+      }
+      return;
+    }
+    setPublishError(null);
+    setPublishOpen(true);
+  };
+
+  const handlePublishConfirm = async () => {
+    setPublishError(null);
+    setPublicBusy(true);
+    try {
+      await publishLoadout(loadout.id);
+      await refreshBuilds();
+      setPublishOpen(false);
+    } catch (e) {
+      setPublishError(e instanceof Error ? e.message : 'Failed to publish loadout');
+    } finally {
+      setPublicBusy(false);
+    }
+  };
+
   const linkedBuildRows = useMemo(() => {
     const rows = loadout.builds
       .map((linked) => {
@@ -776,16 +839,32 @@ function LoadoutRow({
           <span className="text-foreground text-sm font-medium">{loadout.name}</span>
           <span className="text-muted/50 ml-2 text-xs">{loadout.builds.length} builds</span>
         </div>
-        <button
-          className="text-muted/40 hover:bg-danger/10 hover:text-danger shrink-0 rounded-lg p-1.5 text-xs opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          aria-label="Delete loadout"
+        <div
+          className="flex shrink-0 items-center gap-2"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
         >
-          <MaterialSymbol name="close" style={{ fontSize: 18 }} />
-        </button>
+          <label className="text-muted flex cursor-pointer items-center gap-1.5 text-xs">
+            <input
+              type="checkbox"
+              className="accent-accent h-3.5 w-3.5"
+              checked={isPublic}
+              disabled={publicBusy}
+              onChange={(e) => {
+                void handlePublicToggle(e.target.checked);
+              }}
+            />
+            Public
+          </label>
+          <button
+            className="text-muted/40 hover:bg-danger/10 hover:text-danger rounded-lg p-1.5 text-xs opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+            type="button"
+            onClick={onDelete}
+            aria-label="Delete loadout"
+          >
+            <MaterialSymbol name="close" style={{ fontSize: 18 }} />
+          </button>
+        </div>
       </div>
 
       {expanded && (
@@ -793,47 +872,55 @@ function LoadoutRow({
           {linkedBuildRows.length === 0 ? (
             <div className="text-muted/40 py-2 text-xs">No builds added yet.</div>
           ) : (
-            linkedBuildRows.map(({ build, slotType }) => (
-              <div
-                key={`${slotType}:${build.id}`}
-                className="group hover:bg-glass-hover flex items-center gap-3 rounded px-2 py-2 transition-[background-color,color] duration-200"
-              >
-                <button
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                  onClick={() => onNavigate(build.id)}
+            linkedBuildRows.map(({ build, slotType }) => {
+              const slotLabel = getLoadoutSlotDisplayLabel(build, slotType, equipmentLookup);
+              return (
+                <div
+                  key={`${slotType}:${build.id}`}
+                  className="group hover:bg-glass-hover flex items-center gap-3 rounded px-2 py-2 transition-[background-color,color] duration-200"
                 >
-                  <div className="bg-glass flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded">
-                    {build.equipment_image ? (
-                      <img
-                        src={build.equipment_image}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        draggable={false}
-                      />
-                    ) : (
-                      <span className="text-muted/50 text-[10px]">?</span>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-foreground truncate text-xs font-medium">{build.name}</div>
-                    <div className="text-muted truncate text-[11px]">{build.equipment_name}</div>
-                  </div>
-                </button>
-                <span className="border-glass-border text-muted/60 shrink-0 rounded border px-1.5 py-0.5 text-[10px]">
-                  {getSlotLabel(slotType)}
-                </span>
-                <button
-                  onClick={() => onUnlink(slotType)}
-                  className="text-muted/40 hover:text-danger opacity-0 transition-opacity group-hover:opacity-100"
-                  aria-label={`Unlink ${getSlotLabel(slotType)}`}
-                >
-                  <MaterialSymbol name="close" style={{ fontSize: 16 }} />
-                </button>
-              </div>
-            ))
+                  <button
+                    type="button"
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    onClick={() => onNavigate(build.id)}
+                  >
+                    <div className="bg-glass flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded">
+                      {build.equipment_image ? (
+                        <img
+                          src={build.equipment_image}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          draggable={false}
+                        />
+                      ) : (
+                        <span className="text-muted/50 text-[10px]">?</span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-foreground truncate text-xs font-medium">
+                        {build.name}
+                      </div>
+                      <div className="text-muted truncate text-[11px]">{build.equipment_name}</div>
+                    </div>
+                  </button>
+                  <span className="border-glass-border text-muted/60 shrink-0 rounded border px-1.5 py-0.5 text-[10px]">
+                    {slotLabel}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onUnlink(slotType)}
+                    className="text-muted/40 hover:text-danger opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-label={`Unlink ${slotLabel}`}
+                  >
+                    <MaterialSymbol name="close" style={{ fontSize: 16 }} />
+                  </button>
+                </div>
+              );
+            })
           )}
           <div className="pt-2">
             <button
+              type="button"
               onClick={onAddBuild}
               className="text-accent hover:bg-accent/10 rounded px-2 py-1 text-xs"
             >
@@ -842,6 +929,63 @@ function LoadoutRow({
           </div>
         </div>
       )}
+
+      {publishOpen ? (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (!publicBusy) setPublishOpen(false);
+          }}
+        >
+          <div
+            className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
+            tabIndex={0}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="publish-loadout-title"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && !publicBusy) setPublishOpen(false);
+            }}
+          >
+            <h3 id="publish-loadout-title" className="text-foreground mb-2 text-sm font-semibold">
+              Publish this loadout?
+            </h3>
+            <p className="text-muted mb-3 text-xs">
+              All builds in a public loadout must be public or unlisted so others can open them for
+              stats. These linked builds are still private:
+            </p>
+            <ul className="text-foreground mb-4 list-inside list-disc text-xs">
+              {privateLinkedBuilds.map((b) => (
+                <li key={b.id}>{b.name}</li>
+              ))}
+            </ul>
+            {publishError ? (
+              <p className="text-danger mb-3 text-xs" role="alert">
+                {publishError}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={publicBusy}
+                onClick={() => setPublishOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-accent btn-sm"
+                disabled={publicBusy}
+                onClick={() => void handlePublishConfirm()}
+              >
+                {publicBusy ? 'Publishing…' : 'Make all builds public and publish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

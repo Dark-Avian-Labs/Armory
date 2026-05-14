@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
+import { buildLoadoutPath } from '../../app/paths';
 import { apiFetch } from '../../utils/api';
 
 type LoadoutRow = {
@@ -10,6 +12,7 @@ type LoadoutRow = {
 };
 
 export function BuildLoadoutsPanel({ buildId }: { buildId: string }) {
+  const navigate = useNavigate();
   const [loadouts, setLoadouts] = useState<LoadoutRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,17 +53,20 @@ export function BuildLoadoutsPanel({ buildId }: { buildId: string }) {
       ) : null}
       <ul className="space-y-2">
         {loadouts.map((l) => (
-          <li
-            key={l.id}
-            className="border-glass-border bg-glass/35 rounded-xl border px-3 py-2.5 text-sm"
-          >
-            <span className="text-foreground font-medium">{l.name}</span>
-            {l.owner_username ? (
-              <span className="text-muted ml-2 text-xs">({l.owner_username})</span>
-            ) : null}
-            {l.is_own ? (
-              <span className="text-accent ml-2 text-[10px] font-semibold uppercase">Yours</span>
-            ) : null}
+          <li key={l.id}>
+            <button
+              type="button"
+              onClick={() => navigate(buildLoadoutPath(l.id))}
+              className="border-glass-border bg-glass/35 hover:border-glass-border-hover hover:bg-glass-hover w-full rounded-xl border px-3 py-2.5 text-left text-sm transition-[background-color,border-color] duration-200"
+            >
+              <span className="text-foreground font-medium">{l.name}</span>
+              {l.owner_username ? (
+                <span className="text-muted ml-2 text-xs">({l.owner_username})</span>
+              ) : null}
+              {l.is_own ? (
+                <span className="text-accent ml-2 text-[10px] font-semibold uppercase">Yours</span>
+              ) : null}
+            </button>
           </li>
         ))}
       </ul>
