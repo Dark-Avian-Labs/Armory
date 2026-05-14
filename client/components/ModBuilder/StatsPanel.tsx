@@ -113,22 +113,22 @@ function WarframeStats({
       };
     })(),
     (() => {
-      const base = warframe.power;
-      const m = calc?.energy.modded;
-      return {
-        label: 'Energy',
-        baseDisplay: base?.toFixed(0),
-        moddedDisplay: m != null ? m.toFixed(0) : undefined,
-        color: base != null && m != null ? statColor(base, m) : undefined,
-      };
-    })(),
-    (() => {
       const base = warframe.sprint_speed;
       const m = calc?.sprintSpeed.modded;
       return {
         label: 'Sprint Speed',
         baseDisplay: base?.toFixed(2),
         moddedDisplay: m != null ? m.toFixed(2) : undefined,
+        color: base != null && m != null ? statColor(base, m) : undefined,
+      };
+    })(),
+    (() => {
+      const base = warframe.power;
+      const m = calc?.energy.modded;
+      return {
+        label: 'Energy',
+        baseDisplay: base?.toFixed(0),
+        moddedDisplay: m != null ? m.toFixed(0) : undefined,
         color: base != null && m != null ? statColor(base, m) : undefined,
       };
     })(),
@@ -141,12 +141,6 @@ function WarframeStats({
     color?: StatColor;
   }> = calc
     ? [
-        {
-          label: 'Strength',
-          baseDisplay: '100%',
-          moddedDisplay: `${calc.abilityStrength.modded.toFixed(0)}%`,
-          color: statColor(100, calc.abilityStrength.modded),
-        },
         {
           label: 'Duration',
           baseDisplay: '100%',
@@ -164,6 +158,12 @@ function WarframeStats({
           baseDisplay: '100%',
           moddedDisplay: `${calc.abilityRange.modded.toFixed(0)}%`,
           color: statColor(100, calc.abilityRange.modded),
+        },
+        {
+          label: 'Strength',
+          baseDisplay: '100%',
+          moddedDisplay: `${calc.abilityStrength.modded.toFixed(0)}%`,
+          color: statColor(100, calc.abilityStrength.modded),
         },
       ]
     : [];

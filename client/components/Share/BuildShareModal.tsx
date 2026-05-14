@@ -1056,29 +1056,29 @@ export function BuildShareModal({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <ShareRadarAuto
-              labels={['Health', 'Shield', 'Armor', 'Energy', 'Sprint Speed']}
+              labels={['Health', 'Shield', 'Armor', 'Sprint Speed', 'Energy']}
               values={[
                 warframeCalc.health.modded,
                 warframeCalc.shield.modded,
                 warframeCalc.armor.modded,
-                warframeCalc.energy.modded,
                 warframeCalc.sprintSpeed.modded,
+                warframeCalc.energy.modded,
               ]}
             />
           </div>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <ShareRadarAuto
               labels={[
-                'Ability Strength',
                 'Ability Duration',
                 'Ability Efficiency',
                 'Ability Range',
+                'Ability Strength',
               ]}
               values={[
-                warframeCalc.abilityStrength.modded,
                 warframeCalc.abilityDuration.modded,
                 warframeCalc.abilityEfficiency.modded,
                 warframeCalc.abilityRange.modded,
+                warframeCalc.abilityStrength.modded,
               ]}
               fill="rgba(70, 214, 190, 0.28)"
               stroke="rgba(120, 230, 210, 0.95)"
