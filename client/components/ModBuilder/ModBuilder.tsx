@@ -668,10 +668,8 @@ export function ModBuilder() {
 
   useEffect(() => {
     if (!selectedEquipment) {
+      setSlots([]);
       setDefaultPolarities([]);
-      if (!buildId) {
-        setSlots([]);
-      }
       return;
     }
 
