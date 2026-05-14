@@ -33,7 +33,6 @@ import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../u
 import { catalogKeyForMod, hydrateSlotsWithModCatalog } from '../../utils/modCatalogHydration';
 import { isModLockedOut, isPostureMod } from '../../utils/modFiltering';
 import { isWeaponExilusMod } from '../../utils/modMetadata';
-import { shouldUseModSlotPointerPeek } from '../../utils/modSlotPointerPeek';
 import {
   createRivenMod,
   getRivenStatsForType,
@@ -215,7 +214,6 @@ export function ModBuilder() {
   const [searchParams] = useSearchParams();
   const readOnly = searchParams.get('view') === '1';
   const compactOverview = searchParams.get('compact') === '1';
-  const edgeModSlotPeek = useMemo(() => shouldUseModSlotPointerPeek(searchParams), [searchParams]);
   const { saveBuild: storageSave, getBuild, copyBuildFromId } = useBuildStorage();
 
   const [equipmentType, setEquipmentType] = useState<EquipmentType>(
@@ -1724,7 +1722,6 @@ export function ModBuilder() {
               onPolarityChange={handlePolarityChange}
               equipmentType={equipmentType}
               readOnly={readOnly}
-              usePointerPeekModSlots={edgeModSlotPeek}
             />
           ) : (
             <div className="glass-shell empty-state">
