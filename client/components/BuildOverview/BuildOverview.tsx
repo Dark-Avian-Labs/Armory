@@ -43,6 +43,12 @@ interface EquipmentPolaritySource extends EquipmentLookupRow {
   exilus_polarity?: string;
 }
 
+const OVERVIEW_METRIC_CHIP_CLASS =
+  'bg-glass flex h-10 min-w-14 items-center justify-center gap-1.5 rounded-lg px-2';
+
+const OVERVIEW_ROW_ACTIONS_CLASS =
+  'flex w-[4.25rem] shrink-0 items-center justify-end gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100';
+
 function getPolarizedSlotCount(build: StoredBuild): number {
   const slots = Array.isArray(build.slots) ? build.slots : [];
   return slots.reduce((count, slot) => count + (typeof slot.polarity === 'string' ? 1 : 0), 0);
@@ -675,10 +681,7 @@ function BuildRow({
 
       <div className="flex shrink-0 items-center gap-2">
         {visibleFormaEntries.map((entry) => (
-          <div
-            key={entry.key}
-            className="bg-glass flex h-10 min-w-14 items-center justify-center gap-1.5 rounded-lg px-2"
-          >
+          <div key={entry.key} className={OVERVIEW_METRIC_CHIP_CLASS}>
             <img
               src={entry.icon}
               alt={`${entry.key} forma used`}
@@ -690,7 +693,7 @@ function BuildRow({
         ))}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+      <div className={OVERVIEW_ROW_ACTIONS_CLASS}>
         {hasLoadouts && (
           <button
             className="text-muted/60 hover:bg-accent/10 hover:text-accent rounded-lg p-1.5 text-xs"
@@ -833,7 +836,7 @@ function LoadoutRow({
           }
         }}
       >
-        <span className="text-muted/50 inline-flex items-center justify-center">
+        <span className="text-muted/50 flex h-10 w-10 shrink-0 items-center justify-center">
           {expanded ? (
             <MaterialSymbol name="expand_more" style={{ fontSize: 16 }} />
           ) : (
@@ -849,36 +852,25 @@ function LoadoutRow({
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
-          <label
-            className={`btn btn-secondary inline-flex cursor-pointer items-center gap-2 text-xs ${
-              publicBusy ? 'pointer-events-none opacity-60' : ''
-            }`}
-          >
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={isPublic}
-              disabled={publicBusy}
-              onChange={(e) => {
-                void handlePublicToggle(e.target.checked);
-              }}
-            />
-            <span
-              className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
-                isPublic ? 'bg-success/20 text-success' : 'bg-muted/10 text-muted/50'
-              }`}
-              aria-hidden="true"
-            >
-              {isPublic ? (
-                <MaterialSymbol name="check" filled style={{ fontSize: 15 }} />
-              ) : (
-                <MaterialSymbol name="close" style={{ fontSize: 15 }} />
-              )}
-            </span>
-            Public
-          </label>
           <button
-            className="text-muted/40 hover:bg-danger/10 hover:text-danger rounded-lg p-1.5 text-xs opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+            type="button"
+            disabled={publicBusy}
+            aria-pressed={isPublic}
+            aria-label={isPublic ? 'Public loadout' : 'Private loadout'}
+            title={isPublic ? 'Public loadout' : 'Private loadout'}
+            className={`${OVERVIEW_METRIC_CHIP_CLASS} hover:bg-glass-hover disabled:hover:bg-glass transition-[color,background-color,transform] duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 ${
+              isPublic ? 'text-success' : 'text-danger'
+            }`}
+            onClick={() => {
+              void handlePublicToggle(!isPublic);
+            }}
+          >
+            <MaterialSymbol name={isPublic ? 'public' : 'public_off'} style={{ fontSize: 24 }} />
+          </button>
+        </div>
+        <div className={OVERVIEW_ROW_ACTIONS_CLASS}>
+          <button
+            className="text-muted/40 hover:bg-danger/10 hover:text-danger rounded-lg p-1.5 text-xs"
             type="button"
             onClick={onDelete}
             aria-label="Delete loadout"

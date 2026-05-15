@@ -1,5 +1,7 @@
+import orokinReactorImg from '../../assets/orokin-reactor.png';
 import type { FormaCount } from '../../utils/formaCounter';
 import { GlassTooltip } from '../GlassTooltip';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface CapacityBarProps {
   capacity: {
@@ -11,9 +13,34 @@ interface CapacityBarProps {
   formaCost?: FormaCount;
   formaMode?: boolean;
   onFormaToggle?: () => void;
+  orokinReactor?: boolean;
+  onOrokinReactorToggle?: () => void;
+  buildIsPublic?: boolean;
+  onBuildIsPublicChange?: (next: boolean) => void;
+  readOnly?: boolean;
 }
 
-export function CapacityBar({ capacity, formaCost, formaMode, onFormaToggle }: CapacityBarProps) {
+function toolToggleClass(active: boolean, variant: 'success' | 'warning'): string {
+  const activeClass =
+    variant === 'warning'
+      ? 'border-warning bg-warning/10 text-warning'
+      : 'border-success bg-success/10 text-success';
+  const idleClass =
+    'border-glass-border text-muted hover:border-glass-border-hover hover:text-foreground';
+  return `flex items-center justify-center rounded-lg border transition-[color,background-color,border-color] duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${active ? activeClass : idleClass}`;
+}
+
+export function CapacityBar({
+  capacity,
+  formaCost,
+  formaMode,
+  onFormaToggle,
+  orokinReactor = false,
+  onOrokinReactorToggle,
+  buildIsPublic = false,
+  onBuildIsPublicChange,
+  readOnly = false,
+}: CapacityBarProps) {
   const totalAvailable = capacity.baseCapacity + capacity.capacityBonus;
   const used = capacity.totalDrain;
   const percentage = totalAvailable > 0 ? Math.min((used / totalAvailable) * 100, 100) : 0;
@@ -124,19 +151,52 @@ export function CapacityBar({ capacity, formaCost, formaMode, onFormaToggle }: C
             </div>
           )}
 
-          {onFormaToggle && (
-            <button
-              onClick={onFormaToggle}
-              className={`flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] transition-[color,background-color,border-color] duration-200 ${
-                formaMode
-                  ? 'border-warning bg-warning/10 text-warning'
-                  : 'border-glass-border text-muted hover:border-glass-border-hover hover:text-foreground'
-              }`}
-            >
-              <img src="/icons/forma.png" alt="" className="h-3.5 w-3.5 object-contain" />
-              Forma
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {onOrokinReactorToggle && (
+              <button
+                type="button"
+                onClick={onOrokinReactorToggle}
+                disabled={readOnly}
+                aria-pressed={orokinReactor}
+                aria-label="Orokin Reactor"
+                title="Orokin Reactor"
+                className={`${toolToggleClass(orokinReactor, 'success')} h-[22px] w-[22px]`}
+              >
+                <img
+                  src={orokinReactorImg}
+                  alt=""
+                  className="h-3.5 w-3.5 object-contain"
+                  draggable={false}
+                />
+              </button>
+            )}
+            {onBuildIsPublicChange && (
+              <button
+                type="button"
+                onClick={() => onBuildIsPublicChange(!buildIsPublic)}
+                disabled={readOnly}
+                aria-pressed={buildIsPublic}
+                aria-label="Public build"
+                title="Public build"
+                className={`${toolToggleClass(buildIsPublic, 'success')} h-[22px] w-[22px]`}
+              >
+                <MaterialSymbol name="public" style={{ fontSize: 14 }} />
+              </button>
+            )}
+            {onFormaToggle && (
+              <button
+                type="button"
+                onClick={onFormaToggle}
+                aria-pressed={formaMode}
+                aria-label="Forma mode"
+                title="Forma mode"
+                className={`${toolToggleClass(!!formaMode, 'warning')} gap-1 px-2 py-0.5 text-[10px]`}
+              >
+                <img src="/icons/forma.png" alt="" className="h-3.5 w-3.5 object-contain" />
+                Forma
+              </button>
+            )}
+          </div>
 
           <span className={`font-semibold ${isOverCapacity ? 'text-danger' : 'text-success'}`}>
             {capacity.remaining} remaining
