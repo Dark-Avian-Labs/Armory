@@ -72,7 +72,6 @@ export interface RemoteAuthState {
   authenticated: boolean;
   has_game_access: boolean;
   user: RemoteAuthUser | null;
-  /** @deprecated Prefer app_roles; kept empty for backward compatibility. */
   permissions: string[];
   app_roles: AppRoleAssignment[];
   auth_service_error?: boolean;

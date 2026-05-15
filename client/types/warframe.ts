@@ -208,7 +208,6 @@ export interface StoredBuild extends BuildConfig {
   created_at: string;
   updated_at: string;
   visibility?: BuildVisibility;
-  /** Plain text; URLs are linkified when displayed. Stored on the server, not inside mod_config. */
   description?: string | null;
 }
 
