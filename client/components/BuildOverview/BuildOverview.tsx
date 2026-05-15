@@ -858,14 +858,14 @@ function LoadoutRow({
             aria-pressed={isPublic}
             aria-label={isPublic ? 'Public loadout' : 'Private loadout'}
             title={isPublic ? 'Public loadout' : 'Private loadout'}
-            className={`${OVERVIEW_METRIC_CHIP_CLASS} disabled:cursor-not-allowed disabled:opacity-60 ${
+            className={`${OVERVIEW_METRIC_CHIP_CLASS} hover:bg-glass-hover disabled:hover:bg-glass transition-[color,background-color,transform] duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 ${
               isPublic ? 'text-success' : 'text-danger'
             }`}
             onClick={() => {
               void handlePublicToggle(!isPublic);
             }}
           >
-            <MaterialSymbol name="public" style={{ fontSize: 24 }} />
+            <MaterialSymbol name={isPublic ? 'public' : 'public_off'} style={{ fontSize: 24 }} />
           </button>
         </div>
         <div className={OVERVIEW_ROW_ACTIONS_CLASS}>

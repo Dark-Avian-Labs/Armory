@@ -1790,7 +1790,9 @@ export function ModBuilder() {
               formaMode={formaMode}
               onFormaToggle={readOnly ? undefined : () => setFormaMode((p) => !p)}
               orokinReactor={orokinReactor}
-              onOrokinReactorToggle={readOnly ? undefined : () => setOrokinReactor((p) => !p)}
+              onOrokinReactorToggle={
+                !readOnly && isOwnBuild ? () => setOrokinReactor((p) => !p) : undefined
+              }
               buildIsPublic={buildIsPublic}
               onBuildIsPublicChange={
                 !readOnly && isOwnBuild ? (next) => setBuildIsPublic(next) : undefined
