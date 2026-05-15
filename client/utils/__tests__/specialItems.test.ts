@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getRequiredExaltedStanceName,
   getSpecialItemSelectionType,
+  isTomeWeapon,
   matchesSpecialItemType,
   weaponOmitsExilusSlot,
   weaponOmitsRivenMod,
@@ -18,6 +19,13 @@ describe('specialItems selection mapping', () => {
   it('keeps exalted pistols as secondary special items', () => {
     expect(getSpecialItemSelectionType('Dex Pixia', 'secondary')).toBe('secondary');
     expect(getSpecialItemSelectionType('Regulators Prime', 'secondary')).toBe('secondary');
+    expect(getSpecialItemSelectionType('Noctua', 'secondary')).toBe('secondary');
+  });
+
+  it('detects Tome weapons by name and asset path', () => {
+    expect(isTomeWeapon({ name: 'Noctua', unique_name: '/Lotus/Powersuits/Pagemaster/ExaltedBook' })).toBe(true);
+    expect(isTomeWeapon({ name: 'Grimoire', unique_name: '/Lotus/Weapons/Tenno/Grimoire/TnGrimoire' })).toBe(true);
+    expect(isTomeWeapon({ name: 'Lex', unique_name: '/Lotus/Weapons/Tenno/Pistols/Lex/Lex' })).toBe(false);
   });
 
   it('keeps exalted melee as melee special items', () => {

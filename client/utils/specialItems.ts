@@ -15,6 +15,8 @@ const SPECIAL_SECONDARY_NAMES = new Set([
   'Regulators Prime',
 ]);
 
+const TOME_WEAPON_NAMES = new Set(['Noctua', 'Grimoire']);
+
 const MELEE_EXALTED_NAMES_SHARED = [
   'Shadow Clones',
   'Shadow Clones Prime',
@@ -115,6 +117,14 @@ export function getSpecialItemSelectionType(
 
 export function matchesSpecialItemType(name: string, equipmentType: EquipmentType): boolean {
   return getSpecialItemSelectionType(name, equipmentType) !== null;
+}
+
+export function isTomeWeapon(equipment?: { unique_name?: string; name?: string | null }): boolean {
+  if (!equipment?.name) return false;
+  const normalized = normalizeEquipmentName(equipment.name);
+  if (TOME_WEAPON_NAMES.has(normalized)) return true;
+  const path = (equipment.unique_name ?? '').replace(/\\/g, '/').toLowerCase();
+  return path.includes('/grimoire/') || path.includes('exaltedbook');
 }
 
 export function getRequiredExaltedStanceName(equipmentName?: string | null): string | null {

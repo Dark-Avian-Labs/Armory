@@ -1,5 +1,5 @@
 import type { Mod, EquipmentType } from '../types/warframe';
-import { getRequiredExaltedStanceName } from './specialItems';
+import { getRequiredExaltedStanceName, isTomeWeapon } from './specialItems';
 
 export const VARIANT_PREFIXES = [
   'Primed',
@@ -689,11 +689,15 @@ function isSecondaryModCompatible(
   _mod: Mod,
   modType: string,
   compat: string,
-  equipment?: { unique_name: string; name: string },
+  equipment?: { unique_name: string; name: string; product_category?: string },
 ): boolean {
   if (modType !== 'SECONDARY') return false;
 
   const compatUpper = compat.toUpperCase();
+
+  if (compatUpper === 'TOME') {
+    return isTomeWeapon(equipment);
+  }
 
   if (compatUpper === 'PISTOL') return true;
   if (compatUpper === 'SECONDARY') return true;
