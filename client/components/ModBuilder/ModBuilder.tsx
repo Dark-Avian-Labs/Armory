@@ -1746,28 +1746,6 @@ export function ModBuilder() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={readOnly}
-                  onClick={() => setOrokinReactor((v) => !v)}
-                  aria-pressed={orokinReactor}
-                  className="btn btn-secondary"
-                  title="Toggle Orokin Reactor"
-                >
-                  <span
-                    className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
-                      orokinReactor ? 'bg-success/20 text-success' : 'bg-muted/10 text-muted/50'
-                    }`}
-                    aria-hidden="true"
-                  >
-                    {orokinReactor ? (
-                      <MaterialSymbol name="check" filled style={{ fontSize: 15 }} />
-                    ) : (
-                      <MaterialSymbol name="close" style={{ fontSize: 15 }} />
-                    )}
-                  </span>
-                  Orokin Reactor
-                </button>
                 {equipmentType !== 'warframe' && (
                   <button
                     className="btn btn-secondary text-sm"
@@ -1797,32 +1775,9 @@ export function ModBuilder() {
                   </button>
                 ) : null}
                 {!readOnly && isOwnBuild ? (
-                  <>
-                    <label className="btn btn-secondary inline-flex cursor-pointer items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={buildIsPublic}
-                        onChange={(e) => setBuildIsPublic(e.target.checked)}
-                      />
-                      <span
-                        className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
-                          buildIsPublic ? 'bg-success/20 text-success' : 'bg-muted/10 text-muted/50'
-                        }`}
-                        aria-hidden="true"
-                      >
-                        {buildIsPublic ? (
-                          <MaterialSymbol name="check" filled style={{ fontSize: 15 }} />
-                        ) : (
-                          <MaterialSymbol name="close" style={{ fontSize: 15 }} />
-                        )}
-                      </span>
-                      Public
-                    </label>
-                    <button type="button" className="btn btn-accent" onClick={openSaveModal}>
-                      Save Build
-                    </button>
-                  </>
+                  <button type="button" className="btn btn-accent" onClick={openSaveModal}>
+                    Save Build
+                  </button>
                 ) : null}
               </div>
             </div>
@@ -1834,6 +1789,13 @@ export function ModBuilder() {
               formaCost={formaCost}
               formaMode={formaMode}
               onFormaToggle={readOnly ? undefined : () => setFormaMode((p) => !p)}
+              orokinReactor={orokinReactor}
+              onOrokinReactorToggle={readOnly ? undefined : () => setOrokinReactor((p) => !p)}
+              buildIsPublic={buildIsPublic}
+              onBuildIsPublicChange={
+                !readOnly && isOwnBuild ? (next) => setBuildIsPublic(next) : undefined
+              }
+              readOnly={readOnly}
             />
           </div>
 
