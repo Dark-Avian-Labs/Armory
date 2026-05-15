@@ -149,11 +149,10 @@ export function CardPreview({
             <img
               src={getModAsset(rarity, 'Background')}
               alt="bg"
-              className="absolute left-1/2 max-w-none"
+              className="absolute top-1/2 left-1/2 max-w-none"
               style={{
-                transform: 'translateX(-50%)',
+                transform: 'translate(-50%, -50%)',
                 marginLeft: L.bgOffsetX * s,
-                bottom: 0,
                 width: L.bgWidth * s,
                 height: L.bgHeight * s,
               }}
