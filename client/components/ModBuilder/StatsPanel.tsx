@@ -373,13 +373,13 @@ function normalizeFireBehaviorsJson(raw: string | undefined): FireBehavior[] {
   }
 }
 
-type StatColor = 'text-foreground' | 'text-green-400' | 'text-red-400';
+type StatColor = 'text-foreground' | 'text-success' | 'text-danger';
 
 function statColor(base: number, modded: number, lowerIsBetter = false): StatColor {
   const diff = modded - base;
   if (Math.abs(diff) < 0.0001) return 'text-foreground';
   const positive = lowerIsBetter ? diff < 0 : diff > 0;
-  return positive ? 'text-green-400' : 'text-red-400';
+  return positive ? 'text-success' : 'text-danger';
 }
 
 function formatBigNumber(n: number): string {

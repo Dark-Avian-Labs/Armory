@@ -53,7 +53,7 @@ export function CompareBar() {
                   </div>
                 </div>
                 <button
-                  className="text-muted ml-1 shrink-0 rounded p-0.5 transition-colors hover:text-red-400"
+                  className="text-muted hover:text-danger ml-1 shrink-0 rounded p-0.5 transition-colors"
                   onClick={() => removeSnapshot(snap.id)}
                   title="Remove from comparison"
                 >
@@ -86,7 +86,7 @@ export function CompareBar() {
               </button>
             )}
             <button
-              className="text-muted text-xs transition-colors hover:text-red-400"
+              className="text-muted hover:text-danger text-xs transition-colors"
               onClick={clearAll}
             >
               Clear all

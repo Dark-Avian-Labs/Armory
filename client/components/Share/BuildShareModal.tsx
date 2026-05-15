@@ -337,7 +337,7 @@ function ShareReactorStamp({ active }: { active: boolean }) {
     <div className="flex flex-col items-center gap-0.5">
       <img src={orokinReactorImg} alt="" className="h-7 w-7 object-contain" draggable={false} />
       <span
-        className={`inline-flex items-center justify-center ${active ? 'text-emerald-400' : 'text-red-400/90'}`}
+        className={`inline-flex items-center justify-center ${active ? 'text-success' : 'text-danger/90'}`}
         aria-hidden
       >
         {active ? (
@@ -549,7 +549,7 @@ function ShareSkillsPanel({
               key={ability.index}
               className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg border ${
                 isReplaced
-                  ? 'bg-danger/10 border-red-400/70 ring-1 ring-red-400/50'
+                  ? 'bg-danger/10 border-danger/70 ring-danger/50 ring-1'
                   : 'border-white/15 bg-black/25'
               }`}
               style={{ width: iconPx, height: iconPx }}
@@ -570,7 +570,7 @@ function ShareSkillsPanel({
               )}
               <span
                 className={`absolute -top-0.5 -left-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full px-0.5 text-[8px] font-bold ${
-                  isReplaced ? 'bg-red-500 text-white' : 'bg-white/20 text-[#dbe4ff]'
+                  isReplaced ? 'bg-danger text-white' : 'bg-white/20 text-[#dbe4ff]'
                 }`}
               >
                 {ability.index + 1}
