@@ -1,47 +1,41 @@
-import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Component, lazy, type ErrorInfo, type ReactNode } from 'react';
 
-import { Layout } from '../components/Layout/Layout';
-import { NotFoundPage } from '../components/NotFoundPage/NotFoundPage';
-import { RequireAuth } from '../features/auth/RequireAuth';
-import { APP_PATHS } from './paths';
-
-const BuildOverview = lazy(() =>
+export const BuildOverview = lazy(() =>
   import('../components/BuildOverview/BuildOverview').then((mod) => ({
     default: mod.BuildOverview,
   })),
 );
-const BuildsCatalogPage = lazy(() =>
+export const BuildsCatalogPage = lazy(() =>
   import('../components/BuildsCatalog/BuildsCatalogPage').then((mod) => ({
     default: mod.BuildsCatalogPage,
   })),
 );
-const BuildsByEquipmentPage = lazy(() =>
+export const BuildsByEquipmentPage = lazy(() =>
   import('../components/BuildsCatalog/BuildsByEquipmentPage').then((mod) => ({
     default: mod.BuildsByEquipmentPage,
   })),
 );
-const LoadoutDetailPage = lazy(() =>
+export const LoadoutDetailPage = lazy(() =>
   import('../components/Loadout/LoadoutDetailPage').then((mod) => ({
     default: mod.LoadoutDetailPage,
   })),
 );
-const ModBuilder = lazy(() =>
+export const ModBuilder = lazy(() =>
   import('../components/ModBuilder/ModBuilder').then((mod) => ({
     default: mod.ModBuilder,
   })),
 );
-const AdminPage = lazy(() =>
+export const AdminPage = lazy(() =>
   import('../components/Auth/AdminPage').then((mod) => ({
     default: mod.AdminPage,
   })),
 );
-const LoginPage = lazy(() =>
+export const LoginPage = lazy(() =>
   import('../components/Auth/LoginPage').then((mod) => ({
     default: mod.LoginPage,
   })),
 );
-const LegalPage = lazy(() =>
+export const LegalPage = lazy(() =>
   import('../features/legal/LegalPage').then((mod) => ({
     default: mod.LegalPage,
   })),
@@ -56,7 +50,10 @@ type ChunkErrorBoundaryState = {
   hasError: boolean;
 };
 
-class ChunkErrorBoundary extends Component<ChunkErrorBoundaryProps, ChunkErrorBoundaryState> {
+export class ChunkErrorBoundary extends Component<
+  ChunkErrorBoundaryProps,
+  ChunkErrorBoundaryState
+> {
   state: ChunkErrorBoundaryState = {
     hasError: false,
   };
@@ -102,7 +99,7 @@ class ChunkErrorBoundary extends Component<ChunkErrorBoundaryProps, ChunkErrorBo
   }
 }
 
-function RouteFallback() {
+export function RouteFallback() {
   return (
     <div
       className="flex min-h-screen items-center justify-center"
@@ -113,42 +110,5 @@ function RouteFallback() {
     >
       <p className="text-muted text-sm">Loading...</p>
     </div>
-  );
-}
-
-export function AppRoutes() {
-  return (
-    <ChunkErrorBoundary>
-      <Suspense fallback={<RouteFallback />}>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path={APP_PATHS.legal} element={<LegalPage />} />
-            <Route path="/auth/legal" element={<LegalPage />} />
-          </Route>
-          <Route
-            element={
-              <RequireAuth>
-                <Layout />
-              </RequireAuth>
-            }
-          >
-            <Route path="/" element={<Navigate to={APP_PATHS.home} replace />} />
-            <Route path="/builder" element={<Navigate to={APP_PATHS.home} replace />} />
-            <Route
-              path="/builder/builds/:equipmentType/:equipmentUniqueName"
-              element={<BuildsByEquipmentPage />}
-            />
-            <Route path="/builder/loadouts/:loadoutId" element={<LoadoutDetailPage />} />
-            <Route path={APP_PATHS.buildsExplore} element={<BuildsCatalogPage />} />
-            <Route path={APP_PATHS.myBuilds} element={<BuildOverview />} />
-            <Route path={APP_PATHS.buildNew} element={<ModBuilder />} />
-            <Route path={APP_PATHS.buildEdit} element={<ModBuilder />} />
-            <Route path={APP_PATHS.admin} element={<AdminPage />} />
-          </Route>
-          <Route path={APP_PATHS.login} element={<LoginPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </Suspense>
-    </ChunkErrorBoundary>
   );
 }
