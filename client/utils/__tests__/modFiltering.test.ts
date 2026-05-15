@@ -146,6 +146,58 @@ describe('Bow mod compatibility', () => {
   });
 });
 
+describe('Tome secondary mod compatibility', () => {
+  const fassCanticle: Mod = {
+    unique_name: '/Lotus/Upgrades/Mods/Tome/Canticle/FassCanticleMod',
+    name: 'Fass Canticle',
+    type: 'SECONDARY',
+    compat_name: 'Tome',
+  };
+  const netraInvocation: Mod = {
+    unique_name: '/Lotus/Upgrades/Mods/Tome/Invocation/NetraInvocationMod',
+    name: 'Netra Invocation',
+    type: 'SECONDARY',
+    compat_name: 'Tome',
+  };
+  const hornetStrike: Mod = {
+    unique_name: '/Lotus/Upgrades/Mods/Pistol/WeaponDamageAmountMod',
+    name: 'Hornet Strike',
+    type: 'SECONDARY',
+    compat_name: 'Pistol',
+  };
+
+  const noctua = {
+    unique_name: '/Lotus/Powersuits/Pagemaster/ExaltedBook',
+    name: 'Noctua',
+    product_category: 'SpecialItems',
+  };
+  const grimoire = {
+    unique_name: '/Lotus/Weapons/Tenno/Grimoire/TnGrimoire',
+    name: 'Grimoire',
+    product_category: 'Pistols',
+  };
+  const lex = {
+    unique_name: '/Lotus/Weapons/Tenno/Pistols/Lex/Lex',
+    name: 'Lex',
+    product_category: 'Pistols',
+  };
+
+  it('accepts Canticle and Invocation mods on Tome weapons', () => {
+    expect(filterCompatibleMods([fassCanticle], 'secondary', noctua)).toHaveLength(1);
+    expect(filterCompatibleMods([netraInvocation], 'secondary', grimoire)).toHaveLength(1);
+  });
+
+  it('still accepts pistol mods on Tome weapons', () => {
+    expect(filterCompatibleMods([hornetStrike], 'secondary', noctua)).toHaveLength(1);
+    expect(filterCompatibleMods([hornetStrike], 'secondary', grimoire)).toHaveLength(1);
+  });
+
+  it('does not offer Tome-only mods on regular secondaries', () => {
+    expect(filterCompatibleMods([fassCanticle], 'secondary', lex)).toHaveLength(0);
+    expect(filterCompatibleMods([netraInvocation], 'secondary', lex)).toHaveLength(0);
+  });
+});
+
 describe('SpecialItems primary category inference', () => {
   it('treats Neutralizer (ExaltedSniper) as sniper for compat matching', () => {
     const sniperOnlyMod: Mod = {
