@@ -242,7 +242,7 @@ export function CompareModal({ onClose }: CompareModalProps) {
                       <span
                         key={i}
                         className={`text-center font-mono text-xs tabular-nums ${
-                          i === best ? 'font-bold text-green-400' : 'text-foreground'
+                          i === best ? 'text-success font-bold' : 'text-foreground'
                         }`}
                       >
                         {v > 0 ? fmt(v) : '-'}
@@ -263,7 +263,7 @@ export function CompareModal({ onClose }: CompareModalProps) {
                     <span
                       key={i}
                       className={`text-center font-mono text-xs font-semibold tabular-nums ${
-                        i === bestTotalIdx ? 'text-green-400' : 'text-foreground'
+                        i === bestTotalIdx ? 'text-success' : 'text-foreground'
                       }`}
                     >
                       {fmt(s.totalElementDamage)}
@@ -310,7 +310,7 @@ function StatRowView({
         <span
           key={i}
           className={`text-center font-mono text-xs tabular-nums ${
-            i === bestIdx ? 'font-bold text-green-400' : 'text-foreground'
+            i === bestIdx ? 'text-success font-bold' : 'text-foreground'
           }`}
         >
           {format(v)}

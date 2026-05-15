@@ -29,7 +29,7 @@
   --color-accent-weak: color-mix(in oklab, var(--color-accent) 10%, transparent);
   --color-accent-weak-2: color-mix(in oklab, var(--color-accent) 20%, transparent);
 
-  --color-success: oklch(78% 0.12 166);
+  --color-success: oklch(72% 0.19 145);
   --color-warning: oklch(78% 0.12 75);
   --color-danger: oklch(59% 0.19 25);
   --color-info: oklch(55% 0.14 264);
