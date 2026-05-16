@@ -1,6 +1,6 @@
 # Changelog
 
-Notable work on `main` is summarized **by merged pull request**, one line each, conventional-commit style. PR links: `https://github.com/Dark-Avian-Labs/Armory/pull/<n>`.
+Notable work on `main` is summarized **by merged pull request**, one line each, conventional-commit style.
 
 ## SemVer (baseline **1.0.0**)
 
