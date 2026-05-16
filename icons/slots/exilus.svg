@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
+    <g id="Exilus">
+        <path id="Exilus-Bottom" serif:id="Exilus Bottom" d="M256,295.237L307.297,346.534L327.681,326.151L327.681,291.237L256.444,220L184.319,291.237L184.319,326.151L204.703,346.534L256,295.237Z" style="stroke:black;stroke-width:8.33px;"/>
+        <path id="Exilus-Top" serif:id="Exilus Top" d="M256,194L307.297,245.297L327.681,224.914L327.681,190L256.444,118.763L184.319,190L184.319,224.914L204.703,245.297L256,194Z" style="stroke:black;stroke-width:8.33px;"/>
+        <path id="Exilus-Left" serif:id="Exilus Left" d="M181,425.608L133.625,378.233L120.003,391.855L91,391.855L55,346C55,346 77,335.223 77,323C77,310.777 59,289 59,289L21,272L21,213L53,213L77,178L77,168L62,168L62,136L100.723,97.277L127,97.277L127,114L163,114L163,165L111.534,216.466L111.534,279L181.039,348.505L181,425.608Z" style="stroke:black;stroke-width:8.33px;"/>
+        <path id="Exilus-Right" serif:id="Exilus Right" d="M331,425.608L378.375,378.233L391.997,391.855L421,391.855L457,346C457,346 435,335.223 435,323C435,310.777 453,289 453,289L491,272L491,213L459,213L435,178L435,168L450,168L450,136L411.277,97.277L385,97.277L385,114L349,114L349,165L400.466,216.466L400.466,279L330.961,348.505L331,425.608Z" style="stroke:black;stroke-width:8.33px;"/>
+    </g>
+</svg>

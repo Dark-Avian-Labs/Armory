@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
+    <g id="Stance">
+        <path id="Stance-1" serif:id="Stance 1" d="M188,192C188,192 197,115 248,119C285.524,121.943 303.712,143.945 303,176C302,221 250,235 250,235C250,235 328,229 328,165C328,111 284,87 256,87C230.621,87 209.043,98.958 197,120C184.957,141.042 188,192 188,192Z" style="stroke:black;stroke-width:8.33px;"/>
+        <path id="Stance-2" serif:id="Stance 2" d="M68,327C68,327 191.025,310.031 285,261C400,201 427,78 427,78C427,78 420,235 315,289C204.687,345.733 68,327 68,327Z" style="stroke:black;stroke-width:8.33px;"/>
+        <path id="Stance-3" serif:id="Stance 3" d="M21,463.583C21,463.583 107.682,408.674 155,386C202.318,363.326 280,346 280,346L271,393C271,393 218.895,404.392 168,416C111,429 21,463.583 21,463.583Z" style="stroke:black;stroke-width:8.33px;"/>
+        <path id="Stance-4" serif:id="Stance 4" d="M335,321C335,321 391.424,285.367 423,268C443,257 477,244 491,261C509.772,283.795 414,408 414,408C414,408 452.932,323.863 441,300C427,272 335,321 335,321Z" style="stroke:black;stroke-width:8.33px;"/>
+    </g>
+</svg>

@@ -4,6 +4,8 @@ import {
   getDamageTypeIconPath,
   splitDisplayTextByDamageTokens,
 } from '../../utils/damageTypeTokens';
+import { isSlotTypeName } from '../../utils/slotIcons';
+import { SlotTypeIcon } from '../ui/SlotTypeIcon';
 import {
   type CardLayout,
   type Rarity,
@@ -66,9 +68,6 @@ export function CardPreview({
   const isEmptyCard = rarity === 'Empty';
   const slotRarity =
     rarity === 'Common' || rarity === 'Uncommon' || rarity === 'Rare' ? rarity : 'Uncommon';
-  const slotIconAsset = slotIcon
-    ? `/icons/${slotRarity}${slotIcon.charAt(0).toUpperCase() + slotIcon.slice(1)}Icon.png`
-    : '';
   const primaryTextColor = isEmptyCard ? 'var(--color-foreground)' : '#ffffff';
   const secondaryTextColor = isEmptyCard
     ? 'color-mix(in srgb, var(--color-foreground) 80%, transparent)'
@@ -324,22 +323,23 @@ export function CardPreview({
           />
         )}
 
-        {slotIcon && (
-          <img
-            src={slotIconAsset}
-            alt={slotIcon}
+        {slotIcon && isSlotTypeName(slotIcon) ? (
+          <div
             className="absolute left-1/2"
             style={{
               zIndex: 4,
               transform: 'translateX(-50%)',
               top: L.slotIconOffsetY * s,
-              height: L.slotIconSize * s,
-              width: 'auto',
-              filter: 'drop-shadow(0px 0px 2px #000)',
             }}
-            draggable={false}
-          />
-        )}
+          >
+            <SlotTypeIcon
+              type={slotIcon}
+              variant="card"
+              rarity={slotRarity}
+              size={L.slotIconSize * s}
+            />
+          </div>
+        ) : null}
 
         {damageValue && damageType !== 'none' && (
           <div
