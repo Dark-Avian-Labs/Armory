@@ -121,7 +121,9 @@ export function SearchBar() {
         <input
           id="armory-header-search"
           name="search"
-          type="search"
+          type="text"
+          role="searchbox"
+          enterKeyHint="search"
           autoComplete="off"
           className="search-box w-52"
           placeholder="Search..."
