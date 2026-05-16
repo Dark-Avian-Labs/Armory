@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
+    <g id="Aura">
+        <path id="Aura-Ring-3" serif:id="Aura Ring 3" d="M131.002,393.69C93.537,359.654 70,310.554 70,256C70,153.344 153.344,70 256,70C358.656,70 442,153.344 442,256C442,310.932 418.136,360.334 380.218,394.395" style="fill:none;stroke:black;stroke-width:20.83px;"/>
+        <path id="Aura-Ring-2" serif:id="Aura Ring 2" d="M157.823,362.669C129.043,336.163 111,298.172 111,256C111,175.972 175.972,111 256,111C336.028,111 401,175.972 401,256C401,298.698 382.505,337.109 353.096,363.654" style="fill:none;stroke:black;stroke-width:12.5px;"/>
+        <path id="Aura-Ring-1" serif:id="Aura Ring 1" d="M180.451,337.293C158.648,317.02 145,288.091 145,256C145,194.737 194.737,145 256,145C317.263,145 367,194.737 367,256C367,288.661 352.864,318.045 330.381,338.364" style="fill:none;stroke:black;stroke-width:12.5px;"/>
+        <path id="Aura-Bottom-2" serif:id="Aura Bottom 2" d="M352.442,415.603C324.057,432.98 290.69,443 255,443C218.97,443 185.307,432.788 156.748,415.104" style="fill:none;stroke:black;stroke-width:20.83px;"/>
+        <path id="Aura-Bottom-1" serif:id="Aura Bottom 1" d="M255,291L340.5,386C340.5,386 316.715,409 256,409C195.285,409 169.5,386 169.5,386L255,291Z"/>
+        <path id="Aura-Center" serif:id="Aura Center" d="M213.668,320.68C195.692,307.584 184,286.371 184,262.449C184,222.711 216.262,190.449 256,190.449C295.738,190.449 328,222.711 328,262.449C328,286.909 315.777,308.536 297.111,321.551L255,274.449L213.668,320.68Z"/>
+        <path id="Aura-Right" serif:id="Aura Right" d="M484,256L442,277L442,235L484,256Z" style="stroke:black;stroke-width:8.33px;"/>
+        <path id="Aura-Left" serif:id="Aura Left" d="M28,256L70,235L70,277L28,256Z" style="stroke:black;stroke-width:8.33px;"/>
+    </g>
+</svg>

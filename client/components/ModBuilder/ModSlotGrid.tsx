@@ -12,6 +12,7 @@ import {
 } from '../../types/warframe';
 import { polarityMatchForUi } from '../../utils/drain';
 import { isRivenMod } from '../../utils/riven';
+import { isSlotTypeName } from '../../utils/slotIcons';
 import { countEquippedUmbraSetMods, isUmbraSelfScalingSetMod } from '../../utils/umbraSet';
 import {
   ModCard,
@@ -22,6 +23,7 @@ import {
   getCardFoilStyle,
 } from '../ModCard';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
+import { SlotTypeIcon } from '../ui/SlotTypeIcon';
 
 const POLARITY_CYCLE_FULL: (string | undefined)[] = [
   undefined,
@@ -608,27 +610,27 @@ function SlotCell({
                 <span className="text-warning/70 mt-0.5 text-[9px]">{polarityLabel}</span>
                 {label && <span className="text-muted/40 text-[8px]">{label}</span>}
               </div>
-              {slotIconName && !slot.polarity && (
-                <img
-                  src={`/icons/icon-${slotIconName}.png`}
-                  alt={slotIconName}
-                  className="invert-on-light pointer-events-none absolute top-1/3 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
-                  style={{ height: 20, width: 'auto', opacity: 0.3 }}
-                  draggable={false}
+              {slotIconName && isSlotTypeName(slotIconName) && !slot.polarity ? (
+                <SlotTypeIcon
+                  type={slotIconName}
+                  variant="watermark"
+                  size={20}
+                  opacity={0.3}
+                  className="absolute top-1/3 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
                 />
-              )}
+              ) : null}
             </>
           ) : (
             <>
-              {slotIconName && (
-                <img
-                  src={`/icons/icon-${slotIconName}.png`}
-                  alt={slotIconName}
-                  className="invert-on-light pointer-events-none absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
-                  style={{ height: 28, width: 'auto', opacity: 0.5 }}
-                  draggable={false}
+              {slotIconName && isSlotTypeName(slotIconName) ? (
+                <SlotTypeIcon
+                  type={slotIconName}
+                  variant="watermark"
+                  size={28}
+                  opacity={0.5}
+                  className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
                 />
-              )}
+              ) : null}
               {slot.polarity && (
                 <div className="pointer-events-none absolute top-1 right-1 z-10">
                   <PolarityIcon polarity={slot.polarity} size={12} />
