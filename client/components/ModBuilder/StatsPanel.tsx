@@ -7,6 +7,7 @@ import { formatPercent } from '../../utils/damage';
 import { calculateWeaponDps, type WeaponCalcResult } from '../../utils/damageCalc';
 import { getDispositionPips, getEffectiveRivenDisposition } from '../../utils/riven';
 import { calculateWarframeStats, type WarframeBonusEffects } from '../../utils/warframeCalc';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 import type { ShardSlotConfig, ShardType } from './ArchonShardSlots';
 
 interface StatsPanelProps {
@@ -689,11 +690,13 @@ function DpsInfoTip({ isMelee }: { isMelee: boolean }) {
     <>
       <button
         ref={btnRef}
-        className="text-muted/60 hover:bg-glass-hover hover:text-muted flex h-4 w-4 items-center justify-center rounded-full text-[9px] leading-none font-bold transition-colors"
+        type="button"
+        className="text-muted/60 hover:bg-glass-hover hover:text-muted flex h-4 w-4 items-center justify-center rounded-full transition-colors"
         onClick={toggle}
         title="What do these numbers mean?"
+        aria-label="What do these numbers mean?"
       >
-        i
+        <MaterialSymbol name="info" style={{ fontSize: 14 }} />
       </button>
       {open &&
         pos &&
