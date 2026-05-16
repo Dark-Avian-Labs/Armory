@@ -597,6 +597,32 @@ html.ui-shadow:not(.dark) {
     background: var(--color-glass-active);
   }
 
+  .modal.equipment-picker-modal {
+    width: min(90vw, calc(2 * 9rem + 0.75rem + 3rem));
+    max-width: min(90vw, calc(2 * 9rem + 0.75rem + 3rem));
+  }
+
+  @media (min-width: 40rem) {
+    .modal.equipment-picker-modal {
+      width: min(90vw, calc(3 * 9rem + 1.5rem + 3rem));
+      max-width: min(90vw, calc(3 * 9rem + 1.5rem + 3rem));
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .modal.equipment-picker-modal {
+      width: min(90vw, calc(4 * 9rem + 2.25rem + 3rem));
+      max-width: min(90vw, calc(4 * 9rem + 2.25rem + 3rem));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .modal.equipment-picker-modal {
+      width: min(90vw, calc(5 * 9rem + 3rem + 3rem));
+      max-width: min(90vw, calc(5 * 9rem + 3rem + 3rem));
+    }
+  }
+
   .modal-overlay {
     position: fixed;
     inset: 0;

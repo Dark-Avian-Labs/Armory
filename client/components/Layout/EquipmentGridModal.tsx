@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react';
 import { normalizeEquipmentName } from '../../utils/specialItems';
 import {
   CATEGORY_API,
+  EQUIPMENT_PICKER_GRID_CLASS,
+  EQUIPMENT_PICKER_TILE_BUTTON_CLASS,
+  EQUIPMENT_PICKER_TILE_SIZE_CLASS,
   HIDDEN_EMPTY_TABS,
   loadEquipmentItemsForTab,
   TAB_LABELS,
@@ -62,7 +65,7 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
     <Modal
       open
       onClose={onClose}
-      className="glass-modal-surface max-w-4xl p-6 shadow-2xl"
+      className="glass-modal-surface equipment-picker-modal p-6 shadow-2xl"
       ariaLabelledBy="equipment-grid-title"
     >
       <div
@@ -131,16 +134,18 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,6rem)] justify-items-start gap-3">
+            <div className={EQUIPMENT_PICKER_GRID_CLASS}>
               {filtered.map((item) => (
                 <button
                   key={item.unique_name}
                   type="button"
                   onClick={() => onSelect(item.selection_type ?? activeTab, item.unique_name)}
-                  className="group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative w-24 shrink-0 overflow-hidden rounded-lg border p-0 text-center transition-[color,background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5"
+                  className={`group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative overflow-hidden rounded-lg border p-0 text-center transition-[color,background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 ${EQUIPMENT_PICKER_TILE_BUTTON_CLASS}`}
                   aria-label={`Select ${normalizeEquipmentName(item.name)}`}
                 >
-                  <div className="bg-glass relative flex h-24 w-24 items-center justify-center overflow-hidden">
+                  <div
+                    className={`bg-glass relative flex items-center justify-center overflow-hidden ${EQUIPMENT_PICKER_TILE_SIZE_CLASS}`}
+                  >
                     {item.image_path ? (
                       <img
                         src={`/images${item.image_path}`}
