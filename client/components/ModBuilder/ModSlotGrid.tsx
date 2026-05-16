@@ -309,6 +309,7 @@ function PolarityIcon({
       style={{
         width: size,
         height: size,
+        objectFit: 'contain',
         filter: `${filterStyle} drop-shadow(0 0 1.5px rgba(0,0,0,1)) drop-shadow(0 0 1.5px rgba(0,0,0,1))`,
       }}
       draggable={false}

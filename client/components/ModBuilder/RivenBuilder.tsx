@@ -191,7 +191,7 @@ export function RivenBuilder({
                       <img
                         src={`/icons/polarity/${p.icon}.svg`}
                         alt={p.label}
-                        className="h-4 w-4"
+                        className="h-4 w-4 object-contain"
                         style={{
                           filter: active
                             ? 'brightness(0) invert(0.5) sepia(1) saturate(5) hue-rotate(85deg)'

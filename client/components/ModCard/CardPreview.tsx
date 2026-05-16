@@ -394,6 +394,7 @@ export function CardPreview({
               top: L.polarityOffsetY * s,
               width: L.polaritySize * s,
               height: L.polaritySize * s,
+              objectFit: 'contain',
               filter:
                 polarityMatch === 'match'
                   ? 'brightness(0) invert(0.5) sepia(1) saturate(5) hue-rotate(85deg)'
