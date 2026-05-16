@@ -85,25 +85,21 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
           </button>
         </div>
 
-        <div className="border-glass-border bg-glass mb-3 rounded-2xl border p-1.5">
-          <div className="flex flex-wrap gap-1">
-            {visibleTabs.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => {
-                  setActiveTab(t);
-                }}
-                className={`rounded-full border px-3 py-2 text-xs font-medium tracking-[0.18em] uppercase transition-[color,background-color,border-color,box-shadow] duration-200 ${
-                  activeTab === t
-                    ? 'border-accent/40 bg-accent/10 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-                    : 'text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground border-transparent'
-                }`}
-              >
-                {TAB_LABELS[t]}
-              </button>
-            ))}
-          </div>
+        <div className="tabs" role="tablist" aria-label="Equipment categories">
+          {visibleTabs.map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === t}
+              onClick={() => {
+                setActiveTab(t);
+              }}
+              className={`tab ${activeTab === t ? 'active' : ''}`}
+            >
+              {TAB_LABELS[t]}
+            </button>
+          ))}
         </div>
 
         <input
@@ -135,16 +131,16 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+            <div className="grid grid-cols-[repeat(auto-fill,6rem)] justify-items-start gap-3">
               {filtered.map((item) => (
                 <button
                   key={item.unique_name}
                   type="button"
                   onClick={() => onSelect(item.selection_type ?? activeTab, item.unique_name)}
-                  className="group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative overflow-hidden rounded-2xl border p-0 text-center transition-[color,background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5"
+                  className="group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative w-24 shrink-0 overflow-hidden rounded-lg border p-0 text-center transition-[color,background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5"
                   aria-label={`Select ${normalizeEquipmentName(item.name)}`}
                 >
-                  <div className="bg-glass relative flex h-24 w-full items-center justify-center overflow-hidden">
+                  <div className="bg-glass relative flex h-24 w-24 items-center justify-center overflow-hidden">
                     {item.image_path ? (
                       <img
                         src={`/images${item.image_path}`}
