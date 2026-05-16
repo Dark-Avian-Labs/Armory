@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 
 import { useCompare } from '../../context/CompareContext';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 const CompareModal = lazy(() =>
   import('./CompareModal').then((m) => ({ default: m.CompareModal })),
@@ -53,18 +54,13 @@ export function CompareBar() {
                   </div>
                 </div>
                 <button
+                  type="button"
                   className="text-muted hover:text-danger ml-1 shrink-0 rounded p-0.5 transition-colors"
                   onClick={() => removeSnapshot(snap.id)}
                   title="Remove from comparison"
+                  aria-label="Remove from comparison"
                 >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path
-                      d="M3.5 3.5L10.5 10.5M10.5 3.5L3.5 10.5"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <MaterialSymbol name="close" className="leading-none" style={{ fontSize: 14 }} />
                 </button>
               </div>
             ))}
