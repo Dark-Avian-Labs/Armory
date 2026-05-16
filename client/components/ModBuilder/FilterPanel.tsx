@@ -338,7 +338,9 @@ export function FilterPanel({
         <input
           id="armory-mod-filter-search"
           name="search"
-          type="search"
+          type="text"
+          role="searchbox"
+          enterKeyHint="search"
           autoComplete="off"
           aria-label="Search mods"
           placeholder="Search mods..."
