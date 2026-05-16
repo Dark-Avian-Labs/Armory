@@ -101,9 +101,9 @@ export function ArchonShardSlots({
                     }`}
                   >
                     <img
-                      src="/icons/shards/filledBackground.png"
+                      src="/icons/shards/filledBackground.svg"
                       alt=""
-                      className={`absolute inset-0 h-full w-full object-cover ${slot.tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
+                      className={`absolute inset-0 h-full w-full object-contain ${slot.tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
                       draggable={false}
                     />
                     <img
@@ -144,9 +144,9 @@ export function ArchonShardSlots({
               style={{ marginTop: vOffset }}
             >
               <img
-                src="/icons/shards/emptyBackground.png"
+                src="/icons/shards/emptyBackground.svg"
                 alt=""
-                className="invert-on-light absolute inset-0 h-full w-full object-cover"
+                className="invert-on-light absolute inset-0 h-full w-full object-contain"
                 draggable={false}
               />
             </button>

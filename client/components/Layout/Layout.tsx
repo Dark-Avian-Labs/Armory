@@ -17,7 +17,7 @@ import {
   LEGAL_PAGE_URL,
 } from '../../app/config';
 import { APP_PATHS, buildNewPath } from '../../app/paths';
-import feathers from '../../assets/feathers.png';
+import feathers from '../../assets/feathers.svg';
 import { useCompare } from '../../context/CompareContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';

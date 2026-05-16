@@ -2,7 +2,7 @@ import { toBlob } from 'html-to-image';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 
-import feathers from '../../assets/feathers.png';
+import feathers from '../../assets/feathers.svg';
 import orokinReactorImg from '../../assets/orokin-reactor.png';
 import type {
   Ability,
@@ -387,9 +387,9 @@ function ShareShardColumn({
           className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-md ${iconSize}`}
         >
           <img
-            src="/icons/shards/emptyBackground.png"
+            src="/icons/shards/emptyBackground.svg"
             alt=""
-            className="invert-on-light absolute inset-0 h-full w-full object-cover"
+            className="invert-on-light absolute inset-0 h-full w-full object-contain"
             draggable={false}
           />
         </div>
@@ -404,9 +404,9 @@ function ShareShardColumn({
         className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-md ${iconSize}`}
       >
         <img
-          src="/icons/shards/filledBackground.png"
+          src="/icons/shards/filledBackground.svg"
           alt=""
-          className={`absolute inset-0 h-full w-full object-cover ${slot.tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
+          className={`absolute inset-0 h-full w-full object-contain ${slot.tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
           draggable={false}
         />
         <img
