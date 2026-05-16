@@ -10,6 +10,9 @@ import {
   CATEGORY_API,
   HIDDEN_EMPTY_TABS,
   loadEquipmentItemsForTab,
+  EQUIPMENT_PICKER_GRID_CLASS,
+  EQUIPMENT_PICKER_TILE_BUTTON_CLASS,
+  EQUIPMENT_PICKER_TILE_SIZE_CLASS,
   TAB_LABELS,
   TAB_ORDER,
   type EquipmentItem,
@@ -192,7 +195,9 @@ export function BuildsCatalogPage() {
             </p>
           </div>
         ) : (
-          <div className="custom-scroll grid max-h-[65vh] grid-cols-[repeat(auto-fill,6rem)] justify-items-start gap-3 overflow-y-auto">
+          <div
+            className={`custom-scroll max-h-[65vh] overflow-y-auto ${EQUIPMENT_PICKER_GRID_CLASS}`}
+          >
             {filtered.map((item) => {
               const eqType = resolveEquipmentType(item);
               const key = catalogKeyForItem(eqType, item.unique_name);
@@ -202,10 +207,12 @@ export function BuildsCatalogPage() {
                   key={item.unique_name}
                   type="button"
                   onClick={() => handleSelect(item)}
-                  className="group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative w-24 shrink-0 overflow-hidden rounded-lg border p-0 text-center transition-[color,background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5"
+                  className={`group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative overflow-hidden rounded-lg border p-0 text-center transition-[color,background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 ${EQUIPMENT_PICKER_TILE_BUTTON_CLASS}`}
                   aria-label={`View builds for ${normalizeEquipmentName(item.name)}`}
                 >
-                  <div className="bg-glass relative flex h-24 w-24 items-center justify-center overflow-hidden">
+                  <div
+                    className={`bg-glass relative flex items-center justify-center overflow-hidden ${EQUIPMENT_PICKER_TILE_SIZE_CLASS}`}
+                  >
                     {item.image_path && !failedImageKeys[key] ? (
                       <img
                         src={`/images${item.image_path}`}
