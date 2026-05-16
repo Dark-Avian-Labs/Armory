@@ -14,12 +14,6 @@ Rules:
 - `ci` alone → **patch** (same as chore for this simulation)
 - **BREAKING CHANGE** / `!` → **major** (not inferred from branch names here)
 
-This file lists **234** merged PRs in chronological order (with branch-name overrides such as `feat--fix-*` → `fix`, `feat--CodeQL-findings` → `chore`, Dependabot/Blacksmith → `chore`). Standalone revert commits are omitted; **#248** notes the **#244–#249** revert/reset chain on `main`.
-
-Starting from **`1.0.0`**, walking these merges yields **`v1.54.9`** on the last row.
-
-**Current release (this `main`):** **`v1.54.9`**
-
 ## Early `main` (before PR #5)
 
 - `chore`: initial Warframe mod builder skeleton, README, deploy, auth/rate limits, DB upserts, and UI work merged before the first tracked PR
