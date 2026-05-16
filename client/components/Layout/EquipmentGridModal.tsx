@@ -68,10 +68,7 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
       className="glass-modal-surface equipment-picker-modal p-6 shadow-2xl"
       ariaLabelledBy="equipment-grid-title"
     >
-      <div
-        style={{ width: '100%', maxWidth: '90vw', maxHeight: '85vh' }}
-        className="overflow-y-auto"
-      >
+      <div className="max-h-[85vh] overflow-y-auto">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 id="equipment-grid-title" className="text-foreground text-lg font-semibold">

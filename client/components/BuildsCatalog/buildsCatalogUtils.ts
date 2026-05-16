@@ -53,10 +53,10 @@ export const TAB_ORDER: EquipmentPickerTab[] = (() => {
   ];
 })();
 
-export const EQUIPMENT_PICKER_TILE_SIZE_CLASS = 'h-36 w-36';
-export const EQUIPMENT_PICKER_TILE_BUTTON_CLASS = 'w-36 shrink-0';
-export const EQUIPMENT_PICKER_GRID_CLASS =
-  'grid grid-cols-[repeat(auto-fill,9rem)] justify-items-start gap-3';
+/** 9.5rem — Tailwind spacing 38 */
+export const EQUIPMENT_PICKER_TILE_SIZE_CLASS = 'h-[9.5rem] w-[9.5rem]';
+export const EQUIPMENT_PICKER_TILE_BUTTON_CLASS = 'w-[9.5rem] shrink-0';
+export const EQUIPMENT_PICKER_GRID_CLASS = 'equipment-picker-grid grid justify-items-start gap-3';
 
 export const TAB_LABELS: Record<EquipmentPickerTab, string> = {
   ...EQUIPMENT_TYPE_LABELS,
