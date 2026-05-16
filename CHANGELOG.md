@@ -1,0 +1,262 @@
+# Changelog
+
+Notable work on `main` is summarized **by merged pull request**, one line each, conventional-commit style. PR links: `https://github.com/Dark-Avian-Labs/Armory/pull/<n>`.
+
+## SemVer (baseline **1.0.0**)
+
+Existing package/release numbers are ignored for this backfill.
+
+Rules:
+
+- `feat` → **minor** (patch resets to 0)
+- `fix`, `perf`, `revert` → **patch**
+- `chore` → **patch** (project rule)
+- `ci` alone → **patch** (same as chore for this simulation)
+- **BREAKING CHANGE** / `!` → **major** (not inferred from branch names here)
+
+This file lists **234** merged PRs in chronological order (with branch-name overrides such as `feat--fix-*` → `fix`, `feat--CodeQL-findings` → `chore`, Dependabot/Blacksmith → `chore`). Standalone revert commits are omitted; **#248** notes the **#244–#249** revert/reset chain on `main`.
+
+Starting from **`1.0.0`**, walking these merges yields **`v1.54.9`** on the last row.
+
+**Current release (this `main`):** **`v1.54.9`**
+
+## Early `main` (before PR #5)
+
+- `chore`: initial Warframe mod builder skeleton, README, deploy, auth/rate limits, DB upserts, and UI work merged before the first tracked PR
+
+## Pull requests (oldest → newest)
+
+- **v1.0.1** `chore(deps)` [#5](https://github.com/Dark-Avian-Labs/Armory/pull/5): Updated dependencies
+- **v1.0.2** `fix(ci)` [#6](https://github.com/Dark-Avian-Labs/Armory/pull/6): Deploy workflow
+- **v1.0.3** `fix` [#8](https://github.com/Dark-Avian-Labs/Armory/pull/8): Auth
+- **v1.0.4** `fix` [#9](https://github.com/Dark-Avian-Labs/Armory/pull/9): Auth
+- **v1.0.5** `chore(deps)` [#10](https://github.com/Dark-Avian-Labs/Armory/pull/10): migrate CI workflows to Blacksmith
+- **v1.0.6** `ci` [#11](https://github.com/Dark-Avian-Labs/Armory/pull/11): Update blacksmith runners
+- **v1.0.7** `fix` [#12](https://github.com/Dark-Avian-Labs/Armory/pull/12): Riven stats
+- **v1.1.0** `feat` [#13](https://github.com/Dark-Avian-Labs/Armory/pull/13): Card tilt
+- **v1.1.1** `fix` [#14](https://github.com/Dark-Avian-Labs/Armory/pull/14): Stacking issue
+- **v1.1.2** `fix` [#15](https://github.com/Dark-Avian-Labs/Armory/pull/15): Compare panel background
+- **v1.2.0** `feat` [#16](https://github.com/Dark-Avian-Labs/Armory/pull/16): Move to new url
+- **v1.3.0** `feat` [#17](https://github.com/Dark-Avian-Labs/Armory/pull/17): Add change pwd function
+- **v1.4.0** `feat` [#18](https://github.com/Dark-Avian-Labs/Armory/pull/18): Scaffolding base
+- **v1.4.1** `fix` [#19](https://github.com/Dark-Avian-Labs/Armory/pull/19): Env and deploy
+- **v1.4.2** `fix` [#20](https://github.com/Dark-Avian-Labs/Armory/pull/20): Auth and env
+- **v1.4.3** `fix` [#21](https://github.com/Dark-Avian-Labs/Armory/pull/21): Profile icons and missed stuff
+- **v1.4.4** `fix` [#22](https://github.com/Dark-Avian-Labs/Armory/pull/22): More fixes missed by migration
+- **v1.4.5** `fix` [#23](https://github.com/Dark-Avian-Labs/Armory/pull/23): Routes
+- **v1.4.6** `fix` [#24](https://github.com/Dark-Avian-Labs/Armory/pull/24): More stuff missed at migration
+- **v1.4.7** `fix` [#25](https://github.com/Dark-Avian-Labs/Armory/pull/25): Unified .gitignore
+- **v1.4.8** `fix` [#26](https://github.com/Dark-Avian-Labs/Armory/pull/26): Small styling fixes
+- **v1.4.9** `chore(merge)` [#27](https://github.com/Dark-Avian-Labs/Armory/pull/27): Development
+- **v1.4.10** `chore(merge)` [#28](https://github.com/Dark-Avian-Labs/Armory/pull/28): Development
+- **v1.4.11** `chore(merge)` [#29](https://github.com/Dark-Avian-Labs/Armory/pull/29): Development
+- **v1.4.12** `chore(deps)` [#30](https://github.com/Dark-Avian-Labs/Armory/pull/30): bump dependencies (Dependabot)
+- **v1.4.13** `chore(merge)` [#31](https://github.com/Dark-Avian-Labs/Armory/pull/31): Development
+- **v1.4.14** `chore(merge)` [#32](https://github.com/Dark-Avian-Labs/Armory/pull/32): Development
+- **v1.4.15** `fix` [#33](https://github.com/Dark-Avian-Labs/Armory/pull/33): Several things
+- **v1.4.16** `chore(merge)` [#34](https://github.com/Dark-Avian-Labs/Armory/pull/34): Development
+- **v1.4.17** `chore(merge)` [#36](https://github.com/Dark-Avian-Labs/Armory/pull/36): Development
+- **v1.4.18** `chore(merge)` [#37](https://github.com/Dark-Avian-Labs/Armory/pull/37): Development
+- **v1.4.19** `chore(merge)` [#38](https://github.com/Dark-Avian-Labs/Armory/pull/38): Development
+- **v1.4.20** `chore(merge)` [#39](https://github.com/Dark-Avian-Labs/Armory/pull/39): Development
+- **v1.4.21** `chore(merge)` [#40](https://github.com/Dark-Avian-Labs/Armory/pull/40): Development
+- **v1.4.22** `chore(quality)` [#41](https://github.com/Dark-Avian-Labs/Armory/pull/41): Coderabbit audit
+- **v1.4.23** `chore(merge)` [#42](https://github.com/Dark-Avian-Labs/Armory/pull/42): Development
+- **v1.4.24** `fix` [#44](https://github.com/Dark-Avian-Labs/Armory/pull/44): Several load and save fixes
+- **v1.5.0** `feat` [#45](https://github.com/Dark-Avian-Labs/Armory/pull/45): Manual import
+- **v1.5.1** `fix` [#46](https://github.com/Dark-Avian-Labs/Armory/pull/46): Import script
+- **v1.5.2** `fix` [#47](https://github.com/Dark-Avian-Labs/Armory/pull/47): Special items
+- **v1.5.3** `fix` [#48](https://github.com/Dark-Avian-Labs/Armory/pull/48): Loadouts
+- **v1.5.4** `fix` [#49](https://github.com/Dark-Avian-Labs/Armory/pull/49): Vite_env
+- **v1.5.5** `fix` [#50](https://github.com/Dark-Avian-Labs/Armory/pull/50): Updated express rate limit
+- **v1.5.6** `fix` [#51](https://github.com/Dark-Avian-Labs/Armory/pull/51): Archon shards and loading
+- **v1.5.7** `fix` [#52](https://github.com/Dark-Avian-Labs/Armory/pull/52): Arcanes
+- **v1.5.8** `fix` [#53](https://github.com/Dark-Avian-Labs/Armory/pull/53): Arcanes
+- **v1.6.0** `feat(ui)` [#54](https://github.com/Dark-Avian-Labs/Armory/pull/54): GPT-assisted UI redesign
+- **v1.6.1** `fix` [#55](https://github.com/Dark-Avian-Labs/Armory/pull/55): Broken design
+- **v1.7.0** `feat` [#56](https://github.com/Dark-Avian-Labs/Armory/pull/56): Adding posture icons
+- **v1.7.1** `fix` [#57](https://github.com/Dark-Avian-Labs/Armory/pull/57): Forma and icon display
+- **v1.7.2** `fix` [#58](https://github.com/Dark-Avian-Labs/Armory/pull/58): Redirect loop
+- **v1.7.3** `fix` [#59](https://github.com/Dark-Avian-Labs/Armory/pull/59): Reload loop
+- **v1.7.4** `fix` [#60](https://github.com/Dark-Avian-Labs/Armory/pull/60): Auth redirect loop
+- **v1.7.5** `fix` [#61](https://github.com/Dark-Avian-Labs/Armory/pull/61): Auth debugging
+- **v1.8.0** `feat` [#62](https://github.com/Dark-Avian-Labs/Armory/pull/62): Rate limiting modal
+- **v1.8.1** `fix` [#63](https://github.com/Dark-Avian-Labs/Armory/pull/63): Mod assignments
+- **v1.8.2** `fix` [#64](https://github.com/Dark-Avian-Labs/Armory/pull/64): Exalted mod images
+- **v1.9.0** `feat` [#65](https://github.com/Dark-Avian-Labs/Armory/pull/65): Better stance handling
+- **v1.9.1** `chore(deps)` [#67](https://github.com/Dark-Avian-Labs/Armory/pull/67): Clean up dependencies and version bump
+- **v1.9.2** `chore` [#68](https://github.com/Dark-Avian-Labs/Armory/pull/68): Update deploy workflows
+- **v1.9.3** `fix` [#70](https://github.com/Dark-Avian-Labs/Armory/pull/70): Undici vuln
+- **v1.10.0** `feat` [#71](https://github.com/Dark-Avian-Labs/Armory/pull/71): Add dotenvx
+- **v1.10.1** `chore` [#74](https://github.com/Dark-Avian-Labs/Armory/pull/74): Update dependencies
+- **v1.10.2** `fix` [#75](https://github.com/Dark-Avian-Labs/Armory/pull/75): Env deployment
+- **v1.10.3** `fix` [#76](https://github.com/Dark-Avian-Labs/Armory/pull/76): Auth cookie mismatch
+- **v1.11.0** `feat` [#77](https://github.com/Dark-Avian-Labs/Armory/pull/77): Upgrade to vite8, oxlint, oxfmt
+- **v1.12.0** `feat` [#78](https://github.com/Dark-Avian-Labs/Armory/pull/78): Move to pnpm
+- **v1.12.1** `fix` [#79](https://github.com/Dark-Avian-Labs/Armory/pull/79): Overrides
+- **v1.13.0** `feat` [#80](https://github.com/Dark-Avian-Labs/Armory/pull/80): Share screenshot
+- **v1.13.1** `chore` [#81](https://github.com/Dark-Avian-Labs/Armory/pull/81): Update readme
+- **v1.13.2** `chore` [#83](https://github.com/Dark-Avian-Labs/Armory/pull/83): Ai findings autofix/run quality checks.mjs
+- **v1.13.3** `chore` [#82](https://github.com/Dark-Avian-Labs/Armory/pull/82): Ai findings autofix/client utils shardBuffFormat.ts
+- **v1.13.4** `chore` [#84](https://github.com/Dark-Avian-Labs/Armory/pull/84): Fix ai stuff =D
+- **v1.14.0** `feat` [#85](https://github.com/Dark-Avian-Labs/Armory/pull/85): Enhance image export
+- **v1.15.0** `feat` [#86](https://github.com/Dark-Avian-Labs/Armory/pull/86): More export changes
+- **v1.16.0** `feat` [#87](https://github.com/Dark-Avian-Labs/Armory/pull/87): Export mod size change
+- **v1.16.1** `fix` [#90](https://github.com/Dark-Avian-Labs/Armory/pull/90): Fix riven calulation
+- **v1.16.2** `fix` [#91](https://github.com/Dark-Avian-Labs/Armory/pull/91): Fix riven
+- **v1.16.3** `fix` [#92](https://github.com/Dark-Avian-Labs/Armory/pull/92): Fix mod selector spacing
+- **v1.16.4** `chore` [#93](https://github.com/Dark-Avian-Labs/Armory/pull/93): Dependency updates and vscode fixes
+- **v1.16.5** `chore(merge)` [#94](https://github.com/Dark-Avian-Labs/Armory/pull/94): Development
+- **v1.16.6** `chore(merge)` [#95](https://github.com/Dark-Avian-Labs/Armory/pull/95): Development
+- **v1.17.0** `feat` [#96](https://github.com/Dark-Avian-Labs/Armory/pull/96): Add more detailed import script
+- **v1.18.0** `feat` [#97](https://github.com/Dark-Avian-Labs/Armory/pull/97): Better import script
+- **v1.18.1** `fix` [#98](https://github.com/Dark-Avian-Labs/Armory/pull/98): Import panel
+- **v1.18.2** `fix` [#99](https://github.com/Dark-Avian-Labs/Armory/pull/99): Import css
+- **v1.19.0** `feat` [#100](https://github.com/Dark-Avian-Labs/Armory/pull/100): Add theme support
+- **v1.19.1** `fix` [#101](https://github.com/Dark-Avian-Labs/Armory/pull/101): Theme implementation
+- **v1.19.2** `fix` [#102](https://github.com/Dark-Avian-Labs/Armory/pull/102): Theme fixes
+- **v1.19.3** `fix` [#103](https://github.com/Dark-Avian-Labs/Armory/pull/103): Theme selection
+- **v1.20.0** `feat` [#104](https://github.com/Dark-Avian-Labs/Armory/pull/104): Skill review
+- **v1.20.1** `chore` [#105](https://github.com/Dark-Avian-Labs/Armory/pull/105): Clean up CI workflows
+- **v1.20.2** `chore(deps)` [#106](https://github.com/Dark-Avian-Labs/Armory/pull/106): bump dependencies (Dependabot)
+- **v1.20.3** `chore` [#107](https://github.com/Dark-Avian-Labs/Armory/pull/107): Fix GH actions
+- **v1.20.4** `fix` [#108](https://github.com/Dark-Avian-Labs/Armory/pull/108): GH workflow
+- **v1.20.5** `fix` [#109](https://github.com/Dark-Avian-Labs/Armory/pull/109): GH runners
+- **v1.20.6** `fix` [#110](https://github.com/Dark-Avian-Labs/Armory/pull/110): Loading script
+- **v1.20.7** `fix` [#111](https://github.com/Dark-Avian-Labs/Armory/pull/111): CI deployment
+- **v1.21.0** `feat` [#115](https://github.com/Dark-Avian-Labs/Armory/pull/115): New deployment workflow
+- **v1.21.1** `chore(deps)` [#116](https://github.com/Dark-Avian-Labs/Armory/pull/116): bump dependencies (Dependabot)
+- **v1.21.2** `fix` [#117](https://github.com/Dark-Avian-Labs/Armory/pull/117): Env loading
+- **v1.22.0** `feat` [#118](https://github.com/Dark-Avian-Labs/Armory/pull/118): Add projectile speed to the import pipeline
+- **v1.22.1** `chore(security)` [#119](https://github.com/Dark-Avian-Labs/Armory/pull/119): CodeQL findings
+- **v1.23.0** `feat` [#120](https://github.com/Dark-Avian-Labs/Armory/pull/120): Better mod lockout filtering
+- **v1.23.1** `chore(deps)` [#121](https://github.com/Dark-Avian-Labs/Armory/pull/121): bump dependencies (Dependabot)
+- **v1.23.2** `chore` [#122](https://github.com/Dark-Avian-Labs/Armory/pull/122): Update dependencies
+- **v1.23.3** `chore` [#123](https://github.com/Dark-Avian-Labs/Armory/pull/123): CodeQL
+- **v1.23.4** `chore` [#124](https://github.com/Dark-Avian-Labs/Armory/pull/124): CodeQL
+- **v1.23.5** `chore` [#125](https://github.com/Dark-Avian-Labs/Armory/pull/125): CodeQL
+- **v1.23.6** `chore` [#126](https://github.com/Dark-Avian-Labs/Armory/pull/126): Codeql
+- **v1.23.7** `chore(deps)` [#128](https://github.com/Dark-Avian-Labs/Armory/pull/128): bump dependencies (Dependabot)
+- **v1.23.8** `chore(deps)` [#127](https://github.com/Dark-Avian-Labs/Armory/pull/127): bump dependencies (Dependabot)
+- **v1.23.9** `chore` [#129](https://github.com/Dark-Avian-Labs/Armory/pull/129): Updated CI script
+- **v1.24.0** `feat` [#130](https://github.com/Dark-Avian-Labs/Armory/pull/130): Larger import terminal and copy
+- **v1.24.1** `fix` [#131](https://github.com/Dark-Avian-Labs/Armory/pull/131): Drain color
+- **v1.24.2** `fix` [#132](https://github.com/Dark-Avian-Labs/Armory/pull/132): Umbral mod calculation
+- **v1.24.3** `fix` [#133](https://github.com/Dark-Avian-Labs/Armory/pull/133): Umbra mod calculation
+- **v1.24.4** `fix` [#134](https://github.com/Dark-Avian-Labs/Armory/pull/134): Umbra mods
+- **v1.24.5** `fix` [#135](https://github.com/Dark-Avian-Labs/Armory/pull/135): Umbra mods
+- **v1.24.6** `fix` [#136](https://github.com/Dark-Avian-Labs/Armory/pull/136): Umbral mods
+- **v1.24.7** `fix` [#137](https://github.com/Dark-Avian-Labs/Armory/pull/137): Umbral set
+- **v1.24.8** `fix` [#138](https://github.com/Dark-Avian-Labs/Armory/pull/138): Umbral set description
+- **v1.25.0** `feat` [#141](https://github.com/Dark-Avian-Labs/Armory/pull/141): Valence bonus
+- **v1.25.1** `fix` [#142](https://github.com/Dark-Avian-Labs/Armory/pull/142): Valence bonus
+- **v1.25.2** `fix` [#143](https://github.com/Dark-Avian-Labs/Armory/pull/143): Launcher mods
+- **v1.25.3** `fix` [#144](https://github.com/Dark-Avian-Labs/Armory/pull/144): Mod types
+- **v1.25.4** `fix` [#145](https://github.com/Dark-Avian-Labs/Armory/pull/145): Mod selector
+- **v1.25.5** `fix` [#146](https://github.com/Dark-Avian-Labs/Armory/pull/146): Mods
+- **v1.25.6** `fix` [#147](https://github.com/Dark-Avian-Labs/Armory/pull/147): Valence bonus loading
+- **v1.25.7** `fix` [#149](https://github.com/Dark-Avian-Labs/Armory/pull/149): Riven errors
+- **v1.25.8** `fix` [#150](https://github.com/Dark-Avian-Labs/Armory/pull/150): Rivens
+- **v1.25.9** `fix` [#151](https://github.com/Dark-Avian-Labs/Armory/pull/151): Riven
+- **v1.25.10** `chore(deps)` [#148](https://github.com/Dark-Avian-Labs/Armory/pull/148): bump dependencies (Dependabot)
+- **v1.26.0** `feat` [#152](https://github.com/Dark-Avian-Labs/Armory/pull/152): Updated CI/CD and Validation workflow
+- **v1.27.0** `feat` [#154](https://github.com/Dark-Avian-Labs/Armory/pull/154): New image sharing export
+- **v1.28.0** `feat` [#155](https://github.com/Dark-Avian-Labs/Armory/pull/155): Better image sharing
+- **v1.29.0** `feat` [#156](https://github.com/Dark-Avian-Labs/Armory/pull/156): Better share export
+- **v1.30.0** `feat` [#157](https://github.com/Dark-Avian-Labs/Armory/pull/157): Better image sharing
+- **v1.30.1** `chore(deps)` [#153](https://github.com/Dark-Avian-Labs/Armory/pull/153): bump dependencies (Dependabot)
+- **v1.31.0** `feat` [#158](https://github.com/Dark-Avian-Labs/Armory/pull/158): Better image share
+- **v1.32.0** `feat` [#159](https://github.com/Dark-Avian-Labs/Armory/pull/159): Transparent exports
+- **v1.32.1** `fix` [#160](https://github.com/Dark-Avian-Labs/Armory/pull/160): Export transparency
+- **v1.32.2** `chore` [#161](https://github.com/Dark-Avian-Labs/Armory/pull/161): Fix pnpm lock formatting
+- **v1.32.3** `chore` [#162](https://github.com/Dark-Avian-Labs/Armory/pull/162): Update pnpm
+- **v1.32.4** `fix` [#163](https://github.com/Dark-Avian-Labs/Armory/pull/163): CI
+- **v1.33.0** `feat` [#164](https://github.com/Dark-Avian-Labs/Armory/pull/164): New build overview page
+- **v1.33.1** `fix` [#165](https://github.com/Dark-Avian-Labs/Armory/pull/165): Builds
+- **v1.33.2** `chore` [#166](https://github.com/Dark-Avian-Labs/Armory/pull/166): Opus review
+- **v1.33.3** `fix` [#167](https://github.com/Dark-Avian-Labs/Armory/pull/167): Legal page redirect
+- **v1.33.4** `fix` [#168](https://github.com/Dark-Avian-Labs/Armory/pull/168): Skill descriptions
+- **v1.33.5** `fix` [#169](https://github.com/Dark-Avian-Labs/Armory/pull/169): Import script
+- **v1.33.6** `fix` [#170](https://github.com/Dark-Avian-Labs/Armory/pull/170): Import script
+- **v1.34.0** `feat` [#171](https://github.com/Dark-Avian-Labs/Armory/pull/171): Better import logs
+- **v1.35.0** `feat` [#172](https://github.com/Dark-Avian-Labs/Armory/pull/172): App rename
+- **v1.35.1** `fix` [#173](https://github.com/Dark-Avian-Labs/Armory/pull/173): Naming and db
+- **v1.35.2** `chore` [#174](https://github.com/Dark-Avian-Labs/Armory/pull/174): Version bump
+- **v1.35.3** `chore` [#175](https://github.com/Dark-Avian-Labs/Armory/pull/175): Update dependencies
+- **v1.35.4** `chore(legal)` [#176](https://github.com/Dark-Avian-Labs/Armory/pull/176): Relicense
+- **v1.36.0** `feat` [#177](https://github.com/Dark-Avian-Labs/Armory/pull/177): Upgrade runner
+- **v1.36.1** `chore` [#178](https://github.com/Dark-Avian-Labs/Armory/pull/178): Update dependencies
+- **v1.36.2** `fix` [#179](https://github.com/Dark-Avian-Labs/Armory/pull/179): Stance mods
+- **v1.36.3** `fix` [#180](https://github.com/Dark-Avian-Labs/Armory/pull/180): Stance mods
+- **v1.37.0** `feat` [#181](https://github.com/Dark-Avian-Labs/Armory/pull/181): Upgrade to pnpm 11
+- **v1.37.1** `fix` [#182](https://github.com/Dark-Avian-Labs/Armory/pull/182): Riven builder
+- **v1.37.2** `fix` [#183](https://github.com/Dark-Avian-Labs/Armory/pull/183): Riven menu
+- **v1.37.3** `fix` [#184](https://github.com/Dark-Avian-Labs/Armory/pull/184): Riven dropdown
+- **v1.37.4** `fix` [#185](https://github.com/Dark-Avian-Labs/Armory/pull/185): Riven dropdown
+- **v1.38.0** `feat` [#186](https://github.com/Dark-Avian-Labs/Armory/pull/186): Better tests
+- **v1.39.0** `feat` [#187](https://github.com/Dark-Avian-Labs/Armory/pull/187): Discord notification in CI workflow
+- **v1.40.0** `feat` [#188](https://github.com/Dark-Avian-Labs/Armory/pull/188): Add Warframe.market import
+- **v1.40.1** `fix` [#189](https://github.com/Dark-Avian-Labs/Armory/pull/189): Prime & normal market links
+- **v1.41.0** `feat` [#190](https://github.com/Dark-Avian-Labs/Armory/pull/190): Picture in Picture
+- **v1.42.0** `feat` [#191](https://github.com/Dark-Avian-Labs/Armory/pull/191): Material icons
+- **v1.43.0** `feat` [#192](https://github.com/Dark-Avian-Labs/Armory/pull/192): Removed profile icons
+- **v1.44.0** `feat` [#193](https://github.com/Dark-Avian-Labs/Armory/pull/193): Pip window scales now
+- **v1.44.1** `fix` [#197](https://github.com/Dark-Avian-Labs/Armory/pull/197): Arcane identification and companion claws
+- **v1.44.2** `fix` [#198](https://github.com/Dark-Avian-Labs/Armory/pull/198): Exalted item import
+- **v1.44.3** `fix` [#200](https://github.com/Dark-Avian-Labs/Armory/pull/200): Exalted stance images
+- **v1.44.4** `fix` [#201](https://github.com/Dark-Avian-Labs/Armory/pull/201): Exalted stance mod images
+- **v1.44.5** `fix` [#202](https://github.com/Dark-Avian-Labs/Armory/pull/202): Image import
+- **v1.44.6** `fix` [#203](https://github.com/Dark-Avian-Labs/Armory/pull/203): Mod image imports
+- **v1.44.7** `fix` [#204](https://github.com/Dark-Avian-Labs/Armory/pull/204): Mod image import
+- **v1.44.8** `fix` [#205](https://github.com/Dark-Avian-Labs/Armory/pull/205): Image loading
+- **v1.44.9** `fix` [#206](https://github.com/Dark-Avian-Labs/Armory/pull/206): Images
+- **v1.44.10** `fix` [#207](https://github.com/Dark-Avian-Labs/Armory/pull/207): Image import
+- **v1.44.11** `chore` [#209](https://github.com/Dark-Avian-Labs/Armory/pull/209): Update dependencies
+- **v1.45.0** `feat` [#211](https://github.com/Dark-Avian-Labs/Armory/pull/211): Foil cards
+- **v1.45.1** `fix` [#212](https://github.com/Dark-Avian-Labs/Armory/pull/212): Foil cards
+- **v1.45.2** `fix` [#213](https://github.com/Dark-Avian-Labs/Armory/pull/213): Light strip
+- **v1.45.3** `chore` [#214](https://github.com/Dark-Avian-Labs/Armory/pull/214): Update dependencies
+- **v1.46.0** `feat` [#216](https://github.com/Dark-Avian-Labs/Armory/pull/216): Audit
+- **v1.46.1** `fix` [#217](https://github.com/Dark-Avian-Labs/Armory/pull/217): Bow mods
+- **v1.46.2** `fix` [#218](https://github.com/Dark-Avian-Labs/Armory/pull/218): Bow mods
+- **v1.46.3** `fix` [#219](https://github.com/Dark-Avian-Labs/Armory/pull/219): Exalted mods
+- **v1.47.0** `feat` [#220](https://github.com/Dark-Avian-Labs/Armory/pull/220): New CI versioning workflow
+- **v1.47.1** `fix` [#222](https://github.com/Dark-Avian-Labs/Armory/pull/222): Version tagging
+- **v1.48.0** `feat` [#223](https://github.com/Dark-Avian-Labs/Armory/pull/223): Version display and reload on new version
+- **v1.49.0** `feat` [#225](https://github.com/Dark-Avian-Labs/Armory/pull/225): Background animation
+- **v1.49.1** `chore` [#227](https://github.com/Dark-Avian-Labs/Armory/pull/227): CodeQL
+- **v1.49.2** `fix` [#228](https://github.com/Dark-Avian-Labs/Armory/pull/228): Background animation
+- **v1.49.3** `fix` [#229](https://github.com/Dark-Avian-Labs/Armory/pull/229): Mods
+- **v1.49.4** `fix` [#230](https://github.com/Dark-Avian-Labs/Armory/pull/230): Rivens
+- **v1.50.0** `feat` [#231](https://github.com/Dark-Avian-Labs/Armory/pull/231): New background animation
+- **v1.51.0** `feat` [#232](https://github.com/Dark-Avian-Labs/Armory/pull/232): Background animation color overlay
+- **v1.51.1** `fix` [#234](https://github.com/Dark-Avian-Labs/Armory/pull/234): Correct background ascii art
+- **v1.51.2** `chore` [#235](https://github.com/Dark-Avian-Labs/Armory/pull/235): Update dependencies and codeQL
+- **v1.52.0** `feat` [#238](https://github.com/Dark-Avian-Labs/Armory/pull/238): Rework permission system
+- **v1.52.1** `chore(deps)` [#237](https://github.com/Dark-Avian-Labs/Armory/pull/237): bump dependencies (Dependabot)
+- **v1.52.2** `chore` [#239](https://github.com/Dark-Avian-Labs/Armory/pull/239): New ci workflow
+- **v1.52.3** `fix` [#240](https://github.com/Dark-Avian-Labs/Armory/pull/240): Login and refresh button
+- **v1.53.0** `feat` [#241](https://github.com/Dark-Avian-Labs/Armory/pull/241): Loadout expansion
+- **v1.53.1** `fix` [#242](https://github.com/Dark-Avian-Labs/Armory/pull/242): Warframe market links
+- **v1.53.2** `fix` [#243](https://github.com/Dark-Avian-Labs/Armory/pull/243): Market links
+- **v1.53.3** `fix` [#244](https://github.com/Dark-Avian-Labs/Armory/pull/244): Build display
+- **v1.53.4** `fix` [#245](https://github.com/Dark-Avian-Labs/Armory/pull/245): Mod rank
+- **v1.53.5** `fix` [#246](https://github.com/Dark-Avian-Labs/Armory/pull/246): Mod rank buttons
+- **v1.53.6** `fix` [#247](https://github.com/Dark-Avian-Labs/Armory/pull/247): Mods cards
+- **v1.53.7** `fix` [#248](https://github.com/Dark-Avian-Labs/Armory/pull/248): Mod ranks _(PRs **#244–#248** were later reverted on `main`; see [#249](https://github.com/Dark-Avian-Labs/Armory/pull/249))_
+- **v1.53.8** `chore` [#249](https://github.com/Dark-Avian-Labs/Armory/pull/249): Revert main to 0b2338d
+- **v1.53.9** `fix` [#250](https://github.com/Dark-Avian-Labs/Armory/pull/250): Edge testing
+- **v1.53.10** `fix` [#251](https://github.com/Dark-Avian-Labs/Armory/pull/251): Edge
+- **v1.53.11** `fix` [#252](https://github.com/Dark-Avian-Labs/Armory/pull/252): Mod cards
+- **v1.53.12** `fix` [#253](https://github.com/Dark-Avian-Labs/Armory/pull/253): Mod card
+- **v1.53.13** `fix` [#254](https://github.com/Dark-Avian-Labs/Armory/pull/254): Mod slots
+- **v1.54.0** `feat` [#255](https://github.com/Dark-Avian-Labs/Armory/pull/255): Descriptions
+- **v1.54.1** `fix` [#256](https://github.com/Dark-Avian-Labs/Armory/pull/256): Helminth dedupe
+- **v1.54.2** `fix` [#257](https://github.com/Dark-Avian-Labs/Armory/pull/257): Exalted secondaries
+- **v1.54.3** `fix` [#259](https://github.com/Dark-Avian-Labs/Armory/pull/259): Builder
+- **v1.54.4** `fix` [#260](https://github.com/Dark-Avian-Labs/Armory/pull/260): Tome mods
+- **v1.54.5** `fix` [#261](https://github.com/Dark-Avian-Labs/Armory/pull/261): Mod background
+- **v1.54.6** `fix` [#262](https://github.com/Dark-Avian-Labs/Armory/pull/262): Mod background
+- **v1.54.7** `chore` [#263](https://github.com/Dark-Avian-Labs/Armory/pull/263): Updated graphics
+- **v1.54.8** `fix` [#264](https://github.com/Dark-Avian-Labs/Armory/pull/264): Coloring
+- **v1.54.9** `chore` [#265](https://github.com/Dark-Avian-Labs/Armory/pull/265): Update dependencies
