@@ -34,3 +34,8 @@ export const APP_VERSION = readTrimmedEnv(
   import.meta.env.VITE_APP_VERSION as string | undefined,
   'dev',
 );
+
+export const APP_ID = readTrimmedEnv(
+  import.meta.env.VITE_APP_ID as string | undefined,
+  'armory',
+).toLowerCase();

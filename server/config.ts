@@ -78,10 +78,11 @@ export const SHUTDOWN_TIMEOUT_MS =
   Number.isFinite(_shutdownTimeoutMs) && _shutdownTimeoutMs > 0 ? _shutdownTimeoutMs : 10_000;
 export const HOST = process.env.HOST || '127.0.0.1';
 export const NODE_ENV = process.env.NODE_ENV || 'development';
+const DEV_SESSION_SECRET = 'armory-dev-only-session-secret-32ch';
 const rawSessionSecret =
-  process.env.SESSION_SECRET?.trim() || (NODE_ENV === 'production' ? '' : 'armory-nonprod-secret');
-if (!rawSessionSecret && NODE_ENV === 'production') {
-  throw new Error('[FATAL] SESSION_SECRET must be set.');
+  process.env.SESSION_SECRET?.trim() || (NODE_ENV === 'production' ? '' : DEV_SESSION_SECRET);
+if (NODE_ENV === 'production' && rawSessionSecret.length < 32) {
+  throw new Error('[FATAL] SESSION_SECRET must be set and at least 32 characters in production.');
 }
 export const SESSION_SECRET = rawSessionSecret;
 

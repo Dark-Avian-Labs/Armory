@@ -1,16 +1,27 @@
+import type Database from 'better-sqlite3';
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
-import { requireAdmin } from '../auth/middleware.js';
+import { requireGameAdmin } from '../auth/middleware.js';
 import { effectiveArmoryGameAdmin, fetchRemoteAuthState } from '../auth/remoteAuth.js';
+import { canReadBuild } from '../buildAccess.js';
+import { getCachedModList } from '../cache/modListCache.js';
 import { getCentralDb, getDb } from '../db/connection.js';
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
+import { getRequestId } from '../http/requestId.js';
 import {
   getAdminImportSnapshot,
   startAdminImportJob,
   subscribeAdminImportSnapshot,
 } from '../import/adminImportJob.js';
+import { log } from '../logger.js';
+import {
+  appendModConfigSizeIssues,
+  MAX_ARCANE_SLOTS,
+  MAX_MOD_CONFIG_SLOTS,
+  MAX_SHARD_SLOTS,
+} from './modConfigLimits.js';
 
 export const apiRouter = Router();
 
@@ -31,6 +42,10 @@ apiRouter.get('/warframes', (_req: Request, res: Response) => {
 const MAX_NAME_LENGTH = 255;
 const MAX_DESCRIPTION_LENGTH = 8000;
 const COPY_PREFIX = 'Copy of ';
+const BUILD_SELECT_LIST =
+  'id, user_id, name, equipment_type, equipment_unique_name, mod_config, created_at, updated_at, visibility, description';
+const LOADOUT_SELECT_LIST = 'id, user_id, name, visibility, description, created_at, updated_at';
+const MODS_PAGE_MAX = 500;
 
 const WEAPON_JUNK_PREFIXES = [
   '/Lotus/Types/Friendly/Pets/CreaturePets/',
@@ -251,67 +266,100 @@ const EquipmentTypeSchema = z.enum([
   'tektolyst',
 ]);
 
-const ModConfigSchema = z.object({
-  id: z.string().trim().min(1).optional(),
-  name: z.string().trim().min(1).max(MAX_NAME_LENGTH),
-  equipment_type: EquipmentTypeSchema,
-  equipment_unique_name: z.string().trim().min(1),
-  slots: z.array(
-    z
+const ModSlotSchema = z
+  .object({
+    index: z.number().int().min(0),
+    type: z.enum(['general', 'aura', 'stance', 'exilus', 'posture']),
+    polarity: z.string().trim().min(1).optional(),
+    mod: z.record(z.string(), z.unknown()).optional(),
+    rank: z.number().int().min(0).optional(),
+    setRank: z.number().int().min(0).optional(),
+    riven_art_path: z.string().trim().min(1).optional(),
+    riven_config: RivenConfigSchema.optional(),
+  })
+  .strict();
+
+const ModConfigSchema = z
+  .object({
+    id: z.string().trim().min(1).optional(),
+    name: z.string().trim().min(1).max(MAX_NAME_LENGTH),
+    equipment_type: EquipmentTypeSchema,
+    equipment_unique_name: z.string().trim().min(1),
+    slots: z.array(ModSlotSchema),
+    helminth: z
       .object({
-        index: z.number().int().min(0),
-        type: z.enum(['general', 'aura', 'stance', 'exilus', 'posture']),
-        polarity: z.string().trim().min(1).optional(),
-        mod: z.record(z.string(), z.unknown()).optional(),
-        rank: z.number().int().min(0).optional(),
-        setRank: z.number().int().min(0).optional(),
-        riven_art_path: z.string().trim().min(1).optional(),
-        riven_config: RivenConfigSchema.optional(),
+        replaced_ability_index: z.number().int().min(0),
+        replacement_ability_unique_name: z.string().trim().min(1),
       })
-      .passthrough(),
-  ),
-  helminth: z
-    .object({
-      replaced_ability_index: z.number().int().min(0),
-      replacement_ability_unique_name: z.string().trim().min(1),
-    })
-    .optional(),
-  arcaneSlots: z
-    .array(
-      z.object({
-        arcane: z
-          .object({
-            unique_name: z.string().trim().min(1),
-            name: z.string().trim().min(1),
-            rarity: z.string().trim().min(1).optional(),
-            image_path: z.string().trim().min(1).optional(),
-            level_stats: z.string().trim().min(1).optional(),
-          })
-          .optional(),
-        rank: z.number().int().min(0),
-      }),
-    )
-    .optional(),
-  shardSlots: z
-    .array(
-      z.object({
-        shard_type_id: z.coerce.string().trim().min(1).optional(),
-        buff_id: z.coerce.number().int().positive().optional(),
-        tauforged: z.boolean(),
-      }),
-    )
-    .optional(),
-  orokinReactor: z.boolean().optional(),
-  valenceBonus: z
-    .object({
-      element: z.enum(['Impact', 'Heat', 'Cold', 'Electricity', 'Toxin', 'Magnetic', 'Radiation']),
-      percent: z.number().min(0).max(100),
-    })
-    .nullable()
-    .optional(),
-  equipment_name: z.string().trim().min(1).optional(),
-  equipment_image: z.string().trim().min(1).optional(),
-});
+      .optional(),
+    arcaneSlots: z
+      .array(
+        z.object({
+          arcane: z
+            .object({
+              unique_name: z.string().trim().min(1),
+              name: z.string().trim().min(1),
+              rarity: z.string().trim().min(1).optional(),
+              image_path: z.string().trim().min(1).optional(),
+              level_stats: z.string().trim().min(1).optional(),
+            })
+            .optional(),
+          rank: z.number().int().min(0),
+        }),
+      )
+      .optional(),
+    shardSlots: z
+      .array(
+        z.object({
+          shard_type_id: z.coerce.string().trim().min(1).optional(),
+          buff_id: z.coerce.number().int().positive().optional(),
+          tauforged: z.boolean(),
+        }),
+      )
+      .optional(),
+    orokinReactor: z.boolean().optional(),
+    valenceBonus: z
+      .object({
+        element: z.enum([
+          'Impact',
+          'Heat',
+          'Cold',
+          'Electricity',
+          'Toxin',
+          'Magnetic',
+          'Radiation',
+        ]),
+        percent: z.number().min(0).max(100),
+      })
+      .nullable()
+      .optional(),
+    equipment_name: z.string().trim().min(1).optional(),
+    equipment_image: z.string().trim().min(1).optional(),
+  })
+  .superRefine((config, ctx) => {
+    if (config.slots.length > MAX_MOD_CONFIG_SLOTS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `slots must contain at most ${MAX_MOD_CONFIG_SLOTS} entries`,
+        path: ['slots'],
+      });
+    }
+    if (config.arcaneSlots && config.arcaneSlots.length > MAX_ARCANE_SLOTS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `arcaneSlots must contain at most ${MAX_ARCANE_SLOTS} entries`,
+        path: ['arcaneSlots'],
+      });
+    }
+    if (config.shardSlots && config.shardSlots.length > MAX_SHARD_SLOTS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `shardSlots must contain at most ${MAX_SHARD_SLOTS} entries`,
+        path: ['shardSlots'],
+      });
+    }
+    appendModConfigSizeIssues(config, ctx);
+  });
 
 function parseNumericId(raw: string | string[] | undefined): number | null {
   if (Array.isArray(raw)) {
@@ -391,7 +439,9 @@ function getOwnerUsernames(userIds: number[]): Map<number, string | null> {
       map.set(r.id, r.username ?? null);
     }
   } catch (err) {
-    console.error('[API] getOwnerUsernames: central DB lookup failed:', err);
+    log('error', 'Central DB username lookup failed', {
+      err: err instanceof Error ? err.message : String(err),
+    });
   }
 
   return map;
@@ -418,8 +468,123 @@ function toBuildListItem(row: BuildRow, ownerUsernames: Map<number, string | nul
 }
 
 function sendInternalError(res: Response, context: string, err: unknown): void {
-  console.error(`[API] ${context} failed:`, err);
+  log('error', `API handler failed: ${context}`, {
+    requestId: getRequestId(res),
+    err: err instanceof Error ? err.message : String(err),
+  });
   res.status(500).json({ error: 'Internal server error' });
+}
+
+function parseListPagination(req: Request): { limit: number | null; offset: number } {
+  const hasLimit = req.query.limit !== undefined;
+  const hasOffset = req.query.offset !== undefined;
+  if (!hasLimit && !hasOffset) {
+    return { limit: null, offset: 0 };
+  }
+  const limitRaw = Number(req.query.limit ?? 100);
+  const offsetRaw = Number(req.query.offset ?? 0);
+  const limit = Number.isFinite(limitRaw)
+    ? Math.min(Math.max(Math.trunc(limitRaw), 1), MODS_PAGE_MAX)
+    : 100;
+  const offset = Number.isFinite(offsetRaw) ? Math.max(Math.trunc(offsetRaw), 0) : 0;
+  return { limit, offset };
+}
+
+function fetchBuildsByIds(db: Database.Database, ids: number[]): BuildRow[] {
+  const uniqueIds = [...new Set(ids)].filter((id) => Number.isFinite(id) && id > 0);
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+  const placeholders = uniqueIds.map(() => '?').join(',');
+  return db
+    .prepare(`SELECT ${BUILD_SELECT_LIST} FROM builds WHERE id IN (${placeholders})`)
+    .all(...uniqueIds) as BuildRow[];
+}
+
+type ModListQuery = {
+  typesRaw?: string;
+  typeRaw?: string;
+  rarity?: string;
+  search?: string;
+};
+
+function loadDedupedMods(
+  db: Database.Database,
+  query: ModListQuery,
+): Array<Record<string, unknown>> {
+  const { typesRaw, typeRaw, rarity, search } = query;
+
+  let sql = `SELECT ${MOD_API_SELECT_LIST}
+      ${MOD_API_FROM}
+      WHERE 1=1`;
+  const params: unknown[] = [];
+
+  if (typesRaw) {
+    const typeList = typesRaw
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .map((t) => t.toLowerCase());
+    if (typeList.length === 1) {
+      sql += ' AND LOWER(m.type) = ?';
+      params.push(typeList[0]);
+    } else if (typeList.length > 1) {
+      sql += ` AND LOWER(m.type) IN (${typeList.map(() => '?').join(',')})`;
+      params.push(...typeList);
+    }
+  } else if (typeRaw) {
+    sql += ' AND LOWER(m.type) = LOWER(?)';
+    params.push(typeRaw);
+  }
+
+  if (rarity) {
+    sql += ' AND m.rarity = ?';
+    params.push(rarity);
+  }
+  if (search) {
+    const escapedSearch = search.replace(/[\\%_]/g, '\\$&');
+    sql += " AND m.name LIKE ? ESCAPE '\\'";
+    params.push(`%${escapedSearch}%`);
+  }
+
+  sql += ' ORDER BY m.name';
+
+  const rows = db.prepare(sql).all(...params) as Array<Record<string, unknown>>;
+  const normalizedRows = rows.map(normalizeModApiRow) as Array<{
+    unique_name: string;
+    name: string;
+    type: string;
+    image_path?: string;
+  }>;
+
+  const cleaned = normalizedRows.filter((r) => {
+    if (MOD_JUNK_SEGMENTS.some((seg) => r.unique_name.includes(seg))) return false;
+    if (MOD_JUNK_SUFFIXES.some((suf) => r.unique_name.endsWith(suf))) return false;
+    return true;
+  });
+
+  const byKey = new Map<string, (typeof cleaned)[number]>();
+  for (const mod of cleaned) {
+    const key = `${mod.name}|||${mod.type}`;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, mod);
+    } else {
+      const existingWiki = (existing.image_path ?? '').startsWith(ARMORY_STANCE_WIKI_IMAGE_PREFIX);
+      const currentWiki = (mod.image_path ?? '').startsWith(ARMORY_STANCE_WIKI_IMAGE_PREFIX);
+      if (!existingWiki && currentWiki) {
+        byKey.set(key, mod);
+        continue;
+      }
+      const existingIsExpert = existing.unique_name.includes('/Expert/');
+      const currentIsExpert = mod.unique_name.includes('/Expert/');
+      if (existingIsExpert && !currentIsExpert) {
+        byKey.set(key, mod);
+      }
+    }
+  }
+
+  return Array.from(byKey.values()) as Array<Record<string, unknown>>;
 }
 
 function getAllowedArcaneTags(equipmentType: string | undefined): Set<string> | null {
@@ -445,87 +610,28 @@ function getAllowedArcaneTags(equipmentType: string | undefined): Set<string> | 
   }
 }
 
-apiRouter.get('/mods', (req: Request, res: Response) => {
+apiRouter.get('/mods', async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const typesRaw = typeof req.query.types === 'string' ? req.query.types : undefined;
     const typeRaw = typeof req.query.type === 'string' ? req.query.type : undefined;
     const rarity = typeof req.query.rarity === 'string' ? req.query.rarity : undefined;
     const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const query: ModListQuery = { typesRaw, typeRaw, rarity, search };
+    const cacheKey = JSON.stringify(query);
+    const { limit, offset } = parseListPagination(req);
 
-    let sql = `SELECT ${MOD_API_SELECT_LIST}
-      ${MOD_API_FROM}
-      WHERE 1=1`;
-    const params: unknown[] = [];
+    const allItems = await getCachedModList(cacheKey, () => loadDedupedMods(db, query));
 
-    if (typesRaw) {
-      const typeList = typesRaw
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .map((t) => t.toLowerCase());
-      if (typeList.length === 1) {
-        sql += ' AND LOWER(m.type) = ?';
-        params.push(typeList[0]);
-      } else if (typeList.length > 1) {
-        sql += ` AND LOWER(m.type) IN (${typeList.map(() => '?').join(',')})`;
-        params.push(...typeList);
-      }
-    } else if (typeRaw) {
-      sql += ' AND LOWER(m.type) = LOWER(?)';
-      params.push(typeRaw);
-    }
-
-    if (rarity) {
-      sql += ' AND m.rarity = ?';
-      params.push(rarity);
-    }
-    if (search) {
-      const escapedSearch = search.replace(/[\\%_]/g, '\\$&');
-      sql += " AND m.name LIKE ? ESCAPE '\\'";
-      params.push(`%${escapedSearch}%`);
-    }
-
-    sql += ' ORDER BY m.name';
-
-    const rows = db.prepare(sql).all(...params) as Array<Record<string, unknown>>;
-    const normalizedRows = rows.map(normalizeModApiRow) as Array<{
-      unique_name: string;
-      name: string;
-      type: string;
-      image_path?: string;
-    }>;
-
-    const cleaned = normalizedRows.filter((r) => {
-      if (MOD_JUNK_SEGMENTS.some((seg) => r.unique_name.includes(seg))) return false;
-      if (MOD_JUNK_SUFFIXES.some((suf) => r.unique_name.endsWith(suf))) return false;
-      return true;
+    const responseLimit = limit === null ? allItems.length : limit;
+    const responseOffset = limit === null ? 0 : offset;
+    const page = allItems.slice(responseOffset, responseOffset + responseLimit);
+    res.json({
+      items: page,
+      total: allItems.length,
+      limit: responseLimit,
+      offset: responseOffset,
     });
-
-    const byKey = new Map<string, (typeof cleaned)[number]>();
-    for (const mod of cleaned) {
-      const key = `${mod.name}|||${mod.type}`;
-      const existing = byKey.get(key);
-      if (!existing) {
-        byKey.set(key, mod);
-      } else {
-        const existingWiki = (existing.image_path ?? '').startsWith(
-          ARMORY_STANCE_WIKI_IMAGE_PREFIX,
-        );
-        const currentWiki = (mod.image_path ?? '').startsWith(ARMORY_STANCE_WIKI_IMAGE_PREFIX);
-        if (!existingWiki && currentWiki) {
-          byKey.set(key, mod);
-          continue;
-        }
-        const existingIsExpert = existing.unique_name.includes('/Expert/');
-        const currentIsExpert = mod.unique_name.includes('/Expert/');
-        if (existingIsExpert && !currentIsExpert) {
-          byKey.set(key, mod);
-        }
-      }
-    }
-
-    res.json({ items: Array.from(byKey.values()) });
   } catch (err) {
     sendInternalError(res, 'mods.list', err);
   }
@@ -671,7 +777,7 @@ apiRouter.get('/archon-shards', (_req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/admin/import/state', requireAdmin, (_req: Request, res: Response) => {
+apiRouter.get('/admin/import/state', requireGameAdmin, (_req: Request, res: Response) => {
   try {
     res.json(getAdminImportSnapshot());
   } catch (err) {
@@ -679,7 +785,7 @@ apiRouter.get('/admin/import/state', requireAdmin, (_req: Request, res: Response
   }
 });
 
-apiRouter.post('/admin/import/run', requireAdmin, (req: Request, res: Response) => {
+apiRouter.post('/admin/import/run', requireGameAdmin, (req: Request, res: Response) => {
   try {
     const userId = req.session.user_id;
     if (!userId) {
@@ -706,7 +812,7 @@ apiRouter.post('/admin/import/run', requireAdmin, (req: Request, res: Response) 
   }
 });
 
-apiRouter.get('/admin/import/stream', requireAdmin, (req: Request, res: Response) => {
+apiRouter.get('/admin/import/stream', requireGameAdmin, (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
@@ -826,9 +932,9 @@ apiRouter.get('/loadouts/:id', async (req: Request, res: Response) => {
       return;
     }
 
-    const loadout = db.prepare('SELECT * FROM loadouts WHERE id = ?').get(id) as
-      | Record<string, unknown>
-      | undefined;
+    const loadout = db
+      .prepare(`SELECT ${LOADOUT_SELECT_LIST} FROM loadouts WHERE id = ?`)
+      .get(id) as Record<string, unknown> | undefined;
     if (!loadout) {
       res.status(404).json({ error: 'Loadout not found' });
       return;
@@ -851,11 +957,16 @@ apiRouter.get('/loadouts/:id', async (req: Request, res: Response) => {
       .prepare('SELECT build_id, slot_type FROM loadout_builds WHERE loadout_id = ?')
       .all(id) as Array<{ build_id: number; slot_type: string }>;
 
+    const buildsById = new Map(
+      fetchBuildsByIds(
+        db,
+        linkRows.map((link) => link.build_id),
+      ).map((row) => [row.id, row]),
+    );
+
     const buildsWithSlots: Array<{ slot_type: string; build: Record<string, unknown> }> = [];
     for (const link of linkRows) {
-      const buildRow = db.prepare('SELECT * FROM builds WHERE id = ?').get(link.build_id) as
-        | BuildRow
-        | undefined;
+      const buildRow = buildsById.get(link.build_id);
       if (!buildRow) continue;
       const buildVis = buildRow.visibility ?? 'private';
       const canSeeBuild =
@@ -1143,9 +1254,9 @@ apiRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
       }>;
 
       for (const link of sourceLinks) {
-        const sourceBuild = db.prepare('SELECT * FROM builds WHERE id = ?').get(link.build_id) as
-          | BuildRow
-          | undefined;
+        const sourceBuild = db
+          .prepare(`SELECT ${BUILD_SELECT_LIST} FROM builds WHERE id = ?`)
+          .get(link.build_id) as BuildRow | undefined;
         if (!sourceBuild) {
           continue;
         }
@@ -1249,7 +1360,7 @@ apiRouter.get('/builds', (req: Request, res: Response) => {
     }
 
     const rows = db
-      .prepare('SELECT * FROM builds WHERE user_id = ? ORDER BY updated_at DESC')
+      .prepare(`SELECT ${BUILD_SELECT_LIST} FROM builds WHERE user_id = ? ORDER BY updated_at DESC`)
       .all(req.session.user_id) as BuildRow[];
 
     const builds = rows.map((row) => toBuildResponse(row));
@@ -1310,7 +1421,7 @@ apiRouter.get('/builds/by-equipment', (req: Request, res: Response) => {
 
     const rows = db
       .prepare(
-        `SELECT * FROM builds
+        `SELECT ${BUILD_SELECT_LIST} FROM builds
          WHERE equipment_type = ? AND equipment_unique_name = ?
            AND visibility IN ('public', 'unlisted')
          ORDER BY updated_at DESC`,
@@ -1421,7 +1532,9 @@ apiRouter.get('/builds/:id', async (req: Request, res: Response) => {
       return;
     }
 
-    const row = db.prepare('SELECT * FROM builds WHERE id = ?').get(id) as BuildRow | undefined;
+    const row = db.prepare(`SELECT ${BUILD_SELECT_LIST} FROM builds WHERE id = ?`).get(id) as
+      | BuildRow
+      | undefined;
     if (!row) {
       res.status(404).json({ error: 'Build not found' });
       return;
@@ -1429,10 +1542,9 @@ apiRouter.get('/builds/:id', async (req: Request, res: Response) => {
 
     const sessionUserId = req.session.user_id;
     const isOwner = row.user_id === sessionUserId;
-    const vis = row.visibility ?? 'private';
     const authState = await fetchRemoteAuthState(req);
     const isGameAdmin = effectiveArmoryGameAdmin(authState);
-    if (!isOwner && vis !== 'public' && vis !== 'unlisted' && !isGameAdmin) {
+    if (!canReadBuild(row, sessionUserId, isGameAdmin)) {
       res.status(404).json({ error: 'Build not found' });
       return;
     }
@@ -1606,7 +1718,7 @@ apiRouter.delete('/builds/:id', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/builds/:id/copy', (req: Request, res: Response) => {
+apiRouter.post('/builds/:id/copy', async (req: Request, res: Response) => {
   try {
     const db = getDb();
     if (!req.session.user_id) {
@@ -1618,8 +1730,17 @@ apiRouter.post('/builds/:id/copy', (req: Request, res: Response) => {
       res.status(400).json({ error: 'Invalid build id' });
       return;
     }
-    const source = db.prepare('SELECT * FROM builds WHERE id = ?').get(id) as BuildRow | undefined;
+    const source = db.prepare(`SELECT ${BUILD_SELECT_LIST} FROM builds WHERE id = ?`).get(id) as
+      | BuildRow
+      | undefined;
     if (!source) {
+      res.status(404).json({ error: 'Build not found' });
+      return;
+    }
+
+    const authState = await fetchRemoteAuthState(req);
+    const isGameAdmin = effectiveArmoryGameAdmin(authState);
+    if (!canReadBuild(source, req.session.user_id, isGameAdmin)) {
       res.status(404).json({ error: 'Build not found' });
       return;
     }

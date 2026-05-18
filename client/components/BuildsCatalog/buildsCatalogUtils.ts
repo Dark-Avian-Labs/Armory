@@ -53,7 +53,6 @@ export const TAB_ORDER: EquipmentPickerTab[] = (() => {
   ];
 })();
 
-/** 9.5rem — Tailwind spacing 38 */
 export const EQUIPMENT_PICKER_TILE_SIZE_CLASS = 'h-[9.5rem] w-[9.5rem]';
 export const EQUIPMENT_PICKER_TILE_BUTTON_CLASS = 'w-[9.5rem] shrink-0';
 export const EQUIPMENT_PICKER_GRID_CLASS = 'equipment-picker-grid grid justify-items-start gap-3';

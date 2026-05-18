@@ -17,9 +17,11 @@ import {
   UnauthorizedError,
 } from '../../utils/api';
 import { getStoredProfile, mergeStoredProfile } from '../profile/profileStore';
+import { isArmoryGameAdmin } from './armoryAdmin';
 import type {
   AppAccountProfile,
   AppAccountState,
+  AppRoleAssignment,
   AuthStatus,
   RemoteAuthUser,
   RemoteAuthState,
@@ -62,12 +64,15 @@ async function getRetryAfterMs(res: Response): Promise<number | null> {
   return null;
 }
 
-function buildProfile(user: RemoteAuthUser): AppAccountProfile {
+function buildProfile(
+  user: RemoteAuthUser,
+  appRoles: AppRoleAssignment[] | undefined,
+): AppAccountProfile {
   const stored = getStoredProfile(user.id);
   return {
     userId: user.id,
     username: user.username,
-    isAdmin: user.is_admin,
+    isAdmin: isArmoryGameAdmin(user, appRoles),
     displayName: stored?.displayName || user.display_name || user.username,
     email: user.email || '',
   };
@@ -141,7 +146,7 @@ export function AuthProvider({
         return;
       }
 
-      setAccount({ isAuthenticated: true, profile: buildProfile(user) });
+      setAccount({ isAuthenticated: true, profile: buildProfile(user, data.app_roles) });
       setStatus('ok');
       setRateLimitedUntilMs(null);
     } catch (error) {

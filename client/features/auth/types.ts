@@ -14,10 +14,13 @@ export interface RemoteAuthUser {
   email?: string;
 }
 
+export type AppRoleAssignment = { app_id: string; role: 'user' | 'admin' };
+
 export interface RemoteAuthState {
   authenticated: boolean;
   has_game_access?: boolean;
   user?: RemoteAuthUser;
+  app_roles?: AppRoleAssignment[];
   auth_service_error?: boolean;
   auth_rate_limited?: boolean;
   auth_retry_after_sec?: number;

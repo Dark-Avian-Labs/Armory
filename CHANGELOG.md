@@ -260,4 +260,5 @@ Rules:
 - **v1.54.13** `chore` [#269](https://github.com/Dark-Avian-Labs/Armory/pull/269): Tab styling in BuildsCatalogPage and EquipmentGridModal
 - **v1.54.14** `fix` [#270](https://github.com/Dark-Avian-Labs/Armory/pull/270): BuildsCatalog and EquipmentGridModal styling and responsiveness
 - **v1.54.15** `chore` [#271](https://github.com/Dark-Avian-Labs/Armory/pull/271): EquipmentPicker and modal styling
-- **v1.54.16** `chore`: Update dependencies
+- **v1.54.16** `chore` [#272](https://github.com/Dark-Avian-Labs/Armory/pull/272): Update dependencies
+- **v1.54.17** `chore(quality)` [#273](https://github.com/Dark-Avian-Labs/Armory/pull/273): Composer & Coderabbit audit
