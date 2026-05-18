@@ -9,12 +9,14 @@ import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
 import helmet from 'helmet';
 
+import { pingAuthServiceHealth } from './auth/authHealth.js';
 import {
   authLoginRedirect,
   requireAuthApiJson,
   requireGameAccess,
   requirePageGameAccess,
 } from './auth/middleware.js';
+import { stopModListCacheCleanup } from './cache/modListCache.js';
 import {
   APP_VERSION,
   PORT,
@@ -34,9 +36,12 @@ import {
   SHUTDOWN_TIMEOUT_MS,
 } from './config.js';
 import { createCentralSchema } from './db/centralSchema.js';
-import { closeAll, getCentralDb } from './db/connection.js';
+import { closeAll, getCentralDb, getDb } from './db/connection.js';
 import { createAppSchema } from './db/schema.js';
 import { seedArchonShards } from './db/seedArchonShards.js';
+import { getRequestId, requestIdMiddleware } from './http/requestId.js';
+import { isAdminImportRunning, waitForAdminImportIdle } from './import/adminImportJob.js';
+import { log } from './logger.js';
 import { apiRouter } from './routes/api.js';
 import { authRouter } from './routes/auth.js';
 
@@ -68,6 +73,7 @@ if (NODE_ENV === 'production' && SECURE_COOKIES && !TRUST_PROXY) {
 }
 
 app.use(helmet());
+app.use(requestIdMiddleware);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -186,14 +192,6 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   next();
 });
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api/auth', authLimiter);
-
 app.get('/api/version', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({ version: APP_VERSION });
@@ -232,12 +230,25 @@ app.get('/healthz', (_req, res) => {
 });
 
 app.get('/readyz', (_req, res) => {
-  try {
-    centralDb.prepare('SELECT 1').get();
-    res.json({ status: 'ready', app: APP_NAME });
-  } catch {
-    res.status(503).json({ status: 'not_ready', app: APP_NAME });
-  }
+  void (async () => {
+    try {
+      centralDb.prepare('SELECT 1').get();
+      getDb().prepare('SELECT 1').get();
+      if (AUTH_SERVICE_URL) {
+        const authOk = await pingAuthServiceHealth(AUTH_SERVICE_URL);
+        if (!authOk) {
+          res.status(503).json({ status: 'not_ready', app: APP_NAME, reason: 'auth_unavailable' });
+          return;
+        }
+      } else if (NODE_ENV === 'production') {
+        res.status(503).json({ status: 'not_ready', app: APP_NAME, reason: 'auth_not_configured' });
+        return;
+      }
+      res.json({ status: 'ready', app: APP_NAME });
+    } catch {
+      res.status(503).json({ status: 'not_ready', app: APP_NAME });
+    }
+  })();
 });
 
 const clientDir = path.resolve(__dirname, '..', 'client');
@@ -309,33 +320,61 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
     res.status(403).json({ error: 'Invalid CSRF token', code: 'CSRF_INVALID' });
     return;
   }
-  console.error('[Error]', err.stack ?? message);
+  log('error', 'Unhandled request error', {
+    requestId: getRequestId(res),
+    err: err.stack ?? message,
+  });
   res.status(500).json({ error: 'Internal server error' });
 });
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(`[${APP_NAME}] Server running on http://${HOST}:${PORT} (${NODE_ENV})`);
+  log('info', `${APP_NAME} server listening`, { host: HOST, port: PORT, nodeEnv: NODE_ENV });
 });
 
 function shutdown(): void {
   let done = false;
-  function closeAndExit(): void {
+  function closeAndExit(exitCode: number): void {
     if (done) return;
     done = true;
-    let exitCode = 0;
+    stopModListCacheCleanup();
     try {
       closeAll();
     } catch (err) {
-      console.error('[Shutdown] Failed to close DB connections:', err);
+      log('error', 'Failed to close DB connections during shutdown', {
+        err: err instanceof Error ? err.message : String(err),
+      });
       exitCode = 1;
     }
     process.exit(exitCode); // eslint-disable-line n/no-process-exit -- required for graceful shutdown
   }
-  const timeout = setTimeout(() => closeAndExit(), SHUTDOWN_TIMEOUT_MS);
-  server.close(() => {
-    clearTimeout(timeout);
-    closeAndExit();
-  });
+
+  const hardTimeout = setTimeout(() => {
+    log('warn', 'Shutdown timeout reached; forcing exit', { timeoutMs: SHUTDOWN_TIMEOUT_MS });
+    closeAndExit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+
+  void (async () => {
+    if (isAdminImportRunning()) {
+      log('info', 'Waiting for admin import job before shutdown');
+      const importWaitMs = Math.max(SHUTDOWN_TIMEOUT_MS - 2000, 1000);
+      const finished = await waitForAdminImportIdle(importWaitMs);
+      if (!finished) {
+        log('warn', 'Admin import still running; proceeding with shutdown');
+      }
+    }
+
+    server.close((err) => {
+      clearTimeout(hardTimeout);
+      if (err) {
+        log('error', 'HTTP server close failed', {
+          err: err instanceof Error ? err.message : String(err),
+        });
+        closeAndExit(1);
+        return;
+      }
+      closeAndExit(0);
+    });
+  })();
 }
 
 process.on('SIGINT', shutdown);

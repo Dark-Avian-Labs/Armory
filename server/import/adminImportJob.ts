@@ -1,3 +1,4 @@
+import { bustModListCache } from '../cache/modListCache.js';
 import type { StartupPipelineSummary } from './pipelineSummary.js';
 import { runStartupPipeline } from './startupPipeline.js';
 
@@ -81,6 +82,32 @@ export function subscribeAdminImportSnapshot(listener: SnapshotListener): () => 
   };
 }
 
+export function isAdminImportRunning(): boolean {
+  return state.running;
+}
+
+export function waitForAdminImportIdle(timeoutMs: number): Promise<boolean> {
+  if (!state.running) {
+    return Promise.resolve(true);
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(ok);
+    };
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    const unsubscribe = subscribeAdminImportSnapshot((snapshot) => {
+      if (!snapshot.running) {
+        finish(true);
+      }
+    });
+  });
+}
+
 export interface AdminImportOptions {
   forceImport?: boolean;
   forceImages?: boolean;
@@ -136,6 +163,7 @@ export function startAdminImportJob(
     } finally {
       state.running = false;
       state.finishedAt = nowIso();
+      bustModListCache();
       notify();
     }
   })();

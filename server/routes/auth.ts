@@ -1,19 +1,9 @@
 import { Router, type Request, type Response } from 'express';
-import { rateLimit } from 'express-rate-limit';
 
 import { authLoginRedirect, authStatus, redirectIfAuthenticated } from '../auth/middleware.js';
 import { proxyAuthJson, proxyAuthLogout } from '../auth/remoteAuth.js';
 
 export const authRouter = Router();
-
-authRouter.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-  }),
-);
 
 authRouter.get('/csrf', (req: Request, res: Response) => {
   const token = (res.locals as { csrfToken?: string }).csrfToken ?? req.session.csrfToken;

@@ -1,6 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 
-import { buildAuthLoginUrl, fetchRemoteAuthState, syncSessionFromAuth } from './remoteAuth.js';
+import {
+  buildAuthLoginUrl,
+  effectiveArmoryGameAdmin,
+  fetchRemoteAuthState,
+  syncSessionFromAuth,
+} from './remoteAuth.js';
 
 function wantsJson(req: Request): boolean {
   const accept = req.get('accept');
@@ -64,14 +69,24 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   res.redirect(buildAuthLoginUrl(req));
 }
 
-export async function requireAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function requireGameAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   const state = await syncSessionFromAuth(req);
+  if (state.auth_service_error) {
+    applyAuthServiceRetryHeaders(res, state);
+    res.status(authServiceFailureStatus(state)).json({ error: 'Auth service unavailable' });
+    return;
+  }
   if (!state.authenticated || !state.user) {
     res.status(401).json({ error: 'Authentication required' });
     return;
   }
-  if (!state.user.is_admin) {
-    res.status(403).json({ error: 'Admin access required' });
+  touchSessionFromState(req, state);
+  if (!effectiveArmoryGameAdmin(state)) {
+    res.status(403).json({ error: 'Game admin access required' });
     return;
   }
   next();
