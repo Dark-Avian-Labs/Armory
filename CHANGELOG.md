@@ -262,3 +262,4 @@ Rules:
 - **v1.54.15** `chore` [#271](https://github.com/Dark-Avian-Labs/Armory/pull/271): EquipmentPicker and modal styling
 - **v1.54.16** `chore` [#272](https://github.com/Dark-Avian-Labs/Armory/pull/272): Update dependencies
 - **v1.54.17** `chore(quality)` [#273](https://github.com/Dark-Avian-Labs/Armory/pull/273): Composer & Coderabbit audit
+- **v1.54.18** `chore` [#274](https://github.com/Dark-Avian-Labs/Armory/pull/274): updated stale animation
