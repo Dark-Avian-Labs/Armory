@@ -254,3 +254,10 @@ Rules:
 - **v1.54.7** `chore` [#263](https://github.com/Dark-Avian-Labs/Armory/pull/263): Updated graphics
 - **v1.54.8** `fix` [#264](https://github.com/Dark-Avian-Labs/Armory/pull/264): Coloring
 - **v1.54.9** `chore` [#265](https://github.com/Dark-Avian-Labs/Armory/pull/265): Update dependencies
+- **v1.54.10** `chore` [#266](https://github.com/Dark-Avian-Labs/Armory/pull/266): Material Symbols in CompareBar/StatsPanel; icon asset refresh
+- **v1.54.11** `chore` [#267](https://github.com/Dark-Avian-Labs/Armory/pull/267): SVG icons first pass (slot icons → SlotTypeIcon; remove deprecated assets)
+- **v1.54.12** `chore` [#268](https://github.com/Dark-Avian-Labs/Armory/pull/268): More SVG icons; remove unused feathers.png
+- **v1.54.13** `chore` [#269](https://github.com/Dark-Avian-Labs/Armory/pull/269): Tab styling in BuildsCatalogPage and EquipmentGridModal
+- **v1.54.14** `fix` [#270](https://github.com/Dark-Avian-Labs/Armory/pull/270): BuildsCatalog and EquipmentGridModal styling and responsiveness
+- **v1.54.15** `chore` [#271](https://github.com/Dark-Avian-Labs/Armory/pull/271): EquipmentPicker and modal styling
+- **v1.54.16** `chore`: Update dependencies

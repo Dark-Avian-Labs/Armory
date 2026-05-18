@@ -20,10 +20,10 @@
   "dependencies": {
     "@dotenvx/dotenvx": "^1.66.0",
     "@fontsource-variable/cascadia-mono": "^5.2.2",
-    "@fontsource-variable/geist": "^5.2.8",
-    "@fontsource-variable/geist-mono": "^5.2.7",
+    "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource-variable/geist-mono": "^5.2.8",
     "@fontsource-variable/inter": "^5.2.8",
-    "@fontsource-variable/material-symbols-rounded": "^5.2.44",
+    "@fontsource-variable/material-symbols-rounded": "^5.2.45",
     "better-sqlite3": "^12.10.0",
     "better-sqlite3-session-store": "^0.1.0",
     "cheerio": "^1.2.0",
