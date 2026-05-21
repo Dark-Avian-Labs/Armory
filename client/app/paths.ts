@@ -2,6 +2,7 @@ export const APP_PATHS = {
   home: '/builder/builds',
   buildsExplore: '/builder/builds',
   myBuilds: '/builder/my-builds',
+  userBuilds: '/builder/users/:userId/builds',
   buildNew: '/builder/new/:equipmentType/:equipmentId',
   buildEdit: '/builder/:buildId',
   loadoutView: '/builder/loadouts/:loadoutId',
@@ -24,6 +25,10 @@ export function buildReadOnlyPath(buildId: string): string {
 
 export function buildLoadoutPath(loadoutId: string): string {
   return `/builder/loadouts/${encodeURIComponent(loadoutId)}`;
+}
+
+export function userBuildsPath(userId: number | string): string {
+  return `/builder/users/${encodeURIComponent(String(userId))}/builds`;
 }
 
 export function buildEquipmentBuildsListPath(

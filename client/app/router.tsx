@@ -9,6 +9,7 @@ import { APP_PATHS } from './paths';
 import {
   AdminPage,
   BuildOverview,
+  UserBuildsPage,
   BuildsByEquipmentPage,
   BuildsCatalogPage,
   ChunkErrorBoundary,
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
           { path: '/builder/loadouts/:loadoutId', element: <LoadoutDetailPage /> },
           { path: APP_PATHS.buildsExplore, element: <BuildsCatalogPage /> },
           { path: APP_PATHS.myBuilds, element: <BuildOverview /> },
+          { path: APP_PATHS.userBuilds, element: <UserBuildsPage /> },
           { path: APP_PATHS.buildNew, element: <ModBuilder /> },
           { path: APP_PATHS.buildEdit, element: <ModBuilder /> },
           { path: APP_PATHS.admin, element: <AdminPage /> },

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { linkifyPlainText } from '../../utils/linkifyText';
+import { formatDescriptionText } from '../../utils/formatDescriptionText';
 
 type BuildDescriptionPanelProps = {
   value: string;
@@ -17,7 +17,8 @@ export function BuildDescriptionPanel({
 }: BuildDescriptionPanelProps) {
   const footer: ReactNode = readOnly ? null : (
     <p className="text-muted shrink-0 text-[10px] leading-snug">
-      Plain text. URLs turn into links when the build is viewed.
+      Use *bold*, _italic_, # Headlines, [label](https://…), [[Mod Name]] for mod links, and plain
+      URLs.
     </p>
   );
 
@@ -29,7 +30,7 @@ export function BuildDescriptionPanel({
       {readOnly ? (
         <div className="text-foreground/90 min-h-[4.5rem] flex-1 overflow-auto text-sm leading-relaxed break-words whitespace-pre-wrap">
           {value.trim() ? (
-            linkifyPlainText(value)
+            formatDescriptionText(value)
           ) : (
             <span className="text-muted/80">No description.</span>
           )}
