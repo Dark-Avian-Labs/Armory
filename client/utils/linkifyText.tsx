@@ -1,1 +1,4 @@
-export { formatDescriptionText, formatDescriptionText as linkifyPlainText } from './formatDescriptionText';
+export {
+  formatDescriptionText,
+  formatDescriptionText as linkifyPlainText,
+} from './formatDescriptionText';

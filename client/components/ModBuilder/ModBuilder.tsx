@@ -9,8 +9,8 @@ import {
 } from 'react-router-dom';
 
 import { buildEditPath, userBuildsPath } from '../../app/paths';
-import { useAuth } from '../../features/auth/AuthContext';
 import { useCompare } from '../../context/CompareContext';
+import { useAuth } from '../../features/auth/AuthContext';
 import { useApi } from '../../hooks/useApi';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
 import {
@@ -570,9 +570,7 @@ export function ModBuilder() {
           ? body.owner_user_id
           : null,
       );
-      setBuildOwnerUsername(
-        typeof body.owner_username === 'string' ? body.owner_username : null,
-      );
+      setBuildOwnerUsername(typeof body.owner_username === 'string' ? body.owner_username : null);
       setBuildIsPublic(body.build.visibility === 'public');
       setHelminthConfig(config.helminth);
       if (Array.isArray(config.arcaneSlots)) {

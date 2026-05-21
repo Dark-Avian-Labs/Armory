@@ -50,7 +50,7 @@ function renderInlineTokens(text: string, keyPrefix: string): ReactNode[] {
         break;
       case 'bold':
         nodes.push(
-          <strong key={`${keyPrefix}-b-${key++}`} className="font-semibold text-foreground">
+          <strong key={`${keyPrefix}-b-${key++}`} className="text-foreground font-semibold">
             {renderInlineTokens(token.text, `${keyPrefix}-b${key}`)}
           </strong>,
         );

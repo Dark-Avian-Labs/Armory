@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 
 import { buildEditPath, buildReadOnlyPath } from '../../app/paths';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
-import { parseStoredBuildFromApi } from '../../utils/parseStoredBuildFromApi';
 import { useLoadoutStorage, type Loadout } from '../../hooks/useLoadoutStorage';
 import {
   EQUIPMENT_SLOT_CONFIGS,
@@ -23,6 +22,7 @@ import {
 import type { EquipmentLookupRow } from '../../utils/buildCatalogCategory';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
 import { linkifyPlainText } from '../../utils/linkifyText';
+import { parseStoredBuildFromApi } from '../../utils/parseStoredBuildFromApi';
 import { weaponOmitsExilusSlot } from '../../utils/specialItems';
 import {
   TAB_ORDER,
@@ -201,9 +201,7 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
             .map((row) => parseStoredBuildFromApi(row))
             .filter((b): b is StoredBuild => b != null),
         );
-        setOwnerUsername(
-          typeof body.owner_username === 'string' ? body.owner_username : null,
-        );
+        setOwnerUsername(typeof body.owner_username === 'string' ? body.owner_username : null);
       } catch {
         if (alive) {
           setUserBuilds([]);
@@ -514,66 +512,70 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
         </div>
 
         {!viewingUserBuilds && (
-        <div className="hidden w-80 shrink-0 space-y-4 lg:block">
-          <div className="glass-surface p-4">
-            <h3 className="text-foreground mb-3 text-sm font-semibold">Loadouts</h3>
-            <p className="text-muted mb-3 text-xs">Group builds into complete character setups.</p>
-            {showNewLoadout ? (
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newLoadoutName}
-                    onChange={(e) => {
-                      setNewLoadoutName(e.target.value);
-                      if (newLoadoutError) setNewLoadoutError(null);
-                    }}
-                    placeholder="Loadout name..."
-                    className="form-input flex-1 text-xs"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+          <div className="hidden w-80 shrink-0 space-y-4 lg:block">
+            <div className="glass-surface p-4">
+              <h3 className="text-foreground mb-3 text-sm font-semibold">Loadouts</h3>
+              <p className="text-muted mb-3 text-xs">
+                Group builds into complete character setups.
+              </p>
+              {showNewLoadout ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newLoadoutName}
+                      onChange={(e) => {
+                        setNewLoadoutName(e.target.value);
+                        if (newLoadoutError) setNewLoadoutError(null);
+                      }}
+                      placeholder="Loadout name..."
+                      className="form-input flex-1 text-xs"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          void handleCreateLoadout();
+                        }
+                      }}
+                    />
+                    <button
+                      className="btn btn-accent btn-sm"
+                      onClick={() => {
                         void handleCreateLoadout();
-                      }
-                    }}
-                  />
-                  <button
-                    className="btn btn-accent btn-sm"
-                    onClick={() => {
-                      void handleCreateLoadout();
-                    }}
-                  >
-                    Create
-                  </button>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => {
-                      setShowNewLoadout(false);
-                      setNewLoadoutError(null);
-                    }}
-                  >
-                    Cancel
-                  </button>
+                      }}
+                    >
+                      Create
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => {
+                        setShowNewLoadout(false);
+                        setNewLoadoutError(null);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {newLoadoutError ? (
+                    <p className="text-danger text-xs">{newLoadoutError}</p>
+                  ) : null}
                 </div>
-                {newLoadoutError ? <p className="text-danger text-xs">{newLoadoutError}</p> : null}
-              </div>
-            ) : (
-              <button
-                className="btn btn-accent w-full text-xs"
-                onClick={() => {
-                  setShowNewLoadout(true);
-                  setNewLoadoutError(null);
-                }}
-              >
-                + New Loadout
-              </button>
-            )}
-          </div>
+              ) : (
+                <button
+                  className="btn btn-accent w-full text-xs"
+                  onClick={() => {
+                    setShowNewLoadout(true);
+                    setNewLoadoutError(null);
+                  }}
+                >
+                  + New Loadout
+                </button>
+              )}
+            </div>
 
-          <div className="glass-surface flex h-48 items-center justify-center">
-            <p className="text-muted/50 text-sm">Select a build to view details</p>
+            <div className="glass-surface flex h-48 items-center justify-center">
+              <p className="text-muted/50 text-sm">Select a build to view details</p>
+            </div>
           </div>
-        </div>
         )}
       </div>
 

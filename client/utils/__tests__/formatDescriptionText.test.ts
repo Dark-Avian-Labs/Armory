@@ -10,9 +10,7 @@ describe('descriptionInlineTokens', () => {
 
   it('tokenizes markdown links', () => {
     const tokens = tokenizeDescriptionInline('[Wiki](https://wiki.warframe.com)');
-    expect(tokens).toEqual([
-      { type: 'mdLink', label: 'Wiki', url: 'https://wiki.warframe.com' },
-    ]);
+    expect(tokens).toEqual([{ type: 'mdLink', label: 'Wiki', url: 'https://wiki.warframe.com' }]);
   });
 
   it('tokenizes bold and italic', () => {
