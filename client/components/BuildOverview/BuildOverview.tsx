@@ -620,7 +620,7 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
         </div>
       )}
 
-      {linkingLoadout && (
+      {!viewingUserBuilds && linkingLoadout && (
         <div
           className="modal-overlay"
           tabIndex={0}
