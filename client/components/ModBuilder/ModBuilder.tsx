@@ -311,6 +311,8 @@ export function ModBuilder() {
     setCurrentBuildId(buildId);
     setTargetEquipmentUniqueName(null);
     setIsOwnBuild(true);
+    setBuildOwnerUserId(null);
+    setBuildOwnerUsername(null);
     setBuildIsPublic(false);
     setHelminthConfig(undefined);
     setActiveSlotType(undefined);

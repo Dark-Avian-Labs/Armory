@@ -376,6 +376,13 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
     }
   };
 
+  const openBuild = useCallback(
+    (buildId: string) => {
+      navigate(viewingUserBuilds ? buildReadOnlyPath(buildId) : buildEditPath(buildId));
+    },
+    [navigate, viewingUserBuilds],
+  );
+
   if (loading) {
     return (
       <div className="mx-auto max-w-[2000px]">
@@ -385,13 +392,6 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
       </div>
     );
   }
-
-  const openBuild = useCallback(
-    (buildId: string) => {
-      navigate(viewingUserBuilds ? buildReadOnlyPath(buildId) : buildEditPath(buildId));
-    },
-    [navigate, viewingUserBuilds],
-  );
 
   return (
     <div className="mx-auto flex max-w-[2000px] flex-col gap-4">
