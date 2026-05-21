@@ -19,13 +19,20 @@ export function DescriptionModLink({ name }: DescriptionModLinkProps) {
   useEffect(() => {
     let alive = true;
     const trimmed = name.trim();
-    if (!trimmed) return undefined;
+    if (!trimmed) {
+      setMod(null);
+      return undefined;
+    }
 
     void (async () => {
       try {
         const qs = new URLSearchParams({ search: trimmed, limit: '30' });
         const res = await apiFetch(`/api/mods?${qs.toString()}`);
-        if (!res.ok || !alive) return;
+        if (!alive) return;
+        if (!res.ok) {
+          setMod(null);
+          return;
+        }
         const body = (await res.json()) as { items?: Mod[] };
         const items = Array.isArray(body.items) ? body.items : [];
         const lower = trimmed.toLowerCase();
@@ -33,11 +40,10 @@ export function DescriptionModLink({ name }: DescriptionModLinkProps) {
           items.find((m) => m.name.trim().toLowerCase() === lower) ??
           items.find((m) => m.unique_name.toLowerCase().endsWith(lower.replace(/\s+/g, ''))) ??
           items[0];
-        if (alive && exact) {
-          setMod(exact);
-        }
+        if (!alive) return;
+        setMod(exact ?? null);
       } catch {
-        // leave as plain link text
+        if (alive) setMod(null);
       }
     })();
 

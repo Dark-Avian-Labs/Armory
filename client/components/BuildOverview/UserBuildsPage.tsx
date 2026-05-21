@@ -6,7 +6,7 @@ export function UserBuildsPage() {
   const { userId: userIdParam } = useParams<{ userId: string }>();
   const userId = Number(userIdParam);
 
-  if (!Number.isFinite(userId) || userId <= 0) {
+  if (!Number.isInteger(userId) || userId <= 0) {
     return (
       <div className="mx-auto max-w-[2000px]">
         <div className="glass-shell flex h-64 items-center justify-center">
