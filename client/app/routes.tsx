@@ -5,6 +5,11 @@ export const BuildOverview = lazy(() =>
     default: mod.BuildOverview,
   })),
 );
+export const UserBuildsPage = lazy(() =>
+  import('../components/BuildOverview/UserBuildsPage').then((mod) => ({
+    default: mod.UserBuildsPage,
+  })),
+);
 export const BuildsCatalogPage = lazy(() =>
   import('../components/BuildsCatalog/BuildsCatalogPage').then((mod) => ({
     default: mod.BuildsCatalogPage,

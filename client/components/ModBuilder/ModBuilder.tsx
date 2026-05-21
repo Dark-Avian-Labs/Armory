@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
+  Link,
   useParams,
   useNavigate,
   useSearchParams,
@@ -7,7 +8,8 @@ import {
   type BlockerFunction,
 } from 'react-router-dom';
 
-import { buildEditPath } from '../../app/paths';
+import { buildEditPath, userBuildsPath } from '../../app/paths';
+import { useAuth } from '../../features/auth/AuthContext';
 import { useCompare } from '../../context/CompareContext';
 import { useApi } from '../../hooks/useApi';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
@@ -252,6 +254,7 @@ export function ModBuilder() {
   const readOnly = searchParams.get('view') === '1';
   const compactOverview = searchParams.get('compact') === '1';
   const { saveBuild: storageSave, getBuild, copyBuildFromId } = useBuildStorage();
+  const { account } = useAuth();
 
   const [equipmentType, setEquipmentType] = useState<EquipmentType>(
     (routeEqType as EquipmentType) || 'warframe',
@@ -270,6 +273,8 @@ export function ModBuilder() {
   const [loaded, setLoaded] = useState(false);
   const [equipmentLoadError, setEquipmentLoadError] = useState<string | null>(null);
   const [isOwnBuild, setIsOwnBuild] = useState(true);
+  const [buildOwnerUserId, setBuildOwnerUserId] = useState<number | null>(null);
+  const [buildOwnerUsername, setBuildOwnerUsername] = useState<string | null>(null);
   const [buildIsPublic, setBuildIsPublic] = useState(false);
   const [arcaneSlots, setArcaneSlots] = useState<ArcaneSlot[]>([{ rank: 0 }, { rank: 0 }]);
   const [shardSlots, setShardSlots] = useState<ShardSlotConfig[]>(
@@ -457,6 +462,11 @@ export function ModBuilder() {
     [supportsValence, valenceBonus],
   );
 
+  const viewOwnerUserId =
+    buildOwnerUserId ?? (isOwnBuild && account.profile ? account.profile.userId : null);
+  const viewOwnerUsername =
+    buildOwnerUsername ?? (isOwnBuild && account.profile ? account.profile.username : null);
+
   livePersistFingerprintRef.current = modBuilderPersistFingerprint({
     buildName,
     buildDescription,
@@ -538,6 +548,8 @@ export function ModBuilder() {
           description?: string | null;
         };
         can_edit?: boolean;
+        owner_user_id?: number;
+        owner_username?: string | null;
       };
       if (!body.build) {
         if (alive) {
@@ -553,6 +565,14 @@ export function ModBuilder() {
       setTargetEquipmentUniqueName(body.build.equipment_unique_name);
       setCurrentBuildId(String(body.build.id));
       setIsOwnBuild(body.can_edit === true);
+      setBuildOwnerUserId(
+        typeof body.owner_user_id === 'number' && body.owner_user_id > 0
+          ? body.owner_user_id
+          : null,
+      );
+      setBuildOwnerUsername(
+        typeof body.owner_username === 'string' ? body.owner_username : null,
+      );
       setBuildIsPublic(body.build.visibility === 'public');
       setHelminthConfig(config.helminth);
       if (Array.isArray(config.arcaneSlots)) {
@@ -584,6 +604,8 @@ export function ModBuilder() {
         setTargetEquipmentUniqueName(stored.equipment_unique_name);
         setCurrentBuildId(stored.id);
         setIsOwnBuild(true);
+        setBuildOwnerUserId(null);
+        setBuildOwnerUsername(null);
         setBuildIsPublic(stored.visibility === 'public');
         setHelminthConfig(stored.helminth);
         if (stored.slots?.length) setSlots(stored.slots as ModSlot[]);
@@ -1736,14 +1758,33 @@ export function ModBuilder() {
         <div className="flex min-h-0 w-full shrink-0 flex-col gap-4 2xl:w-[820px]">
           <div className="glass-shell shrink-0 p-4 sm:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0 space-y-2">
-                <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-                  <span className="display-title text-foreground text-[2rem]">{buildName}</span>
-                  {readOnly && <span className="text-muted/70 text-xs">View only</span>}
-                  {!readOnly && !isOwnBuild && (
-                    <span className="text-muted/70 text-xs">Read-only shared build</span>
-                  )}
-                </div>
+              <div className="min-w-0 space-y-1">
+                {readOnly ? (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="display-title text-foreground text-[2rem] leading-tight">
+                      {buildName}
+                    </span>
+                    {viewOwnerUserId != null &&
+                      (viewOwnerUsername ? (
+                        <Link
+                          to={userBuildsPath(viewOwnerUserId)}
+                          className="text-muted hover:text-accent w-fit text-sm transition-colors"
+                        >
+                          by {viewOwnerUsername}
+                        </Link>
+                      ) : (
+                        <span className="text-muted text-sm">by User #{viewOwnerUserId}</span>
+                      ))}
+                    <span className="text-muted/70 text-xs">View only</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                    <span className="display-title text-foreground text-[2rem]">{buildName}</span>
+                    {!isOwnBuild && (
+                      <span className="text-muted/70 text-xs">Read-only shared build</span>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {equipmentType !== 'warframe' && (

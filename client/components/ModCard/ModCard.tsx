@@ -17,6 +17,116 @@ import { CardPreview } from './CardPreview';
 
 const WINDOW_REPOSITION_LISTENERS: AddEventListenerOptions = { capture: true, passive: true };
 
+export type ModPreviewDisplay = {
+  layout: typeof DEFAULT_LAYOUT;
+  rarity: ReturnType<typeof dbRarityToCardRarity>;
+  polarity: ReturnType<typeof dbPolarityToIconName>;
+  modArt: string;
+  modName: string;
+  modType: string;
+  modDescription: string;
+  setDescription: string | undefined;
+  setActive: number;
+  setTotal: number;
+  modSet: string | null | undefined;
+  drain: number;
+  rank: number;
+  maxRank: number;
+  slotIcon: string;
+  polarityMatch: ReturnType<typeof polarityMatchForUi>;
+};
+
+export function getModPreviewDisplay(
+  mod: Mod,
+  options?: {
+    rank?: number;
+    setRank?: number;
+    slotType?: SlotType;
+    slotPolarity?: string;
+    umbraSetEquippedCount?: number;
+    scale?: number;
+  },
+): ModPreviewDisplay {
+  const rank = options?.rank ?? 0;
+  const setRank = options?.setRank;
+  const slotType = options?.slotType ?? 'general';
+  const slotPolarity = options?.slotPolarity;
+  const maxRank = mod.fusion_limit ?? 0;
+  const baseDrain = mod.base_drain ?? 0;
+  const effectiveDrain = calculateEffectiveDrain(
+    baseDrain,
+    rank,
+    maxRank,
+    slotPolarity,
+    mod.polarity,
+    slotType,
+    isRivenMod(mod),
+  );
+  const rarity =
+    (mod.type || '').toUpperCase() === 'RIVEN'
+      ? 'Riven'
+      : dbRarityToCardRarity(mod.rarity, mod.name || mod.unique_name);
+  const polarity = dbPolarityToIconName(mod.polarity);
+  const modArt = mod.image_path ? `/images${mod.image_path}` : '';
+  const maxSetRank = mod.set_num_in_set ?? 0;
+  const {
+    mainDescription: description,
+    setBonusDescription: setDescription,
+    effectiveSetRank,
+  } = getModCardDisplayTexts(mod, rank, {
+    umbraSetEquippedCount: options?.umbraSetEquippedCount,
+    setRank,
+  });
+  const modType = mod.compat_name?.toUpperCase() ?? '';
+  const modTypeUpper = (mod.type || '').toUpperCase();
+  const slotIcon =
+    modTypeUpper === 'AURA'
+      ? 'aura'
+      : modTypeUpper === 'STANCE'
+        ? isPostureMod(mod)
+          ? 'posture'
+          : 'stance'
+        : mod.is_utility === 1
+          ? 'exilus'
+          : '';
+
+  return {
+    layout: {
+      ...DEFAULT_LAYOUT,
+      ...(options?.scale != null ? { scale: options.scale } : {}),
+    },
+    rarity,
+    polarity,
+    modArt,
+    modName: mod.name,
+    modType,
+    modDescription: description,
+    setDescription,
+    setActive: effectiveSetRank,
+    setTotal: maxSetRank,
+    modSet: mod.mod_set,
+    drain: Math.abs(effectiveDrain),
+    rank,
+    maxRank,
+    slotIcon,
+    polarityMatch: polarityMatchForUi(slotPolarity, mod.polarity),
+  };
+}
+
+export function ModHoverPreview({
+  mod,
+  anchorRef,
+  active,
+}: {
+  mod: Mod;
+  anchorRef: React.RefObject<HTMLElement | null>;
+  active: boolean;
+}) {
+  if (!active) return null;
+  const display = getModPreviewDisplay(mod);
+  return <CollapsedHoverExpand cardRef={anchorRef} {...display} />;
+}
+
 interface ModCardProps {
   mod: Mod;
   rank?: number;
@@ -51,54 +161,31 @@ export function ModCard({
   const [hovered, setHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const maxRank = mod.fusion_limit ?? 0;
-  const baseDrain = mod.base_drain ?? 0;
-  const effectiveDrain = calculateEffectiveDrain(
-    baseDrain,
-    rank,
-    maxRank,
-    slotPolarity,
-    mod.polarity,
-    slotType,
-    isRivenMod(mod),
-  );
-
-  const rarity =
-    (mod.type || '').toUpperCase() === 'RIVEN'
-      ? 'Riven'
-      : dbRarityToCardRarity(mod.rarity, mod.name || mod.unique_name);
-  const polarity = dbPolarityToIconName(mod.polarity);
-  const modArt = mod.image_path ? `/images${mod.image_path}` : '';
-
-  const maxSetRank = mod.set_num_in_set ?? 0;
   const {
-    mainDescription: description,
-    setBonusDescription: setDescription,
-    effectiveSetRank,
-  } = getModCardDisplayTexts(mod, rank, { umbraSetEquippedCount, setRank });
-
-  const modType = mod.compat_name?.toUpperCase() ?? '';
-
-  const modTypeUpper = (mod.type || '').toUpperCase();
-  const slotIcon =
-    modTypeUpper === 'AURA'
-      ? 'aura'
-      : modTypeUpper === 'STANCE'
-        ? isPostureMod(mod)
-          ? 'posture'
-          : 'stance'
-        : mod.is_utility === 1
-          ? 'exilus'
-          : '';
-
-  const displayDrain = Math.abs(effectiveDrain);
-
-  const polarityMatch = polarityMatchForUi(slotPolarity, mod.polarity);
-
-  const layout = {
-    ...DEFAULT_LAYOUT,
-    ...(scale != null ? { scale } : {}),
-  };
+    layout,
+    rarity,
+    polarity,
+    modArt,
+    modName,
+    modType,
+    modDescription: description,
+    setDescription,
+    setActive: effectiveSetRank,
+    setTotal: maxSetRank,
+    modSet,
+    drain: displayDrain,
+    rank: displayRank,
+    maxRank,
+    slotIcon,
+    polarityMatch,
+  } = getModPreviewDisplay(mod, {
+    rank,
+    setRank,
+    slotType,
+    slotPolarity,
+    umbraSetEquippedCount,
+    scale,
+  });
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('application/json', JSON.stringify(mod));
@@ -140,15 +227,15 @@ export function ModCard({
         rarity={rarity}
         polarity={polarity}
         modArt={modArt}
-        modName={mod.name}
+        modName={modName}
         modType={modType}
         modDescription={description}
         setDescription={setDescription}
         setActive={effectiveSetRank}
         setTotal={maxSetRank}
-        modSet={mod.mod_set}
+        modSet={modSet}
         drain={displayDrain}
-        rank={rank}
+        rank={displayRank}
         maxRank={maxRank}
         slotIcon={slotIcon}
         polarityMatch={polarityMatch}
@@ -162,15 +249,15 @@ export function ModCard({
           rarity={rarity}
           polarity={polarity}
           modArt={modArt}
-          modName={mod.name}
+          modName={modName}
           modType={modType}
           modDescription={description}
           setDescription={setDescription}
           setActive={effectiveSetRank}
           setTotal={maxSetRank}
-          modSet={mod.mod_set}
+          modSet={modSet}
           drain={displayDrain}
-          rank={rank}
+          rank={displayRank}
           maxRank={maxRank}
           slotIcon={slotIcon}
           polarityMatch={polarityMatch}
@@ -273,15 +360,10 @@ function RankStars({
 
 function CollapsedHoverExpand({
   cardRef,
-  layout,
   ...previewProps
 }: {
-  cardRef: React.RefObject<HTMLDivElement | null>;
-  layout: typeof DEFAULT_LAYOUT;
-} & Omit<
-  React.ComponentProps<typeof CardPreview>,
-  'layout' | 'collapsed' | 'showGuides' | 'showOutlines'
->) {
+  cardRef: React.RefObject<HTMLElement | null>;
+} & ModPreviewDisplay) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [tilt, setTilt] = useState<{ rx: number; ry: number; px: number; py: number }>({
     rx: 0,

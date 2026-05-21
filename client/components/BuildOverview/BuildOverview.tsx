@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { buildEditPath } from '../../app/paths';
+import { buildEditPath, buildReadOnlyPath } from '../../app/paths';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
+import { parseStoredBuildFromApi } from '../../utils/parseStoredBuildFromApi';
 import { useLoadoutStorage, type Loadout } from '../../hooks/useLoadoutStorage';
 import {
   EQUIPMENT_SLOT_CONFIGS,
@@ -145,8 +146,24 @@ function getUsedFormaCost(
   return calculateFormaCount(defaults, desired);
 }
 
-export function BuildOverview() {
-  const { builds, loading, deleteBuild, refresh: refreshBuilds } = useBuildStorage();
+type BuildOverviewProps = {
+  /** When set, shows that user's public builds (read-only) instead of the signed-in user's builds. */
+  ownerUserId?: number;
+};
+
+export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
+  const viewingUserBuilds = ownerUserId != null && ownerUserId > 0;
+  const {
+    builds: ownBuilds,
+    loading: ownLoading,
+    deleteBuild,
+    refresh: refreshBuilds,
+  } = useBuildStorage();
+  const [userBuilds, setUserBuilds] = useState<StoredBuild[]>([]);
+  const [userBuildsLoading, setUserBuildsLoading] = useState(viewingUserBuilds);
+  const [ownerUsername, setOwnerUsername] = useState<string | null>(null);
+  const builds = viewingUserBuilds ? userBuilds : ownBuilds;
+  const loading = viewingUserBuilds ? userBuildsLoading : ownLoading;
   const {
     loadouts,
     createLoadout,
@@ -157,6 +174,50 @@ export function BuildOverview() {
     publishLoadout,
   } = useLoadoutStorage();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!viewingUserBuilds || !ownerUserId) return undefined;
+    let alive = true;
+    setUserBuildsLoading(true);
+    void (async () => {
+      try {
+        const qs = new URLSearchParams({ user_id: String(ownerUserId) });
+        const res = await apiFetch(`/api/builds/by-user?${qs.toString()}`);
+        if (!res.ok) {
+          if (alive) {
+            setUserBuilds([]);
+            setOwnerUsername(null);
+          }
+          return;
+        }
+        const body = (await res.json()) as {
+          builds?: Array<Record<string, unknown>>;
+          owner_username?: string | null;
+        };
+        if (!alive) return;
+        const rows = Array.isArray(body.builds) ? body.builds : [];
+        setUserBuilds(
+          rows
+            .map((row) => parseStoredBuildFromApi(row))
+            .filter((b): b is StoredBuild => b != null),
+        );
+        setOwnerUsername(
+          typeof body.owner_username === 'string' ? body.owner_username : null,
+        );
+      } catch {
+        if (alive) {
+          setUserBuilds([]);
+          setOwnerUsername(null);
+        }
+      } finally {
+        if (alive) setUserBuildsLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [viewingUserBuilds, ownerUserId]);
+
   const [equipmentLookup, setEquipmentLookup] = useState<Record<string, EquipmentPolaritySource>>(
     {},
   );
@@ -327,11 +388,26 @@ export function BuildOverview() {
     );
   }
 
+  const openBuild = useCallback(
+    (buildId: string) => {
+      navigate(viewingUserBuilds ? buildReadOnlyPath(buildId) : buildEditPath(buildId));
+    },
+    [navigate, viewingUserBuilds],
+  );
+
   return (
     <div className="mx-auto flex max-w-[2000px] flex-col gap-4">
+      {viewingUserBuilds && (
+        <div className="glass-shell px-4 py-3 sm:px-5">
+          <h1 className="display-title text-foreground text-2xl">
+            {ownerUsername ? `Builds by ${ownerUsername}` : 'Public builds'}
+          </h1>
+          <p className="text-muted mt-1 text-sm">Public builds shared by this user.</p>
+        </div>
+      )}
       <div className="flex gap-6">
         <div className="min-w-0 flex-1 space-y-4">
-          {loadouts.length > 0 && (
+          {!viewingUserBuilds && loadouts.length > 0 && (
             <div className="glass-shell overflow-hidden">
               <div className="border-glass-divider bg-glass-hover/50 flex items-center justify-between border-b px-4 py-2.5">
                 <h2 className="text-muted text-sm font-semibold tracking-wider uppercase">
@@ -388,10 +464,14 @@ export function BuildOverview() {
 
           {builds.length === 0 ? (
             <div className="glass-shell flex h-64 flex-col items-center justify-center gap-4">
-              <p className="text-muted text-lg">No builds yet</p>
-              <p className="text-muted text-sm">
-                Click "Add Build" in the header to create your first build.
+              <p className="text-muted text-lg">
+                {viewingUserBuilds ? 'No public builds' : 'No builds yet'}
               </p>
+              {!viewingUserBuilds && (
+                <p className="text-muted text-sm">
+                  Click "Add Build" in the header to create your first build.
+                </p>
+              )}
             </div>
           ) : (
             grouped.map((group) => (
@@ -418,12 +498,13 @@ export function BuildOverview() {
                           total: 0,
                         }
                       }
-                      onClick={() => navigate(buildEditPath(build.id))}
+                      onClick={() => openBuild(build.id)}
                       onDelete={() => {
                         if (confirm(`Delete "${build.name}"?`)) void deleteBuild(build.id);
                       }}
                       onLink={() => setLinkingBuild(build)}
-                      hasLoadouts={loadouts.length > 0}
+                      hasLoadouts={!viewingUserBuilds && loadouts.length > 0}
+                      showManagementActions={!viewingUserBuilds}
                     />
                   ))}
                 </div>
@@ -432,6 +513,7 @@ export function BuildOverview() {
           )}
         </div>
 
+        {!viewingUserBuilds && (
         <div className="hidden w-80 shrink-0 space-y-4 lg:block">
           <div className="glass-surface p-4">
             <h3 className="text-foreground mb-3 text-sm font-semibold">Loadouts</h3>
@@ -492,9 +574,10 @@ export function BuildOverview() {
             <p className="text-muted/50 text-sm">Select a build to view details</p>
           </div>
         </div>
+        )}
       </div>
 
-      {linkingBuild && loadouts.length > 0 && (
+      {!viewingUserBuilds && linkingBuild && loadouts.length > 0 && (
         <div className="modal-overlay" onClick={() => setLinkingBuild(null)}>
           <div
             className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
@@ -609,6 +692,7 @@ function BuildRow({
   onDelete,
   onLink,
   hasLoadouts,
+  showManagementActions = true,
 }: {
   build: StoredBuild;
   usedFormaCost: FormaCount;
@@ -616,6 +700,7 @@ function BuildRow({
   onDelete: () => void;
   onLink: () => void;
   hasLoadouts: boolean;
+  showManagementActions?: boolean;
 }) {
   const formaEntries = [
     { key: 'regular', count: usedFormaCost.regular, icon: '/icons/forma.png' },
@@ -693,31 +778,33 @@ function BuildRow({
         ))}
       </div>
 
-      <div className={OVERVIEW_ROW_ACTIONS_CLASS}>
-        {hasLoadouts && (
+      {showManagementActions ? (
+        <div className={OVERVIEW_ROW_ACTIONS_CLASS}>
+          {hasLoadouts && (
+            <button
+              className="text-muted/60 hover:bg-accent/10 hover:text-accent rounded-lg p-1.5 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                onLink();
+              }}
+              title="Link to loadout"
+              aria-label="Link build to loadout"
+            >
+              <MaterialSymbol name="add_link" style={{ fontSize: 18 }} />
+            </button>
+          )}
           <button
-            className="text-muted/60 hover:bg-accent/10 hover:text-accent rounded-lg p-1.5 text-xs"
+            className="text-muted/40 hover:bg-danger/10 hover:text-danger rounded-lg p-1.5 text-xs"
             onClick={(e) => {
               e.stopPropagation();
-              onLink();
+              onDelete();
             }}
-            title="Link to loadout"
-            aria-label="Link build to loadout"
+            aria-label="Delete build"
           >
-            <MaterialSymbol name="add_link" style={{ fontSize: 18 }} />
+            <MaterialSymbol name="close" style={{ fontSize: 18 }} />
           </button>
-        )}
-        <button
-          className="text-muted/40 hover:bg-danger/10 hover:text-danger rounded-lg p-1.5 text-xs"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          aria-label="Delete build"
-        >
-          <MaterialSymbol name="close" style={{ fontSize: 18 }} />
-        </button>
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

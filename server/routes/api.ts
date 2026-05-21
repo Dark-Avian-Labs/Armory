@@ -1399,6 +1399,45 @@ apiRouter.get('/builds/catalog', (req: Request, res: Response) => {
   }
 });
 
+apiRouter.get('/builds/by-user', (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    if (!req.session.user_id) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const userIdRaw = req.query.user_id;
+    const userId =
+      typeof userIdRaw === 'string' && userIdRaw.trim() !== ''
+        ? parseNumericId(userIdRaw.trim())
+        : null;
+    if (userId === null) {
+      res.status(400).json({ error: 'user_id is required' });
+      return;
+    }
+
+    const rows = db
+      .prepare(
+        `SELECT ${BUILD_SELECT_LIST} FROM builds
+         WHERE user_id = ? AND visibility = 'public'
+         ORDER BY updated_at DESC`,
+      )
+      .all(userId) as BuildRow[];
+
+    const ownerUsernames = getOwnerUsernames([userId]);
+    const ownerUsername = ownerUsernames.get(userId) ?? null;
+
+    res.json({
+      owner_user_id: userId,
+      owner_username: ownerUsername,
+      builds: rows.map((row) => toBuildListItem(row, ownerUsernames)),
+    });
+  } catch (err) {
+    sendInternalError(res, 'builds.byUser', err);
+  }
+});
+
 apiRouter.get('/builds/by-equipment', (req: Request, res: Response) => {
   try {
     const db = getDb();
@@ -1550,10 +1589,12 @@ apiRouter.get('/builds/:id', async (req: Request, res: Response) => {
     }
 
     const canEdit = isOwner || isGameAdmin;
+    const ownerUsernames = getOwnerUsernames([row.user_id]);
 
     res.json({
       build: toBuildResponse(row),
       owner_user_id: row.user_id,
+      owner_username: ownerUsernames.get(row.user_id) ?? null,
       can_edit: canEdit,
     });
   } catch (err) {
