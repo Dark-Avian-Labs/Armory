@@ -28,7 +28,7 @@ export type ModPreviewDisplay = {
   setDescription: string | undefined;
   setActive: number;
   setTotal: number;
-  modSet: string | null | undefined;
+  modSet: string | undefined;
   drain: number;
   rank: number;
   maxRank: number;
@@ -104,7 +104,7 @@ export function getModPreviewDisplay(
     setDescription,
     setActive: effectiveSetRank,
     setTotal: maxSetRank,
-    modSet: mod.mod_set,
+    modSet: mod.mod_set ?? undefined,
     drain: Math.abs(effectiveDrain),
     rank,
     maxRank,
@@ -360,6 +360,7 @@ function RankStars({
 
 function CollapsedHoverExpand({
   cardRef,
+  layout,
   ...previewProps
 }: {
   cardRef: React.RefObject<HTMLElement | null>;
