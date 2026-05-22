@@ -240,7 +240,6 @@ export function createAppSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_mods_compat ON mods(compat_name);
     CREATE INDEX IF NOT EXISTS idx_weapons_category ON weapons(product_category);
     CREATE INDEX IF NOT EXISTS idx_weapons_slot ON weapons(slot);
-    CREATE INDEX IF NOT EXISTS idx_builds_clerk_user ON builds(clerk_user_id);
     CREATE INDEX IF NOT EXISTS idx_abilities_warframe ON abilities(warframe_unique_name);
   `);
 
@@ -502,6 +501,13 @@ export function createAppSchema(): void {
   }
 
   migrateBuildsAndLoadoutsToClerkUserId(db);
+
+  if (hasColumn.get('builds', 'clerk_user_id')) {
+    db.exec('CREATE INDEX IF NOT EXISTS idx_builds_clerk_user ON builds(clerk_user_id)');
+  }
+  if (hasColumn.get('loadouts', 'clerk_user_id')) {
+    db.exec('CREATE INDEX IF NOT EXISTS idx_loadouts_clerk_user ON loadouts(clerk_user_id)');
+  }
 
   console.log('[DB] Application schema created/verified');
 }
