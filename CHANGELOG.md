@@ -257,3 +257,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.55.0** `chore`: Merge pull request #281 from Dark-Avian-Labs:feat--integrate-Clerk-for-authentication-and-user-management
 - **v1.55.1** `chore`: Merge pull request #282 from Dark-Avian-Labs:fix--db-migration
 - **v1.55.2** `chore`: Merge pull request #284 from Dark-Avian-Labs:fix--updated-keys
+- **v1.55.3** `chore`: Merge pull request #285 from Dark-Avian-Labs:fix--CSP
