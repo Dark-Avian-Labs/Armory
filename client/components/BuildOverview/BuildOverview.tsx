@@ -168,7 +168,6 @@ export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps
   const [userBuildsLoading, setUserBuildsLoading] = useState(viewingUserBuilds);
   const [userLoadouts, setUserLoadouts] = useState<PublicLoadout[]>([]);
   const [ownerUsername, setOwnerUsername] = useState<string | null>(null);
-  const [resolvedOwnerId, setResolvedOwnerId] = useState<string | null>(null);
   const builds = viewingUserBuilds ? userBuilds : ownBuilds;
   const loading = viewingUserBuilds ? userBuildsLoading : ownLoading;
   const {
@@ -198,14 +197,12 @@ export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps
             setUserBuilds([]);
             setUserLoadouts([]);
             setOwnerUsername(null);
-            setResolvedOwnerId(null);
           }
           return;
         }
         const body = (await res.json()) as {
           builds?: Array<Record<string, unknown>>;
           owner_username?: string | null;
-          owner_user_id?: string;
           loadouts?: Array<Record<string, unknown>>;
         };
         if (!alive) return;
@@ -216,7 +213,6 @@ export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps
             .filter((b): b is StoredBuild => b != null),
         );
         setOwnerUsername(typeof body.owner_username === 'string' ? body.owner_username : null);
-        setResolvedOwnerId(typeof body.owner_user_id === 'string' ? body.owner_user_id : slug);
         const loadoutRows = Array.isArray(body.loadouts) ? body.loadouts : [];
         setUserLoadouts(
           loadoutRows.map((row) => ({
@@ -238,7 +234,6 @@ export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps
           setUserBuilds([]);
           setUserLoadouts([]);
           setOwnerUsername(null);
-          setResolvedOwnerId(null);
         }
       } finally {
         if (alive) setUserBuildsLoading(false);

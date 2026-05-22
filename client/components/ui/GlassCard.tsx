@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
 interface GlassCardProps {
   children: ReactNode;
@@ -6,9 +6,9 @@ interface GlassCardProps {
 }
 
 export function GlassCard({ children, className }: GlassCardProps) {
-  const classes = ["glass-surface"];
+  const classes = ['glass-surface'];
   if (className) {
     classes.push(className);
   }
-  return <section className={classes.join(" ")}>{children}</section>;
+  return <section className={classes.join(' ')}>{children}</section>;
 }
