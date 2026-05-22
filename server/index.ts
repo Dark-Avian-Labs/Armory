@@ -7,7 +7,6 @@ import { csrfSync } from 'csrf-sync';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
-import helmet from 'helmet';
 
 import { clerkMiddleware } from './auth/middleware.js';
 import { stopModListCacheCleanup } from './cache/modListCache.js';
@@ -33,6 +32,7 @@ import { closeAll, getSessionDb, getDb } from './db/connection.js';
 import { createAppSchema } from './db/schema.js';
 import { seedArchonShards } from './db/seedArchonShards.js';
 import { createSessionSchema } from './db/sessionSchema.js';
+import { createAppHelmet } from './http/helmetCsp.js';
 import { getRequestId, requestIdMiddleware } from './http/requestId.js';
 import { isAdminImportRunning, waitForAdminImportIdle } from './import/adminImportJob.js';
 import { log } from './logger.js';
@@ -64,7 +64,7 @@ if (NODE_ENV === 'production' && SECURE_COOKIES && !TRUST_PROXY) {
   throw new Error('TRUST_PROXY must be enabled in production when SECURE_COOKIES is enabled.');
 }
 
-app.use(helmet());
+app.use(createAppHelmet());
 app.use(requestIdMiddleware);
 
 app.use(express.json({ limit: '10mb' }));
