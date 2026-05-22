@@ -60,6 +60,7 @@ function rebuildBuildsTable(db: Database.Database): void {
   `);
 
   db.transaction(() => {
+    db.pragma('foreign_keys = OFF');
     for (const row of rows) {
       const legacyUserId = parseLegacyUserId(row.user_id);
       const mapped =
@@ -93,6 +94,7 @@ function rebuildBuildsTable(db: Database.Database): void {
     db.exec('ALTER TABLE builds_clerk_migration RENAME TO builds');
     db.exec('CREATE INDEX IF NOT EXISTS idx_builds_clerk_user ON builds(clerk_user_id)');
     db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_builds_share_token ON builds(share_token)');
+    db.pragma('foreign_keys = ON');
   })();
   console.log('[DB] Migration: builds.user_id -> builds.clerk_user_id');
 }
@@ -129,6 +131,7 @@ function rebuildLoadoutsTable(db: Database.Database): void {
   `);
 
   db.transaction(() => {
+    db.pragma('foreign_keys = OFF');
     for (const row of rows) {
       const legacyUserId = parseLegacyUserId(row.user_id);
       const mapped =
@@ -158,6 +161,7 @@ function rebuildLoadoutsTable(db: Database.Database): void {
     db.exec('ALTER TABLE loadouts_clerk_migration RENAME TO loadouts');
     db.exec('CREATE INDEX IF NOT EXISTS idx_loadouts_clerk_user ON loadouts(clerk_user_id)');
     db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_loadouts_share_token ON loadouts(share_token)');
+    db.pragma('foreign_keys = ON');
   })();
   console.log('[DB] Migration: loadouts.user_id -> loadouts.clerk_user_id');
 }
