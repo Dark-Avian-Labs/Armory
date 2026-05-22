@@ -2,5 +2,6 @@ allowBuilds:
   '@clerk/shared': true
   better-sqlite3: true
 overrides:
+  js-cookie: ^3.0.7
   undici: ^7.24.4
   ip-address: ^10.2.0
