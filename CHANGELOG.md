@@ -259,3 +259,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.55.2** `chore`: Merge pull request #284 from Dark-Avian-Labs:fix--updated-keys
 - **v1.55.3** `chore`: Merge pull request #285 from Dark-Avian-Labs:fix--CSP
 - **v1.55.4** `chore`: Merge pull request #286 from Dark-Avian-Labs:fix--routing
+- **v1.55.5** `chore`: Merge pull request #292 from Dark-Avian-Labs:fix(security)--adding-override-for-js-cookie
