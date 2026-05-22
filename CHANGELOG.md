@@ -10,7 +10,6 @@ Historical entries through the current release were **backfilled from merged PR 
 
 ## Pull requests (oldest → newest)
 
-
 - **v1.0.1** `chore` [#5](https://github.com/Dark-Avian-Labs/Armory/pull/5): Update package-lock.json to remove unused dependencies and upgrade Ro…
 - **v1.0.2** `chore` [#6](https://github.com/Dark-Avian-Labs/Armory/pull/6): Refactor deploy.yml to use absolute paths for excluded files in rsync…
 - **v1.0.3** `feat` [#8](https://github.com/Dark-Avian-Labs/Armory/pull/8): enhance remote authentication by resolving service URL based on request context
