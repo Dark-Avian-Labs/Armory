@@ -85,11 +85,35 @@ export function resolveClerkUserIdByUsername(username: string): string | null {
   return row?.clerk_user_id ?? null;
 }
 
-export function getOwnerDisplayName(clerkUserId: string, map: Map<string, string | null>): string {
+export function getOwnerDisplayName(
+  clerkUserId: string,
+  map: Map<string, string | null>,
+): string | null {
   const entry = map.get(clerkUserId);
   if (entry === DELETED_USER_LABEL) return DELETED_USER_LABEL;
   if (typeof entry === 'string' && entry.length > 0) return entry;
-  return clerkUserId;
+  return null;
+}
+
+export async function resolveOwnerUsernames(
+  clerkUserIds: string[],
+): Promise<Map<string, string | null>> {
+  const map = getOwnerUsernames(clerkUserIds);
+  const missing = [...new Set(clerkUserIds)].filter(
+    (id) => typeof id === 'string' && id.length > 0 && !map.has(id),
+  );
+  if (missing.length === 0) return map;
+
+  await Promise.all(
+    missing.map(async (clerkUserId) => {
+      const username = await syncArmoryUserFromClerk(clerkUserId);
+      if (username) {
+        map.set(clerkUserId, username);
+      }
+    }),
+  );
+
+  return map;
 }
 
 export function getOwnerUsernames(clerkUserIds: string[]): Map<string, string | null> {

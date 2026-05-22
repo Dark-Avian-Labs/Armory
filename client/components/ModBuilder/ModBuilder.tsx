@@ -467,8 +467,13 @@ export function ModBuilder() {
 
   const viewOwnerUserId =
     buildOwnerUserId ?? (isOwnBuild && auth.status === 'ok' ? auth.userId : null);
-  const viewOwnerUsername = buildOwnerUsername;
   const deletedOwnerLabel = '[Deleted User]';
+  const viewOwnerUsername =
+    buildOwnerUsername &&
+    buildOwnerUsername !== deletedOwnerLabel &&
+    !buildOwnerUsername.startsWith('user_')
+      ? buildOwnerUsername
+      : null;
 
   livePersistFingerprintRef.current = modBuilderPersistFingerprint({
     buildName,
@@ -1766,25 +1771,16 @@ export function ModBuilder() {
                       {buildName}
                     </span>
                     {viewOwnerUserId != null &&
-                      (viewOwnerUsername && viewOwnerUsername !== deletedOwnerLabel ? (
+                      (viewOwnerUsername ? (
                         <Link
                           to={userBuildsPath(viewOwnerUsername)}
                           className="text-muted hover:text-accent w-fit text-sm transition-colors"
                         >
                           by {viewOwnerUsername}
                         </Link>
-                      ) : viewOwnerUsername === deletedOwnerLabel ? (
+                      ) : buildOwnerUsername === deletedOwnerLabel ? (
                         <span className="text-muted text-sm">by {deletedOwnerLabel}</span>
-                      ) : viewOwnerUserId.startsWith('user_') ? (
-                        <Link
-                          to={userBuildsPath(viewOwnerUserId)}
-                          className="text-muted hover:text-accent w-fit text-sm transition-colors"
-                        >
-                          by {viewOwnerUserId}
-                        </Link>
-                      ) : (
-                        <span className="text-muted text-sm">by User #{viewOwnerUserId}</span>
-                      ))}
+                      ) : null)}
                     <span className="text-muted/70 text-xs">View only</span>
                   </div>
                 ) : (
