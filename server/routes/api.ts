@@ -6,7 +6,7 @@ import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import {
   DELETED_USER_LABEL,
   getOwnerDisplayName,
-  getOwnerUsernames,
+  resolveOwnerUsernames,
   resolveClerkUserIdByUsername,
 } from '../auth/armoryUsers.js';
 import { getClerkUserId } from '../auth/clerkUser.js';
@@ -101,7 +101,7 @@ apiRouter.get('/companions', (_req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/users/:username/builds', (req: Request, res: Response) => {
+apiRouter.get('/users/:username/builds', async (req: Request, res: Response) => {
   try {
     const username = String(req.params.username ?? '').trim();
     if (!username) {
@@ -121,8 +121,8 @@ apiRouter.get('/users/:username/builds', (req: Request, res: Response) => {
          ORDER BY updated_at DESC`,
       )
       .all(clerkUserId) as BuildRow[];
-    const ownerUsernames = getOwnerUsernames([clerkUserId]);
-    const loadouts = fetchPublicLoadoutsForUser(db, clerkUserId);
+    const ownerUsernames = await resolveOwnerUsernames([clerkUserId]);
+    const loadouts = fetchPublicLoadoutsForUser(db, clerkUserId, ownerUsernames);
     res.json({
       owner_user_id: clerkUserId,
       owner_username: getOwnerDisplayName(clerkUserId, ownerUsernames),
@@ -137,6 +137,7 @@ apiRouter.get('/users/:username/builds', (req: Request, res: Response) => {
 function fetchPublicLoadoutsForUser(
   db: Database.Database,
   clerkUserId: string,
+  ownerNames: Map<string, string | null>,
 ): Array<{
   id: string;
   name: string;
@@ -161,7 +162,6 @@ function fetchPublicLoadoutsForUser(
     updated_at: string;
   }>;
   if (loadoutRows.length === 0) return [];
-  const ownerNames = getOwnerUsernames([clerkUserId]);
   const result: Array<{
     id: string;
     name: string;
@@ -1481,7 +1481,7 @@ apiRouter.get('/builds/catalog', (_req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/builds/by-user', (req: Request, res: Response) => {
+apiRouter.get('/builds/by-user', async (req: Request, res: Response) => {
   try {
     const db = getDb();
 
@@ -1501,8 +1501,8 @@ apiRouter.get('/builds/by-user', (req: Request, res: Response) => {
       )
       .all(clerkUserId) as BuildRow[];
 
-    const ownerUsernames = getOwnerUsernames([clerkUserId]);
-    const loadouts = fetchPublicLoadoutsForUser(db, clerkUserId);
+    const ownerUsernames = await resolveOwnerUsernames([clerkUserId]);
+    const loadouts = fetchPublicLoadoutsForUser(db, clerkUserId, ownerUsernames);
 
     res.json({
       owner_user_id: clerkUserId,
@@ -1515,7 +1515,7 @@ apiRouter.get('/builds/by-user', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/builds/by-equipment', (req: Request, res: Response) => {
+apiRouter.get('/builds/by-equipment', async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const sessionUserId = getClerkUserId(req);
@@ -1541,7 +1541,7 @@ apiRouter.get('/builds/by-equipment', (req: Request, res: Response) => {
       )
       .all(equipmentType, equipmentUniqueName) as BuildRow[];
 
-    const ownerUsernames = getOwnerUsernames(rows.map((r) => r.clerk_user_id));
+    const ownerUsernames = await resolveOwnerUsernames(rows.map((r) => r.clerk_user_id));
 
     const loadoutRows = db
       .prepare(
@@ -1561,7 +1561,7 @@ apiRouter.get('/builds/by-equipment', (req: Request, res: Response) => {
       updated_at: string;
     }>;
 
-    const loadoutOwnerNames = getOwnerUsernames(loadoutRows.map((r) => r.clerk_user_id));
+    const loadoutOwnerNames = await resolveOwnerUsernames(loadoutRows.map((r) => r.clerk_user_id));
     const loadouts = loadoutRows.map((row) => ({
       id: String(row.id),
       name: row.name,
@@ -1582,7 +1582,7 @@ apiRouter.get('/builds/by-equipment', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/builds/:id/loadouts', (req: Request, res: Response) => {
+apiRouter.get('/builds/:id/loadouts', async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const id = parseNumericId(req.params.id);
@@ -1614,7 +1614,7 @@ apiRouter.get('/builds/:id/loadouts', (req: Request, res: Response) => {
       visibility: string;
     }>;
 
-    const ownerUsernames = getOwnerUsernames(rows.map((r) => r.clerk_user_id));
+    const ownerUsernames = await resolveOwnerUsernames(rows.map((r) => r.clerk_user_id));
     const loadouts = rows.map((row) => ({
       id: String(row.id),
       name: row.name,
@@ -1630,7 +1630,7 @@ apiRouter.get('/builds/:id/loadouts', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/builds/:id', (req: Request, res: Response) => {
+apiRouter.get('/builds/:id', async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const id = parseNumericId(req.params.id);
@@ -1657,7 +1657,7 @@ apiRouter.get('/builds/:id', (req: Request, res: Response) => {
     }
 
     const canEdit = isOwner || isGameAdmin;
-    const ownerUsernames = getOwnerUsernames([row.clerk_user_id]);
+    const ownerUsernames = await resolveOwnerUsernames([row.clerk_user_id]);
 
     res.json({
       build: toBuildResponse(row),

@@ -123,7 +123,7 @@ export function ModHoverPreview({
   active: boolean;
 }) {
   if (!active) return null;
-  const display = getModPreviewDisplay(mod);
+  const display = getModPreviewDisplay(mod, { scale: DEFAULT_LAYOUT.scale * 0.5 });
   return <CollapsedHoverExpand cardRef={anchorRef} {...display} />;
 }
 
