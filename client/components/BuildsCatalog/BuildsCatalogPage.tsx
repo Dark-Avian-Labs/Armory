@@ -35,7 +35,6 @@ export function BuildsCatalogPage() {
   const [items, setItems] = useState<EquipmentItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [itemsError, setItemsError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
   const [failedImageKeys, setFailedImageKeys] = useState<Record<string, true>>({});
 
   const handleImageError = useCallback((catalogKey: string) => {
@@ -128,11 +127,6 @@ export function BuildsCatalogPage() {
     });
   }, [items, countByKey, resolveEquipmentType]);
 
-  const query = search.trim().toLowerCase();
-  const filtered = useMemo(() => {
-    return withBuilds.filter((i) => normalizeEquipmentName(i.name).toLowerCase().includes(query));
-  }, [withBuilds, query]);
-
   const handleSelect = (item: EquipmentItem) => {
     const eqType = resolveEquipmentType(item);
     navigate(buildEquipmentBuildsListPath(eqType, item.unique_name));
@@ -158,18 +152,6 @@ export function BuildsCatalogPage() {
           ))}
         </div>
 
-        <input
-          id="armory-builds-catalog-search"
-          name="search"
-          type="search"
-          autoComplete="off"
-          aria-label="Search builds catalog"
-          placeholder="Search..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="form-input mb-4"
-        />
-
         {catalogLoading ? (
           <div className="flex h-40 items-center justify-center">
             <p className="text-muted text-sm">Loading catalog...</p>
@@ -186,19 +168,15 @@ export function BuildsCatalogPage() {
           <div className="flex h-40 items-center justify-center">
             <p className="text-danger text-sm">{itemsError}</p>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : withBuilds.length === 0 ? (
           <div className="flex h-40 items-center justify-center">
-            <p className="text-muted text-sm">
-              {withBuilds.length === 0
-                ? 'No builds in this category yet.'
-                : 'No matching equipment.'}
-            </p>
+            <p className="text-muted text-sm">No builds in this category yet.</p>
           </div>
         ) : (
           <div
             className={`custom-scroll max-h-[65vh] overflow-y-auto ${EQUIPMENT_PICKER_GRID_CLASS}`}
           >
-            {filtered.map((item) => {
+            {withBuilds.map((item) => {
               const eqType = resolveEquipmentType(item);
               const key = catalogKeyForItem(eqType, item.unique_name);
               const n = countByKey.get(key) ?? 0;
