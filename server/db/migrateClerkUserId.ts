@@ -11,6 +11,13 @@ function tableHasColumn(db: Database.Database, tableName: string, columnName: st
   return cols.some((c) => c.name === columnName);
 }
 
+function tableExists(db: Database.Database, tableName: string): boolean {
+  const row = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+    .get(tableName);
+  return row != null;
+}
+
 function parseLegacyUserId(raw: unknown): number | null {
   if (typeof raw === 'number') {
     return Number.isFinite(raw) && Number.isInteger(raw) ? raw : null;
@@ -26,12 +33,45 @@ function legacyClerkIdForUserId(userId: number): string | null {
   return LEGACY_USER_ID_TO_CLERK[userId] ?? null;
 }
 
+export function resolveClerkUserId(row: Record<string, unknown>): string | null {
+  const legacyUserId = parseLegacyUserId(row.user_id);
+  return typeof row.clerk_user_id === 'string' && row.clerk_user_id.trim().length > 0
+    ? row.clerk_user_id.trim()
+    : legacyUserId != null
+      ? legacyClerkIdForUserId(legacyUserId)
+      : null;
+}
+
+function withForeignKeysDisabled<T>(db: Database.Database, fn: () => T): T {
+  const previous = db.pragma('foreign_keys', { simple: true }) as 0 | 1;
+  db.pragma('foreign_keys = OFF');
+  try {
+    return fn();
+  } finally {
+    db.pragma(`foreign_keys = ${previous ? 'ON' : 'OFF'}`);
+  }
+}
+
+function deleteLoadoutBuildRefs(
+  db: Database.Database,
+  column: 'build_id' | 'loadout_id',
+  ids: number[],
+): void {
+  if (ids.length === 0) return;
+  const placeholders = ids.map(() => '?').join(', ');
+  db.prepare(`DELETE FROM loadout_builds WHERE ${column} IN (${placeholders})`).run(...ids);
+}
+
 function rebuildBuildsTable(db: Database.Database): void {
   if (tableHasColumn(db, 'builds', 'clerk_user_id') && !tableHasColumn(db, 'builds', 'user_id')) {
     return;
   }
   if (!tableHasColumn(db, 'builds', 'user_id')) {
     return;
+  }
+
+  if (tableExists(db, 'builds_clerk_migration')) {
+    db.exec('DROP TABLE builds_clerk_migration');
   }
 
   db.exec(`
@@ -58,44 +98,45 @@ function rebuildBuildsTable(db: Database.Database): void {
       mod_config, helminth_config, description, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
+  const skippedBuildIds: number[] = [];
 
-  db.transaction(() => {
-    db.pragma('foreign_keys = OFF');
-    for (const row of rows) {
-      const legacyUserId = parseLegacyUserId(row.user_id);
-      const mapped =
-        typeof row.clerk_user_id === 'string' && row.clerk_user_id.trim().length > 0
-          ? row.clerk_user_id.trim()
-          : legacyUserId != null
-            ? legacyClerkIdForUserId(legacyUserId)
-            : null;
-      if (!mapped) {
-        console.warn(
-          `[DB] Skipping build id=${row.id}: no clerk_user_id mapping for user_id=${String(row.user_id)}`,
-        );
-        continue;
+  for (const row of rows) {
+    const mapped = resolveClerkUserId(row);
+    if (!mapped) {
+      const buildId = parseLegacyUserId(row.id);
+      if (buildId != null) {
+        skippedBuildIds.push(buildId);
       }
-      insert.run(
-        row.id,
-        mapped,
-        row.name,
-        row.visibility ?? 'private',
-        row.share_token ?? null,
-        row.equipment_type,
-        row.equipment_unique_name,
-        row.mod_config,
-        row.helminth_config ?? null,
-        row.description ?? null,
-        row.created_at ?? new Date().toISOString(),
-        row.updated_at ?? new Date().toISOString(),
+      console.warn(
+        `[DB] Skipping build id=${row.id}: no clerk_user_id mapping for user_id=${String(row.user_id)}`,
       );
+      continue;
     }
-    db.exec('DROP TABLE builds');
-    db.exec('ALTER TABLE builds_clerk_migration RENAME TO builds');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_builds_clerk_user ON builds(clerk_user_id)');
-    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_builds_share_token ON builds(share_token)');
-    db.pragma('foreign_keys = ON');
-  })();
+    insert.run(
+      row.id,
+      mapped,
+      row.name,
+      row.visibility ?? 'private',
+      row.share_token ?? null,
+      row.equipment_type,
+      row.equipment_unique_name,
+      row.mod_config,
+      row.helminth_config ?? null,
+      row.description ?? null,
+      row.created_at ?? new Date().toISOString(),
+      row.updated_at ?? new Date().toISOString(),
+    );
+  }
+
+  withForeignKeysDisabled(db, () => {
+    db.transaction(() => {
+      deleteLoadoutBuildRefs(db, 'build_id', skippedBuildIds);
+      db.exec('DROP TABLE builds');
+      db.exec('ALTER TABLE builds_clerk_migration RENAME TO builds');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_builds_clerk_user ON builds(clerk_user_id)');
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_builds_share_token ON builds(share_token)');
+    })();
+  });
   console.log('[DB] Migration: builds.user_id -> builds.clerk_user_id');
 }
 
@@ -108,6 +149,10 @@ function rebuildLoadoutsTable(db: Database.Database): void {
   }
   if (!tableHasColumn(db, 'loadouts', 'user_id')) {
     return;
+  }
+
+  if (tableExists(db, 'loadouts_clerk_migration')) {
+    db.exec('DROP TABLE loadouts_clerk_migration');
   }
 
   db.exec(`
@@ -129,40 +174,43 @@ function rebuildLoadoutsTable(db: Database.Database): void {
       id, clerk_user_id, name, visibility, share_token, description, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
+  const skippedLoadoutIds: number[] = [];
 
-  db.transaction(() => {
-    db.pragma('foreign_keys = OFF');
-    for (const row of rows) {
-      const legacyUserId = parseLegacyUserId(row.user_id);
-      const mapped =
-        typeof row.clerk_user_id === 'string' && row.clerk_user_id.trim().length > 0
-          ? row.clerk_user_id.trim()
-          : legacyUserId != null
-            ? legacyClerkIdForUserId(legacyUserId)
-            : null;
-      if (!mapped) {
-        console.warn(
-          `[DB] Skipping loadout id=${row.id}: no clerk_user_id mapping for user_id=${String(row.user_id)}`,
-        );
-        continue;
+  for (const row of rows) {
+    const mapped = resolveClerkUserId(row);
+    if (!mapped) {
+      const loadoutId = parseLegacyUserId(row.id);
+      if (loadoutId != null) {
+        skippedLoadoutIds.push(loadoutId);
       }
-      insert.run(
-        row.id,
-        mapped,
-        row.name,
-        row.visibility ?? 'private',
-        row.share_token ?? null,
-        row.description ?? null,
-        row.created_at ?? new Date().toISOString(),
-        row.updated_at ?? new Date().toISOString(),
+      console.warn(
+        `[DB] Skipping loadout id=${row.id}: no clerk_user_id mapping for user_id=${String(row.user_id)}`,
       );
+      continue;
     }
-    db.exec('DROP TABLE loadouts');
-    db.exec('ALTER TABLE loadouts_clerk_migration RENAME TO loadouts');
-    db.exec('CREATE INDEX IF NOT EXISTS idx_loadouts_clerk_user ON loadouts(clerk_user_id)');
-    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_loadouts_share_token ON loadouts(share_token)');
-    db.pragma('foreign_keys = ON');
-  })();
+    insert.run(
+      row.id,
+      mapped,
+      row.name,
+      row.visibility ?? 'private',
+      row.share_token ?? null,
+      row.description ?? null,
+      row.created_at ?? new Date().toISOString(),
+      row.updated_at ?? new Date().toISOString(),
+    );
+  }
+
+  withForeignKeysDisabled(db, () => {
+    db.transaction(() => {
+      deleteLoadoutBuildRefs(db, 'loadout_id', skippedLoadoutIds);
+      db.exec('DROP TABLE loadouts');
+      db.exec('ALTER TABLE loadouts_clerk_migration RENAME TO loadouts');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_loadouts_clerk_user ON loadouts(clerk_user_id)');
+      db.exec(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_loadouts_share_token ON loadouts(share_token)',
+      );
+    })();
+  });
   console.log('[DB] Migration: loadouts.user_id -> loadouts.clerk_user_id');
 }
 
