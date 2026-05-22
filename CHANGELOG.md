@@ -253,3 +253,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.54.16** `chore` [#272](https://github.com/Dark-Avian-Labs/Armory/pull/272): update fontsource dependencies and qs version
 - **v1.54.17** `chore` [#273](https://github.com/Dark-Avian-Labs/Armory/pull/273): enhance application configuration and improve admin import handling
 - **v1.54.18** `chore` [#274](https://github.com/Dark-Avian-Labs/Armory/pull/274): enhance stale update banner styling
+- **v1.54.19** `chore`: Merge pull request #280 from Dark-Avian-Labs:chore--update-CI-workflow-with-automatic-changelog-creation
