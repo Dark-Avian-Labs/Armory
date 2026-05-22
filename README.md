@@ -68,9 +68,8 @@ Use one key per environment to reduce blast radius.
 | `SESSION_SECRET`           | Required in production; dev uses a non-prod default if unset.                  |
 | `TRUST_PROXY`              | Set to `1` behind a reverse proxy.                                             |
 | `SECURE_COOKIES`           | Set to `1` for HTTPS-only cookie behavior (defaults follow `NODE_ENV`).        |
-| `AUTH_SERVICE_URL`         | Shared Auth base URL (`https://…` required in production).                     |
-| `AUTH_FETCH_TIMEOUT_MS`    | Optional timeout (ms) for Auth API calls (default: `5000`).                    |
-| `CENTRAL_DB_PATH`          | Shared central DB for users/sessions/access (default under `./data/`).         |
+| `SESSION_DB_PATH`          | App-local SQLite session store for CSRF (default `./data/session.db`).         |
+| `CENTRAL_DB_PATH`          | Deprecated alias for `SESSION_DB_PATH`.                                        |
 | `ARMORY_DB_PATH`           | Optional override for the main app SQLite file (default `./data/armory.db`).   |
 | `CODEX_EXPORT_DB_PATH`     | Optional override for the Codex export mirror DB (default `./data/codex.db`).  |
 | `COOKIE_DOMAIN`            | Optional cross-subdomain cookie domain.                                        |

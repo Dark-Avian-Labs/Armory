@@ -20,7 +20,9 @@ import {
   getSlotTypeForBuild,
 } from '../../utils/buildCatalogCategory';
 import type { EquipmentLookupRow } from '../../utils/buildCatalogCategory';
+import { enrichBuildFromCatalog } from '../../utils/enrichBuildFromCatalog';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
+import { isClerkUserId } from '../../utils/isClerkUserId';
 import { linkifyPlainText } from '../../utils/linkifyText';
 import { parseStoredBuildFromApi } from '../../utils/parseStoredBuildFromApi';
 import { weaponOmitsExilusSlot } from '../../utils/specialItems';
@@ -146,13 +148,16 @@ function getUsedFormaCost(
   return calculateFormaCount(defaults, desired);
 }
 
+type PublicLoadout = Loadout;
+
 type BuildOverviewProps = {
-  /** When set, shows that user's public builds (read-only) instead of the signed-in user's builds. */
-  ownerUserId?: number;
+  ownerUserId?: string;
+  ownerUserSlug?: string;
 };
 
-export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
-  const viewingUserBuilds = ownerUserId != null && ownerUserId > 0;
+export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps = {}) {
+  const slug = ownerUserSlug?.trim() ?? ownerUserId?.trim() ?? '';
+  const viewingUserBuilds = slug.length > 0;
   const {
     builds: ownBuilds,
     loading: ownLoading,
@@ -161,7 +166,9 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
   } = useBuildStorage();
   const [userBuilds, setUserBuilds] = useState<StoredBuild[]>([]);
   const [userBuildsLoading, setUserBuildsLoading] = useState(viewingUserBuilds);
+  const [userLoadouts, setUserLoadouts] = useState<PublicLoadout[]>([]);
   const [ownerUsername, setOwnerUsername] = useState<string | null>(null);
+  const [resolvedOwnerId, setResolvedOwnerId] = useState<string | null>(null);
   const builds = viewingUserBuilds ? userBuilds : ownBuilds;
   const loading = viewingUserBuilds ? userBuildsLoading : ownLoading;
   const {
@@ -176,23 +183,30 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!viewingUserBuilds || !ownerUserId) return undefined;
+    if (!viewingUserBuilds || !slug) return undefined;
     let alive = true;
     setUserBuildsLoading(true);
     void (async () => {
       try {
-        const qs = new URLSearchParams({ user_id: String(ownerUserId) });
-        const res = await apiFetch(`/api/builds/by-user?${qs.toString()}`);
+        const isClerkId = isClerkUserId(slug);
+        const url = isClerkId
+          ? `/api/builds/by-user?${new URLSearchParams({ clerk_user_id: slug }).toString()}`
+          : `/api/users/${encodeURIComponent(slug)}/builds`;
+        const res = await apiFetch(url);
         if (!res.ok) {
           if (alive) {
             setUserBuilds([]);
+            setUserLoadouts([]);
             setOwnerUsername(null);
+            setResolvedOwnerId(null);
           }
           return;
         }
         const body = (await res.json()) as {
           builds?: Array<Record<string, unknown>>;
           owner_username?: string | null;
+          owner_user_id?: string;
+          loadouts?: Array<Record<string, unknown>>;
         };
         if (!alive) return;
         const rows = Array.isArray(body.builds) ? body.builds : [];
@@ -202,10 +216,29 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
             .filter((b): b is StoredBuild => b != null),
         );
         setOwnerUsername(typeof body.owner_username === 'string' ? body.owner_username : null);
+        setResolvedOwnerId(typeof body.owner_user_id === 'string' ? body.owner_user_id : slug);
+        const loadoutRows = Array.isArray(body.loadouts) ? body.loadouts : [];
+        setUserLoadouts(
+          loadoutRows.map((row) => ({
+            id: String(row.id ?? ''),
+            name: typeof row.name === 'string' ? row.name : 'Loadout',
+            builds: Array.isArray(row.builds)
+              ? (row.builds as Array<Record<string, unknown>>).map((b) => ({
+                  build_id: String(b.build_id ?? ''),
+                  slot_type: String(b.slot_type ?? ''),
+                }))
+              : [],
+            created_at: String(row.created_at ?? new Date().toISOString()),
+            updated_at: String(row.updated_at ?? new Date().toISOString()),
+            visibility: 'public',
+          })) as PublicLoadout[],
+        );
       } catch {
         if (alive) {
           setUserBuilds([]);
+          setUserLoadouts([]);
           setOwnerUsername(null);
+          setResolvedOwnerId(null);
         }
       } finally {
         if (alive) setUserBuildsLoading(false);
@@ -214,7 +247,7 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
     return () => {
       alive = false;
     };
-  }, [viewingUserBuilds, ownerUserId]);
+  }, [viewingUserBuilds, slug]);
 
   const [equipmentLookup, setEquipmentLookup] = useState<Record<string, EquipmentPolaritySource>>(
     {},
@@ -277,17 +310,22 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
     };
   }, []);
 
+  const enrichedBuilds = useMemo(
+    () => builds.map((b) => enrichBuildFromCatalog(b, equipmentLookup)),
+    [builds, equipmentLookup],
+  );
+
   const usedFormaByBuildId = useMemo(() => {
     const counts: Record<string, FormaCount> = {};
-    for (const build of builds) {
+    for (const build of enrichedBuilds) {
       counts[build.id] = getUsedFormaCost(build, equipmentLookup);
     }
     return counts;
-  }, [builds, equipmentLookup]);
+  }, [enrichedBuilds, equipmentLookup]);
 
   const grouped = useMemo<BuildsByCategory[]>(() => {
     const map = new Map<EquipmentPickerTab, StoredBuild[]>();
-    for (const b of builds) {
+    for (const b of enrichedBuilds) {
       const cat = getBuildPickerCategory(b, equipmentLookup);
       const list = map.get(cat) || [];
       list.push(b);
@@ -301,7 +339,7 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
         .get(t)!
         .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()),
     }));
-  }, [builds, equipmentLookup]);
+  }, [enrichedBuilds, equipmentLookup]);
 
   const handleCreateLoadout = async () => {
     const trimmedName = newLoadoutName.trim();
@@ -319,7 +357,10 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
     }
   };
 
-  const getBuildById = useCallback((id: string) => builds.find((b) => b.id === id), [builds]);
+  const getBuildById = useCallback(
+    (id: string) => enrichedBuilds.find((b) => b.id === id),
+    [enrichedBuilds],
+  );
 
   const loadoutCompatibleBuilds = useMemo(() => {
     if (!linkingLoadout) return [] as StoredBuild[];
@@ -405,6 +446,37 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
       )}
       <div className="flex gap-6">
         <div className="min-w-0 flex-1 space-y-4">
+          {viewingUserBuilds && userLoadouts.length > 0 && (
+            <div className="glass-shell overflow-hidden">
+              <div className="border-glass-divider bg-glass-hover/50 flex items-center justify-between border-b px-4 py-2.5">
+                <h2 className="text-muted text-sm font-semibold tracking-wider uppercase">
+                  Public loadouts
+                  <span className="text-muted/60 ml-2 text-xs font-normal">
+                    ({userLoadouts.length})
+                  </span>
+                </h2>
+              </div>
+              <div className="divide-glass-divider divide-y">
+                {userLoadouts.map((loadout) => (
+                  <LoadoutRow
+                    key={loadout.id}
+                    loadout={loadout}
+                    getBuildById={getBuildById}
+                    equipmentLookup={equipmentLookup}
+                    updateLoadout={async () => {}}
+                    publishLoadout={async () => {}}
+                    refreshBuilds={async () => []}
+                    onDelete={async () => {}}
+                    onNavigate={(buildId) => openBuild(buildId)}
+                    onUnlink={async () => {}}
+                    onAddBuild={() => {}}
+                    readOnly
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {!viewingUserBuilds && loadouts.length > 0 && (
             <div className="glass-shell overflow-hidden">
               <div className="border-glass-divider bg-glass-hover/50 flex items-center justify-between border-b px-4 py-2.5">
@@ -460,7 +532,7 @@ export function BuildOverview({ ownerUserId }: BuildOverviewProps = {}) {
             </div>
           )}
 
-          {builds.length === 0 ? (
+          {enrichedBuilds.length === 0 ? (
             <div className="glass-shell flex h-64 flex-col items-center justify-center gap-4">
               <p className="text-muted text-lg">
                 {viewingUserBuilds ? 'No public builds' : 'No builds yet'}
@@ -822,6 +894,7 @@ function LoadoutRow({
   onNavigate,
   onUnlink,
   onAddBuild,
+  readOnly = false,
 }: {
   loadout: Loadout;
   getBuildById: (id: string) => StoredBuild | undefined;
@@ -836,6 +909,7 @@ function LoadoutRow({
   onNavigate: (buildId: string) => void;
   onUnlink: (slotType: string) => void;
   onAddBuild: () => void;
+  readOnly?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -936,37 +1010,46 @@ function LoadoutRow({
           <span className="text-foreground text-sm font-medium">{loadout.name}</span>
           <span className="text-muted/50 ml-2 text-xs">{loadout.builds.length} builds</span>
         </div>
-        <div
-          className="flex shrink-0 items-center gap-2"
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            disabled={publicBusy}
-            aria-pressed={isPublic}
-            aria-label={isPublic ? 'Public loadout' : 'Private loadout'}
-            title={isPublic ? 'Public loadout' : 'Private loadout'}
-            className={`${OVERVIEW_METRIC_CHIP_CLASS} hover:bg-glass-hover disabled:hover:bg-glass transition-[color,background-color,transform] duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 ${
-              isPublic ? 'text-success' : 'text-danger'
-            }`}
-            onClick={() => {
-              void handlePublicToggle(!isPublic);
-            }}
-          >
-            <MaterialSymbol name={isPublic ? 'public' : 'public_off'} style={{ fontSize: 24 }} />
-          </button>
-        </div>
-        <div className={OVERVIEW_ROW_ACTIONS_CLASS}>
-          <button
-            className="text-muted/40 hover:bg-danger/10 hover:text-danger rounded-lg p-1.5 text-xs"
-            type="button"
-            onClick={onDelete}
-            aria-label="Delete loadout"
-          >
-            <MaterialSymbol name="close" style={{ fontSize: 18 }} />
-          </button>
-        </div>
+        {!readOnly ? (
+          <>
+            <div
+              className="flex shrink-0 items-center gap-2"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                disabled={publicBusy}
+                aria-pressed={isPublic}
+                aria-label={isPublic ? 'Public loadout' : 'Private loadout'}
+                title={isPublic ? 'Public loadout' : 'Private loadout'}
+                className={`${OVERVIEW_METRIC_CHIP_CLASS} hover:bg-glass-hover disabled:hover:bg-glass transition-[color,background-color,transform] duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 ${
+                  isPublic ? 'text-success' : 'text-danger'
+                }`}
+                onClick={() => {
+                  void handlePublicToggle(!isPublic);
+                }}
+              >
+                <MaterialSymbol
+                  name={isPublic ? 'public' : 'public_off'}
+                  style={{ fontSize: 24 }}
+                />
+              </button>
+            </div>
+            <div className={OVERVIEW_ROW_ACTIONS_CLASS}>
+              <button
+                className="text-muted/40 hover:bg-danger/10 hover:text-danger rounded-lg p-1.5 text-xs"
+                type="button"
+                onClick={onDelete}
+                aria-label="Delete loadout"
+              >
+                <MaterialSymbol name="close" style={{ fontSize: 18 }} />
+              </button>
+            </div>
+          </>
+        ) : (
+          <span className="text-success text-[10px] font-semibold uppercase">Public</span>
+        )}
       </div>
 
       {expanded && (
@@ -1013,42 +1096,46 @@ function LoadoutRow({
                   <span className="border-glass-border text-muted/60 shrink-0 rounded border px-1.5 py-0.5 text-[10px]">
                     {slotLabel}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => onUnlink(slotType)}
-                    className="text-muted/40 hover:text-danger opacity-0 transition-opacity group-hover:opacity-100"
-                    aria-label={`Unlink ${slotLabel}`}
-                  >
-                    <MaterialSymbol name="close" style={{ fontSize: 16 }} />
-                  </button>
+                  {!readOnly ? (
+                    <button
+                      type="button"
+                      onClick={() => onUnlink(slotType)}
+                      className="text-muted/40 hover:text-danger opacity-0 transition-opacity group-hover:opacity-100"
+                      aria-label={`Unlink ${slotLabel}`}
+                    >
+                      <MaterialSymbol name="close" style={{ fontSize: 16 }} />
+                    </button>
+                  ) : null}
                 </div>
               );
             })
           )}
-          <div className="flex flex-wrap items-center gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                setDescriptionDraft(loadout.description ?? '');
-                setDescriptionError(null);
-                setDescriptionModalOpen(true);
-              }}
-              className="text-accent hover:bg-accent/10 rounded px-2 py-1 text-xs"
-            >
-              {loadout.description?.trim() ? 'Edit description' : 'Add description'}
-            </button>
-            <button
-              type="button"
-              onClick={onAddBuild}
-              className="text-accent hover:bg-accent/10 rounded px-2 py-1 text-xs"
-            >
-              + Add Build
-            </button>
-          </div>
+          {!readOnly ? (
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDescriptionDraft(loadout.description ?? '');
+                  setDescriptionError(null);
+                  setDescriptionModalOpen(true);
+                }}
+                className="text-accent hover:bg-accent/10 rounded px-2 py-1 text-xs"
+              >
+                {loadout.description?.trim() ? 'Edit description' : 'Add description'}
+              </button>
+              <button
+                type="button"
+                onClick={onAddBuild}
+                className="text-accent hover:bg-accent/10 rounded px-2 py-1 text-xs"
+              >
+                + Add Build
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
 
-      {descriptionModalOpen ? (
+      {!readOnly && descriptionModalOpen ? (
         <div
           className="modal-overlay"
           onClick={() => {

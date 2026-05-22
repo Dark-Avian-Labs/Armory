@@ -1,3 +1,4 @@
+import { useClerk } from '@clerk/react';
 import {
   lazy,
   Suspense,
@@ -9,18 +10,13 @@ import {
 } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
-import {
-  APP_DISPLAY_NAME,
-  APP_VERSION,
-  AUTH_PROFILE_URL,
-  LEGAL_ENTITY_NAME,
-  LEGAL_PAGE_URL,
-} from '../../app/config';
+import { APP_DISPLAY_NAME, APP_VERSION, LEGAL_ENTITY_NAME, LEGAL_PAGE_URL } from '../../app/config';
 import { APP_PATHS, buildNewPath } from '../../app/paths';
 import feathers from '../../assets/feathers.svg';
 import { useCompare } from '../../context/CompareContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
+import { buildClerkAppearance } from '../../lib/clerkAppearance';
 import { CompareBar } from '../Compare/CompareBar';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -65,9 +61,14 @@ export function Layout() {
   const navigate = useNavigate();
   const { snapshots } = useCompare();
   const { mode, toggleMode } = useTheme();
-  const { account, logout } = useAuth();
+  const { auth } = useAuth();
+  const clerk = useClerk();
   const compareBarVisible = snapshots.length > 0;
   const currentYear = new Date().getFullYear();
+  const isLoggedIn = auth.status === 'ok';
+  const isAdmin = auth.status === 'ok' && auth.isArmoryAdmin;
+  const compactModBuilderUi =
+    searchParams.get('compact') === '1' && isCompactModBuilderRoute(location.pathname);
 
   const handleEquipmentSelect = useCallback(
     (equipmentType: string, uniqueName: string) => {
@@ -76,10 +77,6 @@ export function Layout() {
     },
     [navigate],
   );
-
-  const handleLogout = useCallback(async () => {
-    await logout();
-  }, [logout]);
 
   useEffect(() => {
     if (!userMenuOpen) return undefined;
@@ -156,12 +153,6 @@ export function Layout() {
     },
     [userMenuOpen],
   );
-
-  const profile = account.profile;
-  const isLoggedIn = account.isAuthenticated && profile !== null;
-  const isAdmin = profile?.isAdmin === true;
-  const compactModBuilderUi =
-    searchParams.get('compact') === '1' && isCompactModBuilderRoute(location.pathname);
 
   if (compactModBuilderUi) {
     return (
@@ -247,6 +238,7 @@ export function Layout() {
                 <MaterialSymbol name="dark_mode" filled />
               )}
             </button>
+
             <div ref={menuRef} className="relative">
               <button
                 type="button"
@@ -274,35 +266,51 @@ export function Layout() {
                     aria-orientation="vertical"
                     onKeyDown={handleUserMenuKeyDown}
                   >
-                    {isAdmin ? (
+                    {isLoggedIn ? (
+                      <>
+                        <button
+                          type="button"
+                          className="user-menu-item text-left"
+                          role="menuitem"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            clerk.openUserProfile({ appearance: buildClerkAppearance(mode) });
+                          }}
+                        >
+                          Profile
+                        </button>
+                        {isAdmin ? (
+                          <Link
+                            to={APP_PATHS.admin}
+                            className="user-menu-item"
+                            role="menuitem"
+                            onClick={() => setUserMenuOpen(false)}
+                          >
+                            Admin
+                          </Link>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="user-menu-item text-left"
+                          role="menuitem"
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            void clerk.signOut({ redirectUrl: '/builder/builds' });
+                          }}
+                        >
+                          Logout
+                        </button>
+                      </>
+                    ) : (
                       <Link
-                        to={APP_PATHS.admin}
+                        to="/sign-in"
                         className="user-menu-item"
                         role="menuitem"
                         onClick={() => setUserMenuOpen(false)}
                       >
-                        Admin
+                        Sign in
                       </Link>
-                    ) : null}
-                    <a
-                      href={`${AUTH_PROFILE_URL}?next=${encodeURIComponent(APP_PATHS.home)}`}
-                      className="user-menu-item"
-                      role="menuitem"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      Profile
-                    </a>
-                    <button
-                      type="button"
-                      className="user-menu-item text-left"
-                      role="menuitem"
-                      onClick={() => {
-                        setUserMenuOpen(false);
-                        void handleLogout();
-                      }}
-                    >
-                      Logout
-                    </button>
+                    )}
                   </div>
                 </Menu>
               )}

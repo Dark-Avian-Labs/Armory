@@ -4,7 +4,8 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { App } from '../App';
 import { Layout } from '../components/Layout/Layout';
 import { NotFoundPage } from '../components/NotFoundPage/NotFoundPage';
-import { RequireAuth } from '../features/auth/RequireAuth';
+import { SignInPage } from '../features/auth/SignInPage';
+import { SignUpPage } from '../features/auth/SignUpPage';
 import { APP_PATHS } from './paths';
 import {
   AdminPage,
@@ -15,7 +16,6 @@ import {
   ChunkErrorBoundary,
   LegalPage,
   LoadoutDetailPage,
-  LoginPage,
   ModBuilder,
   RouteFallback,
 } from './routes';
@@ -37,15 +37,6 @@ export const router = createBrowserRouter([
         children: [
           { path: APP_PATHS.legal, element: <LegalPage /> },
           { path: '/auth/legal', element: <LegalPage /> },
-        ],
-      },
-      {
-        element: (
-          <RequireAuth>
-            <Layout />
-          </RequireAuth>
-        ),
-        children: [
           { path: '/', element: <Navigate to={APP_PATHS.home} replace /> },
           { path: '/builder', element: <Navigate to={APP_PATHS.home} replace /> },
           {
@@ -59,9 +50,11 @@ export const router = createBrowserRouter([
           { path: APP_PATHS.buildNew, element: <ModBuilder /> },
           { path: APP_PATHS.buildEdit, element: <ModBuilder /> },
           { path: APP_PATHS.admin, element: <AdminPage /> },
+          { path: '/sign-in', element: <SignInPage /> },
+          { path: '/sign-up', element: <SignUpPage /> },
+          { path: APP_PATHS.login, element: <Navigate to="/sign-in" replace /> },
         ],
       },
-      { path: APP_PATHS.login, element: <LoginPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

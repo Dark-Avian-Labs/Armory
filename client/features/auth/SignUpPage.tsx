@@ -1,0 +1,30 @@
+import { ClerkAuthShell } from '@/components/ClerkAuthShell';
+import { useTheme } from '@/context/ThemeContext';
+import { buildClerkAppearance } from '@/lib/clerkAppearance';
+import { SignUp } from '@clerk/react';
+import { Navigate } from 'react-router-dom';
+
+const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
+
+export function SignUpPage() {
+  const { mode } = useTheme();
+
+  if (!publishableKey) {
+    return <Navigate to="/builder/builds" replace />;
+  }
+
+  return (
+    <ClerkAuthShell
+      title="Create your account"
+      subtitle="One account for Codex and Armory. We only store your user id in our apps."
+    >
+      <SignUp
+        routing="path"
+        path="/sign-up"
+        signInUrl="/sign-in"
+        fallbackRedirectUrl="/builder/builds"
+        appearance={buildClerkAppearance(mode)}
+      />
+    </ClerkAuthShell>
+  );
+}

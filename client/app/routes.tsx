@@ -35,11 +35,6 @@ export const AdminPage = lazy(() =>
     default: mod.AdminPage,
   })),
 );
-export const LoginPage = lazy(() =>
-  import('../components/Auth/LoginPage').then((mod) => ({
-    default: mod.LoginPage,
-  })),
-);
 export const LegalPage = lazy(() =>
   import('../features/legal/LegalPage').then((mod) => ({
     default: mod.LegalPage,

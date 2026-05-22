@@ -1,14 +1,14 @@
 export type BuildVisibilityRow = {
-  user_id: number;
+  clerk_user_id: string;
   visibility?: string | null;
 };
 
 export function canReadBuild(
   row: BuildVisibilityRow,
-  sessionUserId: number,
+  sessionUserId: string | null,
   isGameAdmin: boolean,
 ): boolean {
-  if (row.user_id === sessionUserId) return true;
+  if (sessionUserId && row.clerk_user_id === sessionUserId) return true;
   if (isGameAdmin) return true;
   const vis = row.visibility ?? 'private';
   return vis === 'public' || vis === 'unlisted';

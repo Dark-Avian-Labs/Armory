@@ -1,237 +1,105 @@
+import { useAuth as useClerkAuth } from '@clerk/react';
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
 
-import {
-  API_UNAUTHORIZED_EVENT,
-  apiFetch,
-  buildCentralAuthLoginUrl,
-  clearCsrfToken,
-  UnauthorizedError,
-} from '../../utils/api';
-import { getStoredProfile, mergeStoredProfile } from '../profile/profileStore';
-import { isArmoryGameAdmin } from './armoryAdmin';
-import type {
-  AppAccountProfile,
-  AppAccountState,
-  AppRoleAssignment,
-  AuthStatus,
-  RemoteAuthUser,
-  RemoteAuthState,
-} from './types';
+import { apiFetch, clearCsrfToken } from '../../utils/api';
+import type { AuthErrorDetail, AuthState } from './types';
 
 interface AuthContextValue {
-  status: AuthStatus;
-  account: AppAccountState;
-  rateLimitedUntilMs: number | null;
-  updateProfile: (updates: Partial<Pick<AppAccountProfile, 'displayName' | 'email'>>) => void;
-  refresh: (signal?: AbortSignal) => Promise<void>;
-  logout: (redirectPath?: string) => Promise<void>;
+  auth: AuthState;
+  refresh: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-async function getRetryAfterMs(res: Response): Promise<number | null> {
-  const header = res.headers.get('Retry-After');
-  if (header) {
-    const asSec = Number.parseInt(header, 10);
-    if (Number.isFinite(asSec) && asSec > 0) return asSec * 1000;
-    const asDate = Date.parse(header);
-    if (Number.isFinite(asDate)) {
-      const delta = asDate - Date.now();
-      if (delta > 0) return delta;
+const DEFAULT_AUTH_STATE: AuthState = {
+  status: 'loading',
+  userId: null,
+  isArmoryAdmin: false,
+};
+
+function toAuthErrorDetail(error: unknown): AuthErrorDetail {
+  if (error instanceof Error || typeof error === 'string') {
+    return error;
+  }
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string') {
+      return { message };
     }
   }
-  try {
-    const body = (await res.clone().json()) as {
-      auth_retry_after_sec?: number;
-      retry_after_sec?: number;
-    };
-    const sec = body.auth_retry_after_sec ?? body.retry_after_sec;
-    if (typeof sec === 'number' && Number.isFinite(sec) && sec > 0) {
-      return sec * 1000;
+  return { message: 'Unable to refresh authentication state.' };
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const { isSignedIn, isLoaded } = useClerkAuth();
+  const [auth, setAuth] = useState<AuthState>(DEFAULT_AUTH_STATE);
+
+  const refresh = useCallback(async () => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
+      return;
     }
-  } catch {
-    // ignore
-  }
-  return null;
-}
-
-function buildProfile(
-  user: RemoteAuthUser,
-  appRoles: AppRoleAssignment[] | undefined,
-): AppAccountProfile {
-  const stored = getStoredProfile(user.id);
-  return {
-    userId: user.id,
-    username: user.username,
-    isAdmin: isArmoryGameAdmin(user, appRoles),
-    displayName: stored?.displayName || user.display_name || user.username,
-    email: user.email || '',
-  };
-}
-
-interface AuthProviderProps {
-  children: ReactNode;
-  defaultLogoutRedirectPath?: string;
-}
-
-export function AuthProvider({
-  children,
-  defaultLogoutRedirectPath = '/builder/builds',
-}: AuthProviderProps) {
-  const [status, setStatus] = useState<AuthStatus>('loading');
-  const [account, setAccount] = useState<AppAccountState>({
-    isAuthenticated: false,
-    profile: null,
-  });
-  const [rateLimitedUntilMs, setRateLimitedUntilMs] = useState<number | null>(null);
-  const rateLimitedUntilMsRef = useRef<number | null>(null);
-
-  const refresh = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await apiFetch('/api/auth/me', { signal });
-      if (signal?.aborted) return;
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          setAccount({ isAuthenticated: false, profile: null });
-          setStatus('unauthenticated');
-          setRateLimitedUntilMs(null);
-        } else if (res.status === 429) {
-          const retryAfterMs = (await getRetryAfterMs(res)) ?? 30000;
-          const untilMs = Date.now() + retryAfterMs;
-          setRateLimitedUntilMs(untilMs);
-          setStatus('rate_limited');
-        } else {
-          console.error('[AuthContext] refresh failed with status', res.status);
-          setStatus('error');
-          setRateLimitedUntilMs(null);
-        }
+      const response = await apiFetch('/api/auth/me');
+      if (!response.ok) {
+        setAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
         return;
       }
-
-      const data = (await res.json()) as RemoteAuthState;
-      if (signal?.aborted) return;
-
-      if (data.authenticated !== true) {
-        setAccount({ isAuthenticated: false, profile: null });
-        setStatus('unauthenticated');
-        setRateLimitedUntilMs(null);
+      const body = (await response.json()) as {
+        authenticated?: boolean;
+        userId?: string;
+        isArmoryAdmin?: boolean;
+      };
+      if (!body.authenticated || !body.userId) {
+        setAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
         return;
       }
-      if (data.has_game_access !== true) {
-        setAccount({ isAuthenticated: false, profile: null });
-        setStatus('forbidden');
-        setRateLimitedUntilMs(null);
-        return;
-      }
-
-      const user = data.user;
-      if (
-        !user ||
-        typeof user.id !== 'number' ||
-        typeof user.username !== 'string' ||
-        typeof user.is_admin !== 'boolean'
-      ) {
-        setAccount({ isAuthenticated: false, profile: null });
-        setStatus('unauthenticated');
-        return;
-      }
-
-      setAccount({ isAuthenticated: true, profile: buildProfile(user, data.app_roles) });
-      setStatus('ok');
-      setRateLimitedUntilMs(null);
+      setAuth({
+        status: 'ok',
+        userId: body.userId,
+        isArmoryAdmin: body.isArmoryAdmin === true,
+      });
     } catch (error) {
-      if (signal?.aborted) {
-        return;
-      }
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return;
-      }
-      if (error instanceof UnauthorizedError) {
-        setAccount({ isAuthenticated: false, profile: null });
-        setStatus('unauthenticated');
-        setRateLimitedUntilMs(null);
-        return;
-      }
-      console.error('[AuthContext] refresh failed', error);
-      setStatus((prev) => (prev === 'loading' ? 'error' : prev));
+      setAuth({
+        status: 'error',
+        userId: null,
+        isArmoryAdmin: false,
+        error: toAuthErrorDetail(error),
+      });
+    }
+  }, [isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (!isLoaded) {
+      setAuth(DEFAULT_AUTH_STATE);
+      return;
+    }
+    void refresh();
+  }, [isLoaded, isSignedIn, refresh]);
+
+  const logout = useCallback(async () => {
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      clearCsrfToken();
+      window.location.href = '/builder/builds';
     }
   }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void refresh(controller.signal);
-    return () => {
-      controller.abort();
-    };
-  }, [refresh]);
-
-  useEffect(() => {
-    rateLimitedUntilMsRef.current = rateLimitedUntilMs;
-  }, [rateLimitedUntilMs]);
-
-  useEffect(() => {
-    const onUnauthorized = (_event: Event & { detail?: { url?: string } }) => {
-      const currentRateLimitUntilMs = rateLimitedUntilMsRef.current;
-      if (currentRateLimitUntilMs && Date.now() < currentRateLimitUntilMs) {
-        return;
-      }
-      void refresh();
-    };
-    window.addEventListener(API_UNAUTHORIZED_EVENT, onUnauthorized as EventListener);
-    return () => {
-      window.removeEventListener(API_UNAUTHORIZED_EVENT, onUnauthorized as EventListener);
-    };
-  }, [refresh]);
-
-  const updateProfile = useCallback<AuthContextValue['updateProfile']>((updates) => {
-    setAccount((prev) => {
-      if (!prev.profile) {
-        return prev;
-      }
-      return { ...prev, profile: mergeStoredProfile(prev.profile, updates) };
-    });
-  }, []);
-
-  const logout = useCallback(
-    async (redirectPath?: string) => {
-      try {
-        await apiFetch('/api/auth/logout', { method: 'POST' });
-      } catch (error) {
-        console.error(
-          '[AuthContext] logout: apiFetch(/api/auth/logout) failed; redirectPath=',
-          redirectPath ?? defaultLogoutRedirectPath,
-          error,
-        );
-      } finally {
-        clearCsrfToken();
-        window.location.href = buildCentralAuthLoginUrl(redirectPath ?? defaultLogoutRedirectPath);
-      }
-    },
-    [defaultLogoutRedirectPath],
-  );
 
   const value = useMemo<AuthContextValue>(
-    () => ({
-      status,
-      account,
-      rateLimitedUntilMs,
-      updateProfile,
-      refresh,
-      logout,
-    }),
-    [status, account, rateLimitedUntilMs, updateProfile, refresh, logout],
+    () => ({ auth, refresh, logout }),
+    [auth, refresh, logout],
   );
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

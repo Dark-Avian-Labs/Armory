@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import { APP_PATHS, buildLoadoutPath, buildReadOnlyPath } from '../../app/paths';
+import { APP_PATHS, buildLoadoutPath, buildReadOnlyPath, userBuildsPath } from '../../app/paths';
 import { EQUIPMENT_TYPE_LABELS, type EquipmentType } from '../../types/warframe';
 import { apiFetch } from '../../utils/api';
 import { normalizeEquipmentName } from '../../utils/specialItems';
@@ -15,15 +15,45 @@ type BuildListItem = {
   equipment_name: string;
   equipment_image?: string;
   updated_at: string;
-  owner_user_id: number;
+  owner_user_id: string;
   owner_username: string | null;
+  owner_deleted?: boolean;
 };
+
+const DELETED_USER_LABEL = '[Deleted User]';
+
+function OwnerAttribution({
+  owner_username,
+  owner_user_id,
+  owner_deleted,
+}: {
+  owner_username: string | null;
+  owner_user_id: string;
+  owner_deleted?: boolean;
+}) {
+  if (owner_deleted || owner_username === DELETED_USER_LABEL) {
+    return <span>{DELETED_USER_LABEL}</span>;
+  }
+  if (owner_username) {
+    return (
+      <Link
+        to={userBuildsPath(owner_username)}
+        className="hover:text-accent transition-colors"
+        onClick={(e) => e.stopPropagation()}
+      >
+        by {owner_username}
+      </Link>
+    );
+  }
+  return <span>User #{owner_user_id}</span>;
+}
 
 type LoadoutListItem = {
   id: string;
   name: string;
-  owner_user_id: number;
+  owner_user_id: string;
   owner_username: string | null;
+  owner_deleted?: boolean;
   visibility: string;
   updated_at: string;
   is_own: boolean;
@@ -171,7 +201,11 @@ export function BuildsByEquipmentPage() {
                   <div className="text-foreground truncate text-sm font-medium">{l.name}</div>
                   <div className="text-muted flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                     <span className="truncate">
-                      {l.owner_username ? `by ${l.owner_username}` : `User #${l.owner_user_id}`}
+                      <OwnerAttribution
+                        owner_username={l.owner_username}
+                        owner_user_id={l.owner_user_id}
+                        owner_deleted={l.owner_deleted}
+                      />
                     </span>
                     {l.visibility === 'public' ? (
                       <span className="text-success/90 text-[10px] font-semibold uppercase">
@@ -237,7 +271,11 @@ export function BuildsByEquipmentPage() {
                   <div className="text-foreground truncate text-sm font-medium">{b.name}</div>
                   <div className="text-muted flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                     <span className="truncate">
-                      {b.owner_username ? `by ${b.owner_username}` : `User #${b.owner_user_id}`}
+                      <OwnerAttribution
+                        owner_username={b.owner_username}
+                        owner_user_id={b.owner_user_id}
+                        owner_deleted={b.owner_deleted}
+                      />
                     </span>
                     <span className="text-muted/50">
                       {new Date(b.updated_at).toLocaleDateString()}
