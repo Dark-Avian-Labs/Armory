@@ -16,7 +16,7 @@ import feathers from '../../assets/feathers.svg';
 import { useCompare } from '../../context/CompareContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
-import { buildClerkAppearance } from '../../lib/clerkAppearance';
+import { buildClerkProfileAppearance } from '../../lib/clerkAppearance';
 import { CompareBar } from '../Compare/CompareBar';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -274,7 +274,9 @@ export function Layout() {
                           role="menuitem"
                           onClick={() => {
                             setUserMenuOpen(false);
-                            clerk.openUserProfile({ appearance: buildClerkAppearance(mode) });
+                            clerk.openUserProfile({
+                              appearance: buildClerkProfileAppearance(mode),
+                            });
                           }}
                         >
                           Profile
