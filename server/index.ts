@@ -9,13 +9,7 @@ import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
 import helmet from 'helmet';
 
-import { pingAuthServiceHealth } from './auth/authHealth.js';
-import {
-  authLoginRedirect,
-  requireAuthApiJson,
-  requireGameAccess,
-  requirePageGameAccess,
-} from './auth/middleware.js';
+import { clerkMiddleware } from './auth/middleware.js';
 import { stopModListCacheCleanup } from './cache/modListCache.js';
 import {
   APP_VERSION,
@@ -23,22 +17,22 @@ import {
   HOST,
   SESSION_SECRET,
   NODE_ENV,
-  CENTRAL_DB_PATH,
+  SESSION_DB_PATH,
+  LEGAL_PAGE_URL,
   TRUST_PROXY,
   SECURE_COOKIES,
   COOKIE_DOMAIN,
   SESSION_COOKIE_NAME,
-  GAME_ID,
   APP_NAME,
   PROJECT_ROOT,
   IMAGES_DIR,
   ensureDataDirs,
   SHUTDOWN_TIMEOUT_MS,
 } from './config.js';
-import { createCentralSchema } from './db/centralSchema.js';
-import { closeAll, getCentralDb, getDb } from './db/connection.js';
+import { closeAll, getSessionDb, getDb } from './db/connection.js';
 import { createAppSchema } from './db/schema.js';
 import { seedArchonShards } from './db/seedArchonShards.js';
+import { createSessionSchema } from './db/sessionSchema.js';
 import { getRequestId, requestIdMiddleware } from './http/requestId.js';
 import { isAdminImportRunning, waitForAdminImportIdle } from './import/adminImportJob.js';
 import { log } from './logger.js';
@@ -50,14 +44,12 @@ const SQLiteStore = require('better-sqlite3-session-store')(session);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL?.trim().replace(/\/+$/, '');
-
 ensureDataDirs();
 createAppSchema();
 
-const centralDb = getCentralDb();
-createCentralSchema(centralDb);
-console.log(`[${APP_NAME}] Central DB ready (${CENTRAL_DB_PATH})`);
+const sessionDb = getSessionDb();
+createSessionSchema(sessionDb);
+console.log(`[${APP_NAME}] Session DB ready (${SESSION_DB_PATH})`);
 
 try {
   seedArchonShards();
@@ -78,6 +70,7 @@ app.use(requestIdMiddleware);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(clerkMiddleware());
 
 const baselineLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -95,7 +88,7 @@ const baselineLimiter = rateLimit({
 app.use(baselineLimiter);
 
 const sessionStore = new SQLiteStore({
-  client: centralDb,
+  client: sessionDb,
   expired: { clear: true, intervalMs: 15 * 60 * 1000 },
 });
 
@@ -175,15 +168,7 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   const originHeader = req.headers.origin;
   const origin = Array.isArray(originHeader) ? originHeader[0] : originHeader;
   if (typeof origin === 'string' && origin.length > 0) {
-    const allowedOrigins = new Set<string>();
-    if (AUTH_SERVICE_URL) {
-      try {
-        allowedOrigins.add(new URL(AUTH_SERVICE_URL).origin);
-      } catch {
-        // ignore
-      }
-    }
-    if (!allowedOrigins.has(origin) && !isSameHostOrigin(req, origin)) {
+    if (!isSameHostOrigin(req, origin)) {
       res.status(403).json({ error: 'Origin not allowed', code: 'CSRF_ORIGIN_INVALID' });
       return;
     }
@@ -212,7 +197,7 @@ const publicPageLimiter = rateLimit({
 });
 
 app.use('/api/auth', authRouter);
-app.use('/api', appApiLimiter, requireAuthApiJson, requireGameAccess(GAME_ID), apiRouter);
+app.use('/api', appApiLimiter, apiRouter);
 
 app.use('/images', express.static(IMAGES_DIR));
 
@@ -230,75 +215,52 @@ app.get('/healthz', (_req, res) => {
 });
 
 app.get('/readyz', (_req, res) => {
-  void (async () => {
-    try {
-      centralDb.prepare('SELECT 1').get();
-      getDb().prepare('SELECT 1').get();
-      if (AUTH_SERVICE_URL) {
-        const authOk = await pingAuthServiceHealth(AUTH_SERVICE_URL);
-        if (!authOk) {
-          res.status(503).json({ status: 'not_ready', app: APP_NAME, reason: 'auth_unavailable' });
-          return;
-        }
-      } else if (NODE_ENV === 'production') {
-        res.status(503).json({ status: 'not_ready', app: APP_NAME, reason: 'auth_not_configured' });
-        return;
-      }
-      res.json({ status: 'ready', app: APP_NAME });
-    } catch {
-      res.status(503).json({ status: 'not_ready', app: APP_NAME });
-    }
-  })();
+  try {
+    sessionDb.prepare('SELECT 1').get();
+    getDb().prepare('SELECT 1').get();
+    res.json({ status: 'ready', app: APP_NAME });
+  } catch (err) {
+    log('error', 'Readiness check failed', {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    res.status(503).json({ status: 'not_ready', app: APP_NAME });
+  }
 });
 
 const clientDir = path.resolve(__dirname, '..', 'client');
 
-function sendLegalSpa(res: express.Response): void {
-  if (NODE_ENV !== 'production') {
-    res
-      .status(503)
-      .send(
-        'Set AUTH_SERVICE_URL to your auth service base URL to redirect to hosted legal content in development.',
-      );
-    return;
-  }
-  res.sendFile(path.join(clientDir, 'index.html'));
+function sendLegalRedirect(res: express.Response): void {
+  res.redirect(LEGAL_PAGE_URL);
 }
 
 app.get('/auth/profile', publicPageLimiter, (_req, res) => {
-  if (AUTH_SERVICE_URL) {
-    res.redirect(`${AUTH_SERVICE_URL}/profile`);
-    return;
-  }
-  res.redirect('/login');
+  res.redirect('/sign-in');
 });
 app.get('/profile', publicPageLimiter, (_req, res) => {
-  res.redirect('/auth/profile');
+  res.redirect('/sign-in');
 });
 app.get('/auth/legal', publicPageLimiter, (_req, res) => {
-  if (AUTH_SERVICE_URL) {
-    res.redirect(`${AUTH_SERVICE_URL}/legal`);
-    return;
-  }
-  sendLegalSpa(res);
+  sendLegalRedirect(res);
 });
 
 if (NODE_ENV === 'production') {
   app.use(publicPageLimiter, express.static(clientDir));
 
-  app.get('/login', publicPageLimiter, (req, res) => {
-    authLoginRedirect(req, res);
+  app.get('/login', publicPageLimiter, (_req, res) => {
+    res.redirect('/sign-in');
   });
-
-  app.get('/legal', publicPageLimiter, (_req, res) => {
-    if (AUTH_SERVICE_URL) {
-      res.redirect(`${AUTH_SERVICE_URL}/legal`);
-      return;
-    }
+  app.get('/sign-in', publicPageLimiter, (_req, res) => {
+    res.sendFile(path.join(clientDir, 'index.html'));
+  });
+  app.get('/sign-up', publicPageLimiter, (_req, res) => {
     res.sendFile(path.join(clientDir, 'index.html'));
   });
 
-  app.get(/.*/, publicPageLimiter, requirePageGameAccess, (_req, res) => {
+  app.get('/legal', publicPageLimiter, (_req, res) => {
+    sendLegalRedirect(res);
+  });
+
+  app.get(/.*/, publicPageLimiter, (_req, res) => {
     res.sendFile(path.join(clientDir, 'index.html'));
   });
 }

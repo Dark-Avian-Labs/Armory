@@ -13,7 +13,7 @@ export interface AdminImportSnapshot {
   running: boolean;
   startedAt: string | null;
   finishedAt: string | null;
-  requestedByUserId: number | null;
+  requestedByUserId: string | null;
   lines: ImportLogLine[];
   summary: StartupPipelineSummary | null;
   error: string | null;
@@ -114,7 +114,7 @@ export interface AdminImportOptions {
 }
 
 export function startAdminImportJob(
-  requestedByUserId: number,
+  requestedByUserId: string,
   options: AdminImportOptions = {},
 ): {
   started: boolean;

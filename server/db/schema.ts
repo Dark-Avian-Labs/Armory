@@ -1,4 +1,5 @@
 import { getDb } from './connection.js';
+import { migrateBuildsAndLoadoutsToClerkUserId } from './migrateClerkUserId.js';
 
 export function createAppSchema(): void {
   const db = getDb();
@@ -189,7 +190,7 @@ export function createAppSchema(): void {
     -- Loadouts
     CREATE TABLE IF NOT EXISTS loadouts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
+      clerk_user_id TEXT NOT NULL,
       name TEXT NOT NULL,
       visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'public', 'unlisted')),
       share_token TEXT,
@@ -209,7 +210,7 @@ export function createAppSchema(): void {
     -- User builds
     CREATE TABLE IF NOT EXISTS builds (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
+      clerk_user_id TEXT NOT NULL,
       name TEXT NOT NULL,
       visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'public', 'unlisted')),
       share_token TEXT,
@@ -239,7 +240,7 @@ export function createAppSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_mods_compat ON mods(compat_name);
     CREATE INDEX IF NOT EXISTS idx_weapons_category ON weapons(product_category);
     CREATE INDEX IF NOT EXISTS idx_weapons_slot ON weapons(slot);
-    CREATE INDEX IF NOT EXISTS idx_builds_user ON builds(user_id);
+    CREATE INDEX IF NOT EXISTS idx_builds_clerk_user ON builds(clerk_user_id);
     CREATE INDEX IF NOT EXISTS idx_abilities_warframe ON abilities(warframe_unique_name);
   `);
 
@@ -499,6 +500,8 @@ export function createAppSchema(): void {
       }
     }
   }
+
+  migrateBuildsAndLoadoutsToClerkUserId(db);
 
   console.log('[DB] Application schema created/verified');
 }

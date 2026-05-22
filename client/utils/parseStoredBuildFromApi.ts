@@ -23,9 +23,16 @@ export function parseStoredBuildFromApi(row: Record<string, unknown>): StoredBui
       (typeof row.equipment_unique_name === 'string'
         ? row.equipment_unique_name
         : modConfig.equipment_unique_name) ?? '',
-    equipment_name: modConfig.equipment_name ?? modConfig.equipment_unique_name ?? '',
+    equipment_name:
+      typeof row.equipment_name === 'string'
+        ? row.equipment_name
+        : (modConfig.equipment_name ?? modConfig.equipment_unique_name ?? ''),
     equipment_image:
-      typeof modConfig.equipment_image === 'string' ? modConfig.equipment_image : undefined,
+      typeof row.equipment_image === 'string'
+        ? row.equipment_image
+        : typeof modConfig.equipment_image === 'string'
+          ? modConfig.equipment_image
+          : undefined,
     created_at: String(row.created_at ?? new Date().toISOString()),
     updated_at: String(row.updated_at ?? new Date().toISOString()),
     visibility,

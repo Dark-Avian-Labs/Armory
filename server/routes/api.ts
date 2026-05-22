@@ -3,11 +3,17 @@ import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
-import { requireGameAdmin } from '../auth/middleware.js';
-import { effectiveArmoryGameAdmin, fetchRemoteAuthState } from '../auth/remoteAuth.js';
+import {
+  DELETED_USER_LABEL,
+  getOwnerDisplayName,
+  getOwnerUsernames,
+  resolveClerkUserIdByUsername,
+} from '../auth/armoryUsers.js';
+import { getClerkUserId } from '../auth/clerkUser.js';
+import { getClerkAuthState, requireArmoryAdmin } from '../auth/middleware.js';
 import { canReadBuild } from '../buildAccess.js';
 import { getCachedModList } from '../cache/modListCache.js';
-import { getCentralDb, getDb } from '../db/connection.js';
+import { getDb } from '../db/connection.js';
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
 import { getRequestId } from '../http/requestId.js';
 import {
@@ -43,8 +49,9 @@ const MAX_NAME_LENGTH = 255;
 const MAX_DESCRIPTION_LENGTH = 8000;
 const COPY_PREFIX = 'Copy of ';
 const BUILD_SELECT_LIST =
-  'id, user_id, name, equipment_type, equipment_unique_name, mod_config, created_at, updated_at, visibility, description';
-const LOADOUT_SELECT_LIST = 'id, user_id, name, visibility, description, created_at, updated_at';
+  'id, clerk_user_id, name, equipment_type, equipment_unique_name, mod_config, created_at, updated_at, visibility, description';
+const LOADOUT_SELECT_LIST =
+  'id, clerk_user_id, name, visibility, description, created_at, updated_at';
 const MODS_PAGE_MAX = 500;
 
 const WEAPON_JUNK_PREFIXES = [
@@ -94,6 +101,100 @@ apiRouter.get('/companions', (_req: Request, res: Response) => {
   }
 });
 
+apiRouter.get('/users/:username/builds', (req: Request, res: Response) => {
+  try {
+    const username = String(req.params.username ?? '').trim();
+    if (!username) {
+      res.status(400).json({ error: 'username is required' });
+      return;
+    }
+    const clerkUserId = resolveClerkUserIdByUsername(username);
+    if (!clerkUserId) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const db = getDb();
+    const rows = db
+      .prepare(
+        `SELECT ${BUILD_SELECT_LIST} FROM builds
+         WHERE clerk_user_id = ? AND visibility = 'public'
+         ORDER BY updated_at DESC`,
+      )
+      .all(clerkUserId) as BuildRow[];
+    const ownerUsernames = getOwnerUsernames([clerkUserId]);
+    const loadouts = fetchPublicLoadoutsForUser(db, clerkUserId);
+    res.json({
+      owner_user_id: clerkUserId,
+      owner_username: getOwnerDisplayName(clerkUserId, ownerUsernames),
+      builds: rows.map((row) => toBuildListItem(row, ownerUsernames)),
+      loadouts,
+    });
+  } catch (err) {
+    sendInternalError(res, 'users.buildsByUsername', err);
+  }
+});
+
+function fetchPublicLoadoutsForUser(
+  db: Database.Database,
+  clerkUserId: string,
+): Array<{
+  id: string;
+  name: string;
+  owner_user_id: string;
+  owner_username: string | null;
+  visibility: string;
+  updated_at: string;
+  builds: Array<{ build_id: string; slot_type: string }>;
+}> {
+  const loadoutRows = db
+    .prepare(
+      `SELECT id, name, clerk_user_id, visibility, updated_at
+       FROM loadouts
+       WHERE clerk_user_id = ? AND visibility = 'public'
+       ORDER BY updated_at DESC`,
+    )
+    .all(clerkUserId) as Array<{
+    id: number;
+    name: string;
+    clerk_user_id: string;
+    visibility: string | null;
+    updated_at: string;
+  }>;
+  if (loadoutRows.length === 0) return [];
+  const ownerNames = getOwnerUsernames([clerkUserId]);
+  const result: Array<{
+    id: string;
+    name: string;
+    owner_user_id: string;
+    owner_username: string | null;
+    visibility: string;
+    updated_at: string;
+    builds: Array<{ build_id: string; slot_type: string }>;
+  }> = [];
+  for (const row of loadoutRows) {
+    const links = db
+      .prepare(
+        `SELECT lb.build_id, lb.slot_type FROM loadout_builds lb
+         INNER JOIN builds b ON b.id = lb.build_id
+         WHERE lb.loadout_id = ? AND b.visibility = 'public'`,
+      )
+      .all(row.id) as Array<{ build_id: number; slot_type: string }>;
+    result.push({
+      id: String(row.id),
+      name: row.name,
+      owner_user_id: row.clerk_user_id,
+      owner_username: getOwnerDisplayName(row.clerk_user_id, ownerNames),
+      visibility: row.visibility ?? 'private',
+      updated_at: row.updated_at,
+      builds: links.map((l) => ({
+        build_id: String(l.build_id),
+        slot_type: l.slot_type,
+      })),
+    });
+  }
+  return result;
+}
+
 apiRouter.get('/search', (req: Request, res: Response) => {
   try {
     const db = getDb();
@@ -103,7 +204,7 @@ apiRouter.get('/search', (req: Request, res: Response) => {
     const limitRaw = Number(req.query.limit ?? 20);
     const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.trunc(limitRaw), 1), 50) : 20;
     if (term.length < 2) {
-      res.json({ items: [] });
+      res.json({ equipment: [], users: [] });
       return;
     }
 
@@ -148,7 +249,7 @@ apiRouter.get('/search', (req: Request, res: Response) => {
       image_path: string | null;
     }>;
 
-    const items = [
+    const equipment = [
       ...warframes.map((item) => ({
         category: item.product_category || 'Warframes',
         name: item.name,
@@ -179,7 +280,22 @@ apiRouter.get('/search', (req: Request, res: Response) => {
       .sort((a, b) => a.name.localeCompare(b.name))
       .slice(0, limit);
 
-    res.json({ items });
+    const userRows = db
+      .prepare(
+        `SELECT clerk_user_id, username FROM armory_users
+         WHERE deleted_at IS NULL AND lower(username) LIKE ? ESCAPE '\\'
+         ORDER BY username ASC
+         LIMIT ?`,
+      )
+      .all(like, Math.min(limit, 10)) as Array<{ clerk_user_id: string; username: string }>;
+
+    const users = userRows.map((u) => ({
+      username: u.username,
+      clerk_user_id: u.clerk_user_id,
+      deleted: false,
+    }));
+
+    res.json({ equipment, users, items: equipment });
   } catch (err) {
     sendInternalError(res, 'search.query', err);
   }
@@ -395,7 +511,7 @@ function normalizeUserDescription(raw: unknown): string | null {
 
 type BuildRow = {
   id: number;
-  user_id: number;
+  clerk_user_id: string;
   name: string;
   equipment_type: string;
   equipment_unique_name: string;
@@ -422,32 +538,7 @@ function toBuildResponse(row: BuildRow): Record<string, unknown> {
   };
 }
 
-function getOwnerUsernames(userIds: number[]): Map<number, string | null> {
-  const map = new Map<number, string | null>();
-  const unique = [...new Set(userIds)].filter((id) => Number.isFinite(id) && id > 0);
-  if (unique.length === 0) {
-    return map;
-  }
-
-  try {
-    const central = getCentralDb();
-    const placeholders = unique.map(() => '?').join(',');
-    const rows = central
-      .prepare(`SELECT id, username FROM users WHERE id IN (${placeholders})`)
-      .all(...unique) as Array<{ id: number; username: string }>;
-    for (const r of rows) {
-      map.set(r.id, r.username ?? null);
-    }
-  } catch (err) {
-    log('error', 'Central DB username lookup failed', {
-      err: err instanceof Error ? err.message : String(err),
-    });
-  }
-
-  return map;
-}
-
-function toBuildListItem(row: BuildRow, ownerUsernames: Map<number, string | null>) {
+function toBuildListItem(row: BuildRow, ownerUsernames: Map<string, string | null>) {
   const cfg = parseBuildConfig(row.mod_config);
   const equipmentName =
     typeof cfg?.equipment_name === 'string' ? cfg.equipment_name : row.equipment_unique_name;
@@ -461,8 +552,9 @@ function toBuildListItem(row: BuildRow, ownerUsernames: Map<number, string | nul
     equipment_image: equipmentImage,
     updated_at: row.updated_at,
     created_at: row.created_at,
-    owner_user_id: row.user_id,
-    owner_username: ownerUsernames.get(row.user_id) ?? null,
+    owner_user_id: row.clerk_user_id,
+    owner_username: getOwnerDisplayName(row.clerk_user_id, ownerUsernames),
+    owner_deleted: ownerUsernames.get(row.clerk_user_id) === DELETED_USER_LABEL,
     description: typeof row.description === 'string' ? row.description : null,
   };
 }
@@ -777,7 +869,7 @@ apiRouter.get('/archon-shards', (_req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/admin/import/state', requireGameAdmin, (_req: Request, res: Response) => {
+apiRouter.get('/admin/import/state', requireArmoryAdmin, (_req: Request, res: Response) => {
   try {
     res.json(getAdminImportSnapshot());
   } catch (err) {
@@ -785,9 +877,9 @@ apiRouter.get('/admin/import/state', requireGameAdmin, (_req: Request, res: Resp
   }
 });
 
-apiRouter.post('/admin/import/run', requireGameAdmin, (req: Request, res: Response) => {
+apiRouter.post('/admin/import/run', requireArmoryAdmin, (req: Request, res: Response) => {
   try {
-    const userId = req.session.user_id;
+    const userId = getClerkUserId(req);
     if (!userId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
@@ -812,7 +904,7 @@ apiRouter.post('/admin/import/run', requireGameAdmin, (req: Request, res: Respon
   }
 });
 
-apiRouter.get('/admin/import/stream', requireGameAdmin, (req: Request, res: Response) => {
+apiRouter.get('/admin/import/stream', requireArmoryAdmin, (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
@@ -872,13 +964,14 @@ apiRouter.get('/admin/import/stream', requireGameAdmin, (req: Request, res: Resp
 apiRouter.get('/loadouts', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
     const loadouts = db
-      .prepare('SELECT * FROM loadouts WHERE user_id = ? ORDER BY updated_at DESC')
-      .all(req.session.user_id) as Array<Record<string, unknown>>;
+      .prepare('SELECT * FROM loadouts WHERE clerk_user_id = ? ORDER BY updated_at DESC')
+      .all(clerkUserId) as Array<Record<string, unknown>>;
     if (loadouts.length === 0) {
       res.json({ loadouts });
       return;
@@ -919,13 +1012,9 @@ apiRouter.get('/loadouts', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/loadouts/:id', async (req: Request, res: Response) => {
+apiRouter.get('/loadouts/:id', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
-      res.status(401).json({ error: 'Not authenticated' });
-      return;
-    }
     const id = parseNumericId(req.params.id);
     if (id === null) {
       res.status(400).json({ error: 'Invalid loadout id' });
@@ -939,19 +1028,17 @@ apiRouter.get('/loadouts/:id', async (req: Request, res: Response) => {
       res.status(404).json({ error: 'Loadout not found' });
       return;
     }
-    const uid = req.session.user_id;
-    const ownerUserId = loadout.user_id;
-    const ownerUserIdNum =
-      typeof ownerUserId === 'number' && Number.isFinite(ownerUserId) ? ownerUserId : 0;
-    const isOwner = ownerUserIdNum === uid;
+    const uid = getClerkUserId(req);
+    const ownerUserId = loadout.clerk_user_id;
+    const isOwner = typeof ownerUserId === 'string' && uid === ownerUserId;
     const vis = typeof loadout.visibility === 'string' ? loadout.visibility : 'private';
     if (!isOwner && vis !== 'public' && vis !== 'unlisted') {
       res.status(404).json({ error: 'Loadout not found' });
       return;
     }
 
-    const authState = await fetchRemoteAuthState(req);
-    const isGameAdmin = effectiveArmoryGameAdmin(authState);
+    const authState = getClerkAuthState(req);
+    const isGameAdmin = authState.isArmoryAdmin;
 
     const linkRows = db
       .prepare('SELECT build_id, slot_type FROM loadout_builds WHERE loadout_id = ?')
@@ -972,7 +1059,7 @@ apiRouter.get('/loadouts/:id', async (req: Request, res: Response) => {
       const canSeeBuild =
         isOwner ||
         isGameAdmin ||
-        buildRow.user_id === uid ||
+        buildRow.clerk_user_id === uid ||
         buildVis === 'public' ||
         buildVis === 'unlisted';
       if (!canSeeBuild) continue;
@@ -986,7 +1073,7 @@ apiRouter.get('/loadouts/:id', async (req: Request, res: Response) => {
       loadout: {
         id: loadout.id,
         name: loadout.name,
-        user_id: loadout.user_id,
+        user_id: loadout.clerk_user_id,
         visibility: vis,
         description: typeof loadout.description === 'string' ? loadout.description : null,
         created_at: loadout.created_at,
@@ -1003,7 +1090,8 @@ apiRouter.get('/loadouts/:id', async (req: Request, res: Response) => {
 apiRouter.post('/loadouts', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
@@ -1020,8 +1108,8 @@ apiRouter.post('/loadouts', (req: Request, res: Response) => {
     }
 
     const result = db
-      .prepare('INSERT INTO loadouts (user_id, name) VALUES (?, ?)')
-      .run(req.session.user_id, sanitizedName);
+      .prepare('INSERT INTO loadouts (clerk_user_id, name) VALUES (?, ?)')
+      .run(clerkUserId, sanitizedName);
     res.json({ success: true, id: result.lastInsertRowid });
   } catch (err) {
     sendInternalError(res, 'loadouts.create', err);
@@ -1031,7 +1119,8 @@ apiRouter.post('/loadouts', (req: Request, res: Response) => {
 apiRouter.put('/loadouts/:id', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
@@ -1040,10 +1129,9 @@ apiRouter.put('/loadouts/:id', (req: Request, res: Response) => {
       res.status(400).json({ error: 'Invalid loadout id' });
       return;
     }
-    const uid = req.session.user_id;
     const existing = db
-      .prepare('SELECT * FROM loadouts WHERE id = ? AND user_id = ?')
-      .get(parsedId, uid) as Record<string, unknown> | undefined;
+      .prepare('SELECT * FROM loadouts WHERE id = ? AND clerk_user_id = ?')
+      .get(parsedId, clerkUserId) as Record<string, unknown> | undefined;
     if (!existing) {
       res.status(404).json({ error: 'Loadout not found' });
       return;
@@ -1104,8 +1192,8 @@ apiRouter.put('/loadouts/:id', (req: Request, res: Response) => {
     }
 
     db.prepare(
-      "UPDATE loadouts SET name = ?, visibility = ?, description = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
-    ).run(nextName, nextVisibility, nextDescription, parsedId, uid);
+      "UPDATE loadouts SET name = ?, visibility = ?, description = ?, updated_at = datetime('now') WHERE id = ? AND clerk_user_id = ?",
+    ).run(nextName, nextVisibility, nextDescription, parsedId, clerkUserId);
     res.json({
       success: true,
       name: nextName,
@@ -1120,7 +1208,8 @@ apiRouter.put('/loadouts/:id', (req: Request, res: Response) => {
 apiRouter.post('/loadouts/:id/publish', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
@@ -1129,10 +1218,9 @@ apiRouter.post('/loadouts/:id/publish', (req: Request, res: Response) => {
       res.status(400).json({ error: 'Invalid loadout id' });
       return;
     }
-    const uid = req.session.user_id;
     const owned = db
-      .prepare('SELECT id FROM loadouts WHERE id = ? AND user_id = ?')
-      .get(loadoutId, uid) as { id: number } | undefined;
+      .prepare('SELECT id FROM loadouts WHERE id = ? AND clerk_user_id = ?')
+      .get(loadoutId, clerkUserId) as { id: number } | undefined;
     if (!owned) {
       res.status(404).json({ error: 'Loadout not found' });
       return;
@@ -1149,16 +1237,16 @@ apiRouter.post('/loadouts/:id/publish', (req: Request, res: Response) => {
         for (const { build_id } of links) {
           const result = db
             .prepare(
-              "UPDATE builds SET visibility = 'public', updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+              "UPDATE builds SET visibility = 'public', updated_at = datetime('now') WHERE id = ? AND clerk_user_id = ?",
             )
-            .run(build_id, uid);
+            .run(build_id, clerkUserId);
           if (result.changes < 1) {
             throw new Error('LOADOUT_BUILD_NOT_OWNED');
           }
         }
         db.prepare(
-          "UPDATE loadouts SET visibility = 'public', updated_at = datetime('now') WHERE id = ? AND user_id = ?",
-        ).run(loadoutId, uid);
+          "UPDATE loadouts SET visibility = 'public', updated_at = datetime('now') WHERE id = ? AND clerk_user_id = ?",
+        ).run(loadoutId, clerkUserId);
       })();
     } catch (e) {
       if (e instanceof Error && e.message === 'LOADOUT_BUILD_NOT_OWNED') {
@@ -1179,7 +1267,8 @@ apiRouter.post('/loadouts/:id/publish', (req: Request, res: Response) => {
 apiRouter.delete('/loadouts/:id', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
@@ -1189,15 +1278,15 @@ apiRouter.delete('/loadouts/:id', (req: Request, res: Response) => {
       return;
     }
     const owned = db
-      .prepare('SELECT id FROM loadouts WHERE id = ? AND user_id = ?')
-      .get(id, req.session.user_id) as { id: number } | undefined;
+      .prepare('SELECT id FROM loadouts WHERE id = ? AND clerk_user_id = ?')
+      .get(id, clerkUserId) as { id: number } | undefined;
     if (!owned) {
       res.status(404).json({ error: 'Loadout not found' });
       return;
     }
     db.transaction(() => {
       db.prepare('DELETE FROM loadout_builds WHERE loadout_id = ?').run(id);
-      db.prepare('DELETE FROM loadouts WHERE id = ? AND user_id = ?').run(id, req.session.user_id);
+      db.prepare('DELETE FROM loadouts WHERE id = ? AND clerk_user_id = ?').run(id, clerkUserId);
     })();
     res.json({ success: true });
   } catch (err) {
@@ -1208,7 +1297,8 @@ apiRouter.delete('/loadouts/:id', (req: Request, res: Response) => {
 apiRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
@@ -1225,8 +1315,8 @@ apiRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
       res.status(404).json({ error: 'Loadout not found' });
       return;
     }
-    const sourceUserId = sourceLoadout.user_id;
-    if (typeof sourceUserId !== 'number' || sourceUserId !== req.session.user_id) {
+    const sourceUserId = sourceLoadout.clerk_user_id;
+    if (typeof sourceUserId !== 'string' || sourceUserId !== clerkUserId) {
       res.status(403).json({ error: 'Forbidden' });
       return;
     }
@@ -1242,8 +1332,8 @@ apiRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
 
     const newLoadoutId = db.transaction(() => {
       const createdLoadout = db
-        .prepare('INSERT INTO loadouts (user_id, name, description) VALUES (?, ?, ?)')
-        .run(req.session.user_id, copyName, normalizeUserDescription(sourceLoadout.description));
+        .prepare('INSERT INTO loadouts (clerk_user_id, name, description) VALUES (?, ?, ?)')
+        .run(clerkUserId, copyName, normalizeUserDescription(sourceLoadout.description));
       const newId = Number(createdLoadout.lastInsertRowid);
 
       const sourceLinks = db
@@ -1262,11 +1352,11 @@ apiRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
         }
         const copiedBuild = db
           .prepare(
-            `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, description, created_at, updated_at)
+            `INSERT INTO builds (clerk_user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, description, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, 'private', ?, datetime('now'), datetime('now'))`,
           )
           .run(
-            req.session.user_id,
+            clerkUserId,
             `Copy of ${sourceBuild.name}`,
             sourceBuild.equipment_type,
             sourceBuild.equipment_unique_name,
@@ -1290,7 +1380,8 @@ apiRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
 apiRouter.post('/loadouts/:id/builds', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
@@ -1307,17 +1398,9 @@ apiRouter.post('/loadouts/:id/builds', (req: Request, res: Response) => {
     }
     const result = db
       .prepare(
-        'INSERT OR REPLACE INTO loadout_builds (loadout_id, build_id, slot_type) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM loadouts WHERE id = ? AND user_id = ?) AND EXISTS (SELECT 1 FROM builds WHERE id = ? AND user_id = ?)',
+        'INSERT OR REPLACE INTO loadout_builds (loadout_id, build_id, slot_type) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM loadouts WHERE id = ? AND clerk_user_id = ?) AND EXISTS (SELECT 1 FROM builds WHERE id = ? AND clerk_user_id = ?)',
       )
-      .run(
-        loadoutId,
-        buildId,
-        slot_type,
-        loadoutId,
-        req.session.user_id,
-        buildId,
-        req.session.user_id,
-      );
+      .run(loadoutId, buildId, slot_type, loadoutId, clerkUserId, buildId, clerkUserId);
     if (result.changes === 0) {
       res.status(404).json({
         error: 'Loadout or build not found, or you do not have permission to add it',
@@ -1333,7 +1416,8 @@ apiRouter.post('/loadouts/:id/builds', (req: Request, res: Response) => {
 apiRouter.delete('/loadouts/:id/builds/:slotType', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
@@ -1343,8 +1427,8 @@ apiRouter.delete('/loadouts/:id/builds/:slotType', (req: Request, res: Response)
       return;
     }
     db.prepare(
-      'DELETE FROM loadout_builds WHERE loadout_id = ? AND slot_type = ? AND EXISTS (SELECT 1 FROM loadouts WHERE id = ? AND user_id = ?)',
-    ).run(loadoutId, req.params.slotType, loadoutId, req.session.user_id);
+      'DELETE FROM loadout_builds WHERE loadout_id = ? AND slot_type = ? AND EXISTS (SELECT 1 FROM loadouts WHERE id = ? AND clerk_user_id = ?)',
+    ).run(loadoutId, req.params.slotType, loadoutId, clerkUserId);
     res.json({ success: true });
   } catch (err) {
     sendInternalError(res, 'loadouts.removeBuild', err);
@@ -1354,14 +1438,17 @@ apiRouter.delete('/loadouts/:id/builds/:slotType', (req: Request, res: Response)
 apiRouter.get('/builds', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
 
     const rows = db
-      .prepare(`SELECT ${BUILD_SELECT_LIST} FROM builds WHERE user_id = ? ORDER BY updated_at DESC`)
-      .all(req.session.user_id) as BuildRow[];
+      .prepare(
+        `SELECT ${BUILD_SELECT_LIST} FROM builds WHERE clerk_user_id = ? ORDER BY updated_at DESC`,
+      )
+      .all(clerkUserId) as BuildRow[];
 
     const builds = rows.map((row) => toBuildResponse(row));
 
@@ -1371,14 +1458,9 @@ apiRouter.get('/builds', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/builds/catalog', (req: Request, res: Response) => {
+apiRouter.get('/builds/catalog', (_req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
-      res.status(401).json({ error: 'Not authenticated' });
-      return;
-    }
-
     const rows = db
       .prepare(
         `SELECT equipment_type, equipment_unique_name, COUNT(*) AS build_count
@@ -1402,36 +1484,31 @@ apiRouter.get('/builds/catalog', (req: Request, res: Response) => {
 apiRouter.get('/builds/by-user', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
-      res.status(401).json({ error: 'Not authenticated' });
-      return;
-    }
 
-    const userIdRaw = req.query.user_id;
-    const userId =
-      typeof userIdRaw === 'string' && userIdRaw.trim() !== ''
-        ? parseNumericId(userIdRaw.trim())
-        : null;
-    if (userId === null) {
-      res.status(400).json({ error: 'user_id is required' });
+    const userIdRaw = req.query.clerk_user_id;
+    const clerkUserId =
+      typeof userIdRaw === 'string' && userIdRaw.trim() !== '' ? userIdRaw.trim() : null;
+    if (!clerkUserId) {
+      res.status(400).json({ error: 'clerk_user_id is required' });
       return;
     }
 
     const rows = db
       .prepare(
         `SELECT ${BUILD_SELECT_LIST} FROM builds
-         WHERE user_id = ? AND visibility = 'public'
+         WHERE clerk_user_id = ? AND visibility = 'public'
          ORDER BY updated_at DESC`,
       )
-      .all(userId) as BuildRow[];
+      .all(clerkUserId) as BuildRow[];
 
-    const ownerUsernames = getOwnerUsernames([userId]);
-    const ownerUsername = ownerUsernames.get(userId) ?? null;
+    const ownerUsernames = getOwnerUsernames([clerkUserId]);
+    const loadouts = fetchPublicLoadoutsForUser(db, clerkUserId);
 
     res.json({
-      owner_user_id: userId,
-      owner_username: ownerUsername,
+      owner_user_id: clerkUserId,
+      owner_username: getOwnerDisplayName(clerkUserId, ownerUsernames),
       builds: rows.map((row) => toBuildListItem(row, ownerUsernames)),
+      loadouts,
     });
   } catch (err) {
     sendInternalError(res, 'builds.byUser', err);
@@ -1441,10 +1518,7 @@ apiRouter.get('/builds/by-user', (req: Request, res: Response) => {
 apiRouter.get('/builds/by-equipment', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
-      res.status(401).json({ error: 'Not authenticated' });
-      return;
-    }
+    const sessionUserId = getClerkUserId(req);
 
     const equipmentType =
       typeof req.query.equipment_type === 'string' ? req.query.equipment_type.trim() : '';
@@ -1467,35 +1541,36 @@ apiRouter.get('/builds/by-equipment', (req: Request, res: Response) => {
       )
       .all(equipmentType, equipmentUniqueName) as BuildRow[];
 
-    const ownerUsernames = getOwnerUsernames(rows.map((r) => r.user_id));
+    const ownerUsernames = getOwnerUsernames(rows.map((r) => r.clerk_user_id));
 
     const loadoutRows = db
       .prepare(
-        `SELECT DISTINCT l.id, l.name, l.user_id, l.visibility, l.updated_at
+        `SELECT DISTINCT l.id, l.name, l.clerk_user_id, l.visibility, l.updated_at
          FROM loadouts l
          INNER JOIN loadout_builds lb ON lb.loadout_id = l.id
          INNER JOIN builds b ON b.id = lb.build_id
          WHERE b.equipment_type = ? AND b.equipment_unique_name = ?
-           AND (COALESCE(l.visibility, 'private') IN ('public', 'unlisted') OR l.user_id = ?)
+           AND (COALESCE(l.visibility, 'private') IN ('public', 'unlisted') OR l.clerk_user_id = ?)
          ORDER BY l.updated_at DESC`,
       )
-      .all(equipmentType, equipmentUniqueName, req.session.user_id) as Array<{
+      .all(equipmentType, equipmentUniqueName, sessionUserId ?? '') as Array<{
       id: number;
       name: string;
-      user_id: number;
+      clerk_user_id: string;
       visibility: string | null;
       updated_at: string;
     }>;
 
-    const loadoutOwnerNames = getOwnerUsernames(loadoutRows.map((r) => r.user_id));
+    const loadoutOwnerNames = getOwnerUsernames(loadoutRows.map((r) => r.clerk_user_id));
     const loadouts = loadoutRows.map((row) => ({
       id: String(row.id),
       name: row.name,
-      owner_user_id: row.user_id,
-      owner_username: loadoutOwnerNames.get(row.user_id) ?? null,
+      owner_user_id: row.clerk_user_id,
+      owner_username: getOwnerDisplayName(row.clerk_user_id, loadoutOwnerNames),
+      owner_deleted: loadoutOwnerNames.get(row.clerk_user_id) === DELETED_USER_LABEL,
       visibility: row.visibility ?? 'private',
       updated_at: row.updated_at,
-      is_own: row.user_id === req.session.user_id,
+      is_own: sessionUserId != null && row.clerk_user_id === sessionUserId,
     }));
 
     res.json({
@@ -1510,10 +1585,6 @@ apiRouter.get('/builds/by-equipment', (req: Request, res: Response) => {
 apiRouter.get('/builds/:id/loadouts', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
-      res.status(401).json({ error: 'Not authenticated' });
-      return;
-    }
     const id = parseNumericId(req.params.id);
     if (id === null) {
       res.status(400).json({ error: 'Invalid build id' });
@@ -1526,30 +1597,31 @@ apiRouter.get('/builds/:id/loadouts', (req: Request, res: Response) => {
       return;
     }
 
-    const uid = req.session.user_id;
+    const uid = getClerkUserId(req);
     const rows = db
       .prepare(
-        `SELECT l.id, l.name, l.user_id, l.visibility
+        `SELECT l.id, l.name, l.clerk_user_id, l.visibility
          FROM loadout_builds lb
          INNER JOIN loadouts l ON l.id = lb.loadout_id
          WHERE lb.build_id = ?
-           AND (l.user_id = ? OR l.visibility = 'public' OR l.visibility = 'unlisted')
+           AND (l.visibility IN ('public', 'unlisted') OR (? IS NOT NULL AND l.clerk_user_id = ?))
          ORDER BY l.updated_at DESC`,
       )
-      .all(id, uid) as Array<{
+      .all(id, uid, uid) as Array<{
       id: number;
       name: string;
-      user_id: number;
+      clerk_user_id: string;
       visibility: string;
     }>;
 
-    const ownerUsernames = getOwnerUsernames(rows.map((r) => r.user_id));
+    const ownerUsernames = getOwnerUsernames(rows.map((r) => r.clerk_user_id));
     const loadouts = rows.map((row) => ({
       id: String(row.id),
       name: row.name,
-      owner_user_id: row.user_id,
-      owner_username: ownerUsernames.get(row.user_id) ?? null,
-      is_own: row.user_id === uid,
+      owner_user_id: row.clerk_user_id,
+      owner_username: getOwnerDisplayName(row.clerk_user_id, ownerUsernames),
+      owner_deleted: ownerUsernames.get(row.clerk_user_id) === DELETED_USER_LABEL,
+      is_own: row.clerk_user_id === uid,
     }));
 
     res.json({ loadouts });
@@ -1558,13 +1630,9 @@ apiRouter.get('/builds/:id/loadouts', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.get('/builds/:id', async (req: Request, res: Response) => {
+apiRouter.get('/builds/:id', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
-      res.status(401).json({ error: 'Not authenticated' });
-      return;
-    }
     const id = parseNumericId(req.params.id);
     if (id === null) {
       res.status(400).json({ error: 'Invalid build id' });
@@ -1579,22 +1647,23 @@ apiRouter.get('/builds/:id', async (req: Request, res: Response) => {
       return;
     }
 
-    const sessionUserId = req.session.user_id;
-    const isOwner = row.user_id === sessionUserId;
-    const authState = await fetchRemoteAuthState(req);
-    const isGameAdmin = effectiveArmoryGameAdmin(authState);
+    const sessionUserId = getClerkUserId(req);
+    const isOwner = row.clerk_user_id === sessionUserId;
+    const authState = getClerkAuthState(req);
+    const isGameAdmin = authState.isArmoryAdmin;
     if (!canReadBuild(row, sessionUserId, isGameAdmin)) {
       res.status(404).json({ error: 'Build not found' });
       return;
     }
 
     const canEdit = isOwner || isGameAdmin;
-    const ownerUsernames = getOwnerUsernames([row.user_id]);
+    const ownerUsernames = getOwnerUsernames([row.clerk_user_id]);
 
     res.json({
       build: toBuildResponse(row),
-      owner_user_id: row.user_id,
-      owner_username: ownerUsernames.get(row.user_id) ?? null,
+      owner_user_id: row.clerk_user_id,
+      owner_username: getOwnerDisplayName(row.clerk_user_id, ownerUsernames),
+      owner_deleted: ownerUsernames.get(row.clerk_user_id) === DELETED_USER_LABEL,
       can_edit: canEdit,
     });
   } catch (err) {
@@ -1605,7 +1674,8 @@ apiRouter.get('/builds/:id', async (req: Request, res: Response) => {
 apiRouter.post('/builds', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
@@ -1633,11 +1703,11 @@ apiRouter.post('/builds', (req: Request, res: Response) => {
 
     const result = db
       .prepare(
-        `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, description, created_at, updated_at)
+        `INSERT INTO builds (clerk_user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, description, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       )
       .run(
-        req.session.user_id,
+        clerkUserId,
         name,
         equipment_type,
         equipment_unique_name,
@@ -1652,10 +1722,11 @@ apiRouter.post('/builds', (req: Request, res: Response) => {
   }
 });
 
-apiRouter.put('/builds/:id', async (req: Request, res: Response) => {
+apiRouter.put('/builds/:id', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
@@ -1683,8 +1754,8 @@ apiRouter.put('/builds/:id', async (req: Request, res: Response) => {
       ? normalizeUserDescription(bodyRecord.description)
       : undefined;
 
-    const authState = await fetchRemoteAuthState(req);
-    const isGameAdmin = effectiveArmoryGameAdmin(authState);
+    const authState = getClerkAuthState(req);
+    const isGameAdmin = authState.isArmoryAdmin;
 
     let sql = 'UPDATE builds SET name = ?, mod_config = ?, visibility = ?';
     const params: Array<string | number | null> = [
@@ -1699,8 +1770,8 @@ apiRouter.put('/builds/:id', async (req: Request, res: Response) => {
     sql += ", updated_at = datetime('now') WHERE id = ?";
     params.push(id);
     if (!isGameAdmin) {
-      sql += ' AND user_id = ?';
-      params.push(req.session.user_id);
+      sql += ' AND clerk_user_id = ?';
+      params.push(clerkUserId);
     }
 
     const result = db.prepare(sql).run(...params);
@@ -1716,10 +1787,11 @@ apiRouter.put('/builds/:id', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.delete('/builds/:id', async (req: Request, res: Response) => {
+apiRouter.delete('/builds/:id', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
@@ -1729,23 +1801,22 @@ apiRouter.delete('/builds/:id', async (req: Request, res: Response) => {
       res.status(400).json({ error: 'Invalid build id' });
       return;
     }
-    const authState = await fetchRemoteAuthState(req);
-    const isGameAdmin = effectiveArmoryGameAdmin(authState);
-    const uid = req.session.user_id;
+    const authState = getClerkAuthState(req);
+    const isGameAdmin = authState.isArmoryAdmin;
 
     const changes = db.transaction(() => {
       const row = isGameAdmin
         ? (db.prepare('SELECT id FROM builds WHERE id = ?').get(id) as { id: number } | undefined)
-        : (db.prepare('SELECT id FROM builds WHERE id = ? AND user_id = ?').get(id, uid) as
-            | { id: number }
-            | undefined);
+        : (db
+            .prepare('SELECT id FROM builds WHERE id = ? AND clerk_user_id = ?')
+            .get(id, clerkUserId) as { id: number } | undefined);
       if (!row) {
         return 0;
       }
       db.prepare('DELETE FROM loadout_builds WHERE build_id = ?').run(id);
       const buildResult = isGameAdmin
         ? db.prepare('DELETE FROM builds WHERE id = ?').run(id)
-        : db.prepare('DELETE FROM builds WHERE id = ? AND user_id = ?').run(id, uid);
+        : db.prepare('DELETE FROM builds WHERE id = ? AND clerk_user_id = ?').run(id, clerkUserId);
       return buildResult.changes;
     })();
 
@@ -1759,10 +1830,11 @@ apiRouter.delete('/builds/:id', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/builds/:id/copy', async (req: Request, res: Response) => {
+apiRouter.post('/builds/:id/copy', (req: Request, res: Response) => {
   try {
     const db = getDb();
-    if (!req.session.user_id) {
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
@@ -1779,9 +1851,9 @@ apiRouter.post('/builds/:id/copy', async (req: Request, res: Response) => {
       return;
     }
 
-    const authState = await fetchRemoteAuthState(req);
-    const isGameAdmin = effectiveArmoryGameAdmin(authState);
-    if (!canReadBuild(source, req.session.user_id, isGameAdmin)) {
+    const authState = getClerkAuthState(req);
+    const isGameAdmin = authState.isArmoryAdmin;
+    if (!canReadBuild(source, clerkUserId, isGameAdmin)) {
       res.status(404).json({ error: 'Build not found' });
       return;
     }
@@ -1795,11 +1867,11 @@ apiRouter.post('/builds/:id/copy', async (req: Request, res: Response) => {
 
     const result = db
       .prepare(
-        `INSERT INTO builds (user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, description, created_at, updated_at)
+        `INSERT INTO builds (clerk_user_id, name, equipment_type, equipment_unique_name, mod_config, visibility, description, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, 'private', ?, datetime('now'), datetime('now'))`,
       )
       .run(
-        req.session.user_id,
+        clerkUserId,
         copyName,
         source.equipment_type,
         source.equipment_unique_name,

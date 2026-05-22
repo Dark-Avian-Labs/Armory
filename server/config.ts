@@ -69,7 +69,17 @@ export const ARMORY_DB_PATH =
   process.env.ARMORY_DB_PATH?.trim() || path.join(DATA_DIR, 'armory.db');
 export const CODEX_EXPORT_DB_PATH =
   process.env.CODEX_EXPORT_DB_PATH?.trim() || path.join(DATA_DIR, 'codex.db');
-export const CENTRAL_DB_PATH = process.env.CENTRAL_DB_PATH || path.join(DATA_DIR, 'central.db');
+function resolveSessionDbPath(): string {
+  const configured = process.env.SESSION_DB_PATH?.trim() || process.env.CENTRAL_DB_PATH?.trim();
+  if (configured) {
+    return path.isAbsolute(configured) ? configured : path.resolve(PROJECT_ROOT, configured);
+  }
+  return path.join(DATA_DIR, 'session.db');
+}
+
+export const SESSION_DB_PATH = resolveSessionDbPath();
+
+export const CENTRAL_DB_PATH = SESSION_DB_PATH;
 
 const _port = parseInt(process.env.PORT || '3002', 10);
 export const PORT = Number.isFinite(_port) && _port > 0 ? _port : 3002;
@@ -125,6 +135,8 @@ export const SECURE_COOKIES =
 export const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN;
 export const SESSION_COOKIE_NAME =
   process.env.SESSION_COOKIE_NAME?.trim() || 'darkavianlabs.armory.sid';
+export const LEGAL_PAGE_URL =
+  process.env.LEGAL_PAGE_URL?.trim() || 'https://darkavianlabs.com/legal/';
 export { GAME_ID } from './gameId.js';
 
 export function ensureDataDirs(): void {
@@ -133,4 +145,5 @@ export function ensureDataDirs(): void {
       fs.mkdirSync(dir, { recursive: true });
     }
   }
+  fs.mkdirSync(path.dirname(SESSION_DB_PATH), { recursive: true });
 }

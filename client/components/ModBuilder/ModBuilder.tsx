@@ -1,3 +1,4 @@
+import { Show, SignInButton } from '@clerk/react';
 import { lazy, Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Link,
@@ -254,7 +255,7 @@ export function ModBuilder() {
   const readOnly = searchParams.get('view') === '1';
   const compactOverview = searchParams.get('compact') === '1';
   const { saveBuild: storageSave, getBuild, copyBuildFromId } = useBuildStorage();
-  const { account } = useAuth();
+  const { auth } = useAuth();
 
   const [equipmentType, setEquipmentType] = useState<EquipmentType>(
     (routeEqType as EquipmentType) || 'warframe',
@@ -273,7 +274,7 @@ export function ModBuilder() {
   const [loaded, setLoaded] = useState(false);
   const [equipmentLoadError, setEquipmentLoadError] = useState<string | null>(null);
   const [isOwnBuild, setIsOwnBuild] = useState(true);
-  const [buildOwnerUserId, setBuildOwnerUserId] = useState<number | null>(null);
+  const [buildOwnerUserId, setBuildOwnerUserId] = useState<string | null>(null);
   const [buildOwnerUsername, setBuildOwnerUsername] = useState<string | null>(null);
   const [buildIsPublic, setBuildIsPublic] = useState(false);
   const [arcaneSlots, setArcaneSlots] = useState<ArcaneSlot[]>([{ rank: 0 }, { rank: 0 }]);
@@ -465,9 +466,9 @@ export function ModBuilder() {
   );
 
   const viewOwnerUserId =
-    buildOwnerUserId ?? (isOwnBuild && account.profile ? account.profile.userId : null);
-  const viewOwnerUsername =
-    buildOwnerUsername ?? (isOwnBuild && account.profile ? account.profile.username : null);
+    buildOwnerUserId ?? (isOwnBuild && auth.status === 'ok' ? auth.userId : null);
+  const viewOwnerUsername = buildOwnerUsername;
+  const deletedOwnerLabel = '[Deleted User]';
 
   livePersistFingerprintRef.current = modBuilderPersistFingerprint({
     buildName,
@@ -550,7 +551,7 @@ export function ModBuilder() {
           description?: string | null;
         };
         can_edit?: boolean;
-        owner_user_id?: number;
+        owner_user_id?: string;
         owner_username?: string | null;
       };
       if (!body.build) {
@@ -568,7 +569,7 @@ export function ModBuilder() {
       setCurrentBuildId(String(body.build.id));
       setIsOwnBuild(body.can_edit === true);
       setBuildOwnerUserId(
-        typeof body.owner_user_id === 'number' && body.owner_user_id > 0
+        typeof body.owner_user_id === 'string' && body.owner_user_id.length > 0
           ? body.owner_user_id
           : null,
       );
@@ -1765,12 +1766,21 @@ export function ModBuilder() {
                       {buildName}
                     </span>
                     {viewOwnerUserId != null &&
-                      (viewOwnerUsername ? (
+                      (viewOwnerUsername && viewOwnerUsername !== deletedOwnerLabel ? (
+                        <Link
+                          to={userBuildsPath(viewOwnerUsername)}
+                          className="text-muted hover:text-accent w-fit text-sm transition-colors"
+                        >
+                          by {viewOwnerUsername}
+                        </Link>
+                      ) : viewOwnerUsername === deletedOwnerLabel ? (
+                        <span className="text-muted text-sm">by {deletedOwnerLabel}</span>
+                      ) : viewOwnerUserId.startsWith('user_') ? (
                         <Link
                           to={userBuildsPath(viewOwnerUserId)}
                           className="text-muted hover:text-accent w-fit text-sm transition-colors"
                         >
-                          by {viewOwnerUsername}
+                          by {viewOwnerUserId}
                         </Link>
                       ) : (
                         <span className="text-muted text-sm">by User #{viewOwnerUserId}</span>
@@ -1816,9 +1826,20 @@ export function ModBuilder() {
                   </button>
                 ) : null}
                 {!readOnly && isOwnBuild ? (
-                  <button type="button" className="btn btn-accent" onClick={openSaveModal}>
-                    Save Build
-                  </button>
+                  <>
+                    <Show when="signed-in">
+                      <button type="button" className="btn btn-accent" onClick={openSaveModal}>
+                        Save Build
+                      </button>
+                    </Show>
+                    <Show when="signed-out">
+                      <SignInButton mode="modal" forceRedirectUrl={window.location.pathname}>
+                        <button type="button" className="btn btn-accent">
+                          Sign in to save
+                        </button>
+                      </SignInButton>
+                    </Show>
+                  </>
                 ) : null}
               </div>
             </div>

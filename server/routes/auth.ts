@@ -1,35 +1,38 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type NextFunction } from 'express';
 
-import { authLoginRedirect, authStatus, redirectIfAuthenticated } from '../auth/middleware.js';
-import { proxyAuthJson, proxyAuthLogout } from '../auth/remoteAuth.js';
+import { syncArmoryUserFromClerk } from '../auth/armoryUsers.js';
+import { getClerkAuthState, requireAuthApi } from '../auth/middleware.js';
 
 export const authRouter = Router();
 
-authRouter.get('/csrf', (req: Request, res: Response) => {
-  const token = (res.locals as { csrfToken?: string }).csrfToken ?? req.session.csrfToken;
-  req.session.save((err) => {
-    if (err) {
-      res.status(500).json({ error: 'Failed to establish CSRF session' });
-      return;
-    }
-    res.json({ csrfToken: token ?? '' });
+authRouter.get('/csrf', (_req, res) => {
+  res.json({
+    csrfToken: (res.locals as { csrfToken?: string }).csrfToken || '',
   });
 });
 
-authRouter.get('/login', redirectIfAuthenticated, (req: Request, res: Response) => {
-  authLoginRedirect(req, res);
+authRouter.get('/me', requireAuthApi, async (req, res, next: NextFunction) => {
+  try {
+    const state = getClerkAuthState(req);
+    if (!state.authenticated || !state.userId) {
+      res.json({
+        authenticated: false,
+        userId: null,
+        isArmoryAdmin: false,
+      });
+      return;
+    }
+    await syncArmoryUserFromClerk(state.userId);
+    res.json({
+      authenticated: true,
+      userId: state.userId,
+      isArmoryAdmin: state.isArmoryAdmin,
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
-authRouter.post('/login', async (req: Request, res: Response) => {
-  await proxyAuthJson(req, res, '/api/auth/login');
-});
-
-authRouter.post('/logout', async (req: Request, res: Response) => {
-  await proxyAuthLogout(req, res);
-});
-
-authRouter.get('/me', authStatus);
-
-authRouter.post('/change-password', async (req: Request, res: Response) => {
-  await proxyAuthJson(req, res, '/api/auth/change-password');
+authRouter.post('/logout', (_req, res) => {
+  res.json({ ok: true, next: '/builder/builds' });
 });

@@ -1,12 +1,13 @@
 import { useParams } from 'react-router-dom';
 
+import { isClerkUserId } from '../../utils/isClerkUserId';
 import { BuildOverview } from './BuildOverview';
 
 export function UserBuildsPage() {
-  const { userId: userIdParam } = useParams<{ userId: string }>();
-  const userId = Number(userIdParam);
+  const { userSlug: userSlugParam } = useParams<{ userSlug: string }>();
+  const userSlug = userSlugParam?.trim() ?? '';
 
-  if (!Number.isInteger(userId) || userId <= 0) {
+  if (!userSlug) {
     return (
       <div className="mx-auto max-w-[2000px]">
         <div className="glass-shell flex h-64 items-center justify-center">
@@ -16,5 +17,10 @@ export function UserBuildsPage() {
     );
   }
 
-  return <BuildOverview ownerUserId={userId} />;
+  return (
+    <BuildOverview
+      ownerUserSlug={userSlug}
+      ownerUserId={isClerkUserId(userSlug) ? userSlug : undefined}
+    />
+  );
 }
