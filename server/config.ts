@@ -4,6 +4,8 @@ import { fileURLToPath } from 'url';
 
 import { config as loadEnv } from '@dotenvx/dotenvx';
 
+import { normalizeClerkEnv } from './clerkEnv.js';
+
 function resolveEnvFilePath(projectRoot: string): string | null {
   const normalizedNodeEnv = (process.env.NODE_ENV ?? '').trim().toLowerCase();
   const envFileByMode: Record<string, string> = {
@@ -29,7 +31,18 @@ function resolveEnvFilePath(projectRoot: string): string | null {
   return null;
 }
 
-const envPath = resolveEnvFilePath(process.cwd());
+const projectRoot = process.cwd();
+const envKeysPath = path.join(projectRoot, '.env.keys');
+if (fs.existsSync(envKeysPath)) {
+  try {
+    loadEnv({ path: envKeysPath });
+  } catch (error) {
+    console.error(`[Config] Failed to load environment keys from "${envKeysPath}".`, error);
+    throw error;
+  }
+}
+
+const envPath = resolveEnvFilePath(projectRoot);
 if (envPath) {
   try {
     loadEnv({ path: envPath });
@@ -39,9 +52,11 @@ if (envPath) {
   }
 } else {
   console.debug(
-    `[Config] No env file resolved (envPath is null); skipping loadEnv for cwd "${process.cwd()}".`,
+    `[Config] No env file resolved (envPath is null); skipping loadEnv for cwd "${projectRoot}".`,
   );
 }
+
+normalizeClerkEnv();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
