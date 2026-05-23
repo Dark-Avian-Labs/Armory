@@ -262,3 +262,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.55.5** `fix(security)` [#292](https://github.com/Dark-Avian-Labs/Armory/pull/292): adding override for js cookie
 - **v1.55.6** `chore` [#294](https://github.com/Dark-Avian-Labs/Armory/pull/294): remove legacy migration code
 - **v1.55.7** `fix` [#295](https://github.com/Dark-Avian-Labs/Armory/pull/295): ENV typo
+- **v1.56.0** `feat` [#296](https://github.com/Dark-Avian-Labs/Armory/pull/296): new theme and fixes in styling
