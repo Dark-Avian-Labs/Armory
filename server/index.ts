@@ -38,6 +38,7 @@ import { isAdminImportRunning, waitForAdminImportIdle } from './import/adminImpo
 import { log } from './logger.js';
 import { apiRouter } from './routes/api.js';
 import { authRouter } from './routes/auth.js';
+import { clerkWebhookRouter } from './routes/webhooks.js';
 
 const require = createRequire(import.meta.url);
 const SQLiteStore = require('better-sqlite3-session-store')(session);
@@ -66,6 +67,8 @@ if (NODE_ENV === 'production' && SECURE_COOKIES && !TRUST_PROXY) {
 
 app.use(createAppHelmet());
 app.use(requestIdMiddleware);
+
+app.use('/api/webhooks/clerk', express.raw({ type: 'application/json' }), clerkWebhookRouter);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));

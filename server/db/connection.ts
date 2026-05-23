@@ -24,8 +24,6 @@ export function getSessionDb(): Database.Database {
   return sessionDb;
 }
 
-export const getCentralDb = getSessionDb;
-
 export function closeAll(): void {
   if (db) {
     db.close();

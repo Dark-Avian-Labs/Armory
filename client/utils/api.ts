@@ -1,24 +1,7 @@
 let cachedToken: string | null = null;
 let inFlightPromise: Promise<string | null> | null = null;
 let csrfTokenGeneration = 0;
-let authRedirectPending = false;
 export const API_UNAUTHORIZED_EVENT = 'armory:api-unauthorized';
-
-function currentAppPath(): string {
-  const { pathname, search, hash } = window.location;
-  return `${pathname}${search}${hash}`;
-}
-
-export function buildCentralAuthLoginUrl(nextPath?: string): string {
-  const next = nextPath && nextPath.length > 0 ? nextPath : currentAppPath();
-  return `/api/auth/login?next=${encodeURIComponent(next)}`;
-}
-
-export function redirectToCentralAuth(nextPath?: string): void {
-  if (authRedirectPending) return;
-  authRedirectPending = true;
-  window.location.href = buildCentralAuthLoginUrl(nextPath);
-}
 
 function emitUnauthorized(url: string): void {
   window.dispatchEvent(

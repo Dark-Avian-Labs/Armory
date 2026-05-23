@@ -24,11 +24,9 @@ const DELETED_USER_LABEL = '[Deleted User]';
 
 function OwnerAttribution({
   owner_username,
-  owner_user_id,
   owner_deleted,
 }: {
   owner_username: string | null;
-  owner_user_id: string;
   owner_deleted?: boolean;
 }) {
   if (owner_deleted || owner_username === DELETED_USER_LABEL) {
@@ -45,7 +43,7 @@ function OwnerAttribution({
       </Link>
     );
   }
-  return <span>User #{owner_user_id}</span>;
+  return <span>Another user</span>;
 }
 
 type LoadoutListItem = {
@@ -203,7 +201,6 @@ export function BuildsByEquipmentPage() {
                     <span className="truncate">
                       <OwnerAttribution
                         owner_username={l.owner_username}
-                        owner_user_id={l.owner_user_id}
                         owner_deleted={l.owner_deleted}
                       />
                     </span>
@@ -273,7 +270,6 @@ export function BuildsByEquipmentPage() {
                     <span className="truncate">
                       <OwnerAttribution
                         owner_username={b.owner_username}
-                        owner_user_id={b.owner_user_id}
                         owner_deleted={b.owner_deleted}
                       />
                     </span>

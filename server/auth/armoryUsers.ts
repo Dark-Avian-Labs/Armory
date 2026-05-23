@@ -34,19 +34,24 @@ export function ensureArmoryUsersSchema(db: ReturnType<typeof getDb>): void {
   }
 }
 
-export function upsertArmoryUser(clerkUserId: string, username: string): void {
+export function upsertArmoryUser(clerkUserId: string, username: string | null): void {
   const db = getDb();
   if (!schemaInitialized) {
     ensureArmoryUsersSchema(db);
     schemaInitialized = true;
   }
-  db.prepare(
-    `INSERT INTO armory_users (clerk_user_id, username, deleted_at)
-     VALUES (?, ?, NULL)
-     ON CONFLICT(clerk_user_id) DO UPDATE SET
-       username = excluded.username,
-       deleted_at = NULL`,
-  ).run(clerkUserId, username);
+  const trimmed = typeof username === 'string' ? username.trim() : '';
+  if (trimmed.length > 0) {
+    db.prepare(
+      `INSERT INTO armory_users (clerk_user_id, username, deleted_at)
+       VALUES (?, ?, NULL)
+       ON CONFLICT(clerk_user_id) DO UPDATE SET
+         username = excluded.username,
+         deleted_at = NULL`,
+    ).run(clerkUserId, trimmed);
+    return;
+  }
+  db.prepare(`UPDATE armory_users SET deleted_at = NULL WHERE clerk_user_id = ?`).run(clerkUserId);
 }
 
 export function markArmoryUserDeleted(clerkUserId: string): void {
