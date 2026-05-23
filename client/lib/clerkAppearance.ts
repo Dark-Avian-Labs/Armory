@@ -96,7 +96,7 @@ export function buildClerkProfileAppearance(_mode: ThemeMode) {
       ...clerkThemeVariables(),
       colorForeground: 'var(--color-foreground)',
       colorMutedForeground: 'var(--color-muted)',
-      colorBackground: 'var(--color-surface-400)',
+      colorBackground: 'transparent',
       colorModalBackdrop: 'oklch(0% 0 0 / 0.7)',
       colorBorder: 'var(--color-glass-border)',
       colorInput: 'var(--color-glass-hover)',

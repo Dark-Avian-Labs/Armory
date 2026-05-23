@@ -73,6 +73,8 @@ import { StatsPanel } from './StatsPanel';
 import { ValenceBonusPanel, DEFAULT_VALENCE_BONUS } from './ValenceBonusPanel';
 
 const FILTER_PANEL_IDLE_TIMEOUT_MS = 2000;
+const TOAST_DURATION_SUCCESS_MS = 2500;
+const TOAST_DURATION_ERROR_MS = 4000;
 
 const FilterPanelLazy = lazy(() =>
   import('./FilterPanel').then((m) => ({ default: m.FilterPanel })),
@@ -1397,7 +1399,9 @@ export function ModBuilder() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [saveModalName, setSaveModalName] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveToast, setSaveToast] = useState(false);
+  const [saveToast, setSaveToast] = useState<{ tone: 'success' | 'error'; message: string } | null>(
+    null,
+  );
 
   const openSaveModal = () => {
     if (!selectedEquipment) return;
@@ -1531,8 +1535,8 @@ export function ModBuilder() {
             allowNavigationBypassRef.current = false;
           }
         });
-        setSaveToast(true);
-        setTimeout(() => setSaveToast(false), 2500);
+        setSaveToast({ tone: 'success', message: 'Build saved successfully' });
+        setTimeout(() => setSaveToast(null), TOAST_DURATION_SUCCESS_MS);
         return;
       }
 
@@ -1583,10 +1587,13 @@ export function ModBuilder() {
         }),
       );
 
-      setSaveToast(true);
-      setTimeout(() => setSaveToast(false), 2500);
+      setSaveToast({ tone: 'success', message: 'Build saved successfully' });
+      setTimeout(() => setSaveToast(null), TOAST_DURATION_SUCCESS_MS);
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Failed to save build');
+      const message = error instanceof Error ? error.message : 'Failed to save build';
+      setSaveError(message);
+      setSaveToast({ tone: 'error', message });
+      setTimeout(() => setSaveToast(null), TOAST_DURATION_ERROR_MS);
     }
   };
 
@@ -2192,18 +2199,13 @@ export function ModBuilder() {
         </Suspense>
       ) : null}
 
-      {saveToast && (
-        <div
-          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-[bottom,transform,opacity] duration-300 ease-out ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
-          data-tone="success"
-        >
-          Build saved successfully
+      {saveToast ? (
+        <div className="toast-pill" data-tone={saveToast.tone} role="status" aria-live="polite">
+          {saveToast.message}
         </div>
-      )}
+      ) : null}
       {compareToast && (
-        <div
-          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-[bottom,transform,opacity] duration-300 ease-out ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
-        >
+        <div className="toast-pill" role="status" aria-live="polite">
           Added to comparison ({compareSnapshots.length}/3)
         </div>
       )}
@@ -2220,18 +2222,12 @@ export function ModBuilder() {
         </Suspense>
       ) : null}
       {rivenToastMessage && (
-        <div
-          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-[bottom,transform,opacity] duration-300 ease-out ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
-          data-tone="warning"
-        >
+        <div className="toast-pill" data-tone="warning" role="status" aria-live="polite">
           {rivenToastMessage}
         </div>
       )}
       {pipToastMessage && (
-        <div
-          className={`toast-surface fixed left-1/2 z-[9999] -translate-x-1/2 text-sm font-medium transition-[bottom,transform,opacity] duration-300 ease-out ${compareSnapshots.length > 0 ? 'bottom-28' : 'bottom-6'}`}
-          data-tone="warning"
-        >
+        <div className="toast-pill" data-tone="warning" role="status" aria-live="polite">
           {pipToastMessage}
         </div>
       )}
