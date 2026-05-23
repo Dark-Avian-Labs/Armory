@@ -28,6 +28,7 @@ import { CompareBar } from '../Compare/CompareBar';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { Menu } from '../ui/Menu';
+import { UiStyleSelector } from '../ui/UiStyleSelector';
 import { AsciiWaveBackground } from './AsciiWaveBackground';
 import { SearchBar } from './SearchBar';
 import { StaleClientUpdateBanner } from './StaleClientUpdateBanner';
@@ -89,12 +90,14 @@ export function Layout() {
   useEffect(() => {
     if (!userMenuOpen) return undefined;
     const handlePointerDown = (event: MouseEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        setUserMenuOpen(false);
-      }
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest('.select-dropdown-menu')) return;
+      setUserMenuOpen(false);
     };
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (document.querySelector('.select-dropdown-menu')) return;
         setUserMenuOpen(false);
       }
     };
@@ -289,6 +292,8 @@ export function Layout() {
                         >
                           Profile
                         </button>
+                        <div className="user-menu-divider" role="separator" />
+                        <UiStyleSelector />
                         {siblingAppLinks.map((app) => (
                           <a
                             key={app.id}
@@ -323,14 +328,18 @@ export function Layout() {
                         </button>
                       </>
                     ) : (
-                      <Link
-                        to="/sign-in"
-                        className="user-menu-item"
-                        role="menuitem"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        Sign in
-                      </Link>
+                      <>
+                        <Link
+                          to="/sign-in"
+                          className="user-menu-item"
+                          role="menuitem"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          Sign in
+                        </Link>
+                        <div className="user-menu-divider" role="separator" />
+                        <UiStyleSelector />
+                      </>
                     )}
                   </div>
                 </Menu>

@@ -33,6 +33,7 @@ interface SelectDropdownProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   disabled?: boolean;
+  triggerClassName?: string;
 }
 
 const MENU_GAP_PX = 4;
@@ -50,6 +51,7 @@ export function SelectDropdown({
   open,
   onOpenChange,
   disabled,
+  triggerClassName = 'form-input flex w-full cursor-pointer items-center justify-between gap-2 py-2 text-left text-xs disabled:cursor-not-allowed disabled:opacity-50',
 }: SelectDropdownProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -84,7 +86,7 @@ export function SelectDropdown({
       window.removeEventListener('resize', updateMenuPosition);
       window.removeEventListener('scroll', updateMenuPosition, true);
     };
-  }, [open, options.length, updateMenuPosition]);
+  }, [open, updateMenuPosition]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -144,6 +146,7 @@ export function SelectDropdown({
     }
     if (e.key === 'Escape') {
       e.preventDefault();
+      e.stopPropagation();
       onOpenChange(false);
     }
   };
@@ -215,7 +218,7 @@ export function SelectDropdown({
         ref={buttonRef}
         type="button"
         id={buttonId}
-        className="form-input flex w-full cursor-pointer items-center justify-between gap-2 py-2 text-left text-xs disabled:cursor-not-allowed disabled:opacity-50"
+        className={triggerClassName}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listboxId}
@@ -227,6 +230,7 @@ export function SelectDropdown({
         onKeyDown={(e) => {
           if (open && e.key === 'Escape') {
             e.preventDefault();
+            e.stopPropagation();
             onOpenChange(false);
           }
         }}
