@@ -85,7 +85,7 @@ export const ARMORY_DB_PATH =
 export const CODEX_EXPORT_DB_PATH =
   process.env.CODEX_EXPORT_DB_PATH?.trim() || path.join(DATA_DIR, 'codex.db');
 function resolveSessionDbPath(): string {
-  const configured = process.env.SESSION_DB_PATH?.trim() || process.env.CENTRAL_DB_PATH?.trim();
+  const configured = process.env.SESSION_DB_PATH?.trim();
   if (configured) {
     return path.isAbsolute(configured) ? configured : path.resolve(PROJECT_ROOT, configured);
   }
@@ -93,8 +93,6 @@ function resolveSessionDbPath(): string {
 }
 
 export const SESSION_DB_PATH = resolveSessionDbPath();
-
-export const CENTRAL_DB_PATH = SESSION_DB_PATH;
 
 const _port = parseInt(process.env.PORT || '3002', 10);
 export const PORT = Number.isFinite(_port) && _port > 0 ? _port : 3002;
@@ -152,6 +150,10 @@ export const SESSION_COOKIE_NAME =
   process.env.SESSION_COOKIE_NAME?.trim() || 'darkavianlabs.armory.sid';
 export const LEGAL_PAGE_URL =
   process.env.LEGAL_PAGE_URL?.trim() || 'https://darkavianlabs.com/legal/';
+export const CLERK_WEBHOOK_SIGNING_SECRET = process.env.CLERK_WEBHOOK_SIGNING_SECRET?.trim() || '';
+if (NODE_ENV === 'production' && !CLERK_WEBHOOK_SIGNING_SECRET) {
+  throw new Error('[FATAL] CLERK_WEBHOOK_SIGNING_SECRET must be set in production.');
+}
 export { GAME_ID } from './gameId.js';
 
 export function ensureDataDirs(): void {

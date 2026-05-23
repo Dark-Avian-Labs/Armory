@@ -1,5 +1,4 @@
 import { getDb } from './connection.js';
-import { migrateBuildsAndLoadoutsToClerkUserId } from './migrateClerkUserId.js';
 
 export function createAppSchema(): void {
   const db = getDb();
@@ -500,14 +499,8 @@ export function createAppSchema(): void {
     }
   }
 
-  migrateBuildsAndLoadoutsToClerkUserId(db);
-
-  if (hasColumn.get('builds', 'clerk_user_id')) {
-    db.exec('CREATE INDEX IF NOT EXISTS idx_builds_clerk_user ON builds(clerk_user_id)');
-  }
-  if (hasColumn.get('loadouts', 'clerk_user_id')) {
-    db.exec('CREATE INDEX IF NOT EXISTS idx_loadouts_clerk_user ON loadouts(clerk_user_id)');
-  }
+  db.exec('CREATE INDEX IF NOT EXISTS idx_builds_clerk_user ON builds(clerk_user_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_loadouts_clerk_user ON loadouts(clerk_user_id)');
 
   console.log('[DB] Application schema created/verified');
 }

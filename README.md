@@ -71,7 +71,6 @@ Use one key per environment to reduce blast radius.
 | `TRUST_PROXY`              | Set to `1` behind a reverse proxy.                                                 |
 | `SECURE_COOKIES`           | Set to `1` for HTTPS-only cookie behavior (defaults follow `NODE_ENV`).            |
 | `SESSION_DB_PATH`          | App-local SQLite session store for CSRF (default `./data/session.db`).             |
-| `CENTRAL_DB_PATH`          | Deprecated alias for `SESSION_DB_PATH`.                                            |
 | `ARMORY_DB_PATH`           | Optional override for the main app SQLite file (default `./data/armory.db`).       |
 | `CODEX_EXPORT_DB_PATH`     | Optional override for the Codex export mirror DB (default `./data/codex.db`).      |
 | `COOKIE_DOMAIN`            | Optional cross-subdomain cookie domain.                                            |
