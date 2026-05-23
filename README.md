@@ -10,7 +10,7 @@
 
 Armory is a mod builder and planner for Warframe. It mirrors in-game feel where practical and surfaces extra detail and stats.
 Mod and equipment data come from Digital Extremes’ public export, with wiki and third-party sources used where helpful.
-Armory also backs Codex’s Warframe import workflow and uses the central Auth service for login, per-game access, and profile settings.
+Armory also backs Codex’s Warframe import workflow. Sign-in, access control, and profile settings use [Clerk](https://clerk.com) directly.
 
 ## Requirements
 
@@ -60,21 +60,23 @@ Use one key per environment to reduce blast radius.
 
 ## Environment variables
 
-| Variable                   | Description                                                                    |
-| -------------------------- | ------------------------------------------------------------------------------ |
-| `PORT`, `HOST`             | Server bind address (defaults: `3002`, `127.0.0.1`).                           |
-| `NODE_ENV`                 | `development`, `test`, or `production`.                                        |
-| `APP_PUBLIC_BASE_URL`      | **Required.** Public site base URL (used for auth redirects); `https` in prod. |
-| `SESSION_SECRET`           | Required in production; dev uses a non-prod default if unset.                  |
-| `TRUST_PROXY`              | Set to `1` behind a reverse proxy.                                             |
-| `SECURE_COOKIES`           | Set to `1` for HTTPS-only cookie behavior (defaults follow `NODE_ENV`).        |
-| `SESSION_DB_PATH`          | App-local SQLite session store for CSRF (default `./data/session.db`).         |
-| `CENTRAL_DB_PATH`          | Deprecated alias for `SESSION_DB_PATH`.                                        |
-| `ARMORY_DB_PATH`           | Optional override for the main app SQLite file (default `./data/armory.db`).   |
-| `CODEX_EXPORT_DB_PATH`     | Optional override for the Codex export mirror DB (default `./data/codex.db`).  |
-| `COOKIE_DOMAIN`            | Optional cross-subdomain cookie domain.                                        |
-| `SESSION_COOKIE_NAME`      | Session cookie name.                                                           |
-| `HELMINTH_WIKI_USER_AGENT` | Optional `User-Agent` for Helminth wiki fetches (see `helminthWiki.ts`).       |
+| Variable                   | Description                                                                        |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| `PORT`, `HOST`             | Server bind address (defaults: `3002`, `127.0.0.1`).                               |
+| `NODE_ENV`                 | `development`, `test`, or `production`.                                            |
+| `APP_PUBLIC_BASE_URL`      | **Required.** Public site base URL (Clerk sign-in redirects); `https` in prod.     |
+| `CLERK_SECRET_KEY`         | **Required in production.** Clerk secret key for server-side session verification. |
+| `CLERK_PUBLISHABLE_KEY`    | Clerk publishable key for the server (falls back to `VITE_CLERK_PUBLISHABLE_KEY`). |
+| `SESSION_SECRET`           | Required in production; dev uses a non-prod default if unset.                      |
+| `TRUST_PROXY`              | Set to `1` behind a reverse proxy.                                                 |
+| `SECURE_COOKIES`           | Set to `1` for HTTPS-only cookie behavior (defaults follow `NODE_ENV`).            |
+| `SESSION_DB_PATH`          | App-local SQLite session store for CSRF (default `./data/session.db`).             |
+| `CENTRAL_DB_PATH`          | Deprecated alias for `SESSION_DB_PATH`.                                            |
+| `ARMORY_DB_PATH`           | Optional override for the main app SQLite file (default `./data/armory.db`).       |
+| `CODEX_EXPORT_DB_PATH`     | Optional override for the Codex export mirror DB (default `./data/codex.db`).      |
+| `COOKIE_DOMAIN`            | Optional cross-subdomain cookie domain.                                            |
+| `SESSION_COOKIE_NAME`      | Session cookie name.                                                               |
+| `HELMINTH_WIKI_USER_AGENT` | Optional `User-Agent` for Helminth wiki fetches (see `helminthWiki.ts`).           |
 
 Client `VITE_*` variables are listed in `.env.example`.
 

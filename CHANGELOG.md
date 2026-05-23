@@ -253,10 +253,10 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.54.16** `chore` [#272](https://github.com/Dark-Avian-Labs/Armory/pull/272): update fontsource dependencies and qs version
 - **v1.54.17** `chore` [#273](https://github.com/Dark-Avian-Labs/Armory/pull/273): enhance application configuration and improve admin import handling
 - **v1.54.18** `chore` [#274](https://github.com/Dark-Avian-Labs/Armory/pull/274): enhance stale update banner styling
-- **v1.54.19** `chore`: Merge pull request #280 from Dark-Avian-Labs:chore--update-CI-workflow-with-automatic-changelog-creation
-- **v1.55.0** `chore`: Merge pull request #281 from Dark-Avian-Labs:feat--integrate-Clerk-for-authentication-and-user-management
-- **v1.55.1** `chore`: Merge pull request #282 from Dark-Avian-Labs:fix--db-migration
-- **v1.55.2** `chore`: Merge pull request #284 from Dark-Avian-Labs:fix--updated-keys
-- **v1.55.3** `chore`: Merge pull request #285 from Dark-Avian-Labs:fix--CSP
-- **v1.55.4** `chore`: Merge pull request #286 from Dark-Avian-Labs:fix--routing
-- **v1.55.5** `chore`: Merge pull request #292 from Dark-Avian-Labs:fix(security)--adding-override-for-js-cookie
+- **v1.54.19** `chore` [#280](https://github.com/Dark-Avian-Labs/Armory/pull/280): update CI workflow with automatic changelog creation
+- **v1.55.0** `feat` [#281](https://github.com/Dark-Avian-Labs/Armory/pull/281): integrate Clerk for authentication and user management
+- **v1.55.1** `fix` [#282](https://github.com/Dark-Avian-Labs/Armory/pull/282): db migration
+- **v1.55.2** `fix` [#284](https://github.com/Dark-Avian-Labs/Armory/pull/284): updated keys
+- **v1.55.3** `fix` [#285](https://github.com/Dark-Avian-Labs/Armory/pull/285): CSP
+- **v1.55.4** `fix` [#286](https://github.com/Dark-Avian-Labs/Armory/pull/286): routing
+- **v1.55.5** `fix(security)` [#292](https://github.com/Dark-Avian-Labs/Armory/pull/292): adding override for js cookie
