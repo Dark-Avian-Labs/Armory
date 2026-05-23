@@ -260,3 +260,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.55.3** `fix` [#285](https://github.com/Dark-Avian-Labs/Armory/pull/285): CSP
 - **v1.55.4** `fix` [#286](https://github.com/Dark-Avian-Labs/Armory/pull/286): routing
 - **v1.55.5** `fix(security)` [#292](https://github.com/Dark-Avian-Labs/Armory/pull/292): adding override for js cookie
+- **v1.55.6** `chore` [#294](https://github.com/Dark-Avian-Labs/Armory/pull/294): remove legacy migration code
