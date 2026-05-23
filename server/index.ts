@@ -68,7 +68,24 @@ if (NODE_ENV === 'production' && SECURE_COOKIES && !TRUST_PROXY) {
 app.use(createAppHelmet());
 app.use(requestIdMiddleware);
 
-app.use('/api/webhooks/clerk', express.raw({ type: 'application/json' }), clerkWebhookRouter);
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const rateLimitDefaults = {
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  standardHeaders: true,
+  legacyHeaders: false,
+} as const;
+
+const appApiLimiter = rateLimit({
+  ...rateLimitDefaults,
+  max: 600,
+});
+
+app.use(
+  '/api/webhooks/clerk',
+  appApiLimiter,
+  express.raw({ type: 'application/json' }),
+  clerkWebhookRouter,
+);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -76,10 +93,8 @@ app.use(cookieParser());
 app.use(clerkMiddleware());
 
 const baselineLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  ...rateLimitDefaults,
   max: 1200,
-  standardHeaders: true,
-  legacyHeaders: false,
   skip: (req) =>
     req.path === '/healthz' ||
     req.path === '/api/version' ||
@@ -185,18 +200,9 @@ app.get('/api/version', (_req, res) => {
   res.json({ version: APP_VERSION });
 });
 
-const appApiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 600,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
 const publicPageLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  ...rateLimitDefaults,
   max: 1200,
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 
 app.use('/api/auth', authRouter);
