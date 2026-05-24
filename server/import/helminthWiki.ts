@@ -3,12 +3,9 @@ import type Database from 'better-sqlite3';
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
 import {
   fetchHelminthWikiHtml,
+  normalizeAbilityName,
   parseHelminthExtractableAbilityNames,
 } from '../scraping/helminthWikiPage.js';
-
-function normalizeAbilityName(value: string): string {
-  return value.replace(/\s+/g, ' ').trim().toLowerCase();
-}
 
 export async function fetchHelminthAbilityNameSet(options?: { html?: string | null }): Promise<{
   names: Set<string>;

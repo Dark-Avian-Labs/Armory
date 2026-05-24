@@ -8,7 +8,7 @@ const WIKI_BASE = 'https://wiki.warframe.com';
 
 const ABILITY_TOOLTIP = '.tooltip[data-param-source="Ability"]';
 
-function normalizeAbilityName(value: string): string {
+export function normalizeAbilityName(value: string): string {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
@@ -89,12 +89,13 @@ export function resolveHelminthAbilityWikiUrls(
   for (const name of abilityNames) {
     const normName = normalizeText(name);
     $('a[href^="/w/"]').each((_, el) => {
-      if (resolved.has(name)) return;
+      if (resolved.has(name)) return false;
       const linkText = normalizeText($(el).text());
       const title = normalizeText($(el).attr('title') || '');
       const href = $(el).attr('href') || '';
       if (linkText === normName || title === normName || title.startsWith(`${normName} (`)) {
         resolved.set(name, `${WIKI_BASE}${href}`);
+        return false;
       }
     });
   }
