@@ -5,6 +5,7 @@ export const FETCH_TIMEOUT_MS = {
   htmlPage: 60_000,
   warframeMarketItems: 120_000,
   overframeDetailHtml: 8_000,
+  wikiFetch: 15_000,
 } as const;
 
 export async function fetchWithTimeout(

@@ -4,7 +4,7 @@
 
 ### Overview
 
-Armory is a Warframe mod builder/planner. It imports game data from DE's public exports, uses Clerk for authentication, and exposes a Codex export mirror. It serves its web UI only in production mode; in development mode it is API-only.
+Armory is a Warframe mod builder/planner. It imports game data from DE's public exports and uses Clerk for authentication. Codex reads Armory's SQLite catalog directly for Warframe sync. It serves its web UI only in production mode; in development mode it is API-only.
 
 ### Running the service
 
