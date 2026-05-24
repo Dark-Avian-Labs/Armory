@@ -103,9 +103,9 @@ export function substitutePlaceholders(template: string, valueCell: string): str
   if (yMatch) {
     const yVal = yMatch[1].replace(/%$/, '');
     result = result
-      .replace(/\+Y%/gi, `+${yVal.endsWith('%') ? yMatch[1] : `${yVal}%`}`)
+      .replace(/\+Y%/gi, `+${yVal}%`)
       .replace(/\+Y\b/gi, `+${yVal}`)
-      .replace(/\bY%/gi, yVal.endsWith('%') ? yMatch[1] : `${yVal}%`)
+      .replace(/\bY%/gi, `${yVal}%`)
       .replace(/\bY(?=x\b)/gi, yVal)
       .replace(/\bY\b/gi, yVal);
   }
