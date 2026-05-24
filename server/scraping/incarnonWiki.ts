@@ -140,7 +140,26 @@ function matchWeaponUniqueName(db: Database.Database, weaponName: string): strin
   return row?.unique_name ?? null;
 }
 
-export async function syncIncarnonFromWiki(db: Database.Database): Promise<IncarnonWikiSyncResult> {
+function snapshotImageStats(stats: { downloaded: number; skipped: number }): {
+  downloaded: number;
+  skipped: number;
+} {
+  return { downloaded: stats.downloaded, skipped: stats.skipped };
+}
+
+function formatImageDelta(
+  before: { downloaded: number; skipped: number },
+  after: { downloaded: number; skipped: number },
+): string {
+  const downloaded = after.downloaded - before.downloaded;
+  const cached = after.skipped - before.skipped;
+  return `${downloaded} images downloaded, ${cached} cached`;
+}
+
+export async function syncIncarnonFromWiki(
+  db: Database.Database,
+  onProgress?: (message: string) => void,
+): Promise<IncarnonWikiSyncResult> {
   const result: IncarnonWikiSyncResult = {
     pagesScraped: 0,
     pagesFailed: 0,
@@ -155,8 +174,16 @@ export async function syncIncarnonFromWiki(db: Database.Database): Promise<Incar
   const updates = new Map<string, IncarnonData>();
 
   const genesisSeeds = collectIncarnonGenesisUnlockers();
+  const intrinsicTotal = INTRINSIC_INCANNON_WEAPONS.length;
+  onProgress?.(
+    `Starting wiki scrape (${genesisSeeds.length} genesis + ${intrinsicTotal} intrinsic pages)...`,
+  );
 
-  for (const seed of genesisSeeds) {
+  for (let index = 0; index < genesisSeeds.length; index++) {
+    const seed = genesisSeeds[index];
+    const pageNum = index + 1;
+    onProgress?.(`Genesis ${pageNum}/${genesisSeeds.length}: fetching ${seed.wikiSlug}...`);
+    const imagesBefore = snapshotImageStats(imageStats);
     try {
       await sleep(500);
       const html = await fetchWikiPage(seed.wikiSlug);
@@ -181,15 +208,23 @@ export async function syncIncarnonFromWiki(db: Database.Database): Promise<Incar
       }
 
       result.pagesScraped++;
+      onProgress?.(
+        `Genesis ${pageNum}/${genesisSeeds.length}: ${seed.wikiSlug} — ${parsed.compatibleWeaponNames.length} weapons, ${formatImageDelta(imagesBefore, imageStats)}`,
+      );
     } catch (error) {
       result.pagesFailed++;
       result.fetchOk = false;
       const msg = error instanceof Error ? error.message : String(error);
       result.errors.push(`Genesis ${seed.wikiSlug}: ${msg}`);
+      onProgress?.(`Genesis ${pageNum}/${genesisSeeds.length}: ${seed.wikiSlug} — failed (${msg})`);
     }
   }
 
-  for (const weaponName of INTRINSIC_INCANNON_WEAPONS) {
+  for (let index = 0; index < INTRINSIC_INCANNON_WEAPONS.length; index++) {
+    const weaponName = INTRINSIC_INCANNON_WEAPONS[index];
+    const pageNum = index + 1;
+    onProgress?.(`Intrinsic ${pageNum}/${intrinsicTotal}: fetching ${weaponName}...`);
+    const imagesBefore = snapshotImageStats(imageStats);
     try {
       await sleep(500);
       const html = await fetchWikiPage(weaponName);
@@ -208,14 +243,19 @@ export async function syncIncarnonFromWiki(db: Database.Database): Promise<Incar
         evolutions,
       });
       result.pagesScraped++;
+      onProgress?.(
+        `Intrinsic ${pageNum}/${intrinsicTotal}: ${weaponName} — ${parsed.tiers.length} evolutions, ${formatImageDelta(imagesBefore, imageStats)}`,
+      );
     } catch (error) {
       result.pagesFailed++;
       result.fetchOk = false;
       const msg = error instanceof Error ? error.message : String(error);
       result.errors.push(`Intrinsic ${weaponName}: ${msg}`);
+      onProgress?.(`Intrinsic ${pageNum}/${intrinsicTotal}: ${weaponName} — failed (${msg})`);
     }
   }
 
+  onProgress?.(`Committing ${updates.size} weapons to database...`);
   const clearStmt = db.prepare('UPDATE weapons SET has_incarnon = 0, incarnon_data = NULL');
   const updateStmt = db.prepare(
     'UPDATE weapons SET has_incarnon = 1, incarnon_data = ? WHERE unique_name = ?',

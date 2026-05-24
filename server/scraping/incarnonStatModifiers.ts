@@ -101,12 +101,13 @@ export function substitutePlaceholders(template: string, valueCell: string): str
   }
 
   if (yMatch) {
-    const yVal = yMatch[1];
+    const yVal = yMatch[1].replace(/%$/, '');
     result = result
-      .replace(/\+Y%/gi, `+${yVal.endsWith('%') ? yVal : `${yVal}%`}`)
-      .replace(/\+Y\b/gi, `+${yVal.replace(/%$/, '')}`)
-      .replace(/\bY%/gi, yVal.endsWith('%') ? yVal : `${yVal}%`)
-      .replace(/\bY\b/gi, yVal.replace(/%$/, ''));
+      .replace(/\+Y%/gi, `+${yVal.endsWith('%') ? yMatch[1] : `${yVal}%`}`)
+      .replace(/\+Y\b/gi, `+${yVal}`)
+      .replace(/\bY%/gi, yVal.endsWith('%') ? yMatch[1] : `${yVal}%`)
+      .replace(/\bY(?=x\b)/gi, yVal)
+      .replace(/\bY\b/gi, yVal);
   }
 
   if (!xMatch && !yMatch && !template.includes('X') && !template.includes('Y')) {

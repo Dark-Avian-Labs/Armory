@@ -2,8 +2,6 @@ import fs from 'fs';
 import path from 'path';
 
 import { EXPORTS_DIR, REQUIRED_EXPORTS } from '../config.js';
-import { getCodexDb } from '../db/codex.js';
-import { syncCodexWeaponIncarnonFlags } from '../db/codexIncarnonSync.js';
 import { getDb } from '../db/connection.js';
 import { processExports, backfillModDescriptions } from '../db/queries.js';
 import { createAppSchema } from '../db/schema.js';
@@ -556,13 +554,7 @@ export async function runStartupPipeline(
   log('[Incarnon] Syncing incarnon evolution data from wiki...');
   try {
     const db = getDb();
-    const incarnonResult = await syncIncarnonFromWiki(db);
-    try {
-      const codexCount = syncCodexWeaponIncarnonFlags(db, getCodexDb());
-      log(`[Incarnon] Codex export flags synced for ${codexCount} weapons.`);
-    } catch (codexErr) {
-      err('[Incarnon] Codex export sync failed —', codexErr);
-    }
+    const incarnonResult = await syncIncarnonFromWiki(db, (msg) => log(`[Incarnon] ${msg}`));
 
     if (!incarnonResult.fetchOk && incarnonResult.pagesScraped === 0) {
       summary.incarnonWiki = {

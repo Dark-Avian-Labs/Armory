@@ -445,7 +445,7 @@ function WeaponStats({
     color?: StatColor;
   }> = [
     (() => {
-      const base = weapon.total_damage;
+      const base = calc?.base.totalDamage ?? weapon.total_damage;
       const m = calc?.modded.totalDamage;
       return {
         label: 'Total Damage',
@@ -455,7 +455,7 @@ function WeaponStats({
       };
     })(),
     (() => {
-      const base = weapon.critical_chance;
+      const base = calc?.base.critChance ?? weapon.critical_chance;
       const m = calc?.modded.critChance;
       return {
         label: 'Critical Chance',
@@ -465,7 +465,7 @@ function WeaponStats({
       };
     })(),
     (() => {
-      const base = weapon.critical_multiplier;
+      const base = calc?.base.critMultiplier ?? weapon.critical_multiplier;
       const m = calc?.modded.critMultiplier;
       return {
         label: 'Critical Multiplier',
@@ -475,7 +475,7 @@ function WeaponStats({
       };
     })(),
     (() => {
-      const base = weapon.proc_chance;
+      const base = calc?.base.statusChance ?? weapon.proc_chance;
       const m = calc?.modded.statusChance;
       return {
         label: 'Status Chance',
@@ -485,7 +485,7 @@ function WeaponStats({
       };
     })(),
     (() => {
-      const base = weapon.fire_rate;
+      const base = calc?.base.fireRate ?? weapon.fire_rate;
       const m = calc?.modded.fireRate;
       return {
         label: isMelee ? 'Attack Speed' : 'Fire Rate',
@@ -497,7 +497,7 @@ function WeaponStats({
     ...(!isMelee
       ? [
           (() => {
-            const base = weapon.multishot ?? 1;
+            const base = calc?.base.multishot ?? weapon.multishot ?? 1;
             const m = calc?.modded.multishot;
             return {
               label: 'Multishot',
@@ -511,7 +511,7 @@ function WeaponStats({
     ...(!isMelee
       ? [
           (() => {
-            const base = weapon.magazine_size;
+            const base = calc?.base.magazineSize ?? weapon.magazine_size;
             const m = calc?.modded.magazineSize;
             return {
               label: 'Magazine',
@@ -521,7 +521,7 @@ function WeaponStats({
             };
           })(),
           (() => {
-            const base = weapon.reload_time;
+            const base = calc?.base.reloadTime ?? weapon.reload_time;
             const m = calc?.modded.reloadTime;
             return {
               label: 'Reload',

@@ -44,11 +44,19 @@ describe('incarnonWikiParse', () => {
     expect(boltorEvo2?.options.length).toBeGreaterThan(0);
     expect(primeEvo2?.options.length).toBeGreaterThan(0);
 
-    const boltorDesc = boltorEvo2!.options[0]?.description ?? '';
-    const primeDesc = primeEvo2!.options[0]?.description ?? '';
-    expect(boltorDesc.length).toBeGreaterThan(0);
-    expect(primeDesc.length).toBeGreaterThan(0);
-    expect(boltorDesc).not.toEqual(primeDesc);
+    const boltorHunter = boltorEvo2!.options.find((opt) => opt.name === "Hunter's Mantra");
+    const primeHunter = primeEvo2!.options.find((opt) => opt.name === "Hunter's Mantra");
+    const boltorCrimson = boltorEvo2!.options.find((opt) => opt.name === 'Crimson Overture');
+    const primeCrimson = primeEvo2!.options.find((opt) => opt.name === 'Crimson Overture');
+
+    expect(boltorHunter?.description).toContain('+18');
+    expect(primeHunter?.description).toContain('+4');
+    expect(boltorCrimson?.description).toBe(
+      'Increase Base Damage by +12. On Kill: Increase Base Damage by +2 and +20% Ammo Efficiency for 5 seconds. Stacks up to 4x',
+    );
+    expect(primeCrimson?.description).toBe(
+      'Increase Base Damage by +0. On Kill: Increase Base Damage by +2 and +20% Ammo Efficiency for 5 seconds. Stacks up to 3x',
+    );
   });
 
   it('extracts perk image filenames from genesis table cells', () => {

@@ -1,7 +1,7 @@
 import type { IncarnonData, IncarnonSelection } from '../types/incarnon';
 import type { ValenceBonus, Weapon, ModSlot } from '../types/warframe';
-import { calculateBuildDamage } from './damage';
-import { applyIncarnonStatBonuses } from './incarnonStats';
+import { calculateBuildDamage, parseDamageArray } from './damage';
+import { applyIncarnonStatBonuses, type IncarnonAdjustedWeaponStats } from './incarnonStats';
 import { aggregateAllMods, type StatEffects } from './modStatParser';
 
 export interface ModdedStats {
@@ -49,6 +49,31 @@ function parseAmmoCost(weapon: Weapon): number {
   return 1;
 }
 
+function applyIncarnonStatsToWeapon(weapon: Weapon, adjusted: IncarnonAdjustedWeaponStats): Weapon {
+  const result: Weapon = { ...weapon };
+  const damageArray = parseDamageArray(weapon);
+  const arrayTotal = damageArray.reduce((sum, value) => sum + (value || 0), 0);
+  const weaponTotal = weapon.total_damage ?? arrayTotal;
+  const adjustedTotal = adjusted.totalDamage ?? weaponTotal;
+
+  if (adjustedTotal !== weaponTotal) {
+    result.total_damage = adjustedTotal;
+    if (arrayTotal > 0) {
+      const scale = adjustedTotal / arrayTotal;
+      result.damage_per_shot = JSON.stringify(damageArray.map((value) => value * scale));
+    }
+  }
+
+  if (adjusted.criticalChance !== undefined) result.critical_chance = adjusted.criticalChance;
+  if (adjusted.procChance !== undefined) result.proc_chance = adjusted.procChance;
+  if (adjusted.fireRate !== undefined) result.fire_rate = adjusted.fireRate;
+  if (adjusted.multishot !== undefined) result.multishot = adjusted.multishot;
+  if (adjusted.magazineSize !== undefined) result.magazine_size = adjusted.magazineSize;
+  if (adjusted.reloadTime !== undefined) result.reload_time = adjusted.reloadTime;
+
+  return result;
+}
+
 export function calculateWeaponDps(
   weapon: Weapon,
   slots: ModSlot[],
@@ -61,16 +86,7 @@ export function calculateWeaponDps(
 ): WeaponCalcResult {
   const effects = aggregateAllMods(slots);
 
-  let incarnonBase = {
-    total_damage: weapon.total_damage,
-    critical_chance: weapon.critical_chance,
-    proc_chance: weapon.proc_chance,
-    fire_rate: weapon.fire_rate,
-    multishot: weapon.multishot,
-    magazine_size: weapon.magazine_size,
-    reload_time: weapon.reload_time,
-  };
-
+  let effectiveWeapon = weapon;
   if (incarnon?.enabled && incarnon.data) {
     const adjusted = applyIncarnonStatBonuses(
       {
@@ -86,18 +102,9 @@ export function calculateWeaponDps(
       incarnon.selections,
       true,
     );
-    incarnonBase = {
-      total_damage: adjusted.totalDamage ?? weapon.total_damage,
-      critical_chance: adjusted.criticalChance ?? weapon.critical_chance,
-      proc_chance: adjusted.procChance ?? weapon.proc_chance,
-      fire_rate: adjusted.fireRate ?? weapon.fire_rate,
-      multishot: adjusted.multishot ?? weapon.multishot,
-      magazine_size: adjusted.magazineSize ?? weapon.magazine_size,
-      reload_time: adjusted.reloadTime ?? weapon.reload_time,
-    };
+    effectiveWeapon = applyIncarnonStatsToWeapon(weapon, adjusted);
   }
 
-  const effectiveWeapon = { ...weapon, ...incarnonBase };
   const { totalDamage: buildTotalDamage } = calculateBuildDamage(
     effectiveWeapon,
     slots,
@@ -107,14 +114,14 @@ export function calculateWeaponDps(
   const isMelee = weapon.range != null;
 
   const base = {
-    totalDamage: incarnonBase.total_damage ?? 0,
-    critChance: incarnonBase.critical_chance ?? 0,
+    totalDamage: effectiveWeapon.total_damage ?? 0,
+    critChance: effectiveWeapon.critical_chance ?? 0,
     critMultiplier: weapon.critical_multiplier ?? 1,
-    statusChance: incarnonBase.proc_chance ?? 0,
-    fireRate: incarnonBase.fire_rate ?? 1,
-    multishot: incarnonBase.multishot ?? 1,
-    magazineSize: incarnonBase.magazine_size ?? 1,
-    reloadTime: incarnonBase.reload_time ?? 0,
+    statusChance: effectiveWeapon.proc_chance ?? 0,
+    fireRate: effectiveWeapon.fire_rate ?? 1,
+    multishot: effectiveWeapon.multishot ?? 1,
+    magazineSize: effectiveWeapon.magazine_size ?? 1,
+    reloadTime: effectiveWeapon.reload_time ?? 0,
   };
 
   const fallbackTotalDamage = base.totalDamage * (1 + effects.baseDamage);
