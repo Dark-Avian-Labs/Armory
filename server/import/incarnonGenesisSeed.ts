@@ -32,13 +32,9 @@ export function collectIncarnonGenesisUnlockers(): IncarnonGenesisSeed[] {
   for (const item of items) {
     const rawUniqueName = item.uniqueName;
     const name = String(item.name ?? '');
-    const isGenesis =
-      name.endsWith('Incarnon Genesis') ||
-      (typeof rawUniqueName === 'string' && rawUniqueName.includes('IncarnonAdapters'));
-    if (!isGenesis) continue;
-
     const uniqueName = typeof rawUniqueName === 'string' ? rawUniqueName : '';
-    if (!uniqueName) continue;
+    const isGenesis = name.endsWith('Incarnon Genesis') || uniqueName.includes('IncarnonAdapters');
+    if (!isGenesis) continue;
 
     seeds.push({
       genesisUniqueName: uniqueName,

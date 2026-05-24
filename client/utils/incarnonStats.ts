@@ -17,21 +17,39 @@ export interface IncarnonAdjustedWeaponStats {
   reloadTime?: number;
 }
 
-function applyModifier(stats: IncarnonAdjustedWeaponStats, modifier: IncarnonStatModifier): void {
-  const keyMap: Record<IncarnonStatModifier['stat'], keyof IncarnonAdjustedWeaponStats | null> = {
-    baseDamage: 'totalDamage',
-    critChance: 'criticalChance',
-    statusChance: 'procChance',
-    fireRate: 'fireRate',
-    multishot: 'multishot',
-    magazineSize: 'magazineSize',
-    reloadSpeed: 'reloadTime',
-    projectileSpeed: null,
-    punchThrough: null,
-    accuracy: null,
-  };
+const INCARNON_STAT_LIST: readonly IncarnonStatModifier['stat'][] = [
+  'baseDamage',
+  'critChance',
+  'statusChance',
+  'fireRate',
+  'multishot',
+  'magazineSize',
+  'reloadSpeed',
+  'projectileSpeed',
+  'punchThrough',
+  'accuracy',
+];
 
-  const key = keyMap[modifier.stat];
+const INCARNON_STAT_WEAPON_KEY_BY_NAME: Partial<
+  Record<IncarnonStatModifier['stat'], keyof IncarnonAdjustedWeaponStats>
+> = {
+  baseDamage: 'totalDamage',
+  critChance: 'criticalChance',
+  statusChance: 'procChance',
+  fireRate: 'fireRate',
+  multishot: 'multishot',
+  magazineSize: 'magazineSize',
+  reloadSpeed: 'reloadTime',
+};
+
+const INCARNON_STAT_NAMES = new Set(INCARNON_STAT_LIST);
+
+const INCARNON_STAT_KEY_MAP = Object.fromEntries(
+  INCARNON_STAT_LIST.map((stat) => [stat, INCARNON_STAT_WEAPON_KEY_BY_NAME[stat] ?? null]),
+) as Record<IncarnonStatModifier['stat'], keyof IncarnonAdjustedWeaponStats | null>;
+
+function applyModifier(stats: IncarnonAdjustedWeaponStats, modifier: IncarnonStatModifier): void {
+  const key = INCARNON_STAT_KEY_MAP[modifier.stat];
   if (!key) return;
 
   const current = stats[key];
@@ -76,19 +94,6 @@ export function applyIncarnonStatBonuses(
 
   return adjusted;
 }
-
-const INCARNON_STAT_NAMES = new Set<IncarnonStatModifier['stat']>([
-  'baseDamage',
-  'critChance',
-  'statusChance',
-  'fireRate',
-  'multishot',
-  'magazineSize',
-  'reloadSpeed',
-  'projectileSpeed',
-  'punchThrough',
-  'accuracy',
-]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
