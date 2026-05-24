@@ -264,3 +264,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.55.7** `fix` [#295](https://github.com/Dark-Avian-Labs/Armory/pull/295): ENV typo
 - **v1.56.0** `feat` [#296](https://github.com/Dark-Avian-Labs/Armory/pull/296): new theme and fixes in styling
 - **v1.57.0** `feat` [#297](https://github.com/Dark-Avian-Labs/Armory/pull/297): incarnon upgrades
+- **v1.57.1** `fix` [#298](https://github.com/Dark-Avian-Labs/Armory/pull/298): incarnon upgrades
