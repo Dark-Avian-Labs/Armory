@@ -144,7 +144,6 @@ export function parseGenesisEvolutionTable($: CheerioAPI): {
   const weaponColumnNames = headerCells.slice(1, -1);
   const notesIndex = headerCells.length - 1;
   const templateIndex = 2;
-  const weaponValueStart = 3;
 
   const tiers: IncarnonEvolutionTier[] = [];
   let currentTier: IncarnonEvolutionTier | null = null;
@@ -193,7 +192,6 @@ export function parseGenesisEvolutionTable($: CheerioAPI): {
       );
 
       void weaponColumnNames;
-      void weaponValueStart;
     });
 
   return { weaponColumnNames, tiers };
@@ -201,23 +199,8 @@ export function parseGenesisEvolutionTable($: CheerioAPI): {
 
 export function buildGenesisWeaponData(
   parsed: ParsedGenesisPage,
-  weaponName: string,
+  _weaponName: string,
 ): IncarnonEvolutionTier[] {
-  const compatibleWeaponNames = parsed.compatibleWeaponNames;
-  const columnMap = buildWeaponColumnMap(
-    ['Evolution', ...parsed.weaponColumnNames, 'Notes'],
-    compatibleWeaponNames,
-  );
-
-  let _weaponColumnIndex: number | null = null;
-  for (const [index, name] of columnMap) {
-    if (name.toLowerCase() === weaponName.toLowerCase()) {
-      _weaponColumnIndex = index;
-      break;
-    }
-  }
-  void _weaponColumnIndex;
-
   return parsed.tiers.map((tier) => ({
     tier: tier.tier,
     challenge: tier.challenge,

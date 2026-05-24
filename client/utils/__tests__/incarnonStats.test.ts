@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { IncarnonData, IncarnonSelection } from '../../types/incarnon';
-import { applyIncarnonStatBonuses } from '../incarnonStats';
+import { applyIncarnonStatBonuses, isIncarnonData, parseIncarnonData } from '../incarnonStats';
 
 const sampleData: IncarnonData = {
   source: 'genesis',
@@ -86,5 +86,41 @@ describe('applyIncarnonStatBonuses', () => {
     expect(result.totalDamage).toBeCloseTo(150);
     expect(result.criticalChance).toBeCloseTo(0.1);
     expect(result.fireRate).toBeCloseTo(1);
+  });
+
+  it('skips modifiers when the base stat is undefined', () => {
+    const sparseBase = { totalDamage: 100 };
+    const result = applyIncarnonStatBonuses(sparseBase, sampleData, allUnlocked, true);
+    expect(result.totalDamage).toBeCloseTo(150);
+    expect(result.criticalChance).toBeUndefined();
+    expect(result.fireRate).toBeUndefined();
+  });
+});
+
+describe('parseIncarnonData', () => {
+  it('accepts valid object and JSON string payloads', () => {
+    expect(parseIncarnonData(sampleData)).toEqual(sampleData);
+    expect(parseIncarnonData(JSON.stringify(sampleData))).toEqual(sampleData);
+    expect(isIncarnonData(sampleData)).toBe(true);
+  });
+
+  it('rejects malformed or incomplete payloads', () => {
+    expect(parseIncarnonData(null)).toBeNull();
+    expect(parseIncarnonData('not json')).toBeNull();
+    expect(parseIncarnonData({ source: 'genesis', wikiSlug: 'x', evolutions: [] })).toBeNull();
+    expect(
+      parseIncarnonData({
+        source: 'genesis',
+        wikiSlug: 'x',
+        evolutions: [{ tier: 1, options: [{ name: 'A', description: 'a' }] }],
+      }),
+    ).not.toBeNull();
+    expect(
+      parseIncarnonData({
+        source: 'invalid',
+        wikiSlug: 'x',
+        evolutions: [{ tier: 1, options: [{ name: 'A', description: 'a' }] }],
+      }),
+    ).toBeNull();
   });
 });

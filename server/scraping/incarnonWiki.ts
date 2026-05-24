@@ -154,8 +154,6 @@ export async function syncIncarnonFromWiki(db: Database.Database): Promise<Incar
   const imageStats = { downloaded: 0, skipped: 0 };
   const updates = new Map<string, IncarnonData>();
 
-  db.prepare('UPDATE weapons SET has_incarnon = 0, incarnon_data = NULL').run();
-
   const genesisSeeds = collectIncarnonGenesisUnlockers();
 
   for (const seed of genesisSeeds) {
@@ -218,16 +216,20 @@ export async function syncIncarnonFromWiki(db: Database.Database): Promise<Incar
     }
   }
 
+  const clearStmt = db.prepare('UPDATE weapons SET has_incarnon = 0, incarnon_data = NULL');
   const updateStmt = db.prepare(
     'UPDATE weapons SET has_incarnon = 1, incarnon_data = ? WHERE unique_name = ?',
   );
+  let weaponsTagged = 0;
   const tx = db.transaction(() => {
+    clearStmt.run();
     for (const [uniqueName, data] of updates) {
       updateStmt.run(JSON.stringify(data), uniqueName);
-      result.weaponsTagged++;
+      weaponsTagged++;
     }
   });
   tx();
+  result.weaponsTagged = weaponsTagged;
 
   result.imagesDownloaded = imageStats.downloaded;
   result.imagesSkipped = imageStats.skipped;

@@ -96,8 +96,8 @@ export function substitutePlaceholders(template: string, valueCell: string): str
     result = result
       .replace(/\+X%/gi, `+${xVal.endsWith('%') ? xVal : `${xVal}%`}`)
       .replace(/\+X\b/gi, `+${xVal.replace(/%$/, '')}`)
-      .replace(/\bX%/g, xVal.endsWith('%') ? xVal : `${xVal}%`)
-      .replace(/\bX\b/g, xVal.replace(/%$/, ''));
+      .replace(/\bX%/gi, xVal.endsWith('%') ? xVal : `${xVal}%`)
+      .replace(/\bX\b/gi, xVal.replace(/%$/, ''));
   }
 
   if (yMatch) {
@@ -105,8 +105,8 @@ export function substitutePlaceholders(template: string, valueCell: string): str
     result = result
       .replace(/\+Y%/gi, `+${yVal.endsWith('%') ? yVal : `${yVal}%`}`)
       .replace(/\+Y\b/gi, `+${yVal.replace(/%$/, '')}`)
-      .replace(/\bY%/g, yVal.endsWith('%') ? yVal : `${yVal}%`)
-      .replace(/\bY\b/g, yVal.replace(/%$/, ''));
+      .replace(/\bY%/gi, yVal.endsWith('%') ? yVal : `${yVal}%`)
+      .replace(/\bY\b/gi, yVal.replace(/%$/, ''));
   }
 
   if (!xMatch && !yMatch && !template.includes('X') && !template.includes('Y')) {

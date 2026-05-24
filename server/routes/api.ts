@@ -115,7 +115,12 @@ apiRouter.get('/incarnon', (req: Request, res: Response) => {
     if (row.incarnon_data) {
       try {
         data = JSON.parse(row.incarnon_data);
-      } catch {
+      } catch (parseErr) {
+        log('error', 'incarnon.get: failed to parse weapons.incarnon_data', {
+          weaponUniqueName,
+          incarnon_data: row.incarnon_data,
+          err: parseErr instanceof Error ? parseErr.message : String(parseErr),
+        });
         data = null;
       }
     }
