@@ -1,5 +1,7 @@
+import type { IncarnonData, IncarnonSelection } from '../types/incarnon';
 import type { ValenceBonus, Weapon, ModSlot } from '../types/warframe';
 import { calculateBuildDamage } from './damage';
+import { applyIncarnonStatBonuses } from './incarnonStats';
 import { aggregateAllMods, type StatEffects } from './modStatParser';
 
 export interface ModdedStats {
@@ -51,20 +53,68 @@ export function calculateWeaponDps(
   weapon: Weapon,
   slots: ModSlot[],
   valence?: ValenceBonus | null,
+  incarnon?: {
+    enabled: boolean;
+    data: IncarnonData | null;
+    selections: IncarnonSelection[] | undefined;
+  },
 ): WeaponCalcResult {
   const effects = aggregateAllMods(slots);
-  const { totalDamage: buildTotalDamage } = calculateBuildDamage(weapon, slots, effects, valence);
+
+  let incarnonBase = {
+    total_damage: weapon.total_damage,
+    critical_chance: weapon.critical_chance,
+    proc_chance: weapon.proc_chance,
+    fire_rate: weapon.fire_rate,
+    multishot: weapon.multishot,
+    magazine_size: weapon.magazine_size,
+    reload_time: weapon.reload_time,
+  };
+
+  if (incarnon?.enabled && incarnon.data) {
+    const adjusted = applyIncarnonStatBonuses(
+      {
+        totalDamage: weapon.total_damage,
+        criticalChance: weapon.critical_chance,
+        procChance: weapon.proc_chance,
+        fireRate: weapon.fire_rate,
+        multishot: weapon.multishot,
+        magazineSize: weapon.magazine_size,
+        reloadTime: weapon.reload_time,
+      },
+      incarnon.data,
+      incarnon.selections,
+      true,
+    );
+    incarnonBase = {
+      total_damage: adjusted.totalDamage ?? weapon.total_damage,
+      critical_chance: adjusted.criticalChance ?? weapon.critical_chance,
+      proc_chance: adjusted.procChance ?? weapon.proc_chance,
+      fire_rate: adjusted.fireRate ?? weapon.fire_rate,
+      multishot: adjusted.multishot ?? weapon.multishot,
+      magazine_size: adjusted.magazineSize ?? weapon.magazine_size,
+      reload_time: adjusted.reloadTime ?? weapon.reload_time,
+    };
+  }
+
+  const effectiveWeapon = { ...weapon, ...incarnonBase };
+  const { totalDamage: buildTotalDamage } = calculateBuildDamage(
+    effectiveWeapon,
+    slots,
+    effects,
+    valence,
+  );
   const isMelee = weapon.range != null;
 
   const base = {
-    totalDamage: weapon.total_damage ?? 0,
-    critChance: weapon.critical_chance ?? 0,
+    totalDamage: incarnonBase.total_damage ?? 0,
+    critChance: incarnonBase.critical_chance ?? 0,
     critMultiplier: weapon.critical_multiplier ?? 1,
-    statusChance: weapon.proc_chance ?? 0,
-    fireRate: weapon.fire_rate ?? 1,
-    multishot: weapon.multishot ?? 1,
-    magazineSize: weapon.magazine_size ?? 1,
-    reloadTime: weapon.reload_time ?? 0,
+    statusChance: incarnonBase.proc_chance ?? 0,
+    fireRate: incarnonBase.fire_rate ?? 1,
+    multishot: incarnonBase.multishot ?? 1,
+    magazineSize: incarnonBase.magazine_size ?? 1,
+    reloadTime: incarnonBase.reload_time ?? 0,
   };
 
   const fallbackTotalDamage = base.totalDamage * (1 + effects.baseDamage);

@@ -84,6 +84,14 @@ interface ImportSummary {
     abilitiesFlagged?: number;
     fetchOk?: boolean;
   };
+  incarnonWiki: StepSummary & {
+    pagesScraped?: number;
+    pagesFailed?: number;
+    weaponsTagged?: number;
+    imagesDownloaded?: number;
+    imagesSkipped?: number;
+    fetchOk?: boolean;
+  };
 }
 
 function outcomeBadgeClass(outcome: SummaryOutcome | string | undefined): string {
@@ -110,6 +118,7 @@ const STEP_TITLES: Array<{ key: keyof ImportSummary; title: string }> = [
   { key: 'overframe', title: 'Overframe' },
   { key: 'wiki', title: 'Wiki' },
   { key: 'helminthWiki', title: 'Helminth' },
+  { key: 'incarnonWiki', title: 'Incarnon' },
 ];
 
 function formatImportSummaryLines(

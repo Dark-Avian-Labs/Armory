@@ -41,10 +41,12 @@ export function createCodexSchema(db: Database.Database): void {
       noise TEXT,
       trigger_type TEXT,
       omega_attenuation REAL,
+      has_incarnon INTEGER DEFAULT 0,
       raw_json TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_codex_weapons_name ON codex_weapons(name);
     CREATE INDEX IF NOT EXISTS idx_codex_weapons_category ON codex_weapons(product_category);
+    CREATE INDEX IF NOT EXISTS idx_codex_weapons_has_incarnon ON codex_weapons(has_incarnon);
 
     -- Companions (Sentinels, Kubrows, Kavats, etc.)
     CREATE TABLE IF NOT EXISTS codex_sentinels (
@@ -328,6 +330,17 @@ export function createCodexSchema(db: Database.Database): void {
       SELECT unique_name, name, 'railjack_weapon' AS category, raw_json FROM codex_railjack_weapons
     ;
   `);
+
+  const codexWeaponCols = db.prepare('PRAGMA table_info(codex_weapons)').all() as Array<{
+    name: string;
+  }>;
+  if (!codexWeaponCols.some((c) => c.name === 'has_incarnon')) {
+    db.exec('ALTER TABLE codex_weapons ADD COLUMN has_incarnon INTEGER DEFAULT 0');
+    db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_codex_weapons_has_incarnon ON codex_weapons(has_incarnon)',
+    );
+    console.log('[Armory] Codex migration: added codex_weapons.has_incarnon');
+  }
 
   console.log('[Armory] Codex export schema created/verified');
 }

@@ -134,8 +134,9 @@ function saveScrapedData(): {
 
   saved.weapons = db
     .prepare(
-      `SELECT unique_name, artifact_slots, fire_behaviors FROM weapons
-     WHERE artifact_slots IS NOT NULL OR fire_behaviors IS NOT NULL`,
+      `SELECT unique_name, artifact_slots, fire_behaviors, has_incarnon, incarnon_data FROM weapons
+     WHERE artifact_slots IS NOT NULL OR fire_behaviors IS NOT NULL
+        OR has_incarnon = 1 OR incarnon_data IS NOT NULL`,
     )
     .all() as ScrapedRow[];
 
@@ -186,10 +187,16 @@ function restoreScrapedData(saved: ReturnType<typeof saveScrapedData>): void {
     }
 
     const wpStmt = db.prepare(
-      'UPDATE weapons SET artifact_slots = ?, fire_behaviors = ? WHERE unique_name = ?',
+      'UPDATE weapons SET artifact_slots = ?, fire_behaviors = ?, has_incarnon = ?, incarnon_data = ? WHERE unique_name = ?',
     );
     for (const row of saved.weapons) {
-      wpStmt.run(row.artifact_slots, row.fire_behaviors, row.unique_name);
+      wpStmt.run(
+        row.artifact_slots,
+        row.fire_behaviors,
+        row.has_incarnon ?? 0,
+        row.incarnon_data ?? null,
+        row.unique_name,
+      );
     }
 
     const cpStmt = db.prepare('UPDATE companions SET artifact_slots = ? WHERE unique_name = ?');

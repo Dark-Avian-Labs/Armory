@@ -368,6 +368,18 @@ export function createAppSchema(): void {
       column: 'description',
       sql: 'ALTER TABLE loadouts ADD COLUMN description TEXT',
     },
+    {
+      id: '20260524_weapons_has_incarnon',
+      table: 'weapons',
+      column: 'has_incarnon',
+      sql: 'ALTER TABLE weapons ADD COLUMN has_incarnon INTEGER DEFAULT 0',
+    },
+    {
+      id: '20260524_weapons_incarnon_data',
+      table: 'weapons',
+      column: 'incarnon_data',
+      sql: 'ALTER TABLE weapons ADD COLUMN incarnon_data TEXT',
+    },
   ];
   const ALLOWED_MIGRATION_TABLES = new Set(migrations.map((migration) => migration.table));
   for (const m of migrations) {

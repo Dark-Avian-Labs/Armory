@@ -14,6 +14,7 @@ import { useCompare } from '../../context/CompareContext';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useApi } from '../../hooks/useApi';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
+import type { IncarnonData, IncarnonSelection } from '../../types/incarnon';
 import {
   EQUIPMENT_SLOT_CONFIGS,
   POLARITIES,
@@ -39,6 +40,12 @@ import { calculateWeaponDps } from '../../utils/damageCalc';
 import { calculateTotalCapacity } from '../../utils/drain';
 import { getModTypesForEquipment, NO_MOD_TYPES_FOR_EQUIPMENT } from '../../utils/equipmentModTypes';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
+import {
+  applyIncarnonUnlockCascade,
+  createDefaultIncarnonSelections,
+  selectIncarnonPerk,
+} from '../../utils/incarnonSelections';
+import { parseIncarnonData, weaponHasIncarnon } from '../../utils/incarnonStats';
 import { catalogKeyForMod, hydrateSlotsWithModCatalog } from '../../utils/modCatalogHydration';
 import { isModLockedOut, isPostureMod } from '../../utils/modFiltering';
 import { isWeaponExilusMod } from '../../utils/modMetadata';
@@ -68,6 +75,7 @@ import { BuildLoadoutsPanel } from './BuildLoadoutsPanel';
 import { CapacityBar } from './CapacityBar';
 import { CompactBuildOverview } from './CompactBuildOverview';
 import { ElementOutput } from './ElementOutput';
+import { IncarnonUpgradePanel } from './IncarnonUpgradePanel';
 import { ModSlotGrid } from './ModSlotGrid';
 import { StatsPanel } from './StatsPanel';
 import { ValenceBonusPanel, DEFAULT_VALENCE_BONUS } from './ValenceBonusPanel';
@@ -96,7 +104,11 @@ const RivenBuilder = lazy(() =>
   import('./RivenBuilder').then((m) => ({ default: m.RivenBuilder })),
 );
 
-type RightPanelMode = 'mods' | 'helminth' | 'arcanes' | 'shards';
+const IncarnonPickerPanel = lazy(() =>
+  import('./IncarnonPickerPanel').then((m) => ({ default: m.IncarnonPickerPanel })),
+);
+
+type RightPanelMode = 'mods' | 'helminth' | 'incarnon' | 'arcanes' | 'shards';
 
 type DocumentPictureInPictureApi = {
   requestWindow(options?: { width?: number; height?: number }): Promise<Window>;
@@ -221,6 +233,8 @@ function modBuilderPersistFingerprint(args: {
   currentBuildId?: string;
   slots: ModSlot[];
   helminthConfig: BuildConfig['helminth'] | undefined;
+  incarnonEnabled: boolean;
+  incarnonSelections: IncarnonSelection[] | undefined;
   arcaneSlots: ArcaneSlot[];
   shardSlots: ShardSlotConfig[];
   orokinReactor: boolean;
@@ -235,6 +249,8 @@ function modBuilderPersistFingerprint(args: {
     id: args.currentBuildId ?? '',
     s: args.slots,
     h: args.helminthConfig,
+    ie: args.incarnonEnabled,
+    is: args.incarnonSelections,
     a: args.arcaneSlots,
     sh: args.shardSlots,
     o: args.orokinReactor,
@@ -271,6 +287,9 @@ export function ModBuilder() {
   const [currentBuildId, setCurrentBuildId] = useState<string | undefined>(buildId);
   const [targetEquipmentUniqueName, setTargetEquipmentUniqueName] = useState<string | null>(null);
   const [helminthConfig, setHelminthConfig] = useState<BuildConfig['helminth'] | undefined>();
+  const [incarnonEnabled, setIncarnonEnabled] = useState(false);
+  const [incarnonSelections, setIncarnonSelections] = useState<IncarnonSelection[] | undefined>();
+  const [activeIncarnonTier, setActiveIncarnonTier] = useState<number | null>(null);
   const [activeSlotType, setActiveSlotType] = useState<SlotType | undefined>();
   const [activeSlotIndex, setActiveSlotIndex] = useState<number | undefined>();
   const [loaded, setLoaded] = useState(false);
@@ -318,6 +337,9 @@ export function ModBuilder() {
     setBuildOwnerUsername(null);
     setBuildIsPublic(false);
     setHelminthConfig(undefined);
+    setIncarnonEnabled(false);
+    setIncarnonSelections(undefined);
+    setActiveIncarnonTier(null);
     setActiveSlotType(undefined);
     setActiveSlotIndex(undefined);
     setLoaded(false);
@@ -477,6 +499,15 @@ export function ModBuilder() {
       ? buildOwnerUsername
       : null;
 
+  const incarnonData = useMemo((): IncarnonData | null => {
+    if (equipmentType === 'warframe' || !selectedEquipment) return null;
+    const weapon = selectedEquipment as Weapon;
+    if (!weaponHasIncarnon(weapon)) return null;
+    return parseIncarnonData(weapon.incarnon_data);
+  }, [equipmentType, selectedEquipment]);
+
+  const hasIncarnon = incarnonData != null;
+
   livePersistFingerprintRef.current = modBuilderPersistFingerprint({
     buildName,
     buildDescription,
@@ -486,6 +517,8 @@ export function ModBuilder() {
     currentBuildId,
     slots,
     helminthConfig,
+    incarnonEnabled,
+    incarnonSelections,
     arcaneSlots,
     shardSlots,
     orokinReactor,
@@ -583,6 +616,12 @@ export function ModBuilder() {
       setBuildOwnerUsername(typeof body.owner_username === 'string' ? body.owner_username : null);
       setBuildIsPublic(body.build.visibility === 'public');
       setHelminthConfig(config.helminth);
+      setIncarnonEnabled(config.incarnonEnabled === true);
+      setIncarnonSelections(
+        Array.isArray(config.incarnonSelections)
+          ? (config.incarnonSelections as IncarnonSelection[])
+          : undefined,
+      );
       if (Array.isArray(config.arcaneSlots)) {
         setArcaneSlots(config.arcaneSlots as ArcaneSlot[]);
       }
@@ -616,6 +655,12 @@ export function ModBuilder() {
         setBuildOwnerUsername(null);
         setBuildIsPublic(stored.visibility === 'public');
         setHelminthConfig(stored.helminth);
+        setIncarnonEnabled(stored.incarnonEnabled === true);
+        setIncarnonSelections(
+          Array.isArray(stored.incarnonSelections)
+            ? (stored.incarnonSelections as IncarnonSelection[])
+            : undefined,
+        );
         if (stored.slots?.length) setSlots(stored.slots as ModSlot[]);
         if (stored.arcaneSlots) setArcaneSlots(stored.arcaneSlots as ArcaneSlot[]);
         if (stored.shardSlots) setShardSlots(stored.shardSlots as ShardSlotConfig[]);
@@ -912,6 +957,9 @@ export function ModBuilder() {
 
     setSlots(newSlots);
     setHelminthConfig(undefined);
+    setIncarnonEnabled(false);
+    setIncarnonSelections(undefined);
+    setActiveIncarnonTier(null);
   }, [selectedEquipment, equipmentType, buildId, slots.length]);
 
   useEffect(() => {
@@ -1488,7 +1536,11 @@ export function ModBuilder() {
     if (!selectedEquipment || equipmentType === 'warframe') return;
     const weapon = selectedEquipment as Weapon;
     const vb = effectiveValenceBonus;
-    const calc = calculateWeaponDps(weapon, hydratedSlots, vb);
+    const incarnonInput =
+      hasIncarnon && incarnonEnabled
+        ? { enabled: true, data: incarnonData, selections: incarnonSelections }
+        : undefined;
+    const calc = calculateWeaponDps(weapon, hydratedSlots, vb, incarnonInput);
     const { totalDamage, damageBreakdown } = calculateBuildDamage(
       weapon,
       hydratedSlots,
@@ -1547,6 +1599,8 @@ export function ModBuilder() {
         equipment_unique_name: selectedEquipment.unique_name,
         slots,
         helminth: helminthConfig,
+        incarnonEnabled: hasIncarnon ? incarnonEnabled : undefined,
+        incarnonSelections: hasIncarnon ? incarnonSelections : undefined,
         arcaneSlots,
         shardSlots,
         orokinReactor,
@@ -1580,6 +1634,8 @@ export function ModBuilder() {
           currentBuildId: saved.id,
           slots,
           helminthConfig,
+          incarnonEnabled,
+          incarnonSelections,
           arcaneSlots,
           shardSlots,
           orokinReactor,
@@ -1642,7 +1698,8 @@ export function ModBuilder() {
     activeSlotIndex !== undefined ||
     activeArcaneSlot !== null ||
     activeShardSlot !== null ||
-    activeAbilityIndex !== null;
+    activeAbilityIndex !== null ||
+    activeIncarnonTier !== null;
 
   const handleBackgroundClick = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -1657,8 +1714,47 @@ export function ModBuilder() {
     setActiveArcaneSlot(null);
     setActiveShardSlot(null);
     setActiveAbilityIndex(null);
+    setActiveIncarnonTier(null);
     setRightPanelMode('mods');
   }, []);
+
+  const handleIncarnonToggle = useCallback(() => {
+    setIncarnonEnabled((prev) => {
+      const next = !prev;
+      if (next && incarnonData && !incarnonSelections) {
+        setIncarnonSelections(createDefaultIncarnonSelections(incarnonData));
+      }
+      if (!next) {
+        setActiveIncarnonTier(null);
+        if (rightPanelMode === 'incarnon') {
+          setRightPanelMode('mods');
+        }
+      }
+      return next;
+    });
+  }, [incarnonData, incarnonSelections, rightPanelMode]);
+
+  const handleIncarnonTierClick = useCallback(
+    (tier: number) => {
+      if (readOnly) return;
+      if (activeIncarnonTier === tier && rightPanelMode === 'incarnon') {
+        setActiveIncarnonTier(null);
+        setRightPanelMode('mods');
+        return;
+      }
+      if (incarnonData && !incarnonSelections) {
+        setIncarnonSelections(createDefaultIncarnonSelections(incarnonData));
+      }
+      setActiveIncarnonTier(tier);
+      setActiveSlotIndex(undefined);
+      setActiveSlotType(undefined);
+      setActiveAbilityIndex(null);
+      setActiveArcaneSlot(null);
+      setActiveShardSlot(null);
+      setRightPanelMode('incarnon');
+    },
+    [readOnly, activeIncarnonTier, rightPanelMode, incarnonData, incarnonSelections],
+  );
 
   if (compactOverview) {
     if (!equipmentLoadError && (!loaded || !selectedEquipment)) {
@@ -1701,6 +1797,9 @@ export function ModBuilder() {
               shardSlots={equipmentType === 'warframe' ? shardSlots : undefined}
               shardTypes={equipmentType === 'warframe' ? shardTypes : undefined}
               valenceBonus={effectiveValenceBonus}
+              incarnonEnabled={hasIncarnon ? incarnonEnabled : false}
+              incarnonData={incarnonData}
+              incarnonSelections={incarnonSelections}
               headerActions={
                 <div className="flex items-center gap-2">
                   <button
@@ -1750,6 +1849,16 @@ export function ModBuilder() {
                   />
                 ) : undefined
               }
+            />
+          )}
+          {hasIncarnon && incarnonData && (
+            <IncarnonUpgradePanel
+              incarnonData={incarnonData}
+              selections={incarnonSelections ?? createDefaultIncarnonSelections(incarnonData)}
+              incarnonEnabled={incarnonEnabled}
+              activeTier={activeIncarnonTier}
+              onTierClick={handleIncarnonTierClick}
+              readOnly={readOnly}
             />
           )}
           {supportsValence && effectiveValenceBonus && (
@@ -1858,6 +1967,11 @@ export function ModBuilder() {
               onOrokinReactorToggle={
                 !readOnly && isOwnBuild ? () => setOrokinReactor((p) => !p) : undefined
               }
+              incarnonEnabled={incarnonEnabled}
+              onIncarnonToggle={
+                !readOnly && isOwnBuild && hasIncarnon ? handleIncarnonToggle : undefined
+              }
+              incarnonAvailable={hasIncarnon}
               buildIsPublic={buildIsPublic}
               onBuildIsPublicChange={
                 !readOnly && isOwnBuild ? (next) => setBuildIsPublic(next) : undefined
@@ -1896,6 +2010,7 @@ export function ModBuilder() {
                   setActiveAbilityIndex(null);
                   setActiveArcaneSlot(null);
                   setActiveShardSlot(null);
+                  setActiveIncarnonTier(null);
                 }}
                 formaMode={formaMode}
                 onPolarityChange={handlePolarityChange}
@@ -2056,6 +2171,39 @@ export function ModBuilder() {
                   </Suspense>
                 ) : null}
 
+                {rightPanelMode === 'incarnon' && activeIncarnonTier !== null && incarnonData ? (
+                  <Suspense fallback={<LazySuspenseFallback />}>
+                    <IncarnonPickerPanel
+                      tier={activeIncarnonTier}
+                      incarnonData={incarnonData}
+                      onSelectPerk={(perkName) => {
+                        setIncarnonSelections((prev) => {
+                          const base =
+                            prev ??
+                            (incarnonData ? createDefaultIncarnonSelections(incarnonData) : []);
+                          return selectIncarnonPerk(base, activeIncarnonTier, perkName);
+                        });
+                        setActiveIncarnonTier(null);
+                        setRightPanelMode('mods');
+                      }}
+                      onTurnOff={() => {
+                        setIncarnonSelections((prev) => {
+                          const base =
+                            prev ??
+                            (incarnonData ? createDefaultIncarnonSelections(incarnonData) : []);
+                          return applyIncarnonUnlockCascade(base, activeIncarnonTier);
+                        });
+                        setActiveIncarnonTier(null);
+                        setRightPanelMode('mods');
+                      }}
+                      onClose={() => {
+                        setActiveIncarnonTier(null);
+                        setRightPanelMode('mods');
+                      }}
+                    />
+                  </Suspense>
+                ) : null}
+
                 {rightPanelMode === 'arcanes' && activeArcaneSlot !== null ? (
                   <Suspense fallback={<LazySuspenseFallback />}>
                     <ArcanePickerPanel
@@ -2194,6 +2342,8 @@ export function ModBuilder() {
             orokinReactor={orokinReactor}
             formaCost={formaCost}
             helminthConfig={equipmentType === 'warframe' ? helminthConfig : undefined}
+            incarnonEnabled={hasIncarnon ? incarnonEnabled : false}
+            incarnonSelections={hasIncarnon ? incarnonSelections : undefined}
             valenceBonus={effectiveValenceBonus}
           />
         </Suspense>

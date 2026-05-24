@@ -51,6 +51,8 @@ export interface Weapon {
   image_path?: string;
   artifact_slots?: string;
   fire_behaviors?: string;
+  has_incarnon?: number;
+  incarnon_data?: string;
 }
 
 export interface Companion {
@@ -197,6 +199,12 @@ export interface BuildConfig {
     tauforged: boolean;
   }[];
   orokinReactor?: boolean;
+  incarnonEnabled?: boolean;
+  incarnonSelections?: {
+    tier: number;
+    perkName: string | null;
+    unlocked: boolean;
+  }[];
 }
 
 export type BuildVisibility = 'public' | 'private' | 'unlisted';
