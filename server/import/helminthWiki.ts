@@ -1,78 +1,31 @@
 import type Database from 'better-sqlite3';
-import * as cheerio from 'cheerio';
 
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
-import { getWikiUserAgent } from '../scraping/wikiUserAgent.js';
+import {
+  fetchHelminthWikiHtml,
+  normalizeAbilityName,
+  parseHelminthExtractableAbilityNames,
+} from '../scraping/helminthWikiPage.js';
 
-const HELMINTH_WIKI_URL = 'https://wiki.warframe.com/w/Helminth';
-
-function normalizeAbilityName(value: string): string {
-  return value.replace(/\s+/g, ' ').trim().toLowerCase();
-}
-
-const ABILITY_TOOLTIP = '.tooltip[data-param-source="Ability"]';
-
-function collectHelminthAbilityLinkElements($: cheerio.CheerioAPI) {
-  const $content = $('#mw-content-text');
-  const checklistLinks = $content.find(
-    `table[data-tableid="Subsumable Ability Checklist"] tr td:nth-child(2) ${ABILITY_TOOLTIP} a[href^="/w/"]`,
-  );
-  const helminthSectionLinks = $content
-    .find('h3#Helminth_Abilities')
-    .closest('div.mw-heading')
-    .nextAll('table.ability-box')
-    .find(`${ABILITY_TOOLTIP} a[href^="/w/"]`);
-
-  if (checklistLinks.length > 0 || helminthSectionLinks.length > 0) {
-    return checklistLinks.add(helminthSectionLinks);
-  }
-
-  return $content.find(`${ABILITY_TOOLTIP} a[href^="/w/"]`);
-}
-
-export async function fetchHelminthAbilityNameSet(): Promise<{
+export async function fetchHelminthAbilityNameSet(options?: { html?: string | null }): Promise<{
   names: Set<string>;
   fetchOk: boolean;
   error?: string;
 }> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-  try {
-    const response = await fetch(HELMINTH_WIKI_URL, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': getWikiUserAgent(),
-      },
-    });
-    if (!response.ok) {
+  let html = options?.html ?? null;
+  if (html == null) {
+    const fetched = await fetchHelminthWikiHtml();
+    if (!fetched.fetchOk || fetched.html == null) {
       return {
         names: new Set(),
-        fetchOk: false,
-        error: `HTTP ${response.status} ${response.statusText}`,
+        fetchOk: fetched.fetchOk,
+        error: fetched.error,
       };
     }
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    const names = new Set<string>();
-
-    collectHelminthAbilityLinkElements($).each((_, el) => {
-      const text = normalizeAbilityName($(el).text());
-      const title = normalizeAbilityName($(el).attr('title') || '');
-      for (const raw of [text, title]) {
-        if (!raw) continue;
-        const cleaned = raw.replace(/\s*\(ability\)$/, '').trim();
-        if (!cleaned || cleaned.length < 3 || cleaned.length > 80) continue;
-        names.add(cleaned);
-      }
-    });
-
-    return { names, fetchOk: true };
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return { names: new Set(), fetchOk: false, error: message };
-  } finally {
-    clearTimeout(timeout);
+    html = fetched.html;
   }
+
+  return { names: parseHelminthExtractableAbilityNames(html), fetchOk: true };
 }
 
 export interface HelminthWikiSyncResult {
@@ -84,8 +37,9 @@ export interface HelminthWikiSyncResult {
 
 export async function syncHelminthFlagsFromWiki(
   db: Database.Database,
+  options?: { html?: string | null },
 ): Promise<HelminthWikiSyncResult> {
-  const { names, fetchOk, error } = await fetchHelminthAbilityNameSet();
+  const { names, fetchOk, error } = await fetchHelminthAbilityNameSet(options);
   if (!fetchOk || names.size === 0) {
     return {
       wikiNamesFound: names.size,

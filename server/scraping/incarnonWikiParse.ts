@@ -160,13 +160,22 @@ function findEvolutionsTable($: CheerioAPI): cheerio.Cheerio<AnyNode> | null {
   return table.length > 0 ? table : null;
 }
 
-export function parseGenesisEvolutionTable($: CheerioAPI): {
+function parseGenesisTableFromCheerio(
+  $: CheerioAPI,
+  compatibleWeaponNames: string[],
+): {
   weaponColumnNames: string[];
   tiers: IncarnonEvolutionTier[];
+  weaponEvolutions: Map<string, IncarnonEvolutionTier[]>;
 } {
+  type ExtendedPerkOption = IncarnonPerkOption & {
+    imageFile?: string;
+    weaponDescriptions?: Map<string, string>;
+  };
+
   const table = findEvolutionsTable($);
   if (!table) {
-    return { weaponColumnNames: [], tiers: [] };
+    return { weaponColumnNames: [], tiers: [], weaponEvolutions: new Map() };
   }
 
   const headerCells: string[] = [];
@@ -179,8 +188,12 @@ export function parseGenesisEvolutionTable($: CheerioAPI): {
     });
 
   const weaponColumnNames = headerCells.slice(1, -1);
+  const resolvedWeaponNames = resolveWeaponNamesFromHeaders(
+    weaponColumnNames,
+    compatibleWeaponNames,
+  );
 
-  const tiers: IncarnonEvolutionTier[] = [];
+  const tierData = new Map<number, IncarnonEvolutionTier>();
   let currentTier: IncarnonEvolutionTier | null = null;
 
   table
@@ -193,16 +206,14 @@ export function parseGenesisEvolutionTable($: CheerioAPI): {
         .each((__, c) => {
           cells.push(c);
         });
-
       if (cells.length === 0) return;
 
       const texts = cells.map((c) => normalizeWikiText($(c).text()));
       const first = texts[0] ?? '';
 
       if (CHALLENGE_RE.test(first)) {
-        const challengeText = texts[1] ?? texts.slice(1).join(' ');
         if (currentTier) {
-          currentTier.challenge = normalizeWikiText(challengeText);
+          currentTier.challenge = normalizeWikiText(texts[1] ?? texts.slice(1).join(' '));
         }
         return;
       }
@@ -210,9 +221,8 @@ export function parseGenesisEvolutionTable($: CheerioAPI): {
       const tierFromFirst = parseTierNumber(first);
       if (tierFromFirst) {
         currentTier = { tier: tierFromFirst, options: [] };
-        tiers.push(currentTier);
+        tierData.set(tierFromFirst, currentTier);
       }
-
       if (!currentTier) return;
 
       const layout = parseGenesisRowLayout(texts);
@@ -222,67 +232,75 @@ export function parseGenesisEvolutionTable($: CheerioAPI): {
       const template = texts[layout.templateIndex] ?? '';
       const notes = texts[layout.notesIndex] || undefined;
       const nameCell = cells[layout.perkNameIndex] ?? null;
+      const fileName = nameCell ? extractFileNameFromCell($, nameCell) : null;
 
-      currentTier.options.push(
-        makePerkOption($, perkName, template, notes, nameCell) as IncarnonPerkOption,
+      const weaponValues = extractWeaponValuesFromRow(
+        cells,
+        texts,
+        layout.weaponValueStart,
+        resolvedWeaponNames.length,
+        $,
       );
 
-      void weaponColumnNames;
+      const weaponDescriptions = new Map<string, string>();
+      for (let w = 0; w < resolvedWeaponNames.length; w++) {
+        weaponDescriptions.set(
+          resolvedWeaponNames[w],
+          substitutePlaceholders(template, weaponValues[w] ?? '-'),
+        );
+      }
+
+      currentTier.options.push({
+        name: normalizeWikiText(perkName),
+        description: template,
+        notes: notes ? normalizeWikiText(notes) : undefined,
+        imageFile: fileName ?? undefined,
+        statModifiers: extractStatModifiers(template),
+        weaponDescriptions,
+      } as ExtendedPerkOption);
     });
 
-  return { weaponColumnNames, tiers };
-}
+  const sortedTiers = [...tierData.values()].sort((a, b) => a.tier - b.tier);
 
-export function buildGenesisWeaponData(
-  parsed: ParsedGenesisPage,
-  _weaponName: string,
-): IncarnonEvolutionTier[] {
-  return parsed.tiers.map((tier) => ({
+  const tiers: IncarnonEvolutionTier[] = sortedTiers.map((tier) => ({
     tier: tier.tier,
     challenge: tier.challenge,
-    options: tier.options.map((option) => {
-      const extended = option as IncarnonPerkOption & { imageFile?: string };
+    options: tier.options.map((opt) => {
+      const extended = opt as ExtendedPerkOption;
       return {
-        name: option.name,
-        description: option.description,
-        notes: option.notes,
-        imagePath: undefined,
+        name: opt.name,
+        description: extended.description,
+        notes: opt.notes,
         imageFile: extended.imageFile,
-        statModifiers: option.statModifiers,
+        statModifiers: opt.statModifiers,
       };
     }),
   }));
-}
 
-export function parseGenesisPageHtml(html: string, overview?: string): ParsedGenesisPage {
-  const $ = cheerio.load(html);
-  const compatibleWeaponNames = parseCompatibleWeaponNames($);
-  const { weaponColumnNames, tiers: rawTiers } = parseGenesisEvolutionTable($);
+  const weaponEvolutions = new Map<string, IncarnonEvolutionTier[]>();
+  for (const weaponName of compatibleWeaponNames) {
+    const evolutions: IncarnonEvolutionTier[] = [];
+    for (const tier of sortedTiers) {
+      evolutions.push({
+        tier: tier.tier,
+        challenge: tier.challenge,
+        options: tier.options.map((opt) => {
+          const extended = opt as ExtendedPerkOption;
+          const description = extended.weaponDescriptions?.get(weaponName) ?? extended.description;
+          return {
+            name: opt.name,
+            description,
+            notes: opt.notes,
+            imageFile: extended.imageFile,
+            statModifiers: extractStatModifiers(description),
+          } as ExtendedPerkOption;
+        }),
+      });
+    }
+    weaponEvolutions.set(weaponName, evolutions);
+  }
 
-  const tiers: IncarnonEvolutionTier[] = rawTiers.map((tier) => ({
-    tier: tier.tier,
-    challenge: tier.challenge,
-    options: tier.options.map((opt) => ({ ...opt })),
-  }));
-
-  return {
-    compatibleWeaponNames,
-    weaponColumnNames,
-    overview,
-    tiers,
-  };
-}
-
-export function resolveGenesisPerkForWeapon(
-  parsed: ParsedGenesisPage,
-  weaponName: string,
-  tier: IncarnonEvolutionTier,
-  optionIndex: number,
-  _rawTableRows?: never,
-): IncarnonPerkOption {
-  void _rawTableRows;
-  const option = tier.options[optionIndex];
-  return { ...option };
+  return { weaponColumnNames, tiers, weaponEvolutions };
 }
 
 export function parseGenesisPageWithWeaponValues(
@@ -291,129 +309,16 @@ export function parseGenesisPageWithWeaponValues(
 ): ParsedGenesisPage & { weaponEvolutions: Map<string, IncarnonEvolutionTier[]> } {
   const $ = cheerio.load(html);
   const compatibleWeaponNames = parseCompatibleWeaponNames($);
-  const parsed = parseGenesisPageHtml(html, overview);
-
-  const table = findEvolutionsTable($);
-
-  const headerCells: string[] = [];
-  if (table) {
-    table
-      .find('tr')
-      .first()
-      .find('th,td')
-      .each((_, c) => {
-        headerCells.push(normalizeWikiText($(c).text()));
-      });
-  }
-
-  const headerWeaponLabels = headerCells.slice(1, -1);
-  const resolvedWeaponNames = resolveWeaponNamesFromHeaders(
-    headerWeaponLabels,
+  const { weaponColumnNames, tiers, weaponEvolutions } = parseGenesisTableFromCheerio(
+    $,
     compatibleWeaponNames,
   );
 
-  const tierData = new Map<number, IncarnonEvolutionTier>();
-  let currentTier: IncarnonEvolutionTier | null = null;
-
-  if (table) {
-    table
-      .find('tr')
-      .slice(1)
-      .each((_, tr) => {
-        const cells: Element[] = [];
-        $(tr)
-          .find('th,td')
-          .each((__, c) => {
-            cells.push(c);
-          });
-        if (cells.length === 0) return;
-
-        const texts = cells.map((c) => normalizeWikiText($(c).text()));
-        const first = texts[0] ?? '';
-
-        if (CHALLENGE_RE.test(first)) {
-          if (currentTier) {
-            currentTier.challenge = normalizeWikiText(texts[1] ?? '');
-          }
-          return;
-        }
-
-        const tierFromFirst = parseTierNumber(first);
-        if (tierFromFirst) {
-          currentTier = { tier: tierFromFirst, options: [] };
-          tierData.set(tierFromFirst, currentTier);
-        }
-        if (!currentTier) return;
-
-        const layout = parseGenesisRowLayout(texts);
-        const perkName = texts[layout.perkNameIndex] ?? '';
-        if (!perkName) return;
-
-        const template = texts[layout.templateIndex] ?? '';
-        const notes = texts[layout.notesIndex] || undefined;
-        const nameCell = cells[layout.perkNameIndex] ?? null;
-        const fileName = nameCell ? extractFileNameFromCell($, nameCell) : null;
-
-        const weaponValues = extractWeaponValuesFromRow(
-          cells,
-          texts,
-          layout.weaponValueStart,
-          resolvedWeaponNames.length,
-          $,
-        );
-
-        const weaponDescriptions = new Map<string, string>();
-        for (let w = 0; w < resolvedWeaponNames.length; w++) {
-          weaponDescriptions.set(
-            resolvedWeaponNames[w],
-            substitutePlaceholders(template, weaponValues[w] ?? '-'),
-          );
-        }
-
-        const baseOption: IncarnonPerkOption & {
-          imageFile?: string;
-          weaponDescriptions?: Map<string, string>;
-        } = {
-          name: normalizeWikiText(perkName),
-          description: template,
-          notes: notes ? normalizeWikiText(notes) : undefined,
-          imageFile: fileName ?? undefined,
-          statModifiers: extractStatModifiers(template),
-          weaponDescriptions,
-        };
-
-        currentTier.options.push(baseOption);
-      });
-  }
-
-  const weaponEvolutions = new Map<string, IncarnonEvolutionTier[]>();
-  for (const weaponName of compatibleWeaponNames) {
-    const evolutions: IncarnonEvolutionTier[] = [];
-    for (const tier of [...tierData.values()].sort((a, b) => a.tier - b.tier)) {
-      evolutions.push({
-        tier: tier.tier,
-        challenge: tier.challenge,
-        options: tier.options.map((opt) => {
-          const extended = opt as IncarnonPerkOption & {
-            imageFile?: string;
-            weaponDescriptions?: Map<string, string>;
-          };
-          const description = extended.weaponDescriptions?.get(weaponName) ?? extended.description;
-          return {
-            name: opt.name,
-            description,
-            notes: opt.notes,
-            imageFile: extended.imageFile,
-            statModifiers: extractStatModifiers(description),
-          } as IncarnonPerkOption & { imageFile?: string };
-        }),
-      });
-    }
-    weaponEvolutions.set(weaponName, evolutions);
-  }
-
   return {
-    ...parsed,
+    compatibleWeaponNames,
+    weaponColumnNames,
+    overview,
+    tiers,
     weaponEvolutions,
   };
 }

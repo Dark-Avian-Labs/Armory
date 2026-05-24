@@ -82,8 +82,6 @@ export const EXPORTS_DIR = path.join(DATA_DIR, 'exports');
 export const IMAGES_DIR = path.join(DATA_DIR, 'images');
 export const ARMORY_DB_PATH =
   process.env.ARMORY_DB_PATH?.trim() || path.join(DATA_DIR, 'armory.db');
-export const CODEX_EXPORT_DB_PATH =
-  process.env.CODEX_EXPORT_DB_PATH?.trim() || path.join(DATA_DIR, 'codex.db');
 function resolveSessionDbPath(): string {
   const configured = process.env.SESSION_DB_PATH?.trim();
   if (configured) {

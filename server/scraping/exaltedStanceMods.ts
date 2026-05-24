@@ -207,6 +207,39 @@ async function fetchOverframeStance(seed: ExaltedStanceSeed): Promise<OverframeS
   return null;
 }
 
+async function applyExaltedStanceWikiImages(
+  seed: ExaltedStanceSeed,
+  uniqueNames: string[],
+  updateImagePath: { run: (imagePath: string, uniqueName: string) => unknown },
+  onProgress?: (msg: string) => void,
+): Promise<boolean> {
+  if (!seed.wikiPageTitle || uniqueNames.length === 0) return false;
+
+  onProgress?.(`Wiki infobox image: ${seed.name} (${seed.wikiPageTitle})`);
+  try {
+    const wikiImagePath = await fetchWikiImageForExaltedStanceMod(
+      seed.wikiPageTitle,
+      uniqueNames[0]!,
+      seed.name,
+      seed.wikiModImageFile ?? null,
+      onProgress,
+    );
+    if (!wikiImagePath) return false;
+
+    for (const uniqueName of uniqueNames) {
+      updateImagePath.run(wikiImagePath, uniqueName);
+    }
+    return true;
+  } catch (error) {
+    onProgress?.(
+      `[exaltedStanceMods] wiki image failed for ${seed.name}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    return false;
+  }
+}
+
 export async function syncExaltedStanceModsFromOverframe(
   onProgress?: (msg: string) => void,
 ): Promise<{ found: number; insertedOrUpdated: number; wikiImagesApplied: number }> {
@@ -312,26 +345,13 @@ export async function syncExaltedStanceModsFromOverframe(
     }
 
     if (seed.wikiPageTitle) {
-      onProgress?.(`Wiki infobox image: ${seed.name} (${seed.wikiPageTitle})`);
-      try {
-        const wikiImagePath = await fetchWikiImageForExaltedStanceMod(
-          seed.wikiPageTitle,
-          scraped.uniqueName,
-          seed.name,
-          seed.wikiModImageFile ?? null,
-          onProgress,
-        );
-        if (wikiImagePath) {
-          updateImagePath.run(wikiImagePath, scraped.uniqueName);
-          wikiImagesApplied += 1;
-        }
-      } catch (error) {
-        onProgress?.(
-          `[exaltedStanceMods] wiki image failed for ${seed.name}: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
+      const applied = await applyExaltedStanceWikiImages(
+        seed,
+        [scraped.uniqueName],
+        updateImagePath,
+        onProgress,
+      );
+      if (applied) wikiImagesApplied += 1;
     }
   }
 
@@ -363,28 +383,13 @@ export async function syncExaltedStanceWikiImagesOnly(
     }
 
     attempted += 1;
-    onProgress?.(`Wiki image: ${seed.name} (${seed.wikiPageTitle})`);
-    try {
-      const wikiImagePath = await fetchWikiImageForExaltedStanceMod(
-        seed.wikiPageTitle,
-        rows[0]!.unique_name,
-        seed.name,
-        seed.wikiModImageFile ?? null,
-        onProgress,
-      );
-      if (wikiImagePath) {
-        for (const row of rows) {
-          updateImagePath.run(wikiImagePath, row.unique_name);
-        }
-        applied += 1;
-      }
-    } catch (error) {
-      onProgress?.(
-        `[exaltedStanceMods] wiki-only image failed for ${seed.name}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    }
+    const imageApplied = await applyExaltedStanceWikiImages(
+      seed,
+      rows.map((row) => row.unique_name),
+      updateImagePath,
+      onProgress,
+    );
+    if (imageApplied) applied += 1;
   }
 
   onProgress?.(`Wiki-only exalted stance images complete: ${applied}/${attempted} applied`);

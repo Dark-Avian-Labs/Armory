@@ -2,9 +2,14 @@ import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 
 import { getDb } from '../db/connection.js';
+import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
+import {
+  fetchHelminthWikiHtml,
+  HELMINTH_WIKI_URL,
+  resolveHelminthAbilityWikiUrls,
+} from './helminthWikiPage.js';
 
 const WIKI_BASE = 'https://wiki.warframe.com';
-const DEFAULT_FETCH_TIMEOUT = 15_000;
 
 const SLOT_SECONDARY = 0;
 const SLOT_PRIMARY = 1;
@@ -17,39 +22,6 @@ const logger = {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit = {},
-  timeoutMs = DEFAULT_FETCH_TIMEOUT,
-): Promise<Response> {
-  const controller = new AbortController();
-  const callerSignal = options.signal;
-  const restOptions: RequestInit = { ...options };
-  delete (restOptions as { signal?: AbortSignal | null }).signal;
-  const timeoutId = setTimeout(() => {
-    controller.abort();
-  }, timeoutMs);
-
-  const onAbort = (): void => {
-    controller.abort();
-  };
-
-  if (callerSignal) {
-    if (callerSignal.aborted) {
-      controller.abort();
-    } else {
-      callerSignal.addEventListener('abort', onAbort, { once: true });
-    }
-  }
-
-  try {
-    return await fetch(url, { ...restOptions, signal: controller.signal });
-  } finally {
-    clearTimeout(timeoutId);
-    callerSignal?.removeEventListener('abort', onAbort);
-  }
 }
 
 export interface WikiAbilityStats {
@@ -170,7 +142,7 @@ async function scrapeAbilityPage(
 ): Promise<WikiAbilityStats | null> {
   const url = overrideUrl ?? `${WIKI_BASE}/w/${wikiSlug(abilityName)}`;
 
-  const res = await fetchWithTimeout(url);
+  const res = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.wikiFetch);
   if (!res.ok) return null;
 
   const html = await res.text();
@@ -249,6 +221,7 @@ async function scrapeAbilityPage(
 async function resolveAbilityUrls(
   abilities: { name: string; wf_name: string | null }[],
   onProgress?: (msg: string) => void,
+  helminthWikiHtml?: string | null,
 ): Promise<Map<string, string>> {
   const resolved = new Map<string, string>();
 
@@ -263,7 +236,7 @@ async function resolveAbilityUrls(
     const url = `${WIKI_BASE}/w/${encodeURIComponent(slug)}/Abilities`;
 
     try {
-      const res = await fetchWithTimeout(url);
+      const res = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.wikiFetch);
       if (!res.ok) {
         onProgress?.(`  Could not fetch ${cleanName}/Abilities (${res.status})`);
         continue;
@@ -295,30 +268,34 @@ async function resolveAbilityUrls(
   const helminthAbilities = abilities.filter((a) => !a.wf_name).map((a) => a.name);
   if (helminthAbilities.length > 0) {
     try {
-      const res = await fetchWithTimeout(`${WIKI_BASE}/w/Helminth`);
-      if (res.ok) {
-        const html = await res.text();
-        const $ = cheerio.load(html);
-        for (const name of helminthAbilities) {
-          const normName = normalizeText(name);
-          $('a[href^="/w/"]').each((_, el) => {
-            if (resolved.has(name)) return;
-            const linkText = normalizeText($(el).text());
-            const title = normalizeText($(el).attr('title') || '');
-            const href = $(el).attr('href') || '';
-            if (linkText === normName || title === normName || title.startsWith(`${normName} (`)) {
-              resolved.set(name, `${WIKI_BASE}${href}`);
-            }
-          });
+      if (helminthWikiHtml) {
+        const helminthUrls = resolveHelminthAbilityWikiUrls(
+          helminthWikiHtml,
+          helminthAbilities,
+          normalizeText,
+        );
+        for (const [name, url] of helminthUrls) {
+          resolved.set(name, url);
+        }
+      } else {
+        const fetched = await fetchHelminthWikiHtml();
+        if (fetched.fetchOk && fetched.html) {
+          const helminthUrls = resolveHelminthAbilityWikiUrls(
+            fetched.html,
+            helminthAbilities,
+            normalizeText,
+          );
+          for (const [name, url] of helminthUrls) {
+            resolved.set(name, url);
+          }
         }
       }
       await sleep(500);
     } catch (err) {
-      const helminthUrl = `${WIKI_BASE}/w/Helminth`;
       const message = err instanceof Error ? err.message : String(err);
       onProgress?.(`  Error resolving Helminth abilities: ${message}`);
       console.error('[wikiScraper] resolveAbilityUrls Helminth scrape failed', {
-        url: helminthUrl,
+        url: HELMINTH_WIKI_URL,
         error: err instanceof Error ? { message: err.message, stack: err.stack } : err,
       });
     }
@@ -359,6 +336,7 @@ async function scrapeAbilityWithFallbacks(
 export async function scrapeAbilities(
   onProgress?: (msg: string) => void,
   onlyMissing = false,
+  helminthWikiHtml?: string | null,
 ): Promise<WikiAbilityResult[]> {
   const db = getDb();
   const missingStatsWhereClause = onlyMissing ? 'WHERE a.wiki_stats IS NULL' : '';
@@ -389,7 +367,7 @@ export async function scrapeAbilities(
   }
 
   onProgress?.('Resolving ability URLs from warframe pages...');
-  const urlMap = await resolveAbilityUrls(abilities, onProgress);
+  const urlMap = await resolveAbilityUrls(abilities, onProgress, helminthWikiHtml);
   onProgress?.(`Resolved ${urlMap.size}/${abilities.length} ability URLs from warframe pages`);
 
   const results: WikiAbilityResult[] = [];
@@ -421,7 +399,7 @@ async function scrapeWarframePage(wfName: string): Promise<string | null> {
   const slug = wfName.replace(/ /g, '_');
   const url = `${WIKI_BASE}/w/${encodeURIComponent(slug)}`;
 
-  const res = await fetchWithTimeout(url);
+  const res = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.wikiFetch);
   if (!res.ok) return null;
 
   const html = await res.text();
@@ -563,7 +541,7 @@ function extractBraceBlock(lua: string, startIdx: number): string {
 
 async function fetchAugmentMappings(): Promise<WikiAugmentMapping[]> {
   const url = `${WIKI_BASE}/w/Module:Ability/data?action=raw`;
-  const res = await fetchWithTimeout(url);
+  const res = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.wikiFetch);
   if (!res.ok) throw new Error(`Failed to fetch Module:Ability/data: ${res.status}`);
 
   const lua = await res.text();
@@ -642,7 +620,7 @@ export async function scrapeArchonShards(
 ): Promise<WikiShardResult> {
   onProgress?.('Fetching Archon Shard wiki page...');
   const url = `${WIKI_BASE}/w/Archon_Shard`;
-  const res = await fetchWithTimeout(url);
+  const res = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.wikiFetch);
   if (!res.ok) throw new Error(`Failed to fetch Archon Shard page: ${res.status}`);
 
   const html = await res.text();
@@ -806,7 +784,7 @@ export async function scrapeRivenDispositions(
   }
 
   onProgress?.('Fetching Riven Mods wiki page...');
-  const res = await fetchWithTimeout(`${WIKI_BASE}/w/Riven_Mods`);
+  const res = await fetchWithTimeout(`${WIKI_BASE}/w/Riven_Mods`, {}, FETCH_TIMEOUT_MS.wikiFetch);
   if (!res.ok) {
     throw new Error(`Failed to fetch Riven Mods page: ${res.status}`);
   }
@@ -820,7 +798,11 @@ export async function scrapeRivenDispositions(
     onProgress?.(
       '[Riven Dispositions] No rows found on /w/Riven_Mods; trying /w/Riven_Mods/Weapon_Dispos...',
     );
-    const fallbackRes = await fetchWithTimeout(`${WIKI_BASE}/w/Riven_Mods/Weapon_Dispos`);
+    const fallbackRes = await fetchWithTimeout(
+      `${WIKI_BASE}/w/Riven_Mods/Weapon_Dispos`,
+      {},
+      FETCH_TIMEOUT_MS.wikiFetch,
+    );
     if (fallbackRes.ok) {
       const fallbackHtml = await fallbackRes.text();
       const $fallback = cheerio.load(fallbackHtml);
@@ -933,7 +915,11 @@ export async function scrapeProjectileSpeedsFromWiki(
   onProgress?: (msg: string) => void,
 ): Promise<Map<string, Array<number | null>>> {
   onProgress?.('Fetching Projectile Speed wiki page...');
-  const res = await fetchWithTimeout(`${WIKI_BASE}/w/Projectile_Speed`);
+  const res = await fetchWithTimeout(
+    `${WIKI_BASE}/w/Projectile_Speed`,
+    {},
+    FETCH_TIMEOUT_MS.wikiFetch,
+  );
   if (!res.ok) {
     throw new Error(`Failed to fetch Projectile Speed page: ${res.status}`);
   }
@@ -1197,10 +1183,15 @@ export function mergeWikiData(
   return result;
 }
 
+export interface WikiScrapeRunResult {
+  merge: WikiMergeResult;
+  helminthWikiHtml: string | null;
+}
+
 export async function runWikiScrape(
   onProgress?: (progress: WikiScrapeProgress) => void,
   onlyMissing = false,
-): Promise<WikiMergeResult> {
+): Promise<WikiScrapeRunResult> {
   const state: WikiScrapeProgress = {
     phase: 'augments',
     current: 0,
@@ -1257,15 +1248,27 @@ export async function runWikiScrape(
   }
 
   state.phase = 'abilities';
-  const abilities = await scrapeAbilities((msg) => {
-    const m = msg.match(/\[(\d+)\/(\d+)\]\s*(.*)/);
-    if (m) {
-      state.current = parseInt(m[1]);
-      state.total = parseInt(m[2]);
-      state.currentItem = m[3];
-    }
-    log(msg);
-  }, onlyMissing);
+  const helminthFetch = await fetchHelminthWikiHtml();
+  const helminthWikiHtml = helminthFetch.fetchOk ? helminthFetch.html : null;
+  if (!helminthFetch.fetchOk) {
+    log(
+      `[WikiScraper] Helminth wiki fetch failed: ${helminthFetch.error ?? 'unknown error'}. Ability URL resolution may fall back to per-ability requests.`,
+    );
+  }
+
+  const abilities = await scrapeAbilities(
+    (msg) => {
+      const m = msg.match(/\[(\d+)\/(\d+)\]\s*(.*)/);
+      if (m) {
+        state.current = parseInt(m[1]);
+        state.total = parseInt(m[2]);
+        state.currentItem = m[3];
+      }
+      log(msg);
+    },
+    onlyMissing,
+    helminthWikiHtml,
+  );
 
   state.phase = 'passives';
   const passives = await scrapePassives((msg) => {
@@ -1289,5 +1292,5 @@ export async function runWikiScrape(
   log('Wiki scrape complete');
   onProgress?.(state);
 
-  return result;
+  return { merge: result, helminthWikiHtml };
 }

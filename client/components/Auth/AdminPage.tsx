@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import type {
+  StartupPipelineSummary,
+  StepSummaryBase,
+  SummaryOutcome,
+} from '../../../shared/pipelineSummaryTypes';
 import { apiFetch } from '../../utils/api';
 import { Modal } from '../ui/Modal';
 
@@ -9,90 +14,7 @@ interface ImportLogLine {
   message: string;
 }
 
-type SummaryOutcome = 'ok' | 'skipped' | 'failed' | 'partial';
-
-interface ImportPipelineStats {
-  requiredCount: number;
-  downloaded: string[];
-  skippedUnchanged: string[];
-  failed: Array<{ category: string; error: string }>;
-}
-
-interface StepSummary {
-  outcome: SummaryOutcome;
-  detail: string;
-  error?: string;
-}
-
-interface ImportSummary {
-  durationMs: number;
-  blockingIssues: string[];
-  schema: StepSummary;
-  officialExports: StepSummary & { stats?: ImportPipelineStats };
-  sqliteFromExports: StepSummary & {
-    rows?: {
-      warframes: number;
-      weapons: number;
-      companions: number;
-      mods: number;
-      modSets: number;
-      arcanes: number;
-      abilities: number;
-    };
-    modDescriptionsBackfilled?: number;
-  };
-  exaltedStanceMods: StepSummary & {
-    found?: number;
-    insertedOrUpdated?: number;
-  };
-  images: StepSummary & {
-    total?: number;
-    downloaded?: number;
-    skipped?: number;
-    failed?: number;
-  };
-  hiddenCompanionWeapons: StepSummary & {
-    found?: number;
-    insertedOrUpdated?: number;
-  };
-  overframe: StepSummary & {
-    totalIndexed?: number;
-    matchedNeedingWork?: number;
-    pagesScraped?: number;
-    merge?: {
-      warframesUpdated: number;
-      weaponsUpdated: number;
-      companionsUpdated: number;
-      abilitiesUpdated: number;
-      helminthUpdated: number;
-    };
-  };
-  wiki: StepSummary & {
-    merge?: {
-      abilitiesUpdated: number;
-      passivesUpdated: number;
-      augmentsUpdated: number;
-      shardTypes: number;
-      shardBuffs: number;
-      rivenDispositionsSyncedFromOmega: number;
-      rivenDispositionsWikiFallback: number;
-      weaponsProjectileSpeedsUpdated: number;
-    };
-  };
-  helminthWiki: StepSummary & {
-    wikiNamesFound?: number;
-    abilitiesFlagged?: number;
-    fetchOk?: boolean;
-  };
-  incarnonWiki: StepSummary & {
-    pagesScraped?: number;
-    pagesFailed?: number;
-    weaponsTagged?: number;
-    imagesDownloaded?: number;
-    imagesSkipped?: number;
-    fetchOk?: boolean;
-  };
-}
+type ImportSummaryStepKey = Exclude<keyof StartupPipelineSummary, 'durationMs' | 'blockingIssues'>;
 
 function outcomeBadgeClass(outcome: SummaryOutcome | string | undefined): string {
   switch (outcome) {
@@ -108,7 +30,7 @@ function outcomeBadgeClass(outcome: SummaryOutcome | string | undefined): string
   }
 }
 
-const STEP_TITLES: Array<{ key: keyof ImportSummary; title: string }> = [
+const STEP_TITLES: Array<{ key: ImportSummaryStepKey; title: string }> = [
   { key: 'schema', title: 'Schema' },
   { key: 'officialExports', title: 'Exports' },
   { key: 'sqliteFromExports', title: 'Database' },
@@ -119,13 +41,14 @@ const STEP_TITLES: Array<{ key: keyof ImportSummary; title: string }> = [
   { key: 'wiki', title: 'Wiki' },
   { key: 'helminthWiki', title: 'Helminth' },
   { key: 'incarnonWiki', title: 'Incarnon' },
+  { key: 'warframeMarketLinks', title: 'Warframe Market' },
 ];
 
 function formatImportSummaryLines(
-  s: ImportSummary,
+  s: StartupPipelineSummary,
 ): Array<{ title: string; outcome: string; detail: string }> {
   return STEP_TITLES.map(({ key, title }) => {
-    const step = s[key] as StepSummary;
+    const step = s[key] as StepSummaryBase;
     return {
       title,
       outcome: step.outcome,
@@ -141,7 +64,7 @@ interface ImportSnapshot {
   finishedAt: string | null;
   requestedByUserId: number | null;
   lines: ImportLogLine[];
-  summary: ImportSummary | null;
+  summary: StartupPipelineSummary | null;
   error: string | null;
 }
 

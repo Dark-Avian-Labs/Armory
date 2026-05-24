@@ -72,7 +72,6 @@ Use one key per environment to reduce blast radius.
 | `SECURE_COOKIES`        | Set to `1` for HTTPS-only cookie behavior (defaults follow `NODE_ENV`).            |
 | `SESSION_DB_PATH`       | App-local SQLite session store for CSRF (default `./data/session.db`).             |
 | `ARMORY_DB_PATH`        | Optional override for the main app SQLite file (default `./data/armory.db`).       |
-| `CODEX_EXPORT_DB_PATH`  | Optional override for the Codex export mirror DB (default `./data/codex.db`).      |
 | `COOKIE_DOMAIN`         | Optional cross-subdomain cookie domain.                                            |
 | `SESSION_COOKIE_NAME`   | Session cookie name.                                                               |
 | `WIKI_USER_AGENT`       | Required `User-Agent` for wiki fetches (Helminth, Incarnon, stance images).        |

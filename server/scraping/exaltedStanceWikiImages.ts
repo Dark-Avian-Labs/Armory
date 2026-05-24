@@ -18,10 +18,6 @@ function wikiFetchHeaders(): Record<string, string> {
   };
 }
 
-export interface WikiExaltedStanceImageSeed {
-  wikiPageTitle: string;
-}
-
 export function wikiModCardFileNameFromStanceName(stanceModName: string): string {
   const words = stanceModName.trim().split(/\s+/).filter(Boolean);
   const pascal = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');

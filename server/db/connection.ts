@@ -1,7 +1,6 @@
 import Database from 'better-sqlite3';
 
 import { ARMORY_DB_PATH, SESSION_DB_PATH } from '../config.js';
-import { closeCodexDb } from './codex.js';
 
 let db: Database.Database | null = null;
 let sessionDb: Database.Database | null = null;
@@ -33,5 +32,4 @@ export function closeAll(): void {
     sessionDb.close();
     sessionDb = null;
   }
-  closeCodexDb();
 }

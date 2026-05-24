@@ -276,5 +276,3 @@ export async function syncIncarnonFromWiki(
 
   return result;
 }
-
-export { INTRINSIC_INCANNON_WEAPONS };

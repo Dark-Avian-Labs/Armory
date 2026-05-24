@@ -44,18 +44,3 @@ export function requireArmoryAdmin(req: Request, res: Response, next: NextFuncti
   }
   next();
 }
-
-export const requireGameAdmin = requireArmoryAdmin;
-
-export function redirectIfAuthenticated(req: Request, res: Response, next: NextFunction): void {
-  const state = getClerkAuthState(req);
-  if (state.authenticated) {
-    res.redirect('/builder/builds');
-    return;
-  }
-  next();
-}
-
-export function authLoginRedirect(_req: Request, res: Response): void {
-  res.redirect('/sign-in');
-}

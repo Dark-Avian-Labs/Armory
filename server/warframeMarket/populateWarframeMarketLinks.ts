@@ -11,15 +11,6 @@ export interface PopulateWarframeMarketLinksResult {
   slugCount: number;
 }
 
-const MARKET_HREF_LOOKUP_SQL = `SELECT market_href, market_href_prime FROM warframe_market_links
-  WHERE canonical_key = ? AND worksheet_category = ?`;
-
-let cachedLookupDb: Database.Database | null = null;
-let cachedLookupStmt: Database.Statement<
-  [string, string],
-  { market_href: string | null; market_href_prime: string | null }
-> | null = null;
-
 type MergedRow = {
   market_href: string | null;
   market_href_prime: string | null;
@@ -101,29 +92,4 @@ export async function populateWarframeMarketLinksTable(
   tx();
 
   return { rowsUpserted, slugCount: wmSlugs.size };
-}
-
-export function getMarketHrefsForCanonicalKey(
-  armoryDb: Database.Database,
-  canonicalKey: string,
-  worksheetCategory: WorksheetCategory,
-): { market_href: string | null; market_href_prime: string | null } | undefined {
-  if (cachedLookupStmt === null || cachedLookupDb !== armoryDb) {
-    cachedLookupDb = armoryDb;
-    cachedLookupStmt = armoryDb.prepare<
-      [string, string],
-      { market_href: string | null; market_href_prime: string | null }
-    >(MARKET_HREF_LOOKUP_SQL);
-  }
-  return cachedLookupStmt.get(canonicalKey, worksheetCategory);
-}
-
-export function getMarketHrefForRow(
-  armoryDb: Database.Database,
-  canonicalKey: string,
-  worksheetCategory: WorksheetCategory,
-): string | null {
-  return (
-    getMarketHrefsForCanonicalKey(armoryDb, canonicalKey, worksheetCategory)?.market_href ?? null
-  );
 }

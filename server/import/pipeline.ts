@@ -1,9 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 
+import type { ImportPipelineStats } from '../../shared/pipelineSummaryTypes.js';
 import { CONTENT_BASE_URL, EXPORTS_DIR, REQUIRED_EXPORTS } from '../config.js';
 import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
 import { downloadAndParseManifest, type ManifestEntry } from './manifest.js';
+
+export type { ImportPipelineStats };
 
 export interface ImportStatus {
   step: string;
@@ -20,13 +23,6 @@ export interface ExportFileInfo {
   localPath: string;
   size: number;
   itemCount?: number;
-}
-
-export interface ImportPipelineStats {
-  requiredCount: number;
-  downloaded: string[];
-  skippedUnchanged: string[];
-  failed: Array<{ category: string; error: string }>;
 }
 
 export interface ImportPipelineResult {
@@ -225,15 +221,6 @@ export function listExportFiles(): ExportFileInfo[] {
   }
 
   return results;
-}
-
-export function readExportFile(category: string): unknown {
-  const localPath = path.join(EXPORTS_DIR, `${category}.json`);
-  if (!fs.existsSync(localPath)) {
-    throw new Error(`Export file not found: ${category}`);
-  }
-  const text = fs.readFileSync(localPath, 'utf-8');
-  return JSON.parse(text);
 }
 
 function getItemCount(content: unknown): number | undefined {

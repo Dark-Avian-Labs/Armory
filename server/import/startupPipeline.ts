@@ -81,6 +81,29 @@ function hasExportFiles(): boolean {
   }
 }
 
+function exportHashChanged(
+  category: string,
+  current: Record<string, string>,
+  previous: Record<string, string> | null,
+): boolean {
+  if (!previous) return true;
+  return (previous[category] || '') !== (current[category] || '');
+}
+
+function hasIncarnonDataInDb(): boolean {
+  try {
+    const db = getDb();
+    const row = db
+      .prepare(
+        'SELECT COUNT(*) as c FROM weapons WHERE has_incarnon = 1 AND incarnon_data IS NOT NULL',
+      )
+      .get() as { c: number };
+    return row.c > 0;
+  } catch {
+    return false;
+  }
+}
+
 function hasDbData(): boolean {
   try {
     const db = getDb();
@@ -197,9 +220,11 @@ export async function runStartupPipeline(
   }
 
   let dataChanged = false;
+  let currentExportHashes: Record<string, string> = {};
+  let previousExportHashes: Record<string, string> | null = null;
   try {
-    const currentExportHashes = getCurrentExportHashes();
-    const previousExportHashes = readProcessedExportHashes();
+    currentExportHashes = getCurrentExportHashes();
+    previousExportHashes = readProcessedExportHashes();
     const shouldProcess = forceImport || hashesChanged(currentExportHashes, previousExportHashes);
     dataChanged = shouldProcess;
 
@@ -468,6 +493,7 @@ export async function runStartupPipeline(
   }
 
   log('[Wiki] Scraping warframe wiki for ability stats, shards, riven dispositions...');
+  let helminthWikiHtml: string | null = null;
   try {
     const wikiResult = await runWikiScrape((p) => {
       if (p.log.length > 0) {
@@ -485,14 +511,16 @@ export async function runStartupPipeline(
         }
       }
     }, true);
+    helminthWikiHtml = wikiResult.helminthWikiHtml;
+    const wikiMerge = wikiResult.merge;
     log(
-      `[Wiki] Done — ${wikiResult.abilitiesUpdated} abilities, ${wikiResult.passivesUpdated} passives, ` +
-        `${wikiResult.augmentsUpdated} augments, ${wikiResult.weaponsProjectileSpeedsUpdated} projectile speeds.`,
+      `[Wiki] Done — ${wikiMerge.abilitiesUpdated} abilities, ${wikiMerge.passivesUpdated} passives, ` +
+        `${wikiMerge.augmentsUpdated} augments, ${wikiMerge.weaponsProjectileSpeedsUpdated} projectile speeds.`,
     );
     summary.wiki = {
       outcome: 'ok',
-      detail: `Updated ${wikiResult.abilitiesUpdated} abilities, ${wikiResult.passivesUpdated} passives, ${wikiResult.augmentsUpdated} augments.`,
-      merge: wikiResult,
+      detail: `Updated ${wikiMerge.abilitiesUpdated} abilities, ${wikiMerge.passivesUpdated} passives, ${wikiMerge.augmentsUpdated} augments.`,
+      merge: wikiMerge,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -503,7 +531,7 @@ export async function runStartupPipeline(
   log('[Helminth] Syncing helminth-infusable ability flags from wiki...');
   try {
     const db = getDb();
-    const helminthResult = await syncHelminthFlagsFromWiki(db);
+    const helminthResult = await syncHelminthFlagsFromWiki(db, { html: helminthWikiHtml });
     if (!helminthResult.fetchOk) {
       summary.helminthWiki = {
         outcome: 'failed',
@@ -551,56 +579,71 @@ export async function runStartupPipeline(
     err('[Helminth] Sync failed —', e);
   }
 
-  log('[Incarnon] Syncing incarnon evolution data from wiki...');
-  try {
-    const db = getDb();
-    const incarnonResult = await syncIncarnonFromWiki(db, (msg) => log(`[Incarnon] ${msg}`));
+  const weaponsExportChanged = exportHashChanged(
+    'ExportWeapons',
+    currentExportHashes,
+    previousExportHashes,
+  );
+  const shouldSyncIncarnon = forceImport || !hasIncarnonDataInDb() || weaponsExportChanged;
 
-    if (!incarnonResult.fetchOk && incarnonResult.pagesScraped === 0) {
+  if (!shouldSyncIncarnon) {
+    log('[Incarnon] Skipped — incarnon data already loaded and ExportWeapons unchanged.');
+    summary.incarnonWiki = {
+      outcome: 'skipped',
+      detail: 'Incarnon data already present and weapon export hash unchanged since last run.',
+    };
+  } else {
+    log('[Incarnon] Syncing incarnon evolution data from wiki...');
+    try {
+      const db = getDb();
+      const incarnonResult = await syncIncarnonFromWiki(db, (msg) => log(`[Incarnon] ${msg}`));
+
+      if (!incarnonResult.fetchOk && incarnonResult.pagesScraped === 0) {
+        summary.incarnonWiki = {
+          outcome: 'failed',
+          detail: 'Incarnon wiki sync failed.',
+          pagesScraped: incarnonResult.pagesScraped,
+          pagesFailed: incarnonResult.pagesFailed,
+          weaponsTagged: incarnonResult.weaponsTagged,
+          imagesDownloaded: incarnonResult.imagesDownloaded,
+          imagesSkipped: incarnonResult.imagesSkipped,
+          fetchOk: false,
+          error: incarnonResult.errors.slice(0, 3).join('; ') || 'Unknown error.',
+        };
+        err('[Incarnon] Sync failed — no pages scraped.');
+      } else {
+        log(
+          `[Incarnon] Done — ${incarnonResult.pagesScraped} pages, ${incarnonResult.weaponsTagged} weapons, ` +
+            `${incarnonResult.imagesDownloaded} images downloaded, ${incarnonResult.imagesSkipped} cached.`,
+        );
+        summary.incarnonWiki = {
+          outcome: incarnonResult.pagesFailed > 0 ? 'partial' : 'ok',
+          detail:
+            incarnonResult.pagesFailed > 0
+              ? `Tagged ${incarnonResult.weaponsTagged} weapons with ${incarnonResult.pagesFailed} page failures.`
+              : `Tagged ${incarnonResult.weaponsTagged} weapons from ${incarnonResult.pagesScraped} wiki pages.`,
+          pagesScraped: incarnonResult.pagesScraped,
+          pagesFailed: incarnonResult.pagesFailed,
+          weaponsTagged: incarnonResult.weaponsTagged,
+          imagesDownloaded: incarnonResult.imagesDownloaded,
+          imagesSkipped: incarnonResult.imagesSkipped,
+          fetchOk: incarnonResult.fetchOk,
+          error:
+            incarnonResult.errors.length > 0
+              ? incarnonResult.errors.slice(0, 5).join('; ')
+              : undefined,
+        };
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       summary.incarnonWiki = {
         outcome: 'failed',
-        detail: 'Incarnon wiki sync failed.',
-        pagesScraped: incarnonResult.pagesScraped,
-        pagesFailed: incarnonResult.pagesFailed,
-        weaponsTagged: incarnonResult.weaponsTagged,
-        imagesDownloaded: incarnonResult.imagesDownloaded,
-        imagesSkipped: incarnonResult.imagesSkipped,
+        detail: 'Incarnon sync failed.',
+        error: msg,
         fetchOk: false,
-        error: incarnonResult.errors.slice(0, 3).join('; ') || 'Unknown error.',
       };
-      err('[Incarnon] Sync failed — no pages scraped.');
-    } else {
-      log(
-        `[Incarnon] Done — ${incarnonResult.pagesScraped} pages, ${incarnonResult.weaponsTagged} weapons, ` +
-          `${incarnonResult.imagesDownloaded} images downloaded, ${incarnonResult.imagesSkipped} cached.`,
-      );
-      summary.incarnonWiki = {
-        outcome: incarnonResult.pagesFailed > 0 ? 'partial' : 'ok',
-        detail:
-          incarnonResult.pagesFailed > 0
-            ? `Tagged ${incarnonResult.weaponsTagged} weapons with ${incarnonResult.pagesFailed} page failures.`
-            : `Tagged ${incarnonResult.weaponsTagged} weapons from ${incarnonResult.pagesScraped} wiki pages.`,
-        pagesScraped: incarnonResult.pagesScraped,
-        pagesFailed: incarnonResult.pagesFailed,
-        weaponsTagged: incarnonResult.weaponsTagged,
-        imagesDownloaded: incarnonResult.imagesDownloaded,
-        imagesSkipped: incarnonResult.imagesSkipped,
-        fetchOk: incarnonResult.fetchOk,
-        error:
-          incarnonResult.errors.length > 0
-            ? incarnonResult.errors.slice(0, 5).join('; ')
-            : undefined,
-      };
+      err('[Incarnon] Sync failed —', e);
     }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    summary.incarnonWiki = {
-      outcome: 'failed',
-      detail: 'Incarnon sync failed.',
-      error: msg,
-      fetchOk: false,
-    };
-    err('[Incarnon] Sync failed —', e);
   }
 
   summary.durationMs = Date.now() - startTime;
