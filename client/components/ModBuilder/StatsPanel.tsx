@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+import type { IncarnonData, IncarnonSelection } from '../../types/incarnon';
 import type { Warframe, Weapon, EquipmentType, ModSlot, ValenceBonus } from '../../types/warframe';
 import { extractArchonShardBonuses } from '../../utils/archonShardBonuses';
 import { formatPercent } from '../../utils/damage';
@@ -18,6 +19,9 @@ interface StatsPanelProps {
   shardSlots?: ShardSlotConfig[];
   shardTypes?: ShardType[];
   valenceBonus?: ValenceBonus | null;
+  incarnonEnabled?: boolean;
+  incarnonData?: IncarnonData | null;
+  incarnonSelections?: IncarnonSelection[];
   headerActions?: ReactNode;
 }
 
@@ -29,6 +33,9 @@ export function StatsPanel({
   shardSlots,
   shardTypes,
   valenceBonus,
+  incarnonEnabled = false,
+  incarnonData = null,
+  incarnonSelections,
   headerActions,
 }: StatsPanelProps) {
   return (
@@ -49,7 +56,14 @@ export function StatsPanel({
           shardTypes={shardTypes}
         />
       ) : (
-        <WeaponStats weapon={equipment as Weapon} slots={slots} valenceBonus={valenceBonus} />
+        <WeaponStats
+          weapon={equipment as Weapon}
+          slots={slots}
+          valenceBonus={valenceBonus}
+          incarnonEnabled={incarnonEnabled}
+          incarnonData={incarnonData}
+          incarnonSelections={incarnonSelections}
+        />
       )}
     </div>
   );
@@ -395,15 +409,25 @@ function WeaponStats({
   weapon,
   slots,
   valenceBonus,
+  incarnonEnabled = false,
+  incarnonData = null,
+  incarnonSelections,
 }: {
   weapon: Weapon;
   slots?: ModSlot[];
   valenceBonus?: ValenceBonus | null;
+  incarnonEnabled?: boolean;
+  incarnonData?: IncarnonData | null;
+  incarnonSelections?: IncarnonSelection[];
 }) {
   const calc: WeaponCalcResult | null = useMemo(() => {
     if (!slots) return null;
-    return calculateWeaponDps(weapon, slots, valenceBonus);
-  }, [weapon, slots, valenceBonus]);
+    return calculateWeaponDps(weapon, slots, valenceBonus, {
+      enabled: incarnonEnabled,
+      data: incarnonData,
+      selections: incarnonSelections,
+    });
+  }, [weapon, slots, valenceBonus, incarnonEnabled, incarnonData, incarnonSelections]);
 
   const fireBehaviors = useMemo(
     () => normalizeFireBehaviorsJson(weapon.fire_behaviors),

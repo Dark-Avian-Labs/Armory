@@ -91,6 +91,44 @@ apiRouter.get('/weapons', (req: Request, res: Response) => {
   }
 });
 
+apiRouter.get('/incarnon', (req: Request, res: Response) => {
+  try {
+    const weaponUniqueName = typeof req.query.weapon === 'string' ? req.query.weapon.trim() : '';
+    if (!weaponUniqueName) {
+      res.status(400).json({ error: 'weapon query parameter is required' });
+      return;
+    }
+
+    const db = getDb();
+    const row = db
+      .prepare('SELECT has_incarnon, incarnon_data FROM weapons WHERE unique_name = ?')
+      .get(weaponUniqueName) as
+      | { has_incarnon?: number; incarnon_data?: string | null }
+      | undefined;
+
+    if (!row) {
+      res.status(404).json({ error: 'Weapon not found' });
+      return;
+    }
+
+    let data = null;
+    if (row.incarnon_data) {
+      try {
+        data = JSON.parse(row.incarnon_data);
+      } catch {
+        data = null;
+      }
+    }
+
+    res.json({
+      hasIncarnon: row.has_incarnon === 1,
+      data,
+    });
+  } catch (err) {
+    sendInternalError(res, 'incarnon.get', err);
+  }
+});
+
 apiRouter.get('/companions', (_req: Request, res: Response) => {
   try {
     const db = getDb();
@@ -434,6 +472,16 @@ const ModConfigSchema = z
       )
       .optional(),
     orokinReactor: z.boolean().optional(),
+    incarnonEnabled: z.boolean().optional(),
+    incarnonSelections: z
+      .array(
+        z.object({
+          tier: z.number().int().min(1),
+          perkName: z.string().nullable(),
+          unlocked: z.boolean(),
+        }),
+      )
+      .optional(),
     valenceBonus: z
       .object({
         element: z.enum([

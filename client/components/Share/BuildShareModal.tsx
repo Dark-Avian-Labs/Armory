@@ -4,6 +4,7 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 
 import feathers from '../../assets/feathers.svg';
 import orokinReactorImg from '../../assets/orokin-reactor.png';
+import type { IncarnonSelection } from '../../types/incarnon';
 import type {
   Ability,
   BuildConfig,
@@ -39,6 +40,7 @@ import {
   type ParsedShareAbility,
   useWarframeShareAbilities,
 } from './useWarframeShareAbilities';
+import { useWeaponShareIncarnon } from './useWeaponShareIncarnon';
 
 const SHARE_CANVAS_WIDTH = 720;
 const SHARE_CANVAS_HEIGHT = 1280;
@@ -119,6 +121,8 @@ interface BuildShareModalProps {
   orokinReactor: boolean;
   formaCost?: FormaCount;
   helminthConfig?: BuildConfig['helminth'];
+  incarnonEnabled?: boolean;
+  incarnonSelections?: IncarnonSelection[];
   valenceBonus?: ValenceBonus | null;
 }
 
@@ -346,6 +350,91 @@ function ShareReactorStamp({ active }: { active: boolean }) {
           <MaterialSymbol name="close" style={{ fontSize: 16 }} />
         )}
       </span>
+    </div>
+  );
+}
+
+function ShareIncarnonStamp({ active }: { active: boolean }) {
+  if (!active) return null;
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <MaterialSymbol name="upgrade" className="text-success" style={{ fontSize: 28 }} />
+      <span className="text-success inline-flex items-center justify-center" aria-hidden>
+        <MaterialSymbol name="check" filled style={{ fontSize: 16 }} />
+      </span>
+    </div>
+  );
+}
+
+function ShareIncarnonPanel({
+  tiers,
+  iconPx,
+  iconsOnly = false,
+}: {
+  tiers: Array<{
+    tier: number;
+    unlocked: boolean;
+    perkName: string | null;
+    description: string | null;
+    imagePath: string | null;
+  }>;
+  iconPx: number;
+  iconsOnly?: boolean;
+}) {
+  const MAX_DESCRIPTION_LENGTH = 900;
+  const TRUNCATED_DESCRIPTION_LENGTH = MAX_DESCRIPTION_LENGTH - 3;
+  const firstUnlocked = tiers.find((tier) => tier.unlocked && tier.description);
+  const displayDesc =
+    firstUnlocked?.description != null && firstUnlocked.description.length > MAX_DESCRIPTION_LENGTH
+      ? `${firstUnlocked.description.slice(0, TRUNCATED_DESCRIPTION_LENGTH).trim()}...`
+      : firstUnlocked?.description;
+
+  return (
+    <div className="flex min-h-0 flex-col gap-2">
+      <div className="flex justify-center gap-1.5">
+        {tiers.map((tier) => {
+          const initial = (tier.perkName ?? `Evolution ${tier.tier}`).charAt(0).toUpperCase();
+          return (
+            <div
+              key={tier.tier}
+              title={!tier.unlocked ? 'Upgrade not unlocked' : (tier.perkName ?? undefined)}
+              className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg border ${
+                !tier.unlocked
+                  ? 'border-white/10 bg-black/20 opacity-60'
+                  : 'border-white/15 bg-black/25'
+              }`}
+              style={{ width: iconPx, height: iconPx }}
+            >
+              {!tier.unlocked ? (
+                <MaterialSymbol
+                  name="hide_source"
+                  className="text-white/45"
+                  style={{ fontSize: 20 }}
+                />
+              ) : tier.imagePath ? (
+                <img
+                  src={`/images${tier.imagePath}`}
+                  alt=""
+                  className="invert-on-light max-h-[88%] max-w-[88%] rounded object-cover"
+                  draggable={false}
+                />
+              ) : (
+                <span className="text-sm font-bold text-white/45">{initial}</span>
+              )}
+              <span className="absolute -top-0.5 -left-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-white/20 px-0.5 text-[8px] font-bold text-[#dbe4ff]">
+                {tier.tier}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {iconsOnly ? null : displayDesc ? (
+        <p className="line-clamp-[10] text-[10px] leading-snug break-words text-[#b8c8ec]">
+          {displayDesc}
+        </p>
+      ) : (
+        <p className="text-[10px] text-[#7e8fb8]">No Incarnon perk description loaded.</p>
+      )}
     </div>
   );
 }
@@ -751,6 +840,8 @@ export function BuildShareModal({
   orokinReactor,
   formaCost,
   helminthConfig,
+  incarnonEnabled = false,
+  incarnonSelections,
   valenceBonus,
 }: BuildShareModalProps) {
   const exportRef = useRef<HTMLDivElement | null>(null);
@@ -783,6 +874,19 @@ export function BuildShareModal({
     isWarframe ? (equipment as Warframe) : null,
     helminthConfig,
   );
+  const shareIncarnon = useWeaponShareIncarnon(
+    !isWarframe ? (equipment as Weapon) : null,
+    incarnonEnabled,
+    incarnonSelections,
+  );
+  const incarnonInput =
+    shareIncarnon.showIncarnon && shareIncarnon.incarnonData
+      ? {
+          enabled: true,
+          data: shareIncarnon.incarnonData,
+          selections: incarnonSelections,
+        }
+      : undefined;
   const warframeCalc = useMemo(() => {
     if (!isWarframe) return null;
     try {
@@ -797,11 +901,11 @@ export function BuildShareModal({
   const weaponCalc = useMemo(() => {
     if (isWarframe) return null;
     try {
-      return calculateWeaponDps(equipment as Weapon, slots, valenceBonus);
+      return calculateWeaponDps(equipment as Weapon, slots, valenceBonus, incarnonInput);
     } catch {
       return null;
     }
-  }, [equipment, isWarframe, slots, valenceBonus]);
+  }, [equipment, isWarframe, slots, valenceBonus, incarnonInput]);
 
   const equippedSlots = useMemo(() => slots.filter((s) => s.mod), [slots]);
   const filledArcanes = useMemo(() => arcaneSlots.filter((s) => s.arcane), [arcaneSlots]);
@@ -1009,6 +1113,7 @@ export function BuildShareModal({
       <div className="flex w-full shrink-0 flex-wrap items-end justify-center gap-4">
         <ShareFormaCounts forma={formaCost} />
         <ShareReactorStamp active={orokinReactor} />
+        <ShareIncarnonStamp active={shareIncarnon.showIncarnon} />
       </div>
       <ModsShareSection slots={equippedSlots} />
       <div className="flex shrink-0 flex-wrap items-center justify-center gap-3 py-1">
@@ -1097,6 +1202,11 @@ export function BuildShareModal({
     !isWarframe && weaponCalc && weaponRadarValues ? (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 pl-1">
         <ShareHeroImage equipmentImagePath={equipmentImagePath} equipmentName={equipmentName} />
+        {shareIncarnon.showIncarnon ? (
+          <div className="shrink-0 px-0.5 py-1">
+            <ShareIncarnonPanel tiers={shareIncarnon.tiers} iconPx={skillIconPx} iconsOnly />
+          </div>
+        ) : null}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <ShareRadarAuto labels={weaponStatLabels} values={weaponRadarValues} />
         </div>

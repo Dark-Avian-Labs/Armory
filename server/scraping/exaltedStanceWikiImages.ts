@@ -5,16 +5,18 @@ import * as cheerio from 'cheerio';
 
 import { IMAGES_DIR } from '../config.js';
 import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import { getWikiUserAgent } from './wikiUserAgent.js';
 
 const WIKI_BASE = 'https://wiki.warframe.com';
 
 const ARMORY_STANCE_WIKI_ROOT_SEGMENTS = ['ArmoryWiki', 'StanceMod'] as const;
 
-const WIKI_FETCH_HEADERS = {
-  Accept: 'text/html,application/json;q=0.9,image/*;q=0.8,*/*;q=0.7',
-  'User-Agent':
-    'ArmoryWarframeDataImporter/1.0 (Warframe wiki infobox images for exalted stance mods; open-source)',
-} as const;
+function wikiFetchHeaders(): Record<string, string> {
+  return {
+    Accept: 'text/html,application/json;q=0.9,image/*;q=0.8,*/*;q=0.7',
+    'User-Agent': getWikiUserAgent(),
+  };
+}
 
 export interface WikiExaltedStanceImageSeed {
   wikiPageTitle: string;
@@ -43,7 +45,7 @@ async function queryWikiFileDownloadUrl(fileName: string): Promise<string | null
   try {
     response = await fetchWithTimeout(
       api.toString(),
-      { headers: WIKI_FETCH_HEADERS },
+      { headers: wikiFetchHeaders() },
       FETCH_TIMEOUT_MS.htmlPage,
     );
   } catch (error: unknown) {
@@ -130,7 +132,7 @@ async function fetchWikiHtml(pageTitle: string): Promise<string | null> {
   try {
     response = await fetchWithTimeout(
       url,
-      { headers: WIKI_FETCH_HEADERS },
+      { headers: wikiFetchHeaders() },
       FETCH_TIMEOUT_MS.htmlPage,
     );
   } catch (error: unknown) {
@@ -167,7 +169,7 @@ async function downloadWikiImageToDisk(
   try {
     response = await fetchWithTimeout(
       fullUrl,
-      { headers: WIKI_FETCH_HEADERS },
+      { headers: wikiFetchHeaders() },
       FETCH_TIMEOUT_MS.binaryImage,
     );
   } catch (error: unknown) {

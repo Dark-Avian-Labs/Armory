@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 
 import { EXPORTS_DIR, REQUIRED_EXPORTS } from '../config.js';
+import { getCodexDb } from '../db/codex.js';
+import { syncCodexWeaponIncarnonFlags } from '../db/codexIncarnonSync.js';
 import { getDb } from '../db/connection.js';
 import { processExports, backfillModDescriptions } from '../db/queries.js';
 import { createAppSchema } from '../db/schema.js';
@@ -11,6 +13,7 @@ import {
   syncExaltedStanceWikiImagesOnly,
 } from '../scraping/exaltedStanceMods.js';
 import { syncHiddenCompanionWeaponsFromOverframe } from '../scraping/hiddenCompanionWeapons.js';
+import { syncIncarnonFromWiki } from '../scraping/incarnonWiki.js';
 import { scrapeIndex } from '../scraping/indexScraper.js';
 import { scrapeItems } from '../scraping/itemScraper.js';
 import { runWikiScrape } from '../scraping/wikiScraper.js';
@@ -102,6 +105,7 @@ function emptySummary(start: number): StartupPipelineSummary {
     overframe: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     wiki: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     helminthWiki: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
+    incarnonWiki: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     warframeMarketLinks: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     blockingIssues: [],
   };
@@ -547,6 +551,64 @@ export async function runStartupPipeline(
       fetchOk: false,
     };
     err('[Helminth] Sync failed —', e);
+  }
+
+  log('[Incarnon] Syncing incarnon evolution data from wiki...');
+  try {
+    const db = getDb();
+    const incarnonResult = await syncIncarnonFromWiki(db);
+    try {
+      const codexCount = syncCodexWeaponIncarnonFlags(db, getCodexDb());
+      log(`[Incarnon] Codex export flags synced for ${codexCount} weapons.`);
+    } catch (codexErr) {
+      err('[Incarnon] Codex export sync failed —', codexErr);
+    }
+
+    if (!incarnonResult.fetchOk && incarnonResult.pagesScraped === 0) {
+      summary.incarnonWiki = {
+        outcome: 'failed',
+        detail: 'Incarnon wiki sync failed.',
+        pagesScraped: incarnonResult.pagesScraped,
+        pagesFailed: incarnonResult.pagesFailed,
+        weaponsTagged: incarnonResult.weaponsTagged,
+        imagesDownloaded: incarnonResult.imagesDownloaded,
+        imagesSkipped: incarnonResult.imagesSkipped,
+        fetchOk: false,
+        error: incarnonResult.errors.slice(0, 3).join('; ') || 'Unknown error.',
+      };
+      err('[Incarnon] Sync failed — no pages scraped.');
+    } else {
+      log(
+        `[Incarnon] Done — ${incarnonResult.pagesScraped} pages, ${incarnonResult.weaponsTagged} weapons, ` +
+          `${incarnonResult.imagesDownloaded} images downloaded, ${incarnonResult.imagesSkipped} cached.`,
+      );
+      summary.incarnonWiki = {
+        outcome: incarnonResult.pagesFailed > 0 ? 'partial' : 'ok',
+        detail:
+          incarnonResult.pagesFailed > 0
+            ? `Tagged ${incarnonResult.weaponsTagged} weapons with ${incarnonResult.pagesFailed} page failures.`
+            : `Tagged ${incarnonResult.weaponsTagged} weapons from ${incarnonResult.pagesScraped} wiki pages.`,
+        pagesScraped: incarnonResult.pagesScraped,
+        pagesFailed: incarnonResult.pagesFailed,
+        weaponsTagged: incarnonResult.weaponsTagged,
+        imagesDownloaded: incarnonResult.imagesDownloaded,
+        imagesSkipped: incarnonResult.imagesSkipped,
+        fetchOk: incarnonResult.fetchOk,
+        error:
+          incarnonResult.errors.length > 0
+            ? incarnonResult.errors.slice(0, 5).join('; ')
+            : undefined,
+      };
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    summary.incarnonWiki = {
+      outcome: 'failed',
+      detail: 'Incarnon sync failed.',
+      error: msg,
+      fetchOk: false,
+    };
+    err('[Incarnon] Sync failed —', e);
   }
 
   summary.durationMs = Date.now() - startTime;

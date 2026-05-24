@@ -71,6 +71,14 @@ export interface StartupPipelineSummary {
     abilitiesFlagged?: number;
     fetchOk?: boolean;
   };
+  incarnonWiki: StepSummaryBase & {
+    pagesScraped?: number;
+    pagesFailed?: number;
+    weaponsTagged?: number;
+    imagesDownloaded?: number;
+    imagesSkipped?: number;
+    fetchOk?: boolean;
+  };
   warframeMarketLinks: StepSummaryBase & {
     rowsUpserted?: number;
     slugCount?: number;
@@ -233,6 +241,21 @@ export function printStartupPipelineSummary(s: StartupPipelineSummary): void {
   }
   if (hm.error) hmLines.push(`Error: ${hm.error}`);
   row('Helminth', hm.outcome, hmLines);
+
+  const ic = s.incarnonWiki;
+  const icLines: string[] = [ic.detail];
+  if (ic.pagesScraped !== undefined) {
+    icLines.push(
+      `Pages: ${ic.pagesScraped} scraped, ${ic.pagesFailed ?? 0} failed; weapons tagged: ${ic.weaponsTagged ?? 0}.`,
+    );
+  }
+  if (ic.imagesDownloaded !== undefined) {
+    icLines.push(
+      `Images: ${ic.imagesDownloaded} downloaded, ${ic.imagesSkipped ?? 0} reused from cache.`,
+    );
+  }
+  if (ic.error) icLines.push(`Error: ${ic.error}`);
+  row('Incarnon', ic.outcome, icLines);
 
   const wm = s.warframeMarketLinks;
   const wmLines: string[] = [wm.detail];

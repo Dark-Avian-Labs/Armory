@@ -1,0 +1,238 @@
+import fs from 'fs';
+import path from 'path';
+
+import type Database from 'better-sqlite3';
+
+import { IMAGES_DIR } from '../config.js';
+import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import { collectIncarnonGenesisUnlockers } from '../import/incarnonGenesisSeed.js';
+import type { IncarnonData, IncarnonEvolutionTier, IncarnonPerkOption } from './incarnonTypes.js';
+import { parseGenesisPageWithWeaponValues, parseIntrinsicPageHtml } from './incarnonWikiParse.js';
+import { getWikiUserAgent } from './wikiUserAgent.js';
+
+const WIKI_BASE = 'https://wiki.warframe.com';
+const INTRINSIC_INCANNON_WEAPONS = [
+  'Felarx',
+  'Innodem',
+  'Laetum',
+  'Onos',
+  'Phenmor',
+  'Praedos',
+  'Ruvox',
+  'Thalys',
+] as const;
+
+const INCARNON_IMAGES_DIR = path.join(IMAGES_DIR, 'incarnon');
+
+export interface IncarnonWikiSyncResult {
+  pagesScraped: number;
+  pagesFailed: number;
+  weaponsTagged: number;
+  imagesDownloaded: number;
+  imagesSkipped: number;
+  fetchOk: boolean;
+  errors: string[];
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWikiPage(slug: string): Promise<string> {
+  const url = `${WIKI_BASE}/w/${slug}`;
+  const response = await fetchWithTimeout(
+    url,
+    {
+      headers: {
+        'User-Agent': getWikiUserAgent(),
+        Accept: 'text/html',
+      },
+    },
+    FETCH_TIMEOUT_MS.exportDownload,
+  );
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} for ${slug}`);
+  }
+  return response.text();
+}
+
+function safeImageFileName(fileName: string): string {
+  return fileName.replace(/[<>:"|?*]/g, '_');
+}
+
+function imagePathFromFileName(fileName: string): string {
+  return `/incarnon/${safeImageFileName(fileName)}`;
+}
+
+async function ensureIncarnonImage(fileName: string): Promise<{
+  imagePath: string;
+  downloaded: boolean;
+}> {
+  fs.mkdirSync(INCARNON_IMAGES_DIR, { recursive: true });
+  const safeName = safeImageFileName(fileName);
+  const localPath = path.join(INCARNON_IMAGES_DIR, safeName);
+  const imagePath = imagePathFromFileName(fileName);
+
+  if (fs.existsSync(localPath) && fs.statSync(localPath).size > 0) {
+    return { imagePath, downloaded: false };
+  }
+
+  const url = `${WIKI_BASE}/images/${encodeURIComponent(fileName).replace(/%2F/g, '/')}`;
+  try {
+    const response = await fetchWithTimeout(
+      url,
+      { headers: { 'User-Agent': getWikiUserAgent() } },
+      FETCH_TIMEOUT_MS.exportDownload,
+    );
+    if (!response.ok) {
+      const thumbUrl = `${WIKI_BASE}/images/thumb/${encodeURIComponent(fileName)}/256px-${encodeURIComponent(fileName)}`;
+      const thumbResponse = await fetchWithTimeout(
+        thumbUrl,
+        { headers: { 'User-Agent': getWikiUserAgent() } },
+        FETCH_TIMEOUT_MS.exportDownload,
+      );
+      if (!thumbResponse.ok) {
+        throw new Error(`HTTP ${response.status} / ${thumbResponse.status} for ${fileName}`);
+      }
+      fs.writeFileSync(localPath, Buffer.from(await thumbResponse.arrayBuffer()));
+    } else {
+      fs.writeFileSync(localPath, Buffer.from(await response.arrayBuffer()));
+    }
+    return { imagePath, downloaded: true };
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new Error(`Image download timed out for ${fileName}`);
+    }
+    throw error;
+  }
+}
+
+type PerkWithFile = IncarnonPerkOption & { imageFile?: string };
+
+async function resolveTierImages(
+  tiers: IncarnonEvolutionTier[],
+  stats: { downloaded: number; skipped: number },
+): Promise<IncarnonEvolutionTier[]> {
+  const resolved: IncarnonEvolutionTier[] = [];
+  for (const tier of tiers) {
+    const options: IncarnonPerkOption[] = [];
+    for (const option of tier.options) {
+      const withFile = option as PerkWithFile;
+      let imagePath = option.imagePath;
+      if (withFile.imageFile) {
+        const result = await ensureIncarnonImage(withFile.imageFile);
+        imagePath = result.imagePath;
+        if (result.downloaded) stats.downloaded++;
+        else stats.skipped++;
+      }
+      const { imageFile: _drop, ...rest } = withFile;
+      options.push({ ...rest, imagePath });
+    }
+    resolved.push({ ...tier, options });
+  }
+  return resolved;
+}
+
+function matchWeaponUniqueName(db: Database.Database, weaponName: string): string | null {
+  const row = db
+    .prepare(`SELECT unique_name FROM weapons WHERE LOWER(name) = LOWER(?) LIMIT 1`)
+    .get(weaponName) as { unique_name: string } | undefined;
+  return row?.unique_name ?? null;
+}
+
+export async function syncIncarnonFromWiki(db: Database.Database): Promise<IncarnonWikiSyncResult> {
+  const result: IncarnonWikiSyncResult = {
+    pagesScraped: 0,
+    pagesFailed: 0,
+    weaponsTagged: 0,
+    imagesDownloaded: 0,
+    imagesSkipped: 0,
+    fetchOk: true,
+    errors: [],
+  };
+
+  const imageStats = { downloaded: 0, skipped: 0 };
+  const updates = new Map<string, IncarnonData>();
+
+  db.prepare('UPDATE weapons SET has_incarnon = 0, incarnon_data = NULL').run();
+
+  const genesisSeeds = collectIncarnonGenesisUnlockers();
+
+  for (const seed of genesisSeeds) {
+    try {
+      await sleep(500);
+      const html = await fetchWikiPage(seed.wikiSlug);
+      const parsed = parseGenesisPageWithWeaponValues(html);
+
+      for (const weaponName of parsed.compatibleWeaponNames) {
+        const uniqueName = matchWeaponUniqueName(db, weaponName);
+        if (!uniqueName) {
+          result.errors.push(`Genesis ${seed.wikiSlug}: weapon not in DB: ${weaponName}`);
+          continue;
+        }
+
+        const rawTiers = parsed.weaponEvolutions.get(weaponName) ?? [];
+        const evolutions = await resolveTierImages(rawTiers, imageStats);
+
+        updates.set(uniqueName, {
+          source: 'genesis',
+          genesisUniqueName: seed.genesisUniqueName,
+          wikiSlug: seed.wikiSlug,
+          evolutions,
+        });
+      }
+
+      result.pagesScraped++;
+    } catch (error) {
+      result.pagesFailed++;
+      result.fetchOk = false;
+      const msg = error instanceof Error ? error.message : String(error);
+      result.errors.push(`Genesis ${seed.wikiSlug}: ${msg}`);
+    }
+  }
+
+  for (const weaponName of INTRINSIC_INCANNON_WEAPONS) {
+    try {
+      await sleep(500);
+      const html = await fetchWikiPage(weaponName);
+      const parsed = parseIntrinsicPageHtml(html, weaponName);
+      const uniqueName = matchWeaponUniqueName(db, weaponName);
+      if (!uniqueName) {
+        result.errors.push(`Intrinsic ${weaponName}: weapon not in DB`);
+        continue;
+      }
+
+      const evolutions = await resolveTierImages(parsed.tiers, imageStats);
+      updates.set(uniqueName, {
+        source: 'intrinsic',
+        wikiSlug: weaponName,
+        overview: parsed.overview,
+        evolutions,
+      });
+      result.pagesScraped++;
+    } catch (error) {
+      result.pagesFailed++;
+      result.fetchOk = false;
+      const msg = error instanceof Error ? error.message : String(error);
+      result.errors.push(`Intrinsic ${weaponName}: ${msg}`);
+    }
+  }
+
+  const updateStmt = db.prepare(
+    'UPDATE weapons SET has_incarnon = 1, incarnon_data = ? WHERE unique_name = ?',
+  );
+  const tx = db.transaction(() => {
+    for (const [uniqueName, data] of updates) {
+      updateStmt.run(JSON.stringify(data), uniqueName);
+      result.weaponsTagged++;
+    }
+  });
+  tx();
+
+  result.imagesDownloaded = imageStats.downloaded;
+  result.imagesSkipped = imageStats.skipped;
+
+  return result;
+}
+
+export { INTRINSIC_INCANNON_WEAPONS };

@@ -2,11 +2,9 @@ import type Database from 'better-sqlite3';
 import * as cheerio from 'cheerio';
 
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
+import { getWikiUserAgent } from '../scraping/wikiUserAgent.js';
 
 const HELMINTH_WIKI_URL = 'https://wiki.warframe.com/w/Helminth';
-const HELMINTH_WIKI_USER_AGENT =
-  process.env.HELMINTH_WIKI_USER_AGENT?.trim() ||
-  'Armory/2.0 (data-import; +https://wiki.warframe.com/w/Helminth)';
 
 function normalizeAbilityName(value: string): string {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -43,7 +41,7 @@ export async function fetchHelminthAbilityNameSet(): Promise<{
     const response = await fetch(HELMINTH_WIKI_URL, {
       signal: controller.signal,
       headers: {
-        'User-Agent': HELMINTH_WIKI_USER_AGENT,
+        'User-Agent': getWikiUserAgent(),
       },
     });
     if (!response.ok) {

@@ -15,6 +15,9 @@ interface CapacityBarProps {
   onFormaToggle?: () => void;
   orokinReactor?: boolean;
   onOrokinReactorToggle?: () => void;
+  incarnonEnabled?: boolean;
+  onIncarnonToggle?: () => void;
+  incarnonAvailable?: boolean;
   buildIsPublic?: boolean;
   onBuildIsPublicChange?: (next: boolean) => void;
   readOnly?: boolean;
@@ -37,6 +40,9 @@ export function CapacityBar({
   onFormaToggle,
   orokinReactor = false,
   onOrokinReactorToggle,
+  incarnonEnabled = false,
+  onIncarnonToggle,
+  incarnonAvailable = false,
   buildIsPublic = false,
   onBuildIsPublicChange,
   readOnly = false,
@@ -152,6 +158,19 @@ export function CapacityBar({
           )}
 
           <div className="flex items-center gap-1">
+            {onIncarnonToggle && incarnonAvailable && (
+              <button
+                type="button"
+                onClick={onIncarnonToggle}
+                disabled={readOnly}
+                aria-pressed={incarnonEnabled}
+                aria-label="Incarnon upgrades"
+                title="Incarnon upgrades"
+                className={`${toolToggleClass(incarnonEnabled, 'success')} h-[22px] w-[22px]`}
+              >
+                <MaterialSymbol name="upgrade" style={{ fontSize: 14 }} />
+              </button>
+            )}
             {onOrokinReactorToggle && (
               <button
                 type="button"
