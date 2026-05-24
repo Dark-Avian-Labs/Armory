@@ -80,18 +80,55 @@ function mapHeaderToWeaponName(header: string, compatibleWeaponNames: string[]):
   return contains ?? null;
 }
 
-function buildWeaponColumnMap(
-  headers: string[],
-  compatibleWeaponNames: string[],
-): Map<number, string> {
-  const map = new Map<number, string>();
-  for (let i = 1; i < headers.length - 1; i++) {
-    const weaponName = mapHeaderToWeaponName(headers[i], compatibleWeaponNames);
-    if (weaponName) {
-      map.set(i, weaponName);
-    }
+function parseGenesisRowLayout(texts: string[]): {
+  perkNameIndex: number;
+  templateIndex: number;
+  weaponValueStart: number;
+  notesIndex: number;
+} {
+  const hasTierCell = parseTierNumber(texts[0] ?? '') !== null;
+  const notesIndex = Math.max(0, texts.length - 1);
+  if (hasTierCell) {
+    return { perkNameIndex: 1, templateIndex: 2, weaponValueStart: 3, notesIndex };
   }
-  return map;
+  return { perkNameIndex: 0, templateIndex: 1, weaponValueStart: 2, notesIndex };
+}
+
+function extractWeaponValuesFromRow(
+  cells: Element[],
+  texts: string[],
+  weaponValueStart: number,
+  weaponCount: number,
+  $: CheerioAPI,
+): string[] {
+  const values = Array.from({ length: weaponCount }, () => '-');
+  let logicalCol = 0;
+
+  for (let cellIndex = 0; cellIndex < cells.length; cellIndex++) {
+    const colspan = parseInt($(cells[cellIndex]).attr('colspan') ?? '1', 10);
+    const text = texts[cellIndex] ?? '-';
+    for (let w = 0; w < weaponCount; w++) {
+      const weaponCol = weaponValueStart + w;
+      if (weaponCol >= logicalCol && weaponCol < logicalCol + colspan) {
+        values[w] = text;
+      }
+    }
+    logicalCol += colspan;
+  }
+
+  return values;
+}
+
+function resolveWeaponNamesFromHeaders(
+  headerWeaponLabels: string[],
+  compatibleWeaponNames: string[],
+): string[] {
+  const names: string[] = [];
+  for (const label of headerWeaponLabels) {
+    const resolved = mapHeaderToWeaponName(label, compatibleWeaponNames);
+    if (resolved) names.push(resolved);
+  }
+  return names;
 }
 
 function parseTierNumber(cell: string): number | null {
@@ -142,8 +179,6 @@ export function parseGenesisEvolutionTable($: CheerioAPI): {
     });
 
   const weaponColumnNames = headerCells.slice(1, -1);
-  const notesIndex = headerCells.length - 1;
-  const templateIndex = 2;
 
   const tiers: IncarnonEvolutionTier[] = [];
   let currentTier: IncarnonEvolutionTier | null = null;
@@ -180,15 +215,16 @@ export function parseGenesisEvolutionTable($: CheerioAPI): {
 
       if (!currentTier) return;
 
-      const perkName = tierFromFirst ? texts[1] : first;
+      const layout = parseGenesisRowLayout(texts);
+      const perkName = texts[layout.perkNameIndex] ?? '';
       if (!perkName || CHALLENGE_RE.test(perkName)) return;
 
-      const template = texts[templateIndex] ?? texts[1] ?? '';
-      const notes = texts[notesIndex] || undefined;
-      const nameCell = tierFromFirst ? cells[1] : cells[0];
+      const template = texts[layout.templateIndex] ?? '';
+      const notes = texts[layout.notesIndex] || undefined;
+      const nameCell = cells[layout.perkNameIndex] ?? null;
 
       currentTier.options.push(
-        makePerkOption($, perkName, template, notes, nameCell ?? null) as IncarnonPerkOption,
+        makePerkOption($, perkName, template, notes, nameCell) as IncarnonPerkOption,
       );
 
       void weaponColumnNames;
@@ -270,9 +306,11 @@ export function parseGenesisPageWithWeaponValues(
       });
   }
 
-  const columnMap = buildWeaponColumnMap(headerCells, compatibleWeaponNames);
-  const notesIndex = headerCells.length - 1;
-  const templateIndex = 2;
+  const headerWeaponLabels = headerCells.slice(1, -1);
+  const resolvedWeaponNames = resolveWeaponNamesFromHeaders(
+    headerWeaponLabels,
+    compatibleWeaponNames,
+  );
 
   const tierData = new Map<number, IncarnonEvolutionTier>();
   let currentTier: IncarnonEvolutionTier | null = null;
@@ -307,18 +345,29 @@ export function parseGenesisPageWithWeaponValues(
         }
         if (!currentTier) return;
 
-        const perkName = tierFromFirst ? texts[1] : first;
+        const layout = parseGenesisRowLayout(texts);
+        const perkName = texts[layout.perkNameIndex] ?? '';
         if (!perkName) return;
 
-        const template = texts[templateIndex] ?? '';
-        const notes = texts[notesIndex] || undefined;
-        const nameCell = tierFromFirst ? cells[1] : cells[0];
+        const template = texts[layout.templateIndex] ?? '';
+        const notes = texts[layout.notesIndex] || undefined;
+        const nameCell = cells[layout.perkNameIndex] ?? null;
         const fileName = nameCell ? extractFileNameFromCell($, nameCell) : null;
 
+        const weaponValues = extractWeaponValuesFromRow(
+          cells,
+          texts,
+          layout.weaponValueStart,
+          resolvedWeaponNames.length,
+          $,
+        );
+
         const weaponDescriptions = new Map<string, string>();
-        for (const [colIndex, wName] of columnMap) {
-          const valueCell = texts[colIndex] ?? '-';
-          weaponDescriptions.set(wName, substitutePlaceholders(template, valueCell));
+        for (let w = 0; w < resolvedWeaponNames.length; w++) {
+          weaponDescriptions.set(
+            resolvedWeaponNames[w],
+            substitutePlaceholders(template, weaponValues[w] ?? '-'),
+          );
         }
 
         const baseOption: IncarnonPerkOption & {

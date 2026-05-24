@@ -103,4 +103,38 @@ describe('calculateWeaponDps', () => {
     const result = calculateWeaponDps(weapon, [], { element: 'Heat', percent: 60 });
     expect(result.modded.totalDamage).toBeCloseTo(160);
   });
+
+  it('applies incarnon flat base damage to damage_per_shot and base stats', () => {
+    const weapon = makeWeapon({
+      damage_per_shot: JSON.stringify([100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+      total_damage: 100,
+    });
+    const result = calculateWeaponDps(weapon, [], null, {
+      enabled: true,
+      data: {
+        source: 'genesis',
+        wikiSlug: 'Test_Genesis',
+        evolutions: [
+          { tier: 1, options: [{ name: 'Form', description: 'Transform' }] },
+          {
+            tier: 2,
+            options: [
+              {
+                name: "Hunter's Mantra",
+                description: 'Increase Base Damage by +18.',
+                statModifiers: [{ stat: 'baseDamage', mode: 'flat', value: 18 }],
+              },
+            ],
+          },
+        ],
+      },
+      selections: [
+        { tier: 1, unlocked: true, perkName: 'Form' },
+        { tier: 2, unlocked: true, perkName: "Hunter's Mantra" },
+      ],
+    });
+
+    expect(result.base.totalDamage).toBeCloseTo(118);
+    expect(result.modded.totalDamage).toBeCloseTo(118);
+  });
 });
