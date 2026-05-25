@@ -1008,8 +1008,9 @@ html.ui-clear:not(.dark) {
   }
 
   .select-dropdown-menu {
-    padding: 6px;
-    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 10px;
     border: 1px solid var(--color-glass-border);
     background: var(--color-surface-modal);
     box-shadow:
@@ -1021,13 +1022,11 @@ html.ui-clear:not(.dark) {
   }
 
   .select-dropdown-menu--attached {
-    border-radius: 0 0 10px 10px;
-    border-top: none;
-    padding-top: 0;
+    border-radius: 10px;
   }
 
   .select-dropdown-menu--floating {
-    border-radius: 12px;
+    border-radius: 10px;
   }
 
   .select-dropdown-trigger--open {
@@ -1035,15 +1034,41 @@ html.ui-clear:not(.dark) {
     border-bottom-right-radius: 0;
   }
 
+  .select-dropdown-scroll {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-glass-active) transparent;
+  }
+
+  .select-dropdown-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .select-dropdown-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .select-dropdown-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-glass-active);
+    border-radius: 0;
+  }
+
+  .select-dropdown-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--color-glass-border-hover);
+  }
+
   .select-dropdown-item {
     position: relative;
     width: 100%;
     display: block;
+    box-sizing: border-box;
     border: none;
     background: transparent;
-    border-radius: 10px;
-    padding: 10px 12px 10px 16px;
+    border-radius: 0;
+    padding: 8px 10px 8px 13px;
     color: var(--color-foreground);
+    text-align: left;
     text-decoration: none;
     font-size: 14px;
     line-height: 1.2;
@@ -1056,12 +1081,11 @@ html.ui-clear:not(.dark) {
   .select-dropdown-item::before {
     content: '';
     position: absolute;
-    left: 4px;
-    top: 50%;
-    transform: translateY(-50%);
+    left: 0;
+    top: 0;
+    bottom: 0;
     width: 3px;
-    height: calc(100% - 12px);
-    border-radius: 2px;
+    border-radius: 0;
     background: transparent;
     transition: background 0.15s ease;
   }
