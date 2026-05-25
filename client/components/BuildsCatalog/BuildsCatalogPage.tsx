@@ -129,7 +129,7 @@ export function BuildsCatalogPage() {
 
   const handleSelect = (item: EquipmentItem) => {
     const eqType = resolveEquipmentType(item);
-    navigate(buildEquipmentBuildsListPath(eqType, item.unique_name));
+    navigate(buildEquipmentBuildsListPath(eqType, item.unique_name, item.name));
   };
 
   return (

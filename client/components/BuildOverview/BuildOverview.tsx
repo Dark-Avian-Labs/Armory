@@ -4,14 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { buildEditPath, buildReadOnlyPath } from '../../app/paths';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
 import { useLoadoutStorage, type Loadout } from '../../hooks/useLoadoutStorage';
-import {
-  EQUIPMENT_SLOT_CONFIGS,
-  POLARITIES,
-  type BuildVisibility,
-  type StoredBuild,
-  type EquipmentType,
-  type PolarityKey,
-} from '../../types/warframe';
+import { type BuildVisibility, type StoredBuild } from '../../types/warframe';
 import { apiFetch } from '../../utils/api';
 import {
   formatLoadoutSlotTypeLabel,
@@ -19,18 +12,19 @@ import {
   getLoadoutSlotDisplayLabel,
   getSlotTypeForBuild,
 } from '../../utils/buildCatalogCategory';
-import type { EquipmentLookupRow } from '../../utils/buildCatalogCategory';
+import { getUsedFormaCost } from '../../utils/buildFormaCost';
 import { enrichBuildFromCatalog } from '../../utils/enrichBuildFromCatalog';
-import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
+import type { FormaCount } from '../../utils/formaCounter';
 import { isClerkUserId } from '../../utils/isClerkUserId';
 import { linkifyPlainText } from '../../utils/linkifyText';
+import { loadEquipmentLookup, type EquipmentPolaritySource } from '../../utils/loadEquipmentLookup';
 import { parseStoredBuildFromApi } from '../../utils/parseStoredBuildFromApi';
-import { weaponOmitsExilusSlot } from '../../utils/specialItems';
 import {
   TAB_ORDER,
   TAB_LABELS,
   type EquipmentPickerTab,
 } from '../BuildsCatalog/buildsCatalogUtils';
+import { FormaMetricChips } from '../shared/FormaMetricChips';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface BuildsByCategory {
@@ -39,113 +33,18 @@ interface BuildsByCategory {
   builds: StoredBuild[];
 }
 
-interface EquipmentPolaritySource extends EquipmentLookupRow {
-  artifact_slots?: string;
-  polarities?: string;
-  aura_polarity?: string;
-  exilus_polarity?: string;
-}
-
 const OVERVIEW_METRIC_CHIP_CLASS =
   'bg-glass flex h-10 min-w-14 items-center justify-center gap-1.5 rounded-lg px-2';
 
 const OVERVIEW_ROW_ACTIONS_CLASS =
   'flex w-[4.25rem] shrink-0 items-center justify-end gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100';
 
-function getPolarizedSlotCount(build: StoredBuild): number {
-  const slots = Array.isArray(build.slots) ? build.slots : [];
-  return slots.reduce((count, slot) => count + (typeof slot.polarity === 'string' ? 1 : 0), 0);
-}
-
-function buildDefaultPolarities(
-  equipmentType: EquipmentType,
-  equipment: EquipmentPolaritySource,
-  equipmentName?: string,
-): SlotPolarity[] {
-  const config = EQUIPMENT_SLOT_CONFIGS[equipmentType] || EQUIPMENT_SLOT_CONFIGS.warframe;
-  const defaults: SlotPolarity[] = [];
-
-  const artifactSlots: string[] = (() => {
-    try {
-      return equipment.artifact_slots ? JSON.parse(equipment.artifact_slots) : [];
-    } catch {
-      return [];
-    }
-  })();
-
-  const polarityFromAP = (ap: string | undefined): string | undefined => {
-    if (!ap || ap === 'AP_UNIVERSAL') return undefined;
-    return (POLARITIES as Record<string, string>)[ap as PolarityKey] ? ap : undefined;
-  };
-
-  const hasArtifactSlots = artifactSlots.length > 0;
-
-  if (config.hasAura) {
-    const polarity = hasArtifactSlots
-      ? polarityFromAP(artifactSlots[8])
-      : equipment.aura_polarity || undefined;
-    defaults.push({ type: 'aura', polarity });
+function formatBuildEquipmentName(build: StoredBuild): string {
+  const baseName = build.equipment_name?.trim() || build.equipment_unique_name;
+  if (build.incarnonEnabled === true) {
+    return `${baseName} Incarnon`;
   }
-  if (config.hasStance) {
-    const polarity = hasArtifactSlots ? polarityFromAP(artifactSlots[8]) : undefined;
-    defaults.push({ type: 'stance', polarity });
-  }
-  if (config.hasPosture) {
-    const polarity = hasArtifactSlots ? polarityFromAP(artifactSlots[8]) : undefined;
-    defaults.push({ type: 'posture', polarity });
-  }
-
-  const generalPolarities: (string | undefined)[] = (() => {
-    if (hasArtifactSlots) {
-      return artifactSlots.slice(0, config.generalSlots).reverse().map(polarityFromAP);
-    }
-    try {
-      const parsed = equipment.polarities ? JSON.parse(equipment.polarities) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  })();
-
-  for (let i = 0; i < config.generalSlots; i += 1) {
-    defaults.push({ type: 'general', polarity: generalPolarities[i] });
-  }
-
-  const skipExilus = weaponOmitsExilusSlot(equipmentName, equipmentType);
-
-  if (config.hasExilus && !skipExilus) {
-    const polarity = hasArtifactSlots
-      ? polarityFromAP(artifactSlots[9])
-      : equipment.exilus_polarity || undefined;
-    defaults.push({ type: 'exilus', polarity });
-  }
-
-  return defaults;
-}
-
-function getUsedFormaCost(
-  build: StoredBuild,
-  equipmentLookup: Record<string, EquipmentPolaritySource>,
-): FormaCount {
-  const equipment = equipmentLookup[build.equipment_unique_name];
-  if (!equipment) {
-    const fallback = getPolarizedSlotCount(build);
-    return {
-      regular: fallback,
-      universal: 0,
-      umbra: 0,
-      stance: 0,
-      total: fallback,
-    };
-  }
-
-  const defaults = buildDefaultPolarities(build.equipment_type, equipment, build.equipment_name);
-  const desired: SlotPolarity[] = (Array.isArray(build.slots) ? build.slots : []).map((slot) => ({
-    type: slot.type,
-    polarity: slot.polarity,
-  }));
-
-  return calculateFormaCount(defaults, desired);
+  return baseName;
 }
 
 type PublicLoadout = Loadout;
@@ -256,50 +155,10 @@ export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps
   useEffect(() => {
     let alive = true;
 
-    async function loadEquipmentLookup() {
-      const endpoints = [
-        '/api/warframes',
-        '/api/companions',
-        '/api/weapons?type=LongGuns',
-        '/api/weapons?type=Pistols',
-        '/api/weapons?type=Melee',
-        '/api/weapons?type=SpaceGuns',
-        '/api/weapons?type=SpaceMelee',
-        '/api/weapons?type=SentinelWeapons',
-        '/api/weapons?type=SpecialItems',
-      ];
-      const responses = await Promise.all(
-        endpoints.map(async (url) => {
-          try {
-            const response = await apiFetch(url);
-            if (!response.ok) return [] as EquipmentPolaritySource[];
-            const body = (await response.json()) as {
-              items?: EquipmentPolaritySource[];
-            };
-            return Array.isArray(body.items) ? body.items : [];
-          } catch {
-            return [] as EquipmentPolaritySource[];
-          }
-        }),
-      );
+    void loadEquipmentLookup().then((nextLookup) => {
+      if (alive) setEquipmentLookup(nextLookup);
+    });
 
-      if (!alive) return;
-
-      const nextLookup: Record<string, EquipmentPolaritySource> = {};
-      for (const items of responses) {
-        for (const item of items) {
-          if (!item || typeof item.unique_name !== 'string') continue;
-          if (item.unique_name.length === 0) continue;
-          if (!nextLookup[item.unique_name]) {
-            nextLookup[item.unique_name] = item;
-          }
-        }
-      }
-
-      setEquipmentLookup(nextLookup);
-    }
-
-    void loadEquipmentLookup();
     return () => {
       alive = false;
     };
@@ -771,33 +630,9 @@ function BuildRow({
   hasLoadouts: boolean;
   showManagementActions?: boolean;
 }) {
-  const formaEntries = [
-    { key: 'regular', count: usedFormaCost.regular, icon: '/icons/forma.png' },
-    {
-      key: 'universal',
-      count: usedFormaCost.universal,
-      icon: '/icons/forma-omni.png',
-    },
-    {
-      key: 'umbra',
-      count: usedFormaCost.umbra,
-      icon: '/icons/forma-umbra.png',
-    },
-    {
-      key: 'stance',
-      count: usedFormaCost.stance,
-      icon: '/icons/forma-stance.png',
-    },
-  ].filter((entry) => entry.count > 0);
-
-  const visibleFormaEntries =
-    formaEntries.length > 0
-      ? formaEntries
-      : [{ key: 'regular', count: 0, icon: '/icons/forma.png' }];
-
   return (
     <div
-      className="group hover:bg-glass-hover flex cursor-pointer items-center gap-3 px-4 py-3 transition-[background-color,color] duration-200"
+      className="group hover:bg-glass-hover flex cursor-pointer items-center gap-5 px-4 py-5 transition-[background-color,color] duration-200"
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -808,7 +643,7 @@ function BuildRow({
         }
       }}
     >
-      <div className="bg-glass flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg">
+      <div className="bg-glass flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg">
         {build.equipment_image ? (
           <img
             src={build.equipment_image}
@@ -817,34 +652,24 @@ function BuildRow({
             draggable={false}
           />
         ) : (
-          <span className="text-muted/50 text-xs">?</span>
+          <span className="text-muted/50 text-sm">?</span>
         )}
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-foreground truncate text-sm font-medium">{build.name}</span>
+          <span className="text-foreground truncate text-base font-medium">{build.name}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-muted truncate text-xs">{build.equipment_name}</span>
-          <span className="text-muted/40 text-[10px]">
+          <span className="text-muted truncate text-sm">{formatBuildEquipmentName(build)}</span>
+          <span className="text-muted/40 text-xs">
             {new Date(build.updated_at).toLocaleDateString()}
           </span>
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {visibleFormaEntries.map((entry) => (
-          <div key={entry.key} className={OVERVIEW_METRIC_CHIP_CLASS}>
-            <img
-              src={entry.icon}
-              alt={`${entry.key} forma used`}
-              className="h-6 w-6 object-contain"
-              draggable={false}
-            />
-            <span className="text-foreground text-sm font-semibold">{entry.count}</span>
-          </div>
-        ))}
+        <FormaMetricChips usedFormaCost={usedFormaCost} />
       </div>
 
       {showManagementActions ? (

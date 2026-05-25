@@ -596,6 +596,7 @@ function toBuildListItem(row: BuildRow, ownerUsernames: Map<string, string | nul
   const equipmentName =
     typeof cfg?.equipment_name === 'string' ? cfg.equipment_name : row.equipment_unique_name;
   const equipmentImage = typeof cfg?.equipment_image === 'string' ? cfg.equipment_image : undefined;
+  const slots = Array.isArray(cfg?.slots) ? cfg.slots : [];
   return {
     id: row.id,
     name: row.name,
@@ -603,6 +604,7 @@ function toBuildListItem(row: BuildRow, ownerUsernames: Map<string, string | nul
     equipment_unique_name: row.equipment_unique_name,
     equipment_name: equipmentName,
     equipment_image: equipmentImage,
+    slots,
     updated_at: row.updated_at,
     created_at: row.created_at,
     owner_user_id: row.clerk_user_id,
