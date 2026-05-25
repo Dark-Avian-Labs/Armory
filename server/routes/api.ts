@@ -50,6 +50,8 @@ const MAX_DESCRIPTION_LENGTH = 8000;
 const COPY_PREFIX = 'Copy of ';
 const BUILD_SELECT_LIST =
   'id, clerk_user_id, name, equipment_type, equipment_unique_name, mod_config, created_at, updated_at, visibility, description';
+const BUILD_SELECT_LIST_FROM_B =
+  'b.id, b.clerk_user_id, b.name, b.equipment_type, b.equipment_unique_name, b.mod_config, b.created_at, b.updated_at, b.visibility, b.description';
 const LOADOUT_SELECT_LIST =
   'id, clerk_user_id, name, visibility, description, created_at, updated_at';
 const MODS_PAGE_MAX = 500;
@@ -1649,7 +1651,7 @@ apiRouter.get('/builds/favorites', (req: Request, res: Response) => {
     const authState = getClerkAuthState(req);
     const rows = db
       .prepare(
-        `SELECT ${BUILD_SELECT_LIST}
+        `SELECT ${BUILD_SELECT_LIST_FROM_B}
          FROM builds b
          INNER JOIN build_favorites f ON f.build_id = b.id
          WHERE f.clerk_user_id = ?

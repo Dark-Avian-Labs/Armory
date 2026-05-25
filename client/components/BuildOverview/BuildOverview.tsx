@@ -394,7 +394,7 @@ export function BuildOverview({
             </div>
           )}
 
-          {!viewingUserBuilds && loadouts.length > 0 && (
+          {!viewingUserBuilds && !favoritesMode && loadouts.length > 0 && (
             <div className="glass-shell overflow-hidden">
               <div className="border-glass-divider bg-glass-hover/50 flex items-center justify-between border-b px-4 py-2.5">
                 <h2 className="text-muted text-sm font-semibold tracking-wider uppercase">
@@ -573,7 +573,7 @@ export function BuildOverview({
         )}
       </div>
 
-      {!viewingUserBuilds && linkingBuild && loadouts.length > 0 && (
+      {!viewingUserBuilds && !favoritesMode && linkingBuild && loadouts.length > 0 && (
         <div className="modal-overlay" onClick={() => setLinkingBuild(null)}>
           <div
             className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
@@ -616,7 +616,7 @@ export function BuildOverview({
         </div>
       )}
 
-      {!viewingUserBuilds && linkingLoadout && (
+      {!viewingUserBuilds && !favoritesMode && linkingLoadout && (
         <div
           className="modal-overlay"
           tabIndex={0}
