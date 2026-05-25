@@ -266,3 +266,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.57.0** `feat` [#297](https://github.com/Dark-Avian-Labs/Armory/pull/297): incarnon upgrades
 - **v1.57.1** `fix` [#298](https://github.com/Dark-Avian-Labs/Armory/pull/298): incarnon upgrades
 - **v1.58.0** `feat` [#301](https://github.com/Dark-Avian-Labs/Armory/pull/301): favorites
+- **v1.58.1** `fix` [#302](https://github.com/Dark-Avian-Labs/Armory/pull/302): favorites
