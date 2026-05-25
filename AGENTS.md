@@ -25,3 +25,21 @@ The server listens on port 3002 by default.
 - **API-only in development mode.** Armory only serves the React SPA when `NODE_ENV=production`. In development, the root URL returns 404 ("Cannot GET /"). This is by design; in normal dev flow you'd use Vite's dev server for the client.
 - **Database auto-creates on first start.** Armory's schema is created automatically during server initialization, so no manual DB setup is needed.
 - **Clerk keys are required in production.** Set `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` (or `VITE_CLERK_PUBLISHABLE_KEY`). See `.env.example` for session-token metadata and admin role setup.
+
+### UI consistency
+
+Armory and Codex mirror the same design tokens and component patterns manually (no shared UI package). When changing layout, glass surfaces, buttons, modals, or dropdowns in one app, apply the same change in the other.
+
+| Area                | Spec                                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Layout max width    | `max-w-[2000px]` on header, main content wrapper, and footer                                                                                |
+| Glass surfaces      | `glass-surface` (panels/cards), `glass-modal-surface` (dialogs), `glass-shell` (auth shells)                                                |
+| Header nav          | `header-link` with `.active` modifier — 40px height, 1rem radius, accent tokens when active                                                 |
+| Buttons             | `btn btn-accent`, `btn btn-danger`, `btn btn-cancel` (modal dismiss), `btn btn-secondary` (neutral actions)                                 |
+| Modals              | Use `Modal` component; `className` includes `glass-modal-surface`; footers use `modal-actions`                                              |
+| Dropdowns           | `SelectDropdown` with `triggerClassName` / `placement` props; user-menu triggers use `user-menu-select-trigger`                             |
+| Stale client banner | Gold `stale-update-cta` button with `stale-update-cta__label` text "Refresh now!"                                                           |
+| Suspense fallback   | `LazySuspenseFallback` component                                                                                                            |
+| Toasts              | `.toast-pill` with optional `data-tone="success\|error\|warning"`                                                                           |
+| Form focus          | `.form-input:focus` and `.form-group input:focus` — accent border + soft glow (`box-shadow` ring)                                           |
+| Theme keys          | `--color-accent`, `--color-glass-border`, `--color-glass`, `--radius-ui`, `--shadow-panel`; UI style via `html.ui-clear` / `html.ui-shadow` |

@@ -51,11 +51,7 @@ function isCompactModBuilderRoute(pathname: string): boolean {
 }
 
 function getNavLinkClass(isActive: boolean): string {
-  return `inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2 text-sm transition-[color,background-color,border-color,box-shadow] duration-200 ${
-    isActive
-      ? 'border-accent bg-accent-weak text-accent'
-      : 'border-glass-border text-muted hover:border-glass-border-hover hover:text-foreground'
-  }`;
+  return `header-link inline-flex items-center gap-1.5 ${isActive ? 'active' : ''}`;
 }
 
 export function Layout() {
