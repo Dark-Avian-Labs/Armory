@@ -55,7 +55,7 @@ export function SelectDropdown({
   open,
   onOpenChange,
   disabled,
-  triggerClassName = 'form-input flex w-full cursor-pointer items-center justify-between gap-2 py-2 text-left text-xs disabled:cursor-not-allowed disabled:opacity-50',
+  triggerClassName = 'form-input select-dropdown-trigger flex w-full cursor-pointer items-center justify-between gap-2 py-2 text-left text-xs disabled:cursor-not-allowed disabled:opacity-50',
   placement = 'attached',
 }: SelectDropdownProps) {
   const rootRef = useRef<HTMLDivElement>(null);

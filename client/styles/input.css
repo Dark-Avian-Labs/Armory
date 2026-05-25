@@ -1007,6 +1007,11 @@ html.ui-clear:not(.dark) {
     outline: none;
   }
 
+  .select-dropdown-trigger {
+    border: 1px solid var(--color-glass-border);
+    border-radius: 10px;
+  }
+
   .select-dropdown-menu {
     padding: 0;
     overflow: hidden;
