@@ -34,6 +34,10 @@ export function userBuildsPath(userSlug: string): string {
 export function buildEquipmentBuildsListPath(
   equipmentType: string,
   equipmentUniqueName: string,
+  equipmentName?: string,
 ): string {
-  return `/builder/builds/${encodeURIComponent(equipmentType)}/${encodeURIComponent(equipmentUniqueName)}`;
+  const base = `/builder/builds/${encodeURIComponent(equipmentType)}/${encodeURIComponent(equipmentUniqueName)}`;
+  const trimmedName = equipmentName?.trim();
+  if (!trimmedName) return base;
+  return `${base}?name=${encodeURIComponent(trimmedName)}`;
 }

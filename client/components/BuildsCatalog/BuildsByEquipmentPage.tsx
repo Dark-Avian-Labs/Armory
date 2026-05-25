@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { APP_PATHS, buildLoadoutPath, buildReadOnlyPath, userBuildsPath } from '../../app/paths';
-import { EQUIPMENT_TYPE_LABELS, type EquipmentType } from '../../types/warframe';
+import { EQUIPMENT_TYPE_LABELS, type EquipmentType, type StoredBuild } from '../../types/warframe';
 import { apiFetch } from '../../utils/api';
-import { normalizeEquipmentName } from '../../utils/specialItems';
+import { getUsedFormaCost } from '../../utils/buildFormaCost';
+import type { FormaCount } from '../../utils/formaCounter';
+import { loadEquipmentLookup, type EquipmentPolaritySource } from '../../utils/loadEquipmentLookup';
+import { resolveEquipmentDisplayName } from '../../utils/resolveEquipmentDisplayName';
+import { FormaMetricChips } from '../shared/FormaMetricChips';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 type BuildListItem = {
@@ -14,6 +18,7 @@ type BuildListItem = {
   equipment_unique_name: string;
   equipment_name: string;
   equipment_image?: string;
+  slots?: StoredBuild['slots'];
   updated_at: string;
   owner_user_id: string;
   owner_username: string | null;
@@ -74,12 +79,27 @@ function parseEquipmentTypeParam(raw: string | undefined): EquipmentType | 'comp
   return decoded as EquipmentType | 'companion_weapon';
 }
 
+function toStoredBuildForForma(build: BuildListItem): StoredBuild {
+  return {
+    id: String(build.id),
+    name: build.name,
+    equipment_type: build.equipment_type as EquipmentType,
+    equipment_unique_name: build.equipment_unique_name,
+    equipment_name: build.equipment_name,
+    equipment_image: build.equipment_image,
+    slots: Array.isArray(build.slots) ? build.slots : [],
+    created_at: build.updated_at,
+    updated_at: build.updated_at,
+  } as StoredBuild;
+}
+
 export function BuildsByEquipmentPage() {
   const { equipmentType: equipmentTypeParam, equipmentUniqueName: equipmentUniqueParam } =
     useParams<{
       equipmentType: string;
       equipmentUniqueName: string;
     }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const equipmentType = parseEquipmentTypeParam(equipmentTypeParam);
@@ -89,11 +109,28 @@ export function BuildsByEquipmentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [equipmentLabel, setEquipmentLabel] = useState<string>('');
+  const [equipmentLookup, setEquipmentLookup] = useState<Record<string, EquipmentPolaritySource>>(
+    {},
+  );
 
   const decodedUnique = useMemo(
     () => (equipmentUniqueParam ? decodeURIComponent(equipmentUniqueParam) : ''),
     [equipmentUniqueParam],
   );
+
+  const queryName = searchParams.get('name');
+
+  useEffect(() => {
+    let alive = true;
+
+    void loadEquipmentLookup().then((nextLookup) => {
+      if (alive) setEquipmentLookup(nextLookup);
+    });
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!equipmentType || !decodedUnique) return;
@@ -123,7 +160,7 @@ export function BuildsByEquipmentPage() {
         if (rows.length > 0 && rows[0].equipment_name) {
           setEquipmentLabel(rows[0].equipment_name);
         } else {
-          setEquipmentLabel(decodedUnique);
+          setEquipmentLabel('');
         }
       } catch (e) {
         if (!alive) return;
@@ -136,6 +173,24 @@ export function BuildsByEquipmentPage() {
       alive = false;
     };
   }, [equipmentType, decodedUnique]);
+
+  const displayName = useMemo(
+    () =>
+      resolveEquipmentDisplayName(decodedUnique, {
+        queryName,
+        catalogName: equipmentLookup[decodedUnique]?.name ?? null,
+        storedName: equipmentLabel,
+      }),
+    [decodedUnique, queryName, equipmentLookup, equipmentLabel],
+  );
+
+  const usedFormaByBuildId = useMemo(() => {
+    const counts: Record<number, FormaCount> = {};
+    for (const build of builds) {
+      counts[build.id] = getUsedFormaCost(toStoredBuildForForma(build), equipmentLookup);
+    }
+    return counts;
+  }, [builds, equipmentLookup]);
 
   if (!equipmentType || !decodedUnique) {
     return (
@@ -164,9 +219,7 @@ export function BuildsByEquipmentPage() {
           <MaterialSymbol name="arrow_back" style={{ fontSize: 22 }} />
         </button>
         <div className="min-w-0">
-          <h1 className="text-foreground truncate text-lg font-semibold">
-            {normalizeEquipmentName(equipmentLabel || decodedUnique)}
-          </h1>
+          <h1 className="text-foreground truncate text-lg font-semibold">{displayName}</h1>
           <p className="text-muted text-xs">
             {builds.length} build{builds.length === 1 ? '' : 's'}
             {loadouts.length > 0 ? (
@@ -190,14 +243,14 @@ export function BuildsByEquipmentPage() {
                 key={l.id}
                 type="button"
                 onClick={() => navigate(buildLoadoutPath(l.id))}
-                className="hover:bg-glass-hover flex w-full items-center gap-3 px-4 py-3 text-left transition-[background-color] duration-200"
+                className="hover:bg-glass-hover flex w-full items-center gap-5 px-4 py-5 text-left transition-[background-color] duration-200"
               >
-                <div className="bg-glass flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg">
-                  <MaterialSymbol name="layers" style={{ fontSize: 22 }} className="text-muted" />
+                <div className="bg-glass flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg">
+                  <MaterialSymbol name="layers" style={{ fontSize: 36 }} className="text-muted" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-foreground truncate text-sm font-medium">{l.name}</div>
-                  <div className="text-muted flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                  <div className="text-foreground truncate text-base font-medium">{l.name}</div>
+                  <div className="text-muted flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
                     <span className="truncate">
                       <OwnerAttribution
                         owner_username={l.owner_username}
@@ -205,12 +258,12 @@ export function BuildsByEquipmentPage() {
                       />
                     </span>
                     {l.visibility === 'public' ? (
-                      <span className="text-success/90 text-[10px] font-semibold uppercase">
+                      <span className="text-success/90 text-xs font-semibold uppercase">
                         Public
                       </span>
                     ) : null}
                     {l.is_own ? (
-                      <span className="text-accent text-[10px] font-semibold uppercase">Yours</span>
+                      <span className="text-accent text-xs font-semibold uppercase">Yours</span>
                     ) : null}
                     <span className="text-muted/50">
                       {new Date(l.updated_at).toLocaleDateString()}
@@ -250,9 +303,9 @@ export function BuildsByEquipmentPage() {
                 key={b.id}
                 type="button"
                 onClick={() => navigate(buildReadOnlyPath(String(b.id)))}
-                className="hover:bg-glass-hover flex w-full items-center gap-3 px-4 py-3 text-left transition-[background-color] duration-200"
+                className="hover:bg-glass-hover flex w-full items-center gap-5 px-4 py-5 text-left transition-[background-color] duration-200"
               >
-                <div className="bg-glass flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg">
+                <div className="bg-glass flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg">
                   {b.equipment_image ? (
                     <img
                       src={b.equipment_image}
@@ -261,12 +314,12 @@ export function BuildsByEquipmentPage() {
                       draggable={false}
                     />
                   ) : (
-                    <span className="text-muted/50 text-xs">?</span>
+                    <span className="text-muted/50 text-sm">?</span>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-foreground truncate text-sm font-medium">{b.name}</div>
-                  <div className="text-muted flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                  <div className="text-foreground truncate text-base font-medium">{b.name}</div>
+                  <div className="text-muted flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
                     <span className="truncate">
                       <OwnerAttribution
                         owner_username={b.owner_username}
@@ -277,6 +330,19 @@ export function BuildsByEquipmentPage() {
                       {new Date(b.updated_at).toLocaleDateString()}
                     </span>
                   </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <FormaMetricChips
+                    usedFormaCost={
+                      usedFormaByBuildId[b.id] ?? {
+                        regular: 0,
+                        universal: 0,
+                        umbra: 0,
+                        stance: 0,
+                        total: 0,
+                      }
+                    }
+                  />
                 </div>
               </button>
             ))}

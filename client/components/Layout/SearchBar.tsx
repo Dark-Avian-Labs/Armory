@@ -142,7 +142,7 @@ export function SearchBar() {
 
   const handleShowBuilds = (result: EquipmentSearchResult) => {
     if (!result.equipment_type) return;
-    navigate(buildEquipmentBuildsListPath(result.equipment_type, result.unique_name));
+    navigate(buildEquipmentBuildsListPath(result.equipment_type, result.unique_name, result.name));
     closeSearch();
   };
 
