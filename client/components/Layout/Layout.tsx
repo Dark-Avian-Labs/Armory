@@ -45,12 +45,13 @@ function isCompactModBuilderRoute(pathname: string): boolean {
     parts[0] === 'builder' &&
     parts[1] !== 'builds' &&
     parts[1] !== 'my-builds' &&
+    parts[1] !== 'favorites' &&
     parts[1] !== 'new'
   );
 }
 
 function getNavLinkClass(isActive: boolean): string {
-  return `inline-flex items-center rounded-2xl border px-4 py-2 text-sm transition-[color,background-color,border-color,box-shadow] duration-200 ${
+  return `inline-flex items-center gap-1.5 rounded-2xl border px-4 py-2 text-sm transition-[color,background-color,border-color,box-shadow] duration-200 ${
     isActive
       ? 'border-accent bg-accent-weak text-accent'
       : 'border-glass-border text-muted hover:border-glass-border-hover hover:text-foreground'
@@ -219,21 +220,33 @@ export function Layout() {
                 end
                 className={({ isActive }) => getNavLinkClass(isActive)}
               >
+                <MaterialSymbol name="stacks" style={{ fontSize: 20 }} />
                 Builds
               </NavLink>
               <NavLink
                 to={APP_PATHS.myBuilds}
                 className={({ isActive }) => getNavLinkClass(isActive)}
               >
+                <MaterialSymbol name="bookmark_stacks" style={{ fontSize: 20 }} />
                 My Builds
               </NavLink>
+              {isLoggedIn ? (
+                <NavLink
+                  to={APP_PATHS.favorites}
+                  className={({ isActive }) => getNavLinkClass(isActive)}
+                >
+                  <MaterialSymbol name="favorite" style={{ fontSize: 20 }} />
+                  Favorites
+                </NavLink>
+              ) : null}
             </nav>
             <button
-              className="btn btn-accent text-sm"
+              className="btn btn-accent inline-flex items-center gap-1.5 text-sm"
               type="button"
               onClick={() => setShowAddBuild(true)}
             >
-              + Add Build
+              <MaterialSymbol name="note_stack_add" style={{ fontSize: 20 }} />
+              Add Build
             </button>
 
             <button

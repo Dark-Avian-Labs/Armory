@@ -1637,6 +1637,102 @@ apiRouter.get('/builds/by-equipment', async (req: Request, res: Response) => {
   }
 });
 
+apiRouter.get('/builds/favorites', (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const authState = getClerkAuthState(req);
+    const rows = db
+      .prepare(
+        `SELECT ${BUILD_SELECT_LIST}
+         FROM builds b
+         INNER JOIN build_favorites f ON f.build_id = b.id
+         WHERE f.clerk_user_id = ?
+         ORDER BY f.created_at DESC`,
+      )
+      .all(clerkUserId) as BuildRow[];
+
+    const builds = rows
+      .filter((row) => canReadBuild(row, clerkUserId, authState.isArmoryAdmin))
+      .map((row) => toBuildResponse(row));
+
+    res.json({ builds });
+  } catch (err) {
+    sendInternalError(res, 'builds.favorites.list', err);
+  }
+});
+
+apiRouter.post('/builds/:id/favorite', (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const id = parseNumericId(req.params.id);
+    if (id === null) {
+      res.status(400).json({ error: 'Invalid build id' });
+      return;
+    }
+
+    const row = db.prepare(`SELECT ${BUILD_SELECT_LIST} FROM builds WHERE id = ?`).get(id) as
+      | BuildRow
+      | undefined;
+    if (!row) {
+      res.status(404).json({ error: 'Build not found' });
+      return;
+    }
+
+    const authState = getClerkAuthState(req);
+    if (!canReadBuild(row, clerkUserId, authState.isArmoryAdmin)) {
+      res.status(404).json({ error: 'Build not found' });
+      return;
+    }
+
+    db.prepare(
+      `INSERT OR IGNORE INTO build_favorites (clerk_user_id, build_id, created_at)
+       VALUES (?, ?, datetime('now'))`,
+    ).run(clerkUserId, id);
+
+    res.json({ success: true, favorited: true });
+  } catch (err) {
+    sendInternalError(res, 'builds.favorite.add', err);
+  }
+});
+
+apiRouter.delete('/builds/:id/favorite', (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const clerkUserId = getClerkUserId(req);
+    if (!clerkUserId) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const id = parseNumericId(req.params.id);
+    if (id === null) {
+      res.status(400).json({ error: 'Invalid build id' });
+      return;
+    }
+
+    db.prepare('DELETE FROM build_favorites WHERE clerk_user_id = ? AND build_id = ?').run(
+      clerkUserId,
+      id,
+    );
+
+    res.json({ success: true, favorited: false });
+  } catch (err) {
+    sendInternalError(res, 'builds.favorite.remove', err);
+  }
+});
+
 apiRouter.get('/builds/:id/loadouts', async (req: Request, res: Response) => {
   try {
     const db = getDb();
@@ -1713,13 +1809,25 @@ apiRouter.get('/builds/:id', async (req: Request, res: Response) => {
 
     const canEdit = isOwner || isGameAdmin;
     const ownerUsernames = await resolveOwnerUsernames([row.clerk_user_id]);
+    const isFavorited =
+      sessionUserId != null
+        ? Boolean(
+            db
+              .prepare(
+                'SELECT 1 FROM build_favorites WHERE clerk_user_id = ? AND build_id = ? LIMIT 1',
+              )
+              .get(sessionUserId, id),
+          )
+        : false;
 
     res.json({
       build: toBuildResponse(row),
       owner_user_id: row.clerk_user_id,
       owner_username: getOwnerDisplayName(row.clerk_user_id, ownerUsernames),
       owner_deleted: ownerUsernames.get(row.clerk_user_id) === DELETED_USER_LABEL,
+      is_owner: isOwner,
       can_edit: canEdit,
+      is_favorited: isFavorited,
     });
   } catch (err) {
     sendInternalError(res, 'builds.getById', err);

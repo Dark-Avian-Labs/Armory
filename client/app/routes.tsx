@@ -10,6 +10,11 @@ export const UserBuildsPage = lazy(() =>
     default: mod.UserBuildsPage,
   })),
 );
+export const FavoritesPage = lazy(() =>
+  import('../components/BuildOverview/FavoritesPage').then((mod) => ({
+    default: mod.FavoritesPage,
+  })),
+);
 export const BuildsCatalogPage = lazy(() =>
   import('../components/BuildsCatalog/BuildsCatalogPage').then((mod) => ({
     default: mod.BuildsCatalogPage,

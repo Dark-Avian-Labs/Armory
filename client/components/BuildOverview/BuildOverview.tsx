@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { buildEditPath, buildReadOnlyPath } from '../../app/paths';
+import { useBuildFavorites } from '../../hooks/useBuildFavorites';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
 import { useLoadoutStorage, type Loadout } from '../../hooks/useLoadoutStorage';
 import { type BuildVisibility, type StoredBuild } from '../../types/warframe';
@@ -52,23 +53,35 @@ type PublicLoadout = Loadout;
 type BuildOverviewProps = {
   ownerUserId?: string;
   ownerUserSlug?: string;
+  favoritesMode?: boolean;
 };
 
-export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps = {}) {
+export function BuildOverview({
+  ownerUserId,
+  ownerUserSlug,
+  favoritesMode = false,
+}: BuildOverviewProps = {}) {
   const slug = ownerUserSlug?.trim() ?? ownerUserId?.trim() ?? '';
-  const viewingUserBuilds = slug.length > 0;
+  const viewingUserBuilds = !favoritesMode && slug.length > 0;
   const {
     builds: ownBuilds,
     loading: ownLoading,
     deleteBuild,
     refresh: refreshBuilds,
   } = useBuildStorage();
+  const [favoriteBuilds, setFavoriteBuilds] = useState<StoredBuild[]>([]);
+  const [favoriteBuildsLoading, setFavoriteBuildsLoading] = useState(favoritesMode);
   const [userBuilds, setUserBuilds] = useState<StoredBuild[]>([]);
   const [userBuildsLoading, setUserBuildsLoading] = useState(viewingUserBuilds);
   const [userLoadouts, setUserLoadouts] = useState<PublicLoadout[]>([]);
   const [ownerUsername, setOwnerUsername] = useState<string | null>(null);
-  const builds = viewingUserBuilds ? userBuilds : ownBuilds;
-  const loading = viewingUserBuilds ? userBuildsLoading : ownLoading;
+  const builds = favoritesMode ? favoriteBuilds : viewingUserBuilds ? userBuilds : ownBuilds;
+  const loading = favoritesMode
+    ? favoriteBuildsLoading
+    : viewingUserBuilds
+      ? userBuildsLoading
+      : ownLoading;
+  const { removeFavorite } = useBuildFavorites();
   const {
     loadouts,
     createLoadout,
@@ -79,6 +92,38 @@ export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps
     publishLoadout,
   } = useLoadoutStorage();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!favoritesMode) return undefined;
+    let alive = true;
+    setFavoriteBuildsLoading(true);
+    void (async () => {
+      try {
+        const res = await apiFetch('/api/builds/favorites');
+        if (!res.ok) {
+          if (alive) setFavoriteBuilds([]);
+          return;
+        }
+        const body = (await res.json()) as {
+          builds?: Array<Record<string, unknown>>;
+        };
+        if (!alive) return;
+        const rows = Array.isArray(body.builds) ? body.builds : [];
+        setFavoriteBuilds(
+          rows
+            .map((row) => parseStoredBuildFromApi(row))
+            .filter((b): b is StoredBuild => b != null),
+        );
+      } catch {
+        if (alive) setFavoriteBuilds([]);
+      } finally {
+        if (alive) setFavoriteBuildsLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [favoritesMode]);
 
   useEffect(() => {
     if (!viewingUserBuilds || !slug) return undefined;
@@ -273,9 +318,21 @@ export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps
 
   const openBuild = useCallback(
     (buildId: string) => {
-      navigate(viewingUserBuilds ? buildReadOnlyPath(buildId) : buildEditPath(buildId));
+      navigate(
+        viewingUserBuilds || favoritesMode ? buildReadOnlyPath(buildId) : buildEditPath(buildId),
+      );
     },
-    [navigate, viewingUserBuilds],
+    [navigate, viewingUserBuilds, favoritesMode],
+  );
+
+  const handleUnfavorite = useCallback(
+    async (build: StoredBuild) => {
+      const ok = await removeFavorite(build.id);
+      if (ok) {
+        setFavoriteBuilds((prev) => prev.filter((entry) => entry.id !== build.id));
+      }
+    },
+    [removeFavorite],
   );
 
   if (loading) {
@@ -290,6 +347,12 @@ export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps
 
   return (
     <div className="mx-auto flex max-w-[2000px] flex-col gap-4">
+      {favoritesMode && (
+        <div className="glass-shell px-4 py-3 sm:px-5">
+          <h1 className="display-title text-foreground text-2xl">Favorites</h1>
+          <p className="text-muted mt-1 text-sm">Builds you have saved for quick access.</p>
+        </div>
+      )}
       {viewingUserBuilds && (
         <div className="glass-shell px-4 py-3 sm:px-5">
           <h1 className="display-title text-foreground text-2xl">
@@ -389,9 +452,13 @@ export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps
           {enrichedBuilds.length === 0 ? (
             <div className="glass-shell flex h-64 flex-col items-center justify-center gap-4">
               <p className="text-muted text-lg">
-                {viewingUserBuilds ? 'No public builds' : 'No builds yet'}
+                {favoritesMode
+                  ? 'No favorites yet'
+                  : viewingUserBuilds
+                    ? 'No public builds'
+                    : 'No builds yet'}
               </p>
-              {!viewingUserBuilds && (
+              {!viewingUserBuilds && !favoritesMode && (
                 <p className="text-muted text-sm">
                   Click "Add Build" in the header to create your first build.
                 </p>
@@ -427,8 +494,9 @@ export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps
                         if (confirm(`Delete "${build.name}"?`)) void deleteBuild(build.id);
                       }}
                       onLink={() => setLinkingBuild(build)}
-                      hasLoadouts={!viewingUserBuilds && loadouts.length > 0}
+                      hasLoadouts={!viewingUserBuilds && !favoritesMode && loadouts.length > 0}
                       showManagementActions={!viewingUserBuilds}
+                      onUnfavorite={favoritesMode ? () => void handleUnfavorite(build) : undefined}
                     />
                   ))}
                 </div>
@@ -437,7 +505,7 @@ export function BuildOverview({ ownerUserId, ownerUserSlug }: BuildOverviewProps
           )}
         </div>
 
-        {!viewingUserBuilds && (
+        {!viewingUserBuilds && !favoritesMode && (
           <div className="hidden w-80 shrink-0 space-y-4 lg:block">
             <div className="glass-surface p-4">
               <h3 className="text-foreground mb-3 text-sm font-semibold">Loadouts</h3>
@@ -619,6 +687,7 @@ function BuildRow({
   onClick,
   onDelete,
   onLink,
+  onUnfavorite,
   hasLoadouts,
   showManagementActions = true,
 }: {
@@ -627,6 +696,7 @@ function BuildRow({
   onClick: () => void;
   onDelete: () => void;
   onLink: () => void;
+  onUnfavorite?: () => void;
   hasLoadouts: boolean;
   showManagementActions?: boolean;
 }) {
@@ -687,16 +757,30 @@ function BuildRow({
               <MaterialSymbol name="add_link" style={{ fontSize: 18 }} />
             </button>
           )}
-          <button
-            className="text-muted/40 hover:bg-danger/10 hover:text-danger rounded-lg p-1.5 text-xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            aria-label="Delete build"
-          >
-            <MaterialSymbol name="close" style={{ fontSize: 18 }} />
-          </button>
+          {onUnfavorite ? (
+            <button
+              className="text-accent hover:bg-accent/10 rounded-lg p-1.5 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUnfavorite();
+              }}
+              title="Remove from favorites"
+              aria-label="Remove from favorites"
+            >
+              <MaterialSymbol name="favorite" filled style={{ fontSize: 18 }} />
+            </button>
+          ) : (
+            <button
+              className="text-muted/40 hover:bg-danger/10 hover:text-danger rounded-lg p-1.5 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              aria-label="Delete build"
+            >
+              <MaterialSymbol name="close" style={{ fontSize: 18 }} />
+            </button>
+          )}
         </div>
       ) : null}
     </div>
