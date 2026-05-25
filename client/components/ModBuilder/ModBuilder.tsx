@@ -578,6 +578,34 @@ export function ModBuilder() {
     if (loaded) return undefined;
     let alive = true;
 
+    async function syncBuildMetadataFromApi(targetBuildId: string): Promise<void> {
+      const response = await apiFetch(`/api/builds/${targetBuildId}`);
+      if (!response.ok) return;
+      const body = (await response.json()) as {
+        can_edit?: boolean;
+        is_owner?: boolean;
+        is_favorited?: boolean;
+        owner_user_id?: string;
+        owner_username?: string | null;
+        build?: { visibility?: string };
+      };
+      if (!alive) return;
+      setIsOwnBuild(body.can_edit === true);
+      setIsBuildOwner(body.is_owner === true);
+      setIsFavorited(body.is_favorited === true);
+      setBuildOwnerUserId(
+        typeof body.owner_user_id === 'string' && body.owner_user_id.length > 0
+          ? body.owner_user_id
+          : null,
+      );
+      setBuildOwnerUsername(typeof body.owner_username === 'string' ? body.owner_username : null);
+      if (body.build?.visibility === 'public') {
+        setBuildIsPublic(true);
+      } else if (body.build?.visibility === 'private' || body.build?.visibility === 'unlisted') {
+        setBuildIsPublic(false);
+      }
+    }
+
     async function loadBuildFromApi(targetBuildId: string): Promise<void> {
       const response = await apiFetch(`/api/builds/${targetBuildId}`);
       if (!response.ok) {
@@ -662,7 +690,6 @@ export function ModBuilder() {
         setCurrentBuildId(stored.id);
         setIsOwnBuild(true);
         setIsBuildOwner(true);
-        setIsFavorited(false);
         setBuildOwnerUserId(null);
         setBuildOwnerUsername(null);
         setBuildIsPublic(stored.visibility === 'public');
@@ -684,6 +711,8 @@ export function ModBuilder() {
         }
         if (!stored.slots?.length) {
           void loadBuildFromApi(buildId);
+        } else {
+          void syncBuildMetadataFromApi(buildId);
         }
       } else {
         void loadBuildFromApi(buildId);
