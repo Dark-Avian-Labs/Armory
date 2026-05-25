@@ -1,9 +1,8 @@
-import { useEffect } from 'react';
-
 import { useCompare, type CompareSnapshot } from '../../context/CompareContext';
 import { formatPercent } from '../../utils/damage';
 import { getElementColor } from '../../utils/elements';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
+import { Modal } from '../ui/Modal';
 
 interface CompareModalProps {
   onClose: () => void;
@@ -119,14 +118,6 @@ function bestIndex(values: number[], dir: BestDir): number {
 export function CompareModal({ onClose }: CompareModalProps) {
   const { snapshots } = useCompare();
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [onClose]);
-
   if (snapshots.length < 2) return null;
   const cols = snapshots.length;
 
@@ -137,145 +128,144 @@ export function CompareModal({ onClose }: CompareModalProps) {
   const elementTypes = [...allElements];
 
   return (
-    <div
-      className="fixed inset-0 z-[9998] flex items-start justify-center overflow-y-auto bg-black/70 pt-12 pb-24"
-      onClick={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      className="glass-modal-surface max-h-[calc(100vh-6rem)] w-full max-w-4xl overflow-y-auto rounded-xl p-6 shadow-2xl"
+      ariaLabelledBy="compare-modal-title"
     >
-      <div
-        className="glass-modal-surface w-full max-w-4xl rounded-xl p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-foreground text-lg font-semibold">Build Comparison</h2>
-          <button
-            type="button"
-            className="text-muted hover:text-foreground flex items-center justify-center rounded p-1 transition-colors"
-            onClick={onClose}
-            aria-label="Close comparison"
-          >
-            <MaterialSymbol name="close" style={{ fontSize: 24 }} />
-          </button>
-        </div>
-
-        <div
-          className={`mb-4 grid gap-3`}
-          style={{ gridTemplateColumns: `160px repeat(${cols}, 1fr)` }}
+      <div className="mb-6 flex items-center justify-between">
+        <h2 id="compare-modal-title" className="text-foreground text-lg font-semibold">
+          Build Comparison
+        </h2>
+        <button
+          type="button"
+          className="text-muted hover:text-foreground flex items-center justify-center rounded p-1 transition-colors"
+          onClick={onClose}
+          aria-label="Close comparison"
         >
-          <div />
-          {snapshots.map((snap) => (
-            <div key={snap.id} className="text-center">
-              {snap.weaponImage && (
-                <img
-                  src={`/images${snap.weaponImage}`}
-                  alt={snap.weaponName}
-                  className="mx-auto mb-2 h-14 w-14 rounded-lg object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
+          <MaterialSymbol name="close" style={{ fontSize: 24 }} />
+        </button>
+      </div>
+
+      <div
+        className={`mb-4 grid gap-3`}
+        style={{ gridTemplateColumns: `160px repeat(${cols}, 1fr)` }}
+      >
+        <div />
+        {snapshots.map((snap) => (
+          <div key={snap.id} className="text-center">
+            {snap.weaponImage && (
+              <img
+                src={`/images${snap.weaponImage}`}
+                alt={snap.weaponName}
+                className="mx-auto mb-2 h-14 w-14 rounded-lg object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            )}
+            <div className="text-foreground text-sm font-semibold">{snap.label}</div>
+            <div className="text-muted text-xs">{snap.weaponName}</div>
+          </div>
+        ))}
+      </div>
+
+      <SectionLabel>Modded Stats</SectionLabel>
+      <div className="space-y-0.5">
+        {STAT_ROWS.map((row) => {
+          const values = snapshots.map(row.getValue);
+          const best = bestIndex(values, row.best);
+          return (
+            <StatRowView
+              key={row.label}
+              label={row.label}
+              values={values}
+              format={row.format}
+              bestIdx={best}
+              cols={cols}
+            />
+          );
+        })}
+      </div>
+
+      <SectionLabel>DPS</SectionLabel>
+      <div className="space-y-0.5">
+        {DPS_ROWS.map((row) => {
+          const values = snapshots.map(row.getValue);
+          const best = bestIndex(values, row.best);
+          return (
+            <StatRowView
+              key={row.label}
+              label={row.label}
+              values={values}
+              format={row.format}
+              bestIdx={best}
+              cols={cols}
+            />
+          );
+        })}
+      </div>
+
+      {elementTypes.length > 0 && (
+        <>
+          <SectionLabel>Element Breakdown</SectionLabel>
+          <div className="space-y-0.5">
+            {elementTypes.map((elType) => {
+              const values = snapshots.map((s) => {
+                const entry = s.elementBreakdown.find((e) => e.type === elType);
+                return entry?.value ?? 0;
+              });
+              const best = bestIndex(values, 'high');
+              const color = getElementColor(elType);
+              return (
+                <div
+                  key={elType}
+                  className="grid items-center gap-3 rounded px-2 py-1.5"
+                  style={{
+                    gridTemplateColumns: `160px repeat(${cols}, 1fr)`,
                   }}
-                />
-              )}
-              <div className="text-foreground text-sm font-semibold">{snap.label}</div>
-              <div className="text-muted text-xs">{snap.weaponName}</div>
-            </div>
-          ))}
-        </div>
-
-        <SectionLabel>Modded Stats</SectionLabel>
-        <div className="space-y-0.5">
-          {STAT_ROWS.map((row) => {
-            const values = snapshots.map(row.getValue);
-            const best = bestIndex(values, row.best);
-            return (
-              <StatRowView
-                key={row.label}
-                label={row.label}
-                values={values}
-                format={row.format}
-                bestIdx={best}
-                cols={cols}
-              />
-            );
-          })}
-        </div>
-
-        <SectionLabel>DPS</SectionLabel>
-        <div className="space-y-0.5">
-          {DPS_ROWS.map((row) => {
-            const values = snapshots.map(row.getValue);
-            const best = bestIndex(values, row.best);
-            return (
-              <StatRowView
-                key={row.label}
-                label={row.label}
-                values={values}
-                format={row.format}
-                bestIdx={best}
-                cols={cols}
-              />
-            );
-          })}
-        </div>
-
-        {elementTypes.length > 0 && (
-          <>
-            <SectionLabel>Element Breakdown</SectionLabel>
-            <div className="space-y-0.5">
-              {elementTypes.map((elType) => {
-                const values = snapshots.map((s) => {
-                  const entry = s.elementBreakdown.find((e) => e.type === elType);
-                  return entry?.value ?? 0;
-                });
-                const best = bestIndex(values, 'high');
-                const color = getElementColor(elType);
-                return (
-                  <div
-                    key={elType}
-                    className="grid items-center gap-3 rounded px-2 py-1.5"
-                    style={{
-                      gridTemplateColumns: `160px repeat(${cols}, 1fr)`,
-                    }}
-                  >
-                    <span className="text-xs font-medium" style={{ color }}>
-                      {elType}
-                    </span>
-                    {values.map((v, i) => (
-                      <span
-                        key={i}
-                        className={`text-center font-mono text-xs tabular-nums ${
-                          i === best ? 'text-success font-bold' : 'text-foreground'
-                        }`}
-                      >
-                        {v > 0 ? fmt(v) : '-'}
-                      </span>
-                    ))}
-                  </div>
-                );
-              })}
-              <div
-                className="border-glass-divider grid items-center gap-3 border-t px-2 pt-1.5"
-                style={{ gridTemplateColumns: `160px repeat(${cols}, 1fr)` }}
-              >
-                <span className="text-muted text-xs font-semibold">Total</span>
-                {(() => {
-                  const vals = snapshots.map((ss) => ss.totalElementDamage);
-                  const bestTotalIdx = bestIndex(vals, 'high');
-                  return snapshots.map((s, i) => (
+                >
+                  <span className="text-xs font-medium" style={{ color }}>
+                    {elType}
+                  </span>
+                  {values.map((v, i) => (
                     <span
                       key={i}
-                      className={`text-center font-mono text-xs font-semibold tabular-nums ${
-                        i === bestTotalIdx ? 'text-success' : 'text-foreground'
+                      className={`text-center font-mono text-xs tabular-nums ${
+                        i === best ? 'text-success font-bold' : 'text-foreground'
                       }`}
                     >
-                      {fmt(s.totalElementDamage)}
+                      {v > 0 ? fmt(v) : '-'}
                     </span>
-                  ));
-                })()}
-              </div>
+                  ))}
+                </div>
+              );
+            })}
+            <div
+              className="border-glass-divider grid items-center gap-3 border-t px-2 pt-1.5"
+              style={{ gridTemplateColumns: `160px repeat(${cols}, 1fr)` }}
+            >
+              <span className="text-muted text-xs font-semibold">Total</span>
+              {(() => {
+                const vals = snapshots.map((ss) => ss.totalElementDamage);
+                const bestTotalIdx = bestIndex(vals, 'high');
+                return snapshots.map((s, i) => (
+                  <span
+                    key={i}
+                    className={`text-center font-mono text-xs font-semibold tabular-nums ${
+                      i === bestTotalIdx ? 'text-success' : 'text-foreground'
+                    }`}
+                  >
+                    {fmt(s.totalElementDamage)}
+                  </span>
+                ));
+              })()}
             </div>
-          </>
-        )}
-      </div>
-    </div>
+          </div>
+        </>
+      )}
+    </Modal>
   );
 }
 

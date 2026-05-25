@@ -27,6 +27,7 @@ import {
 } from '../BuildsCatalog/buildsCatalogUtils';
 import { FormaMetricChips } from '../shared/FormaMetricChips';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
+import { Modal } from '../ui/Modal';
 
 interface BuildsByCategory {
   type: EquipmentPickerTab;
@@ -574,108 +575,89 @@ export function BuildOverview({
       </div>
 
       {!viewingUserBuilds && !favoritesMode && linkingBuild && loadouts.length > 0 && (
-        <div className="modal-overlay" onClick={() => setLinkingBuild(null)}>
-          <div
-            className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
-            tabIndex={0}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setLinkingBuild(null);
-              }
-            }}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-foreground text-sm font-semibold">
-                Link "{linkingBuild.name}" to Loadout
-              </h3>
-              <button
-                type="button"
-                className="text-muted hover:text-foreground flex items-center justify-center p-1"
-                onClick={() => setLinkingBuild(null)}
-                aria-label="Close"
-              >
-                <MaterialSymbol name="close" style={{ fontSize: 22 }} />
-              </button>
-            </div>
-            <div className="space-y-2">
-              {loadouts.map((loadout) => (
-                <button
-                  key={loadout.id}
-                  onClick={() => {
-                    void handleLinkBuildToLoadout(loadout.id);
-                  }}
-                  className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-[color,background-color,border-color] duration-200"
-                >
-                  <span>{loadout.name}</span>
-                  <span className="text-muted/50 text-xs">{loadout.builds.length} builds</span>
-                </button>
-              ))}
-            </div>
+        <Modal
+          open
+          onClose={() => setLinkingBuild(null)}
+          className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
+          ariaLabelledBy="link-build-loadout-title"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <h3 id="link-build-loadout-title" className="text-foreground text-sm font-semibold">
+              Link "{linkingBuild.name}" to Loadout
+            </h3>
+            <button
+              type="button"
+              className="text-muted hover:text-foreground flex items-center justify-center p-1"
+              onClick={() => setLinkingBuild(null)}
+              aria-label="Close"
+            >
+              <MaterialSymbol name="close" style={{ fontSize: 22 }} />
+            </button>
           </div>
-        </div>
+          <div className="space-y-2">
+            {loadouts.map((loadout) => (
+              <button
+                key={loadout.id}
+                onClick={() => {
+                  void handleLinkBuildToLoadout(loadout.id);
+                }}
+                className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-[color,background-color,border-color] duration-200"
+              >
+                <span>{loadout.name}</span>
+                <span className="text-muted/50 text-xs">{loadout.builds.length} builds</span>
+              </button>
+            ))}
+          </div>
+        </Modal>
       )}
 
       {!viewingUserBuilds && !favoritesMode && linkingLoadout && (
-        <div
-          className="modal-overlay"
-          tabIndex={0}
-          onClick={() => setLinkingLoadout(null)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              setLinkingLoadout(null);
-            }
-          }}
+        <Modal
+          open
+          onClose={() => setLinkingLoadout(null)}
+          className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
+          ariaLabelledBy="add-build-loadout-title"
         >
-          <div
-            className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-foreground text-sm font-semibold">
-                Add Build to "{linkingLoadout.name}"
-              </h3>
-              <button
-                type="button"
-                className="text-muted hover:text-foreground flex items-center justify-center p-1"
-                onClick={() => setLinkingLoadout(null)}
-                aria-label="Close add build dialog"
-              >
-                <MaterialSymbol name="close" style={{ fontSize: 22 }} />
-              </button>
-            </div>
-            {loadoutCompatibleBuilds.length === 0 ? (
-              <p className="text-muted text-sm">
-                No compatible builds available. This loadout already has all supported categories
-                filled.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {loadoutCompatibleBuilds.map((build) => (
-                  <button
-                    key={build.id}
-                    onClick={() => {
-                      void handleLinkCompatibleBuildClick(build);
-                    }}
-                    className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-[color,background-color,border-color] duration-200"
-                  >
-                    <div className="min-w-0">
-                      <div className="text-foreground truncate text-sm font-medium">
-                        {build.name}
-                      </div>
-                      <div className="text-muted truncate text-xs">{build.equipment_name}</div>
-                    </div>
-                    <span className="text-muted/50 ml-3 shrink-0 text-[10px]">
-                      {formatLoadoutSlotTypeLabel(
-                        getSlotTypeForBuild(build, equipmentLookup) ?? '',
-                      )}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="mb-3 flex items-center justify-between">
+            <h3 id="add-build-loadout-title" className="text-foreground text-sm font-semibold">
+              Add Build to "{linkingLoadout.name}"
+            </h3>
+            <button
+              type="button"
+              className="text-muted hover:text-foreground flex items-center justify-center p-1"
+              onClick={() => setLinkingLoadout(null)}
+              aria-label="Close add build dialog"
+            >
+              <MaterialSymbol name="close" style={{ fontSize: 22 }} />
+            </button>
           </div>
-        </div>
+          {loadoutCompatibleBuilds.length === 0 ? (
+            <p className="text-muted text-sm">
+              No compatible builds available. This loadout already has all supported categories
+              filled.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {loadoutCompatibleBuilds.map((build) => (
+                <button
+                  key={build.id}
+                  onClick={() => {
+                    void handleLinkCompatibleBuildClick(build);
+                  }}
+                  className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-[color,background-color,border-color] duration-200"
+                >
+                  <div className="min-w-0">
+                    <div className="text-foreground truncate text-sm font-medium">{build.name}</div>
+                    <div className="text-muted truncate text-xs">{build.equipment_name}</div>
+                  </div>
+                  <span className="text-muted/50 ml-3 shrink-0 text-[10px]">
+                    {formatLoadoutSlotTypeLabel(getSlotTypeForBuild(build, equipmentLookup) ?? '')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </Modal>
       )}
     </div>
   );
@@ -1040,135 +1022,112 @@ function LoadoutRow({
       )}
 
       {!readOnly && descriptionModalOpen ? (
-        <div
-          className="modal-overlay"
-          onClick={() => {
+        <Modal
+          open
+          onClose={() => {
             if (!descriptionBusy) setDescriptionModalOpen(false);
           }}
+          className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
+          ariaLabelledBy="loadout-description-title"
         >
-          <div
-            className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
-            tabIndex={0}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="loadout-description-title"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape' && !descriptionBusy) setDescriptionModalOpen(false);
-            }}
-          >
-            <h3
-              id="loadout-description-title"
-              className="text-foreground mb-2 text-sm font-semibold"
-            >
-              Loadout description
-            </h3>
-            <p className="text-muted mb-3 text-xs">
-              Plain text only. URLs will become links when someone views this loadout.
+          <h3 id="loadout-description-title" className="text-foreground mb-2 text-sm font-semibold">
+            Loadout description
+          </h3>
+          <p className="text-muted mb-3 text-xs">
+            Plain text only. URLs will become links when someone views this loadout.
+          </p>
+          <textarea
+            value={descriptionDraft}
+            onChange={(e) => setDescriptionDraft(e.target.value)}
+            className="border-glass-border bg-glass/40 text-foreground placeholder:text-muted/50 focus:border-accent/50 mb-3 min-h-[8rem] w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none"
+            placeholder="Notes for this loadout…"
+            aria-label="Loadout description"
+            disabled={descriptionBusy}
+          />
+          {descriptionError ? (
+            <p className="text-danger mb-3 text-xs" role="alert">
+              {descriptionError}
             </p>
-            <textarea
-              value={descriptionDraft}
-              onChange={(e) => setDescriptionDraft(e.target.value)}
-              className="border-glass-border bg-glass/40 text-foreground placeholder:text-muted/50 focus:border-accent/50 mb-3 min-h-[8rem] w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none"
-              placeholder="Notes for this loadout…"
-              aria-label="Loadout description"
+          ) : null}
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="btn btn-cancel btn-sm"
               disabled={descriptionBusy}
-            />
-            {descriptionError ? (
-              <p className="text-danger mb-3 text-xs" role="alert">
-                {descriptionError}
-              </p>
-            ) : null}
-            <div className="flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={descriptionBusy}
-                onClick={() => setDescriptionModalOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-accent btn-sm"
-                disabled={descriptionBusy}
-                onClick={() => {
-                  void (async () => {
-                    setDescriptionError(null);
-                    setDescriptionBusy(true);
-                    try {
-                      await updateLoadout(loadout.id, { description: descriptionDraft });
-                      setDescriptionModalOpen(false);
-                    } catch (e) {
-                      setDescriptionError(e instanceof Error ? e.message : 'Failed to save');
-                    } finally {
-                      setDescriptionBusy(false);
-                    }
-                  })();
-                }}
-              >
-                {descriptionBusy ? 'Saving…' : 'Save'}
-              </button>
-            </div>
+              onClick={() => setDescriptionModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-accent btn-sm"
+              disabled={descriptionBusy}
+              onClick={() => {
+                void (async () => {
+                  setDescriptionError(null);
+                  setDescriptionBusy(true);
+                  try {
+                    await updateLoadout(loadout.id, { description: descriptionDraft });
+                    setDescriptionModalOpen(false);
+                  } catch (e) {
+                    setDescriptionError(e instanceof Error ? e.message : 'Failed to save');
+                  } finally {
+                    setDescriptionBusy(false);
+                  }
+                })();
+              }}
+            >
+              {descriptionBusy ? 'Saving…' : 'Save'}
+            </button>
           </div>
-        </div>
+        </Modal>
       ) : null}
 
       {publishOpen ? (
-        <div
-          className="modal-overlay"
-          onClick={() => {
+        <Modal
+          open
+          onClose={() => {
             if (!publicBusy) setPublishOpen(false);
           }}
+          className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
+          ariaLabelledBy="publish-loadout-title"
         >
-          <div
-            className="glass-modal-surface max-h-[90vh] w-[90%] max-w-lg overflow-y-auto p-6"
-            tabIndex={0}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="publish-loadout-title"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape' && !publicBusy) setPublishOpen(false);
-            }}
-          >
-            <h3 id="publish-loadout-title" className="text-foreground mb-2 text-sm font-semibold">
-              Publish this loadout?
-            </h3>
-            <p className="text-muted mb-3 text-xs">
-              All builds in a public loadout must be public or unlisted so others can open them for
-              stats. These linked builds are still private:
+          <h3 id="publish-loadout-title" className="text-foreground mb-2 text-sm font-semibold">
+            Publish this loadout?
+          </h3>
+          <p className="text-muted mb-3 text-xs">
+            All builds in a public loadout must be public or unlisted so others can open them for
+            stats. These linked builds are still private:
+          </p>
+          <ul className="text-foreground mb-4 list-inside list-disc text-xs">
+            {privateLinkedBuilds.map((b) => (
+              <li key={b.id}>{b.name}</li>
+            ))}
+          </ul>
+          {publishError ? (
+            <p className="text-danger mb-3 text-xs" role="alert">
+              {publishError}
             </p>
-            <ul className="text-foreground mb-4 list-inside list-disc text-xs">
-              {privateLinkedBuilds.map((b) => (
-                <li key={b.id}>{b.name}</li>
-              ))}
-            </ul>
-            {publishError ? (
-              <p className="text-danger mb-3 text-xs" role="alert">
-                {publishError}
-              </p>
-            ) : null}
-            <div className="flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={publicBusy}
-                onClick={() => setPublishOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-accent btn-sm"
-                disabled={publicBusy}
-                onClick={() => void handlePublishConfirm()}
-              >
-                {publicBusy ? 'Publishing…' : 'Make all builds public and publish'}
-              </button>
-            </div>
+          ) : null}
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="btn btn-cancel btn-sm"
+              disabled={publicBusy}
+              onClick={() => setPublishOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-accent btn-sm"
+              disabled={publicBusy}
+              onClick={() => void handlePublishConfirm()}
+            >
+              {publicBusy ? 'Publishing…' : 'Make all builds public and publish'}
+            </button>
           </div>
-        </div>
+        </Modal>
       ) : null}
     </div>
   );
