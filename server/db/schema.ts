@@ -221,6 +221,14 @@ export function createAppSchema(): void {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS build_favorites (
+      clerk_user_id TEXT NOT NULL,
+      build_id INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (clerk_user_id, build_id),
+      FOREIGN KEY (build_id) REFERENCES builds(id) ON DELETE CASCADE
+    );
+
     -- Codex sync: resolved Warframe Market URLs (see server/warframeMarket/)
     CREATE TABLE IF NOT EXISTS warframe_market_links (
       canonical_key TEXT NOT NULL,
@@ -240,6 +248,7 @@ export function createAppSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_weapons_category ON weapons(product_category);
     CREATE INDEX IF NOT EXISTS idx_weapons_slot ON weapons(slot);
     CREATE INDEX IF NOT EXISTS idx_abilities_warframe ON abilities(warframe_unique_name);
+    CREATE INDEX IF NOT EXISTS idx_build_favorites_user ON build_favorites(clerk_user_id);
   `);
 
   const migrations: Array<{

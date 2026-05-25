@@ -13,6 +13,7 @@ import { buildEditPath, userBuildsPath } from '../../app/paths';
 import { useCompare } from '../../context/CompareContext';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useApi } from '../../hooks/useApi';
+import { useBuildFavorites } from '../../hooks/useBuildFavorites';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
 import type { IncarnonData, IncarnonSelection } from '../../types/incarnon';
 import {
@@ -273,6 +274,7 @@ export function ModBuilder() {
   const readOnly = searchParams.get('view') === '1';
   const compactOverview = searchParams.get('compact') === '1';
   const { saveBuild: storageSave, getBuild, copyBuildFromId } = useBuildStorage();
+  const { toggleFavorite, favoriteBusy } = useBuildFavorites();
   const { auth } = useAuth();
 
   const [equipmentType, setEquipmentType] = useState<EquipmentType>(
@@ -295,6 +297,8 @@ export function ModBuilder() {
   const [loaded, setLoaded] = useState(false);
   const [equipmentLoadError, setEquipmentLoadError] = useState<string | null>(null);
   const [isOwnBuild, setIsOwnBuild] = useState(true);
+  const [isBuildOwner, setIsBuildOwner] = useState(true);
+  const [isFavorited, setIsFavorited] = useState(false);
   const [buildOwnerUserId, setBuildOwnerUserId] = useState<string | null>(null);
   const [buildOwnerUsername, setBuildOwnerUsername] = useState<string | null>(null);
   const [buildIsPublic, setBuildIsPublic] = useState(false);
@@ -333,6 +337,8 @@ export function ModBuilder() {
     setCurrentBuildId(buildId);
     setTargetEquipmentUniqueName(null);
     setIsOwnBuild(true);
+    setIsBuildOwner(true);
+    setIsFavorited(false);
     setBuildOwnerUserId(null);
     setBuildOwnerUsername(null);
     setBuildIsPublic(false);
@@ -490,7 +496,7 @@ export function ModBuilder() {
   );
 
   const viewOwnerUserId =
-    buildOwnerUserId ?? (isOwnBuild && auth.status === 'ok' ? auth.userId : null);
+    buildOwnerUserId ?? (isBuildOwner && auth.status === 'ok' ? auth.userId : null);
   const deletedOwnerLabel = '[Deleted User]';
   const viewOwnerUsername =
     buildOwnerUsername &&
@@ -591,6 +597,8 @@ export function ModBuilder() {
           description?: string | null;
         };
         can_edit?: boolean;
+        is_owner?: boolean;
+        is_favorited?: boolean;
         owner_user_id?: string;
         owner_username?: string | null;
       };
@@ -608,6 +616,8 @@ export function ModBuilder() {
       setTargetEquipmentUniqueName(body.build.equipment_unique_name);
       setCurrentBuildId(String(body.build.id));
       setIsOwnBuild(body.can_edit === true);
+      setIsBuildOwner(body.is_owner === true);
+      setIsFavorited(body.is_favorited === true);
       setBuildOwnerUserId(
         typeof body.owner_user_id === 'string' && body.owner_user_id.length > 0
           ? body.owner_user_id
@@ -651,6 +661,8 @@ export function ModBuilder() {
         setTargetEquipmentUniqueName(stored.equipment_unique_name);
         setCurrentBuildId(stored.id);
         setIsOwnBuild(true);
+        setIsBuildOwner(true);
+        setIsFavorited(false);
         setBuildOwnerUserId(null);
         setBuildOwnerUsername(null);
         setBuildIsPublic(stored.visibility === 'public');
@@ -1458,6 +1470,27 @@ export function ModBuilder() {
     setShowSaveModal(true);
   };
 
+  const handleToggleFavorite = async () => {
+    if (!currentBuildId || auth.status !== 'ok') return;
+    const nextFavorited = !isFavorited;
+    const ok = await toggleFavorite(currentBuildId, isFavorited);
+    if (ok) {
+      setIsFavorited(nextFavorited);
+      return;
+    }
+    const message = nextFavorited
+      ? 'Failed to add build to favorites'
+      : 'Failed to remove build from favorites';
+    console.error(message);
+    setSaveToast({ tone: 'error', message });
+    setTimeout(() => setSaveToast(null), TOAST_DURATION_ERROR_MS);
+  };
+
+  const readOnlyActionButtonClass =
+    'btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0';
+  const readOnlyAdminEditButtonClass =
+    'btn btn-danger flex h-9 w-9 shrink-0 items-center justify-center p-0';
+
   const openBuildPip = useCallback(async () => {
     if (typeof window === 'undefined') return;
     const existing = pipWindowRef.current;
@@ -1923,19 +1956,64 @@ export function ModBuilder() {
                     Compare
                   </button>
                 )}
-                {readOnly && isOwnBuild && currentBuildId ? (
-                  <button
-                    type="button"
-                    className="btn btn-accent"
-                    onClick={() => navigate(buildEditPath(currentBuildId))}
-                  >
-                    Edit
-                  </button>
-                ) : null}
-                {readOnly && !isOwnBuild ? (
-                  <button type="button" className="btn btn-accent" onClick={openSaveModal}>
-                    Copy
-                  </button>
+                {readOnly && currentBuildId ? (
+                  <>
+                    {!isBuildOwner ? (
+                      <button
+                        type="button"
+                        className={readOnlyActionButtonClass}
+                        onClick={openSaveModal}
+                        title="Copy build"
+                        aria-label="Copy build"
+                      >
+                        <MaterialSymbol name="content_copy" style={{ fontSize: 22 }} />
+                      </button>
+                    ) : null}
+                    {isOwnBuild ? (
+                      <button
+                        type="button"
+                        className={
+                          !isBuildOwner ? readOnlyAdminEditButtonClass : readOnlyActionButtonClass
+                        }
+                        onClick={() => navigate(buildEditPath(currentBuildId))}
+                        title={!isBuildOwner ? 'Edit build (admin)' : 'Edit build'}
+                        aria-label={!isBuildOwner ? 'Edit build (admin)' : 'Edit build'}
+                      >
+                        <MaterialSymbol name="edit_document" style={{ fontSize: 22 }} />
+                      </button>
+                    ) : null}
+                    <Show when="signed-in">
+                      <button
+                        type="button"
+                        className={`${readOnlyActionButtonClass}${isFavorited ? ' text-accent' : ''}`}
+                        onClick={() => {
+                          void handleToggleFavorite();
+                        }}
+                        disabled={favoriteBusy}
+                        title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                        aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                        aria-pressed={isFavorited}
+                      >
+                        <MaterialSymbol
+                          name="favorite"
+                          filled={isFavorited}
+                          style={{ fontSize: 22 }}
+                        />
+                      </button>
+                    </Show>
+                    <Show when="signed-out">
+                      <SignInButton mode="modal" forceRedirectUrl={window.location.pathname}>
+                        <button
+                          type="button"
+                          className={readOnlyActionButtonClass}
+                          title="Sign in to favorite"
+                          aria-label="Sign in to favorite"
+                        >
+                          <MaterialSymbol name="favorite" style={{ fontSize: 22 }} />
+                        </button>
+                      </SignInButton>
+                    </Show>
+                  </>
                 ) : null}
                 {!readOnly && isOwnBuild ? (
                   <>

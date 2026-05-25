@@ -2,6 +2,7 @@ export const APP_PATHS = {
   home: '/builder/builds',
   buildsExplore: '/builder/builds',
   myBuilds: '/builder/my-builds',
+  favorites: '/builder/favorites',
   userBuilds: '/builder/users/:userSlug/builds',
   buildNew: '/builder/new/:equipmentType/:equipmentId',
   buildEdit: '/builder/:buildId',
