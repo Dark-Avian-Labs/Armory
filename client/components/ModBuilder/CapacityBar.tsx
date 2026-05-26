@@ -168,7 +168,7 @@ export function CapacityBar({
                 title="Incarnon upgrades"
                 className={`${toolToggleClass(incarnonEnabled, 'success')} h-[22px] w-[22px]`}
               >
-                <MaterialSymbol name="upgrade" style={{ fontSize: 14 }} />
+                <MaterialSymbol name="account_tree" style={{ fontSize: 14 }} />
               </button>
             )}
             {onOrokinReactorToggle && (
