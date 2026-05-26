@@ -1,6 +1,5 @@
 import type Database from 'better-sqlite3';
 import { Router, type Request, type Response } from 'express';
-import { z } from 'zod';
 
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import {
@@ -22,12 +21,7 @@ import {
   subscribeAdminImportSnapshot,
 } from '../import/adminImportJob.js';
 import { log } from '../logger.js';
-import {
-  appendModConfigSizeIssues,
-  MAX_ARCANE_SLOTS,
-  MAX_MOD_CONFIG_SLOTS,
-  MAX_SHARD_SLOTS,
-} from './modConfigLimits.js';
+import { ModConfigSchema } from './modConfigValidation.js';
 
 export const apiRouter = Router();
 
@@ -380,157 +374,6 @@ function normalizeModApiRow(row: Record<string, unknown>): Record<string, unknow
     modSet != null && String(modSet).trim() !== '' ? modSet : (_set_unique_from_member ?? modSet);
   return { ...rest, mod_set: filled };
 }
-
-const RivenStatSchema = z.object({
-  stat: z.string().trim(),
-  value: z.number().finite(),
-  isNegative: z.boolean(),
-});
-
-const RivenConfigSchema = z
-  .object({
-    polarity: z.enum(['AP_ATTACK', 'AP_TACTIC', 'AP_DEFENSE']).optional(),
-    positive: z.array(RivenStatSchema),
-    negative: RivenStatSchema.optional(),
-  })
-  .superRefine((config, ctx) => {
-    for (const [index, stat] of config.positive.entries()) {
-      if (stat.isNegative) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Positive Riven stats must have isNegative=false',
-          path: ['positive', index, 'isNegative'],
-        });
-      }
-    }
-    if (config.negative && !config.negative.isNegative) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Negative Riven stat must have isNegative=true',
-        path: ['negative', 'isNegative'],
-      });
-    }
-  });
-
-const EquipmentTypeSchema = z.enum([
-  'warframe',
-  'primary',
-  'secondary',
-  'melee',
-  'archgun',
-  'archmelee',
-  'companion',
-  'beast_claws',
-  'archwing',
-  'necramech',
-  'kdrive',
-  'tektolyst',
-]);
-
-const ModSlotSchema = z
-  .object({
-    index: z.number().int().min(0),
-    type: z.enum(['general', 'aura', 'stance', 'exilus', 'posture']),
-    polarity: z.string().trim().min(1).optional(),
-    mod: z.record(z.string(), z.unknown()).optional(),
-    rank: z.number().int().min(0).optional(),
-    setRank: z.number().int().min(0).optional(),
-    riven_art_path: z.string().trim().min(1).optional(),
-    riven_config: RivenConfigSchema.optional(),
-  })
-  .strict();
-
-const ModConfigSchema = z
-  .object({
-    id: z.string().trim().min(1).optional(),
-    name: z.string().trim().min(1).max(MAX_NAME_LENGTH),
-    equipment_type: EquipmentTypeSchema,
-    equipment_unique_name: z.string().trim().min(1),
-    slots: z.array(ModSlotSchema),
-    helminth: z
-      .object({
-        replaced_ability_index: z.number().int().min(0),
-        replacement_ability_unique_name: z.string().trim().min(1),
-      })
-      .optional(),
-    arcaneSlots: z
-      .array(
-        z.object({
-          arcane: z
-            .object({
-              unique_name: z.string().trim().min(1),
-              name: z.string().trim().min(1),
-              rarity: z.string().trim().min(1).optional(),
-              image_path: z.string().trim().min(1).optional(),
-              level_stats: z.string().trim().min(1).optional(),
-            })
-            .optional(),
-          rank: z.number().int().min(0),
-        }),
-      )
-      .optional(),
-    shardSlots: z
-      .array(
-        z.object({
-          shard_type_id: z.coerce.string().trim().min(1).optional(),
-          buff_id: z.coerce.number().int().positive().optional(),
-          tauforged: z.boolean(),
-        }),
-      )
-      .optional(),
-    orokinReactor: z.boolean().optional(),
-    incarnonEnabled: z.boolean().optional(),
-    incarnonSelections: z
-      .array(
-        z.object({
-          tier: z.number().int().min(1),
-          perkName: z.string().nullable(),
-          unlocked: z.boolean(),
-        }),
-      )
-      .optional(),
-    valenceBonus: z
-      .object({
-        element: z.enum([
-          'Impact',
-          'Heat',
-          'Cold',
-          'Electricity',
-          'Toxin',
-          'Magnetic',
-          'Radiation',
-        ]),
-        percent: z.number().min(0).max(100),
-      })
-      .nullable()
-      .optional(),
-    equipment_name: z.string().trim().min(1).optional(),
-    equipment_image: z.string().trim().min(1).optional(),
-  })
-  .superRefine((config, ctx) => {
-    if (config.slots.length > MAX_MOD_CONFIG_SLOTS) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `slots must contain at most ${MAX_MOD_CONFIG_SLOTS} entries`,
-        path: ['slots'],
-      });
-    }
-    if (config.arcaneSlots && config.arcaneSlots.length > MAX_ARCANE_SLOTS) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `arcaneSlots must contain at most ${MAX_ARCANE_SLOTS} entries`,
-        path: ['arcaneSlots'],
-      });
-    }
-    if (config.shardSlots && config.shardSlots.length > MAX_SHARD_SLOTS) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `shardSlots must contain at most ${MAX_SHARD_SLOTS} entries`,
-        path: ['shardSlots'],
-      });
-    }
-    appendModConfigSizeIssues(config, ctx);
-  });
 
 function parseNumericId(raw: string | string[] | undefined): number | null {
   if (Array.isArray(raw)) {

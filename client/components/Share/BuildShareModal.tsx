@@ -358,7 +358,7 @@ function ShareIncarnonStamp({ active }: { active: boolean }) {
   if (!active) return null;
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <MaterialSymbol name="upgrade" className="text-success" style={{ fontSize: 28 }} />
+      <MaterialSymbol name="account_tree" className="text-success" style={{ fontSize: 28 }} />
       <span className="text-success inline-flex items-center justify-center" aria-hidden>
         <MaterialSymbol name="check" filled style={{ fontSize: 16 }} />
       </span>
