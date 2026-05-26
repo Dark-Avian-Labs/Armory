@@ -269,3 +269,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.58.1** `fix` [#302](https://github.com/Dark-Avian-Labs/Armory/pull/302): favorites
 - **v1.58.2** `fix` [#303](https://github.com/Dark-Avian-Labs/Armory/pull/303): stale client button
 - **v1.59.0** `feat` [#304](https://github.com/Dark-Avian-Labs/Armory/pull/304): align UI with Codex and make style consistent
+- **v1.60.0** `feat` [#309](https://github.com/Dark-Avian-Labs/Armory/pull/309): enhanced tests
