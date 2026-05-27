@@ -1,5 +1,5 @@
 import { clerkMiddleware as clerkExpressMiddleware, getAuth } from '@clerk/express';
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
 
 import { GAME_ID } from '../gameId.js';
 import { isAppAdmin, metadataFromSessionClaims } from './clerk.js';
@@ -7,7 +7,7 @@ import { getClerkAuthorizedParties } from './clerkAuthorizedParties.js';
 
 export { getAuth };
 
-export function clerkMiddleware() {
+export function clerkMiddleware(): RequestHandler {
   return clerkExpressMiddleware({ authorizedParties: getClerkAuthorizedParties() });
 }
 
