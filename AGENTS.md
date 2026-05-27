@@ -25,6 +25,8 @@ The server listens on port 3002 by default.
 - **API-only in development mode.** Armory only serves the React SPA when `NODE_ENV=production`. In development, the root URL returns 404 ("Cannot GET /"). This is by design; in normal dev flow you'd use Vite's dev server for the client.
 - **Database auto-creates on first start.** Armory's schema is created automatically during server initialization, so no manual DB setup is needed.
 - **Clerk keys are required in production.** Set `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` (or `VITE_CLERK_PUBLISHABLE_KEY`). See `.env.example` for session-token metadata and admin role setup.
+- **Clerk middleware returns 500 on all routes with placeholder keys.** With `pk_test_placeholder` / `sk_test_placeholder`, the Clerk middleware throws on every request. The server still starts and listens correctly — auth-dependent endpoints just fail. This is expected in local dev without real Clerk keys.
+- **Build Armory before Codex.** Codex reads Armory's `armory.db` directly via `ARMORY_DB_PATH`. Armory auto-creates and populates its DB on first start, so run/start Armory at least once before Codex.
 - **Tests:** `pnpm run test` and `pnpm run test:coverage`. On Windows, Cursor agent shells prepend bundled Node 22 — `.cursor/hooks/prepend-system-node.ps1` rewrites Shell commands to prefer `C:\Program Files\nodejs`. After changing Node versions, run `pnpm rebuild better-sqlite3`.
 
 ### UI consistency
