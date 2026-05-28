@@ -334,7 +334,7 @@ apiRouter.get('/search', (req: Request, res: Response) => {
       deleted: false,
     }));
 
-    res.json({ equipment, users, items: equipment });
+    res.json({ equipment, users });
   } catch (err) {
     sendInternalError(res, 'search.query', err);
   }
