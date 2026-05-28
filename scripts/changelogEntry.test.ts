@@ -64,6 +64,18 @@ describe('parseMergeCommitMessage', () => {
 });
 
 describe('normalizeDescription', () => {
+  it('strips no-review marker', () => {
+    expect(normalizeDescription('update deps no-review')).toBe('update deps');
+  });
+
+  it('strips no-review marker with hyphen prefix', () => {
+    expect(normalizeDescription('update deps - no-review')).toBe('update deps');
+  });
+
+  it('strips no-review marker case-insensitively', () => {
+    expect(normalizeDescription('update deps NO-REVIEW')).toBe('update deps');
+  });
+
   it('strips no-reivew marker (misspelled)', () => {
     expect(normalizeDescription('update deps no-reivew')).toBe('update deps');
   });

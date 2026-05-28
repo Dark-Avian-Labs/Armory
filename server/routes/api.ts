@@ -147,7 +147,7 @@ apiRouter.get('/users/:username/builds', async (req: Request, res: Response) => 
       res.status(400).json({ error: 'username is required' });
       return;
     }
-    const clerkUserId = await resolveClerkUserIdByUsername(username);
+    const clerkUserId = resolveClerkUserIdByUsername(username);
     if (!clerkUserId) {
       res.status(404).json({ error: 'User not found' });
       return;
