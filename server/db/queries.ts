@@ -425,7 +425,7 @@ function processWeapons(data: Record<string, unknown[]>): number {
         item.noise ?? null,
         item.trigger ?? null,
         item.omegaAttenuation ?? null,
-        item.omegaAttenuation ?? null,
+        item.rivenDisposition ?? null,
         item.maxLevelCap ?? null,
         item.sentinel ? 1 : 0,
         item.blockingAngle ?? null,

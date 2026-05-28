@@ -34,7 +34,7 @@ vi.mock('../auth/armoryUsers.js', () => ({
   DELETED_USER_LABEL: 'Deleted User',
   getOwnerDisplayName: (_id: string, map: Map<string, string>) => map.get(_id) ?? 'User',
   resolveOwnerUsernames: async (ids: string[]) => new Map(ids.map((id) => [id, 'testuser'])),
-  resolveClerkUserIdByUsername: async () => null,
+  resolveClerkUserIdByUsername: () => null,
 }));
 
 vi.mock('../db/connection.js', () => ({
