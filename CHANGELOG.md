@@ -272,3 +272,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.60.0** `feat` [#309](https://github.com/Dark-Avian-Labs/Armory/pull/309): enhanced tests
 - **v1.60.1** `chore` [#311](https://github.com/Dark-Avian-Labs/Armory/pull/311): update environment config and middleware
 - **v1.60.2** `chore` [#315](https://github.com/Dark-Avian-Labs/Armory/pull/315): CodeQL review
+- **v1.60.3** `chore` [#317](https://github.com/Dark-Avian-Labs/Armory/pull/317): codeQL
