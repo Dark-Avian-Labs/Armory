@@ -45,6 +45,8 @@ import { useWeaponShareIncarnon } from './useWeaponShareIncarnon';
 const SHARE_CANVAS_WIDTH = 720;
 const SHARE_CANVAS_HEIGHT = 1280;
 const SHARE_EXPORT_PIXEL_RATIO = 2;
+const MAX_DESCRIPTION_LENGTH = 900;
+const TRUNCATED_DESCRIPTION_LENGTH = MAX_DESCRIPTION_LENGTH - 3;
 
 const MAIN_PAGE_BACKGROUND_STYLE: CSSProperties = {
   backgroundImage:
@@ -381,8 +383,6 @@ function ShareIncarnonPanel({
   iconPx: number;
   iconsOnly?: boolean;
 }) {
-  const MAX_DESCRIPTION_LENGTH = 900;
-  const TRUNCATED_DESCRIPTION_LENGTH = MAX_DESCRIPTION_LENGTH - 3;
   const firstUnlocked = tiers.find((tier) => tier.unlocked && tier.description);
   const displayDesc =
     firstUnlocked?.description != null && firstUnlocked.description.length > MAX_DESCRIPTION_LENGTH
@@ -607,8 +607,6 @@ function ShareSkillsPanel({
   iconPx: number;
   iconsOnly?: boolean;
 }) {
-  const MAX_DESCRIPTION_LENGTH = 900;
-  const TRUNCATED_DESCRIPTION_LENGTH = MAX_DESCRIPTION_LENGTH - 3;
   const desc =
     helminthConfig && selectedReplacement?.description
       ? selectedReplacement.description

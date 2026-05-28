@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatChangelogLine, parseBranchName, parseMergeCommitMessage } from './changelogEntry.mjs';
+import {
+  formatChangelogLine,
+  normalizeDescription,
+  parseBranchName,
+  parseMergeCommitMessage,
+} from './changelogEntry.mjs';
 
 const REPO = 'Dark-Avian-Labs/Armory';
 
@@ -55,6 +60,16 @@ describe('parseMergeCommitMessage', () => {
       description: 'update deps',
       prNumber: '10',
     });
+  });
+});
+
+describe('normalizeDescription', () => {
+  it('strips no-reivew marker (misspelled)', () => {
+    expect(normalizeDescription('update deps no-reivew')).toBe('update deps');
+  });
+
+  it('strips NCRR marker', () => {
+    expect(normalizeDescription('update deps NCRR')).toBe('update deps');
   });
 });
 
