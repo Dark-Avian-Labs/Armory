@@ -26,14 +26,18 @@ The server listens on port 3002 by default.
 
 ### Key gotchas
 
-- **Node >= 25 and pnpm >= 11 required.** Use `nvm install 25` and `npm install -g pnpm@11.3.0`.
+- **Node >= 25 and pnpm >= 11 required.** Use `nvm install 25` and `npm install -g pnpm@latest-11`. The `packageManager` field in `package.json` must stay an exact version (e.g. `pnpm@11.3.0`) — Corepack does not accept dist-tags like `latest-11`.
 - **Encrypted `.env.development` / `.env.production` files.** When `DOTENV_PRIVATE_KEY_DEVELOPMENT` is set as an env var, use dotenvx to decrypt at runtime: `NODE_ENV=development pnpm dotenvx run -f .env.development -- node dist/server/index.js`. Without the private key, create a plain `.env` from `.env.example` and run with `node --env-file=.env`.
 - **API-only in development mode.** Armory only serves the React SPA when `NODE_ENV=production`. In development, the root URL returns 404 ("Cannot GET /"). This is by design; in normal dev flow you'd use Vite's dev server for the client.
 - **Database auto-creates on first start.** Armory's schema is created automatically during server initialization, so no manual DB setup is needed.
 - **Clerk keys are required in production.** Set `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` (or `VITE_CLERK_PUBLISHABLE_KEY`). See `.env.example` for session-token metadata and admin role setup.
 - **Clerk middleware returns 500 on all routes with placeholder keys.** With `pk_test_placeholder` / `sk_test_placeholder`, the Clerk middleware throws on every request. The server still starts and listens correctly — auth-dependent endpoints just fail. This is expected in local dev without real Clerk keys.
 - **Build Armory before Codex.** Codex reads Armory's `armory.db` directly via `ARMORY_DB_PATH`. Armory auto-creates and populates its DB on first start, so run/start Armory at least once before Codex.
-- **Tests:** `pnpm run test` and `pnpm run test:coverage`. On Windows, Cursor agent shells prepend bundled Node 22 — `.cursor/hooks/prepend-system-node.ps1` rewrites Shell commands to prefer `C:\Program Files\nodejs`. After changing Node versions, run `pnpm rebuild better-sqlite3`.
+- **Tests:** `pnpm run validate` (or `pnpm run test:coverage` for coverage). On Windows, Cursor agent shells prepend bundled Node 22 — `.cursor/hooks/prepend-system-node.ps1` rewrites Shell commands to prefer `C:\Program Files\nodejs`. After changing Node versions, run `pnpm rebuild better-sqlite3`.
+
+### Cloud VM-specific notes
+
+- **PATH override:** The Cloud VM has `/exec-daemon/node` (Node 22) ahead of nvm in PATH. Prepend nvm's Node 25 path: `export PATH="/home/ubuntu/.nvm/versions/node/v25.9.0/bin:$PATH"`.
 
 ### UI consistency
 
