@@ -20,7 +20,7 @@ The server listens on port 3002 by default.
 
 ### Key gotchas
 
-- **Node >= 25 and pnpm >= 11 required.** Use `nvm install 25` and `npm install -g pnpm@11.1.3`.
+- **Node >= 25 and pnpm >= 11 required.** Use `nvm install 25` and `npm install -g pnpm@11.3.0`.
 - **Encrypted `.env.development` / `.env.production` files.** Create a plain `.env` from `.env.example` for local dev. Run with `node --env-file=.env` so the plain values take precedence over encrypted dotenvx values.
 - **API-only in development mode.** Armory only serves the React SPA when `NODE_ENV=production`. In development, the root URL returns 404 ("Cannot GET /"). This is by design; in normal dev flow you'd use Vite's dev server for the client.
 - **Database auto-creates on first start.** Armory's schema is created automatically during server initialization, so no manual DB setup is needed.
