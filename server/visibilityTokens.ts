@@ -19,9 +19,6 @@ export function resolveShareTokenForVisibility(
     const trimmed = typeof existingToken === 'string' ? existingToken.trim() : '';
     return trimmed.length > 0 ? trimmed : generateShareToken();
   }
-  if (previousVisibility === 'unlisted') {
-    return null;
-  }
   return null;
 }
 
