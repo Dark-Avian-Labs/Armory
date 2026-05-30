@@ -37,6 +37,7 @@ function debounce<TArgs extends unknown[]>(
 }
 
 export function SearchBar() {
+  const searchResultsId = 'armory-search-results';
   const [query, setQuery] = useState('');
   const [equipment, setEquipment] = useState<EquipmentSearchResult[]>([]);
   const [users, setUsers] = useState<UserSearchResult[]>([]);
@@ -166,6 +167,9 @@ export function SearchBar() {
           className="search-box w-52"
           placeholder="Search..."
           aria-label="Search equipment and users"
+          aria-expanded={open}
+          aria-controls={searchResultsId}
+          aria-autocomplete="list"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -188,7 +192,12 @@ export function SearchBar() {
       </div>
 
       {open && (
-        <div className="border-glass-border bg-surface-modal absolute top-full right-0 z-50 mt-1 w-96 overflow-hidden rounded-xl border shadow-lg backdrop-blur-xl">
+        <div
+          id={searchResultsId}
+          role="region"
+          aria-label="Search results"
+          className="border-glass-border bg-surface-modal absolute top-full right-0 z-50 mt-1 w-96 overflow-hidden rounded-xl border shadow-lg backdrop-blur-xl"
+        >
           {loading ? (
             <div className="text-muted p-3 text-center text-sm">Searching...</div>
           ) : searchError ? (

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 import type { StoredBuild, BuildConfig, BuildVisibility } from '../types/warframe';
-import { apiFetch, UnauthorizedError } from '../utils/api';
+import { apiFetch, UnauthorizedError, readApiErrorMessage } from '../utils/api';
 import { normalizeRivenConfigMembership } from '../utils/riven';
 
 export function useBuildStorage() {
@@ -120,15 +120,7 @@ export function useBuildStorage() {
         ),
       });
       if (!response.ok) {
-        let message = 'Failed to save build';
-        try {
-          const body = (await response.json()) as { error?: string };
-          if (typeof body.error === 'string' && body.error.trim().length > 0) {
-            message = body.error;
-          }
-        } catch {
-          // ignore
-        }
+        const message = await readApiErrorMessage(response, 'Failed to save build');
         throw new Error(message);
       }
       let savedId = config.id;
@@ -168,15 +160,7 @@ export function useBuildStorage() {
         method: 'DELETE',
       });
       if (!response.ok) {
-        let message = 'Failed to delete build';
-        try {
-          const body = (await response.json()) as { error?: string };
-          if (typeof body.error === 'string' && body.error.trim().length > 0) {
-            message = body.error;
-          }
-        } catch {
-          // ignore
-        }
+        const message = await readApiErrorMessage(response, 'Failed to delete build');
         throw new Error(message);
       }
       await refresh();
@@ -199,15 +183,7 @@ export function useBuildStorage() {
         body: JSON.stringify({ name }),
       });
       if (!response.ok) {
-        let message = 'Failed to copy build';
-        try {
-          const body = (await response.json()) as { error?: string };
-          if (typeof body.error === 'string' && body.error.trim().length > 0) {
-            message = body.error;
-          }
-        } catch {
-          // ignore
-        }
+        const message = await readApiErrorMessage(response, 'Failed to copy build');
         throw new Error(message);
       }
       const body = (await response.json()) as { id?: number | string };

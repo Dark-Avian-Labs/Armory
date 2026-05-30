@@ -3,7 +3,12 @@ import { defaultExclude, defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     exclude: [...defaultExclude, 'dist/**', 'node_modules/**'],
-    include: ['server/**/*.test.ts', 'client/**/*.test.ts', 'scripts/**/*.test.ts'],
+    include: [
+      'server/**/*.test.ts',
+      'client/**/*.test.ts',
+      'scripts/**/*.test.ts',
+      'tests/**/*.test.ts',
+    ],
     environment: 'node',
     env: {
       NODE_ENV: 'test',

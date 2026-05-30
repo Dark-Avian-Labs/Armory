@@ -93,6 +93,8 @@ Client `VITE_*` variables are listed in `.env.example`.
 | `pnpm run validate`     | Format check, lint, typecheck, and tests.        |
 | `pnpm run test`         | Run Vitest once.                                 |
 
+After deploy, smoke-check `GET /healthz` and `GET /readyz` on the public host (expect `200` when databases are reachable).
+
 ## License
 
 MIT

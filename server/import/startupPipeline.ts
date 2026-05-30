@@ -18,6 +18,12 @@ import { runWikiScrape } from '../scraping/wikiScraper.js';
 import { populateWarframeMarketLinksTable } from '../warframeMarket/populateWarframeMarketLinks.js';
 import { syncHelminthFlagsFromWiki } from './helminthWiki.js';
 import { downloadImages } from './images.js';
+import {
+  ImportAlreadyRunningError,
+  isImportLeaseHeld,
+  releaseImportLease,
+  tryAcquireImportLease,
+} from './importRuns.js';
 import { runImportPipeline, listExportFiles } from './pipeline.js';
 import {
   printStartupPipelineSummary,
@@ -137,9 +143,35 @@ export interface StartupPipelineOptions {
   forceImport?: boolean;
   forceImages?: boolean;
   reporter?: (line: string, level: 'info' | 'error') => void;
+  importRunId?: number;
+  skipLease?: boolean;
 }
 
 export async function runStartupPipeline(
+  options: StartupPipelineOptions = {},
+): Promise<StartupPipelineSummary> {
+  const manageLease = options.skipLease !== true;
+  let lockToken: string | null = null;
+  if (manageLease) {
+    if (isImportLeaseHeld()) {
+      throw new ImportAlreadyRunningError();
+    }
+    lockToken = tryAcquireImportLease(options.importRunId ?? null);
+    if (!lockToken) {
+      throw new ImportAlreadyRunningError();
+    }
+  }
+
+  try {
+    return await runStartupPipelineInner(options);
+  } finally {
+    if (lockToken) {
+      releaseImportLease(lockToken);
+    }
+  }
+}
+
+async function runStartupPipelineInner(
   options: StartupPipelineOptions = {},
 ): Promise<StartupPipelineSummary> {
   const startTime = Date.now();

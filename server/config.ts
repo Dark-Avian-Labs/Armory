@@ -8,19 +8,23 @@ import { normalizeClerkEnv } from './clerkEnv.js';
 
 function resolveEnvFilePath(projectRoot: string): string | null {
   const normalizedNodeEnv = (process.env.NODE_ENV ?? '').trim().toLowerCase();
+
+  if (normalizedNodeEnv === 'test') {
+    const testPath = path.join(projectRoot, '.env.test');
+    return fs.existsSync(testPath) ? testPath : null;
+  }
+
   const envFileByMode: Record<string, string> = {
     production: '.env.production',
     development: '.env.development',
-    test: '.env.test',
   };
-  const prioritizedFileSet = new Set<string>();
-  const primaryEnvFile = envFileByMode[normalizedNodeEnv];
-  if (primaryEnvFile) {
-    prioritizedFileSet.add(primaryEnvFile);
-  }
-  prioritizedFileSet.add('.env.production');
-  prioritizedFileSet.add('.env.development');
-  const prioritizedFiles = Array.from(prioritizedFileSet);
+  const prioritizedFiles = [
+    envFileByMode[normalizedNodeEnv],
+    '.env.production',
+    '.env.development',
+  ].filter((value, index, values): value is string => {
+    return typeof value === 'string' && values.indexOf(value) === index;
+  });
 
   for (const fileName of prioritizedFiles) {
     const candidatePath = path.join(projectRoot, fileName);

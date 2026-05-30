@@ -1,3 +1,4 @@
+import { ensureImportRunsSchema } from '../import/importRuns.js';
 import { getDb } from './connection.js';
 
 export function createAppSchema(): void {
@@ -522,6 +523,17 @@ export function createAppSchema(): void {
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_builds_clerk_user ON builds(clerk_user_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_loadouts_clerk_user ON loadouts(clerk_user_id)');
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_builds_clerk_user_visibility ON builds(clerk_user_id, visibility)',
+  );
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_loadouts_clerk_user_visibility ON loadouts(clerk_user_id, visibility)',
+  );
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_builds_equipment_discovery ON builds(equipment_type, equipment_unique_name)',
+  );
+
+  ensureImportRunsSchema(db);
 
   console.log('[DB] Application schema created/verified');
 }

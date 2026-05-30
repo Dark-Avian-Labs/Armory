@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { apiFetch, clearCsrfToken } from '../../utils/api';
+import { apiFetch, clearCsrfToken, API_UNAUTHORIZED_EVENT } from '../../utils/api';
 import type { AuthErrorDetail, AuthState } from './types';
 
 interface AuthContextValue {
@@ -86,6 +86,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     void refresh();
   }, [isLoaded, isSignedIn, refresh]);
+
+  useEffect(() => {
+    const handleUnauthorized = (): void => {
+      void refresh();
+    };
+    window.addEventListener(API_UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(API_UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, [refresh]);
 
   const logout = useCallback(async () => {
     try {

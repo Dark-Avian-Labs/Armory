@@ -25,7 +25,6 @@ import {
   type Warframe,
   type Companion,
   type EquipmentType,
-  type SlotType,
   type BuildConfig,
   type ValenceBonus,
   type Ability,
@@ -40,7 +39,7 @@ import { calculateBuildDamage } from '../../utils/damage';
 import { calculateWeaponDps } from '../../utils/damageCalc';
 import { calculateTotalCapacity } from '../../utils/drain';
 import { getModTypesForEquipment, NO_MOD_TYPES_FOR_EQUIPMENT } from '../../utils/equipmentModTypes';
-import { calculateFormaCount, type FormaCount, type SlotPolarity } from '../../utils/formaCounter';
+import { calculateFormaCount, type FormaCount } from '../../utils/formaCounter';
 import {
   applyIncarnonUnlockCascade,
   createDefaultIncarnonSelections,
@@ -76,6 +75,7 @@ import { BuildLoadoutsPanel } from './BuildLoadoutsPanel';
 import { CapacityBar } from './CapacityBar';
 import { CompactBuildOverview } from './CompactBuildOverview';
 import { ElementOutput } from './ElementOutput';
+import { useModBuilderState } from './hooks/useModBuilderState';
 import { IncarnonUpgradePanel } from './IncarnonUpgradePanel';
 import { ModSlotGrid } from './ModSlotGrid';
 import { StatsPanel } from './StatsPanel';
@@ -108,8 +108,6 @@ const RivenBuilder = lazy(() =>
 const IncarnonPickerPanel = lazy(() =>
   import('./IncarnonPickerPanel').then((m) => ({ default: m.IncarnonPickerPanel })),
 );
-
-type RightPanelMode = 'mods' | 'helminth' | 'incarnon' | 'arcanes' | 'shards';
 
 type DocumentPictureInPictureApi = {
   requestWindow(options?: { width?: number; height?: number }): Promise<Window>;
@@ -277,93 +275,84 @@ export function ModBuilder() {
   const { toggleFavorite, favoriteBusy } = useBuildFavorites();
   const { auth } = useAuth();
 
-  const [equipmentType, setEquipmentType] = useState<EquipmentType>(
-    (routeEqType as EquipmentType) || 'warframe',
-  );
-  const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
-  const [slots, setSlots] = useState<ModSlot[]>([]);
-  const [orokinReactor, setOrokinReactor] = useState(false);
-  const [valenceBonus, setValenceBonus] = useState<ValenceBonus | null>(null);
-  const [buildName, setBuildName] = useState('New Build');
-  const [buildDescription, setBuildDescription] = useState('');
-  const [currentBuildId, setCurrentBuildId] = useState<string | undefined>(buildId);
-  const [targetEquipmentUniqueName, setTargetEquipmentUniqueName] = useState<string | null>(null);
-  const [helminthConfig, setHelminthConfig] = useState<BuildConfig['helminth'] | undefined>();
-  const [incarnonEnabled, setIncarnonEnabled] = useState(false);
-  const [incarnonSelections, setIncarnonSelections] = useState<IncarnonSelection[] | undefined>();
-  const [activeIncarnonTier, setActiveIncarnonTier] = useState<number | null>(null);
-  const [activeSlotType, setActiveSlotType] = useState<SlotType | undefined>();
-  const [activeSlotIndex, setActiveSlotIndex] = useState<number | undefined>();
-  const [loaded, setLoaded] = useState(false);
-  const [equipmentLoadError, setEquipmentLoadError] = useState<string | null>(null);
-  const [isOwnBuild, setIsOwnBuild] = useState(true);
-  const [isBuildOwner, setIsBuildOwner] = useState(true);
-  const [isFavorited, setIsFavorited] = useState(false);
-  const [buildOwnerUserId, setBuildOwnerUserId] = useState<string | null>(null);
-  const [buildOwnerUsername, setBuildOwnerUsername] = useState<string | null>(null);
-  const [buildIsPublic, setBuildIsPublic] = useState(false);
-  const [arcaneSlots, setArcaneSlots] = useState<ArcaneSlot[]>([{ rank: 0 }, { rank: 0 }]);
-  const [shardSlots, setShardSlots] = useState<ShardSlotConfig[]>(
-    Array.from({ length: 5 }, () => ({ tauforged: false })),
-  );
-  const [formaMode, setFormaMode] = useState(false);
-  const [defaultPolarities, setDefaultPolarities] = useState<SlotPolarity[]>([]);
-  const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('mods');
-  const [mountFilterPanel, setMountFilterPanel] = useState(false);
-  const [activeAbilityIndex, setActiveAbilityIndex] = useState<number | null>(null);
-  const [activeArcaneSlot, setActiveArcaneSlot] = useState<number | null>(null);
-  const [activeShardSlot, setActiveShardSlot] = useState<number | null>(null);
-  const [editingRivenSlot, setEditingRivenSlot] = useState<number | null>(null);
-  const [draftRivenSlot, setDraftRivenSlot] = useState<number | null>(null);
-  const prevRightPanelModeRef = useRef<RightPanelMode | null>(null);
-
   const routeKey = `${buildId ?? ''}|${routeEqType ?? ''}|${equipmentId ?? ''}`;
-  const prevRouteKey = useRef(routeKey);
-  const dirtyRouteCapturedRef = useRef<string | null>(null);
   const allowNavigationBypassRef = useRef(false);
   const livePersistFingerprintRef = useRef('');
-  const [dirtyBaseline, setDirtyBaseline] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (prevRouteKey.current === routeKey) return;
-    prevRouteKey.current = routeKey;
-    dirtyRouteCapturedRef.current = null;
-    setDirtyBaseline(null);
-    setSelectedEquipment(null);
-    setSlots([]);
-    setOrokinReactor(false);
-    setBuildName('New Build');
-    setBuildDescription('');
-    setCurrentBuildId(buildId);
-    setTargetEquipmentUniqueName(null);
-    setIsOwnBuild(true);
-    setIsBuildOwner(true);
-    setIsFavorited(false);
-    setBuildOwnerUserId(null);
-    setBuildOwnerUsername(null);
-    setBuildIsPublic(false);
-    setHelminthConfig(undefined);
-    setIncarnonEnabled(false);
-    setIncarnonSelections(undefined);
-    setActiveIncarnonTier(null);
-    setActiveSlotType(undefined);
-    setActiveSlotIndex(undefined);
-    setLoaded(false);
-    setArcaneSlots([{ rank: 0 }, { rank: 0 }]);
-    setShardSlots(Array.from({ length: 5 }, () => ({ tauforged: false })));
-    setFormaMode(false);
-    setDefaultPolarities([]);
-    setRightPanelMode('mods');
-    setActiveAbilityIndex(null);
-    setActiveArcaneSlot(null);
-    setActiveShardSlot(null);
-    setEditingRivenSlot(null);
-    setDraftRivenSlot(null);
-    setEquipmentLoadError(null);
-    prevRightPanelModeRef.current = null;
-    setValenceBonus(null);
-    if (routeEqType) setEquipmentType(routeEqType as EquipmentType);
-  }, [routeKey, buildId, routeEqType]);
+  const {
+    equipmentType,
+    setEquipmentType,
+    selectedEquipment,
+    setSelectedEquipment,
+    slots,
+    setSlots,
+    orokinReactor,
+    setOrokinReactor,
+    valenceBonus,
+    setValenceBonus,
+    buildName,
+    setBuildName,
+    buildDescription,
+    setBuildDescription,
+    currentBuildId,
+    setCurrentBuildId,
+    targetEquipmentUniqueName,
+    setTargetEquipmentUniqueName,
+    helminthConfig,
+    setHelminthConfig,
+    incarnonEnabled,
+    setIncarnonEnabled,
+    incarnonSelections,
+    setIncarnonSelections,
+    activeIncarnonTier,
+    setActiveIncarnonTier,
+    activeSlotType,
+    setActiveSlotType,
+    activeSlotIndex,
+    setActiveSlotIndex,
+    loaded,
+    setLoaded,
+    equipmentLoadError,
+    setEquipmentLoadError,
+    isOwnBuild,
+    setIsOwnBuild,
+    isBuildOwner,
+    setIsBuildOwner,
+    isFavorited,
+    setIsFavorited,
+    buildOwnerUserId,
+    setBuildOwnerUserId,
+    buildOwnerUsername,
+    setBuildOwnerUsername,
+    buildIsPublic,
+    setBuildIsPublic,
+    arcaneSlots,
+    setArcaneSlots,
+    shardSlots,
+    setShardSlots,
+    formaMode,
+    setFormaMode,
+    defaultPolarities,
+    setDefaultPolarities,
+    rightPanelMode,
+    setRightPanelMode,
+    mountFilterPanel,
+    setMountFilterPanel,
+    activeAbilityIndex,
+    setActiveAbilityIndex,
+    activeArcaneSlot,
+    setActiveArcaneSlot,
+    activeShardSlot,
+    setActiveShardSlot,
+    editingRivenSlot,
+    setEditingRivenSlot,
+    draftRivenSlot,
+    setDraftRivenSlot,
+    dirtyBaseline,
+    setDirtyBaseline,
+    dirtyRouteCapturedRef,
+    prevRightPanelModeRef,
+  } = useModBuilderState(routeKey, buildId, routeEqType);
 
   useEffect(() => {
     let cancelled = false;

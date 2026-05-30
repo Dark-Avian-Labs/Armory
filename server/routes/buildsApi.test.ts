@@ -58,7 +58,8 @@ function createTestBuildsSchema(db: Database.Database): void {
       mod_config TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      description TEXT
+      description TEXT,
+      share_token TEXT
     );
     CREATE TABLE build_favorites (
       clerk_user_id TEXT NOT NULL,
@@ -166,5 +167,68 @@ describe('builds API routes', () => {
     expect(res.status).toBe(200);
     expect(res.body.build.name).toBe('Public');
     expect(res.body.is_owner).toBe(false);
+  });
+
+  it('denies unlisted builds without share token', async () => {
+    dbState
+      .db!.prepare(
+        `INSERT INTO builds (clerk_user_id, name, visibility, share_token, equipment_type, equipment_unique_name, mod_config)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        'user_owner',
+        'Unlisted',
+        'unlisted',
+        'share-abc123',
+        'warframe',
+        '/Lotus/Powersuits/Excalibur/Excalibur',
+        JSON.stringify(minimalModConfig()),
+      );
+    authState.userId = 'user_other';
+    const denied = await request(createTestApp()).get('/api/builds/1');
+    expect(denied.status).toBe(404);
+  });
+
+  it('allows unlisted builds with matching share token', async () => {
+    dbState
+      .db!.prepare(
+        `INSERT INTO builds (clerk_user_id, name, visibility, share_token, equipment_type, equipment_unique_name, mod_config)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        'user_owner',
+        'Unlisted',
+        'unlisted',
+        'share-abc123',
+        'warframe',
+        '/Lotus/Powersuits/Excalibur/Excalibur',
+        JSON.stringify(minimalModConfig()),
+      );
+    authState.userId = 'user_other';
+    const allowed = await request(createTestApp()).get('/api/builds/1?token=share-abc123');
+    expect(allowed.status).toBe(200);
+    expect(allowed.body.build.name).toBe('Unlisted');
+    expect(allowed.body.build.share_token).toBeUndefined();
+  });
+
+  it('returns share_token to owners for unlisted builds', async () => {
+    dbState
+      .db!.prepare(
+        `INSERT INTO builds (clerk_user_id, name, visibility, share_token, equipment_type, equipment_unique_name, mod_config)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        'user_owner',
+        'Unlisted',
+        'unlisted',
+        'share-abc123',
+        'warframe',
+        '/Lotus/Powersuits/Excalibur/Excalibur',
+        JSON.stringify(minimalModConfig()),
+      );
+    authState.userId = 'user_owner';
+    const res = await request(createTestApp()).get('/api/builds/1');
+    expect(res.status).toBe(200);
+    expect(res.body.build.share_token).toBe('share-abc123');
   });
 });
