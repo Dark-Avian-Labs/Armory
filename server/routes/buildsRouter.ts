@@ -431,14 +431,14 @@ buildsRouter.post('/builds', (req: Request, res: Response) => {
     if (
       typeof name !== 'string' ||
       typeof equipment_type !== 'string' ||
-      typeof equipment_unique_name !== 'string' ||
-      !modConfigResult.success
+      typeof equipment_unique_name !== 'string'
     ) {
-      if (!modConfigResult.success) {
-        res.status(400).json({ error: 'Invalid mod_config' });
-        return;
-      }
       res.status(400).json({ error: 'Invalid build payload' });
+      return;
+    }
+
+    if (!modConfigResult.success) {
+      res.status(400).json({ error: 'Invalid mod_config' });
       return;
     }
 
