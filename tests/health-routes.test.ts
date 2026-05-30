@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { APP_NAME } from '../server/config.js';
 import { getDb, getSessionDb } from '../server/db/connection.js';
+import { testRateLimiter } from './helpers/testExpress.js';
 
 const dbMocks = vi.hoisted(() => ({
   appOk: true,
@@ -31,6 +32,7 @@ vi.mock('../server/db/connection.js', () => ({
 
 function createProbeApp() {
   const app = express();
+  app.use(testRateLimiter);
   app.get('/healthz', (_req, res) => {
     res.json({ status: 'ok', app: APP_NAME });
   });
