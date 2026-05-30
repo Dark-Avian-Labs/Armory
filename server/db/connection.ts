@@ -9,6 +9,7 @@ export function getDb(): Database.Database {
   if (!db) {
     db = new Database(ARMORY_DB_PATH);
     db.pragma('journal_mode = WAL');
+    db.pragma('busy_timeout = 5000');
     db.pragma('foreign_keys = ON');
   }
   return db;
@@ -18,6 +19,7 @@ export function getSessionDb(): Database.Database {
   if (!sessionDb) {
     sessionDb = new Database(SESSION_DB_PATH);
     sessionDb.pragma('journal_mode = WAL');
+    sessionDb.pragma('busy_timeout = 5000');
     sessionDb.pragma('foreign_keys = ON');
   }
   return sessionDb;

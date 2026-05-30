@@ -55,6 +55,52 @@ export function clearCsrfToken(): void {
   inFlightPromise = null;
 }
 
+export type ApiErrorBody = {
+  error?: string;
+  message?: string;
+  code?: string;
+  errorCode?: string;
+  error_code?: string;
+};
+
+export type ParsedApiError = {
+  status: number;
+  message: string;
+  code?: string;
+};
+
+export async function parseApiError(
+  response: Response,
+  fallback = 'Request failed',
+): Promise<ParsedApiError> {
+  let body: ApiErrorBody | null = null;
+  try {
+    body = (await response.clone().json()) as ApiErrorBody;
+  } catch {
+    body = null;
+  }
+
+  const code = body?.code ?? body?.errorCode ?? body?.error_code;
+  const message =
+    (typeof body?.error === 'string' && body.error.trim()) ||
+    (typeof body?.message === 'string' && body.message.trim()) ||
+    fallback;
+
+  return {
+    status: response.status,
+    message,
+    code: typeof code === 'string' ? code : undefined,
+  };
+}
+
+export async function readApiErrorMessage(
+  response: Response,
+  fallback = 'Request failed',
+): Promise<string> {
+  const parsed = await parseApiError(response, fallback);
+  return parsed.message;
+}
+
 export class UnauthorizedError extends Error {
   readonly response: Response;
   readonly url: string;

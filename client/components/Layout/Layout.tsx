@@ -24,6 +24,7 @@ import { useCompare } from '../../context/CompareContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
 import { buildClerkProfileAppearance } from '../../lib/clerkAppearance';
+import { API_UNAUTHORIZED_EVENT } from '../../utils/api';
 import { CompareBar } from '../Compare/CompareBar';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -59,6 +60,7 @@ export function Layout() {
   const [searchParams] = useSearchParams();
   const [showAddBuild, setShowAddBuild] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const prevUserMenuOpenRef = useRef(false);
@@ -83,6 +85,20 @@ export function Layout() {
     },
     [navigate],
   );
+
+  useEffect(() => {
+    const handleUnauthorized = (): void => {
+      setSessionNotice('Your session expired. Please sign in again.');
+    };
+    window.addEventListener(API_UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(API_UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, []);
+
+  useEffect(() => {
+    if (auth.status === 'ok') {
+      setSessionNotice(null);
+    }
+  }, [auth.status]);
 
   useEffect(() => {
     if (!userMenuOpen) return undefined;
@@ -389,6 +405,16 @@ export function Layout() {
       </footer>
 
       <StaleClientUpdateBanner appVersion={APP_VERSION} />
+      {sessionNotice ? (
+        <div
+          className="toast-pill fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+          data-tone="warning"
+          role="status"
+          aria-live="polite"
+        >
+          {sessionNotice}
+        </div>
+      ) : null}
     </div>
   );
 }

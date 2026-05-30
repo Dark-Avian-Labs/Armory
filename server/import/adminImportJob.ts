@@ -1,12 +1,18 @@
 import { bustModListCache } from '../cache/modListCache.js';
+import {
+  createImportRun,
+  isImportLeaseHeld,
+  maskClerkUserId,
+  persistImportRunSteps,
+  releaseImportLease,
+  tryAcquireImportLease,
+  updateImportRun,
+  type ImportLogLine,
+} from './importRuns.js';
 import type { StartupPipelineSummary } from './pipelineSummary.js';
 import { runStartupPipeline } from './startupPipeline.js';
 
-export interface ImportLogLine {
-  ts: string;
-  level: 'info' | 'error';
-  message: string;
-}
+export type { ImportLogLine } from './importRuns.js';
 
 export interface AdminImportSnapshot {
   runId: number;
@@ -14,6 +20,7 @@ export interface AdminImportSnapshot {
   startedAt: string | null;
   finishedAt: string | null;
   requestedByUserId: string | null;
+  requestedByUserMasked: string | null;
   lines: ImportLogLine[];
   summary: StartupPipelineSummary | null;
   error: string | null;
@@ -30,6 +37,7 @@ let state: AdminImportSnapshot = {
   startedAt: null,
   finishedAt: null,
   requestedByUserId: null,
+  requestedByUserMasked: null,
   lines: [],
   summary: null,
   error: null,
@@ -49,7 +57,16 @@ function pushLine(level: 'info' | 'error', message: string): void {
   if (state.lines.length > MAX_LINES) {
     state.lines.splice(0, state.lines.length - MAX_LINES);
   }
+  persistCurrentSteps();
   notify();
+}
+
+function persistCurrentSteps(): void {
+  if (state.runId < 1) return;
+  persistImportRunSteps(state.runId, {
+    lines: state.lines,
+    summary: state.summary,
+  });
 }
 
 function notify(): void {
@@ -83,11 +100,11 @@ export function subscribeAdminImportSnapshot(listener: SnapshotListener): () => 
 }
 
 export function isAdminImportRunning(): boolean {
-  return state.running;
+  return state.running || isImportLeaseHeld();
 }
 
 export function waitForAdminImportIdle(timeoutMs: number): Promise<boolean> {
-  if (!state.running) {
+  if (!isAdminImportRunning()) {
     return Promise.resolve(true);
   }
   return new Promise((resolve) => {
@@ -121,7 +138,7 @@ export function startAdminImportJob(
   snapshot: AdminImportSnapshot;
   reason?: string;
 } {
-  if (state.running) {
+  if (isAdminImportRunning()) {
     return {
       started: false,
       reason: 'An import job is already running.',
@@ -129,24 +146,46 @@ export function startAdminImportJob(
     };
   }
 
+  const run = createImportRun(requestedByUserId);
+  const masked = maskClerkUserId(requestedByUserId);
   state = {
-    runId: state.runId + 1,
+    runId: run.id,
     running: true,
     startedAt: nowIso(),
     finishedAt: null,
     requestedByUserId,
+    requestedByUserMasked: masked,
     lines: [],
     summary: null,
     error: null,
   };
-  pushLine('info', `[AdminImport] Run #${state.runId} queued by user ${requestedByUserId}.`);
+  updateImportRun(run.id, { status: 'running' });
+  pushLine('info', `[AdminImport] Run #${state.runId} queued by user ${masked}.`);
 
   void (async () => {
+    const lockToken = tryAcquireImportLease(run.id);
+    if (!lockToken) {
+      const message = 'An import job is already running.';
+      state.error = message;
+      state.running = false;
+      state.finishedAt = nowIso();
+      updateImportRun(run.id, {
+        status: 'failed',
+        finished_at: state.finishedAt,
+        error_text: message,
+      });
+      persistCurrentSteps();
+      notify();
+      return;
+    }
+
     try {
       const summary = await runStartupPipeline({
         cliReport: true,
         forceImport: options.forceImport,
         forceImages: options.forceImages,
+        importRunId: run.id,
+        skipLease: true,
         reporter: (line, level) => {
           pushLine(level, line);
         },
@@ -156,13 +195,24 @@ export function startAdminImportJob(
         'info',
         `[AdminImport] Run #${state.runId} finished in ${(summary.durationMs / 1000).toFixed(1)}s.`,
       );
+      updateImportRun(run.id, {
+        status: 'succeeded',
+        finished_at: nowIso(),
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       state.error = message;
       pushLine('error', `[AdminImport] Run #${state.runId} failed: ${message}`);
+      updateImportRun(run.id, {
+        status: 'failed',
+        finished_at: nowIso(),
+        error_text: message,
+      });
     } finally {
+      releaseImportLease(lockToken);
       state.running = false;
       state.finishedAt = nowIso();
+      persistCurrentSteps();
       bustModListCache();
       notify();
     }
