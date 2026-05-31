@@ -7,6 +7,7 @@ import type {
   SummaryOutcome,
 } from '../../../shared/pipelineSummaryTypes';
 import { apiFetch } from '../../utils/api';
+import { ArtifactSlotsAdminTool } from '../Admin/ArtifactSlotsAdminTool';
 import { Modal } from '../ui/Modal';
 
 interface ImportLogLine {
@@ -68,6 +69,7 @@ export function AdminPage() {
         <h1 className="text-foreground text-2xl font-bold">Admin Panel</h1>
         <p className="text-muted mt-1 text-sm">Data import controls.</p>
       </div>
+      <ArtifactSlotsAdminTool />
       <DataImportAdmin />
     </div>
   );
@@ -241,7 +243,8 @@ function DataImportAdmin() {
           <h2 className="text-foreground mb-2 text-lg font-semibold">Data Import</h2>
           <p className="text-muted text-xs">
             Run the full pipeline with smart skips, or force individual steps when you need a
-            targeted refresh. Overframe detail pages use JSON endpoints to minimize page weight.
+            targeted refresh. Overframe steps are manual-only; wiki covers fire behaviors and
+            Helminth flags.
           </p>
         </div>
 

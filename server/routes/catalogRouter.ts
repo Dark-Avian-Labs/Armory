@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from 'express';
 
+import { MAX_ARTIFACT_SLOTS_STORAGE_LENGTH } from '../../shared/equipmentSlotConfig.js';
 import { parseForceSteps } from '../../shared/pipelineSteps.js';
+import { ARTIFACT_SLOT_POLARITIES } from '../../shared/polarities.js';
 import { ARCANE_PUBLIC_LIST_SQL, bindArcanePublicListParams } from '../arcaneCatalog.js';
 import {
   classifyArcaneCompatTags,
@@ -398,6 +400,72 @@ catalogRouter.get('/archon-shards', (_req: Request, res: Response) => {
     sendInternalError(res, 'archonShards.list', err);
   }
 });
+
+function resolveArtifactSlotsTable(
+  uniqueName: string,
+): 'warframes' | 'weapons' | 'companions' | null {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT 'warframes' AS tbl FROM warframes WHERE unique_name = ?
+       UNION ALL SELECT 'weapons' FROM weapons WHERE unique_name = ?
+       UNION ALL SELECT 'companions' FROM companions WHERE unique_name = ?`,
+    )
+    .get(uniqueName, uniqueName, uniqueName) as { tbl: string } | undefined;
+  const tbl = row?.tbl;
+  if (tbl === 'warframes' || tbl === 'weapons' || tbl === 'companions') return tbl;
+  return null;
+}
+
+catalogRouter.patch(
+  '/admin/catalog/artifact-slots',
+  requireArmoryAdmin,
+  (req: Request, res: Response) => {
+    try {
+      const body = req.body as { unique_name?: unknown; artifact_slots?: unknown };
+      const uniqueName = typeof body.unique_name === 'string' ? body.unique_name.trim() : '';
+      if (!uniqueName) {
+        res.status(400).json({ error: 'unique_name is required' });
+        return;
+      }
+      if (!Array.isArray(body.artifact_slots) || body.artifact_slots.length === 0) {
+        res.status(400).json({ error: 'artifact_slots must be a non-empty array' });
+        return;
+      }
+      if (body.artifact_slots.length > MAX_ARTIFACT_SLOTS_STORAGE_LENGTH) {
+        res.status(400).json({
+          error: `artifact_slots supports at most ${MAX_ARTIFACT_SLOTS_STORAGE_LENGTH} entries`,
+        });
+        return;
+      }
+      for (const entry of body.artifact_slots) {
+        if (typeof entry !== 'string' || !ARTIFACT_SLOT_POLARITIES.has(entry)) {
+          res.status(400).json({ error: 'artifact_slots contains invalid polarity values' });
+          return;
+        }
+      }
+
+      const table = resolveArtifactSlotsTable(uniqueName);
+      if (!table) {
+        res.status(404).json({ error: 'Equipment not found' });
+        return;
+      }
+
+      const db = getDb();
+      const json = JSON.stringify(body.artifact_slots);
+      const stmt = db.prepare(`UPDATE ${table} SET artifact_slots = ? WHERE unique_name = ?`);
+      const result = stmt.run(json, uniqueName);
+      if (result.changes === 0) {
+        res.status(404).json({ error: 'Equipment not found' });
+        return;
+      }
+
+      res.json({ ok: true, unique_name: uniqueName, artifact_slots: body.artifact_slots });
+    } catch (err) {
+      sendInternalError(res, 'admin.catalog.artifactSlots', err);
+    }
+  },
+);
 
 catalogRouter.get('/admin/import/state', requireArmoryAdmin, (_req: Request, res: Response) => {
   try {

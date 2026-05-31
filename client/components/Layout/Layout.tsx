@@ -29,6 +29,7 @@ import { CompareBar } from '../Compare/CompareBar';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { Menu } from '../ui/Menu';
+import { Modal } from '../ui/Modal';
 import { UiStyleSelector } from '../ui/UiStyleSelector';
 import { AsciiWaveBackground } from './AsciiWaveBackground';
 import { SearchBar } from './SearchBar';
@@ -79,7 +80,7 @@ export function Layout() {
     searchParams.get('compact') === '1' && isCompactModBuilderRoute(location.pathname);
 
   const handleEquipmentSelect = useCallback(
-    (equipmentType: string, uniqueName: string) => {
+    (equipmentType: string, uniqueName: string, _displayName?: string) => {
       setShowAddBuild(false);
       navigate(buildNewPath(equipmentType, uniqueName));
     },
@@ -192,6 +193,9 @@ export function Layout() {
           <Outlet />
         </main>
         <StaleClientUpdateBanner appVersion={APP_VERSION} />
+        {sessionNotice ? (
+          <SessionExpiredModal message={sessionNotice} onClose={() => setSessionNotice(null)} />
+        ) : null}
       </div>
     );
   }
@@ -406,15 +410,34 @@ export function Layout() {
 
       <StaleClientUpdateBanner appVersion={APP_VERSION} />
       {sessionNotice ? (
-        <div
-          className="toast-pill fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
-          data-tone="warning"
-          role="status"
-          aria-live="polite"
-        >
-          {sessionNotice}
-        </div>
+        <SessionExpiredModal message={sessionNotice} onClose={() => setSessionNotice(null)} />
       ) : null}
     </div>
+  );
+}
+
+function SessionExpiredModal({ message, onClose }: { message: string; onClose: () => void }) {
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabelledBy="armory-session-expired-title"
+      className="glass-modal-surface max-w-md"
+    >
+      <div className="space-y-4">
+        <h2 id="armory-session-expired-title" className="text-foreground text-lg font-semibold">
+          Session expired
+        </h2>
+        <p className="text-muted text-sm">{message}</p>
+        <div className="modal-actions">
+          <Link to="/sign-in" className="btn btn-accent text-sm" onClick={onClose}>
+            Sign in
+          </Link>
+          <button type="button" className="btn btn-cancel text-sm" onClick={onClose}>
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }

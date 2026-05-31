@@ -17,7 +17,7 @@ import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { Modal } from '../ui/Modal';
 
 interface EquipmentGridModalProps {
-  onSelect: (equipmentType: string, uniqueName: string) => void;
+  onSelect: (equipmentType: string, uniqueName: string, displayName: string) => void;
   onClose: () => void;
 }
 
@@ -136,7 +136,13 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
                 <button
                   key={item.unique_name}
                   type="button"
-                  onClick={() => onSelect(item.selection_type ?? activeTab, item.unique_name)}
+                  onClick={() =>
+                    onSelect(
+                      item.selection_type ?? activeTab,
+                      item.unique_name,
+                      normalizeEquipmentName(item.name),
+                    )
+                  }
                   className={`group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative overflow-hidden rounded-lg border p-0 text-center transition-[color,background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 ${EQUIPMENT_PICKER_TILE_BUTTON_CLASS}`}
                   aria-label={`Select ${normalizeEquipmentName(item.name)}`}
                 >
