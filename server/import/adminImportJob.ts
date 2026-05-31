@@ -1,3 +1,4 @@
+import type { PipelineStepKey } from '../../shared/pipelineSteps.js';
 import { bustModListCache } from '../cache/modListCache.js';
 import {
   createImportRun,
@@ -128,6 +129,7 @@ export function waitForAdminImportIdle(timeoutMs: number): Promise<boolean> {
 export interface AdminImportOptions {
   forceImport?: boolean;
   forceImages?: boolean;
+  forceSteps?: PipelineStepKey[];
 }
 
 export function startAdminImportJob(
@@ -184,6 +186,7 @@ export function startAdminImportJob(
         cliReport: true,
         forceImport: options.forceImport,
         forceImages: options.forceImages,
+        forceSteps: options.forceSteps,
         importRunId: run.id,
         skipLease: true,
         reporter: (line, level) => {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { PIPELINE_STEPS, type PipelineStepKey } from '../../../shared/pipelineSteps';
 import type {
   StartupPipelineSummary,
   StepSummaryBase,
@@ -16,6 +17,12 @@ interface ImportLogLine {
 
 type ImportSummaryStepKey = Exclude<keyof StartupPipelineSummary, 'durationMs' | 'blockingIssues'>;
 
+interface RunImportOptions {
+  forceImport?: boolean;
+  forceImages?: boolean;
+  forceSteps?: PipelineStepKey[];
+}
+
 function outcomeBadgeClass(outcome: SummaryOutcome | string | undefined): string {
   switch (outcome) {
     case 'ok':
@@ -30,27 +37,13 @@ function outcomeBadgeClass(outcome: SummaryOutcome | string | undefined): string
   }
 }
 
-const STEP_TITLES: Array<{ key: ImportSummaryStepKey; title: string }> = [
-  { key: 'schema', title: 'Schema' },
-  { key: 'officialExports', title: 'Exports' },
-  { key: 'sqliteFromExports', title: 'Database' },
-  { key: 'exaltedStanceMods', title: 'Exalted Stances' },
-  { key: 'images', title: 'Images' },
-  { key: 'hiddenCompanionWeapons', title: 'Companion Weapons' },
-  { key: 'overframe', title: 'Overframe' },
-  { key: 'wiki', title: 'Wiki' },
-  { key: 'helminthWiki', title: 'Helminth' },
-  { key: 'incarnonWiki', title: 'Incarnon' },
-  { key: 'warframeMarketLinks', title: 'Warframe Market' },
-];
-
 function formatImportSummaryLines(
   s: StartupPipelineSummary,
 ): Array<{ title: string; outcome: string; detail: string }> {
-  return STEP_TITLES.map(({ key, title }) => {
-    const step = s[key] as StepSummaryBase;
+  return PIPELINE_STEPS.map(({ key, label }) => {
+    const step = s[key as ImportSummaryStepKey] as StepSummaryBase;
     return {
-      title,
+      title: label,
       outcome: step.outcome,
       detail: step.error ? `${step.detail} — ${step.error}` : step.detail,
     };
@@ -86,6 +79,7 @@ function DataImportAdmin() {
   const [showLogs, setShowLogs] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [forcedSteps, setForcedSteps] = useState<PipelineStepKey[]>([]);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
   const copyFeedbackResetTimeoutRef = useRef<number | null>(null);
 
@@ -165,7 +159,7 @@ function DataImportAdmin() {
     return `Last run #${snapshot.runId} finished ${snapshot.finishedAt ? 'successfully' : 'with unknown state'}.`;
   }, [snapshot]);
 
-  const runImport = async (options?: { forceImport?: boolean; forceImages?: boolean }) => {
+  const runImport = async (options?: RunImportOptions) => {
     setErrorMessage(null);
     setShowLogs(true);
     setRunningImport(true);
@@ -216,67 +210,183 @@ function DataImportAdmin() {
     }, 2000);
   };
 
+  const stepOutcomes = useMemo(() => {
+    const summary = snapshot?.summary;
+    if (!summary) return new Map<PipelineStepKey, StepSummaryBase>();
+    return new Map(
+      PIPELINE_STEPS.map(({ key }) => [
+        key,
+        summary[key as ImportSummaryStepKey] as StepSummaryBase,
+      ]),
+    );
+  }, [snapshot?.summary]);
+
+  const forcedStepSet = useMemo(() => new Set(forcedSteps), [forcedSteps]);
+
+  const toggleForcedStep = (key: PipelineStepKey, checked: boolean) => {
+    setForcedSteps((prev) => {
+      if (checked) return prev.includes(key) ? prev : [...prev, key];
+      return prev.filter((step) => step !== key);
+    });
+  };
+
+  const clearForcedSteps = () => {
+    setForcedSteps([]);
+  };
+
   return (
     <>
-      <div className="glass-surface p-6">
-        <h2 className="text-foreground mb-3 text-lg font-semibold">Data Import</h2>
-        <p className="text-muted mb-3 text-xs">
-          Run the full data pipeline (official exports, database processing, Overframe sync, wiki
-          enrichments, Helminth sync, image downloads).
-        </p>
-        <p className="text-muted mb-4 text-sm" role="status">
+      <div className="glass-surface space-y-5 p-6">
+        <div>
+          <h2 className="text-foreground mb-2 text-lg font-semibold">Data Import</h2>
+          <p className="text-muted text-xs">
+            Run the full pipeline with smart skips, or force individual steps when you need a
+            targeted refresh. Overframe detail pages use JSON endpoints to minimize page weight.
+          </p>
+        </div>
+
+        <p className="text-muted text-sm" role="status">
           {statusText}
         </p>
         {errorMessage ? (
-          <p className="text-danger mb-3 text-sm" role="alert">
+          <p className="text-danger text-sm" role="alert">
             {errorMessage}
           </p>
         ) : null}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="glass-button text-sm"
-            onClick={() => {
-              void runImport();
-            }}
-            disabled={runningImport}
-          >
-            {runningImport ? 'Import running...' : 'Run Full Import'}
-          </button>
-          <button
-            type="button"
-            className="glass-button-secondary text-warning text-sm"
-            onClick={() => {
-              void runImport({ forceImport: true, forceImages: true });
-            }}
-            disabled={runningImport}
-          >
-            Force Full Re-import
-          </button>
-          <button
-            type="button"
-            className="glass-button-secondary text-sm"
-            onClick={() => {
-              void runImport({ forceImages: true });
-            }}
-            disabled={runningImport}
-          >
-            Force Re-download Images
-          </button>
-          <button
-            type="button"
-            className="glass-button-secondary text-sm"
-            onClick={() => setShowLogs(true)}
-          >
-            View Live Log
-          </button>
+
+        <div>
+          <h3 className="text-foreground mb-2 text-sm font-semibold">Quick actions</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-accent text-sm"
+              onClick={() => {
+                void runImport();
+              }}
+              disabled={runningImport}
+            >
+              {runningImport ? 'Import running...' : 'Run Full Import'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary text-warning text-sm"
+              onClick={() => {
+                void runImport({ forceImport: true, forceImages: true });
+              }}
+              disabled={runningImport}
+            >
+              Force Full Re-import
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary text-sm"
+              onClick={() => {
+                void runImport({ forceImages: true });
+              }}
+              disabled={runningImport}
+            >
+              Re-download Images
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary text-sm"
+              onClick={() => setShowLogs(true)}
+            >
+              View Live Log
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-foreground text-sm font-semibold">Force selected steps</h3>
+              <p className="text-muted mt-1 text-xs">
+                Runs the full pipeline but overrides skip logic for checked steps. Other steps still
+                follow normal missing-data rules.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary text-sm"
+                onClick={() => setForcedSteps(PIPELINE_STEPS.map((step) => step.key))}
+                disabled={runningImport}
+              >
+                Select all
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary text-sm"
+                onClick={clearForcedSteps}
+                disabled={runningImport || forcedSteps.length === 0}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <ul className="list-none space-y-1">
+            {PIPELINE_STEPS.map(({ key, label, description }) => {
+              const step = stepOutcomes.get(key);
+              const checked = forcedStepSet.has(key);
+              return (
+                <li
+                  key={key}
+                  className="border-border/60 border-b border-dashed py-3 last:border-0"
+                >
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="accent-accent mt-0.5 h-4 w-4 shrink-0 cursor-pointer"
+                      checked={checked}
+                      disabled={runningImport}
+                      onChange={(event) => toggleForcedStep(key, event.target.checked)}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="text-foreground text-sm font-medium">{label}</span>
+                        {step ? (
+                          <span
+                            className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${outcomeBadgeClass(step.outcome)}`}
+                          >
+                            {step.outcome}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="text-muted mt-1 block text-xs leading-snug">
+                        {description}
+                      </span>
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-accent text-sm"
+              onClick={() => {
+                void runImport({ forceSteps: forcedSteps });
+              }}
+              disabled={runningImport || forcedSteps.length === 0}
+            >
+              {runningImport
+                ? 'Import running...'
+                : forcedSteps.length === 0
+                  ? 'Run with forced steps'
+                  : `Run with ${forcedSteps.length} forced step${forcedSteps.length === 1 ? '' : 's'}`}
+            </button>
+          </div>
         </div>
 
         <Modal
           open={showLogs}
           onClose={() => setShowLogs(false)}
           ariaLabelledBy="armory-import-log-title"
-          className="armory-import-modal"
+          className="glass-modal-surface armory-import-modal"
         >
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
@@ -292,7 +402,7 @@ function DataImportAdmin() {
                 </span>
                 <button
                   type="button"
-                  className="glass-button-secondary text-sm"
+                  className="btn btn-secondary text-sm"
                   onClick={() => {
                     void copyLogToClipboard();
                   }}
@@ -324,10 +434,10 @@ function DataImportAdmin() {
                 <div className="text-muted">No output yet.</div>
               )}
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="modal-actions">
               <button
                 type="button"
-                className="glass-button-secondary text-sm"
+                className="btn btn-cancel text-sm"
                 onClick={() => setShowLogs(false)}
               >
                 Close

@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 
+import { parseForceSteps } from '../../shared/pipelineSteps.js';
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { getClerkUserId } from '../auth/clerkUser.js';
 import { requireArmoryAdmin } from '../auth/middleware.js';
@@ -407,7 +408,8 @@ catalogRouter.post('/admin/import/run', requireArmoryAdmin, (req: Request, res: 
     const body = req.body as Record<string, unknown> | undefined;
     const forceImport = body?.forceImport === true;
     const forceImages = body?.forceImages === true;
-    const result = startAdminImportJob(userId, { forceImport, forceImages });
+    const forceSteps = parseForceSteps(body?.forceSteps);
+    const result = startAdminImportJob(userId, { forceImport, forceImages, forceSteps });
     if (!result.started) {
       res.status(409).json({
         error: result.reason ?? 'Import job is already running.',

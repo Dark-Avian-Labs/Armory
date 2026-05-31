@@ -1,7 +1,8 @@
 import * as cheerio from 'cheerio';
 
 import { getDb } from '../db/connection.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import { fetchOverframeHtml } from '../http/fetchOverframe.js';
+import { FETCH_TIMEOUT_MS, isAbortError } from '../http/fetchWithTimeout.js';
 
 const BASE_URL = 'https://overframe.gg';
 
@@ -14,7 +15,7 @@ export interface OverframeIndexEntry {
 }
 
 const CATEGORY_URLS: Record<string, string> = {
-  warframe: '/build/new/',
+  warframe: '/build/new/warframes/',
   primary: '/build/new/primary-weapons/',
   secondary: '/build/new/secondary-weapons/',
   melee: '/build/new/melee-weapons/',
@@ -22,20 +23,30 @@ const CATEGORY_URLS: Record<string, string> = {
   companion: '/build/new/sentinels/',
 };
 
+export function countItemsMissingOverframeData(): number {
+  const db = getDb();
+  let total = 0;
+  for (const table of ['warframes', 'weapons', 'companions'] as const) {
+    const row = db
+      .prepare(`SELECT COUNT(*) as c FROM ${table} WHERE artifact_slots IS NULL`)
+      .get() as { c: number };
+    total += row.c;
+  }
+  return total;
+}
+
 async function scrapeCategory(category: string, urlPath: string): Promise<OverframeIndexEntry[]> {
   const url = `${BASE_URL}${urlPath}`;
-  let res: Response;
+  let html: string;
   try {
-    res = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.htmlPage);
+    html = await fetchOverframeHtml(urlPath, FETCH_TIMEOUT_MS.htmlPage);
   } catch (error: unknown) {
     if (isAbortError(error)) {
       throw new Error(`Failed to fetch ${url}: timed out after ${FETCH_TIMEOUT_MS.htmlPage}ms`);
     }
     throw error;
   }
-  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
 
-  const html = await res.text();
   const $ = cheerio.load(html);
   const entries: OverframeIndexEntry[] = [];
 
@@ -103,6 +114,7 @@ export interface IndexScrapeResult {
   totalFound: number;
   matched: number;
   entries: OverframeIndexEntry[];
+  skippedIndexFetch: boolean;
 }
 
 export async function scrapeIndex(
@@ -110,6 +122,16 @@ export async function scrapeIndex(
   onProgress?: (msg: string) => void,
   onlyMissing = false,
 ): Promise<IndexScrapeResult> {
+  if (onlyMissing && countItemsMissingOverframeData() === 0) {
+    onProgress?.('All matched items already have Overframe build data; skipping index fetch.');
+    return {
+      totalFound: 0,
+      matched: 0,
+      entries: [],
+      skippedIndexFetch: true,
+    };
+  }
+
   const cats = categories?.length
     ? Object.entries(CATEGORY_URLS).filter(([k]) => categories.includes(k))
     : Object.entries(CATEGORY_URLS);
@@ -137,5 +159,6 @@ export async function scrapeIndex(
     totalFound: allEntries.length,
     matched: matched.length,
     entries: matched,
+    skippedIndexFetch: false,
   };
 }
