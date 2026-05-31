@@ -278,3 +278,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.61.1** `chore` [#326](https://github.com/Dark-Avian-Labs/Armory/pull/326): arcane exports
 - **v1.61.2** `fix` [#327](https://github.com/Dark-Avian-Labs/Armory/pull/327): arcane import
 - **v1.62.0** `feat` [#328](https://github.com/Dark-Avian-Labs/Armory/pull/328): remove automatic overframe scraping
+- **v1.62.1** `fix` [#329](https://github.com/Dark-Avian-Labs/Armory/pull/329): second aura slot
