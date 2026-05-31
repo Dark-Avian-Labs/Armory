@@ -1,9 +1,12 @@
 import {
   AP_DISABLED,
   isArtifactSlotDisabled,
+  isWarframeSecondAuraConfigured,
+  warframeArtifactWriteIndex,
   warframeExilusArtifactIndex,
   warframeSecondAuraArtifactIndex,
-  warframeUsesExtendedArtifactLayout,
+  WARFRAME_COMPACT_ARTIFACT_SLOT_COUNT,
+  WARFRAME_EXTENDED_ARTIFACT_SLOT_COUNT,
 } from '../../shared/artifactSlotState.js';
 import {
   artifactSlotsStorageLength,
@@ -39,6 +42,11 @@ function slotEnabledFromAp(ap: string | undefined): boolean {
   return ap != null && !isArtifactSlotDisabled(ap);
 }
 
+function warframeSecondAuraApForEditor(artifactSlots: string[], secondAuraIndex: number): string {
+  if (!isWarframeSecondAuraConfigured(artifactSlots)) return AP_DISABLED;
+  return artifactSlots[secondAuraIndex] ?? AP_DISABLED;
+}
+
 export function parseArtifactSlotsJson(raw: string | undefined | null): string[] {
   if (!raw) return [];
   try {
@@ -53,10 +61,8 @@ function slotConfigForType(equipmentType: EquipmentType): EquipmentSlotConfig {
   return EQUIPMENT_SLOT_CONFIGS[equipmentType] ?? EQUIPMENT_SLOT_CONFIGS.warframe;
 }
 
-const WARFRAME_ARTIFACT_SLOT_COUNT = 11;
-
 function editorStorageLength(equipmentType: EquipmentType, config: EquipmentSlotConfig): number {
-  if (equipmentType === 'warframe') return WARFRAME_ARTIFACT_SLOT_COUNT;
+  if (equipmentType === 'warframe') return WARFRAME_EXTENDED_ARTIFACT_SLOT_COUNT;
   return artifactSlotsStorageLength(config);
 }
 
@@ -66,13 +72,13 @@ export function buildArtifactSlotEditorRows(
   equipmentName?: string,
 ): ArtifactSlotEditorRow[] {
   const config = slotConfigForType(equipmentType);
-  const extendedWarframe =
-    equipmentType === 'warframe' && warframeUsesExtendedArtifactLayout(artifactSlots);
   const totalSlots = editorStorageLength(equipmentType, config);
   const specialSlotIndex = config.generalSlots;
   const secondAuraIndex = warframeSecondAuraArtifactIndex(config.generalSlots);
   const exilusIndex =
-    equipmentType === 'warframe' ? WARFRAME_ARTIFACT_SLOT_COUNT - 1 : config.generalSlots + 1;
+    equipmentType === 'warframe'
+      ? WARFRAME_EXTENDED_ARTIFACT_SLOT_COUNT - 1
+      : config.generalSlots + 1;
   const exilusReadIndex =
     equipmentType === 'warframe'
       ? warframeExilusArtifactIndex(artifactSlots, config.generalSlots)
@@ -92,7 +98,7 @@ export function buildArtifactSlotEditorRows(
     });
   }
   if (equipmentType === 'warframe') {
-    const ap = extendedWarframe ? padded[secondAuraIndex] : AP_DISABLED;
+    const ap = warframeSecondAuraApForEditor(artifactSlots, secondAuraIndex);
     rows.push({
       id: 'aura-2',
       label: 'Aura 2',
@@ -154,16 +160,39 @@ export function artifactSlotsFromEditorRows(
   rows: ArtifactSlotEditorRow[],
 ): string[] {
   const config = slotConfigForType(equipmentType);
-  const result: string[] = Array.from({ length: editorStorageLength(equipmentType, config) }, () =>
+  const aura2Row = rows.find((row) => row.id === 'aura-2');
+  const useExtendedWarframe = equipmentType === 'warframe' && (aura2Row?.enabled ?? false);
+  const length =
+    equipmentType === 'warframe'
+      ? useExtendedWarframe
+        ? WARFRAME_EXTENDED_ARTIFACT_SLOT_COUNT
+        : WARFRAME_COMPACT_ARTIFACT_SLOT_COUNT
+      : editorStorageLength(equipmentType, config);
+
+  const result: string[] = Array.from({ length }, () =>
     equipmentType === 'warframe' ? AP_DISABLED : 'AP_UNIVERSAL',
   );
+
   for (const row of rows) {
+    if (row.id === 'aura-2' && !useExtendedWarframe) continue;
+
+    const writeIndex =
+      equipmentType === 'warframe'
+        ? warframeArtifactWriteIndex(
+            row.id,
+            row.artifactIndex,
+            useExtendedWarframe,
+            config.generalSlots,
+          )
+        : row.artifactIndex;
+
     if (!row.enabled) {
-      result[row.artifactIndex] = AP_DISABLED;
+      result[writeIndex] = AP_DISABLED;
       continue;
     }
-    result[row.artifactIndex] = row.polarity;
+    result[writeIndex] = row.polarity;
   }
+
   return result;
 }
 

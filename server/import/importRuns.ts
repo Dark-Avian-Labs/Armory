@@ -180,6 +180,7 @@ export function persistImportRunSteps(id: number, steps: ImportRunSteps): void {
 }
 
 const IMPORT_LEASE_TTL_MINUTES = 30;
+const IMPORT_INTERRUPTED_MESSAGE = 'Interrupted by server restart or stale import lock.';
 
 export function tryAcquireImportLease(runId: number | null): string | null {
   ensureImportRunsSchema();
@@ -221,18 +222,118 @@ export function releaseImportLease(lockToken: string): void {
   })();
 }
 
-export function isImportLeaseHeld(): boolean {
+function getImportLeaseRow(): {
+  lock_token: string | null;
+  run_id: number | null;
+  acquired_at: string | null;
+} | null {
   ensureImportRunsSchema();
   const row = getDb()
-    .prepare('SELECT lock_token FROM import_lease WHERE id = ?')
-    .get(LEASE_ROW_ID) as { lock_token: string | null } | undefined;
+    .prepare('SELECT lock_token, run_id, acquired_at FROM import_lease WHERE id = ?')
+    .get(LEASE_ROW_ID) as
+    | { lock_token: string | null; run_id: number | null; acquired_at: string | null }
+    | undefined;
+  return row ?? null;
+}
+
+function isLeaseRowStale(acquiredAt: string | null): boolean {
+  if (!acquiredAt) return true;
+  ensureImportRunsSchema();
+  const row = getDb()
+    .prepare(
+      `SELECT CASE WHEN ? <= datetime('now', '-${IMPORT_LEASE_TTL_MINUTES} minutes') THEN 1 ELSE 0 END AS stale`,
+    )
+    .get(acquiredAt) as { stale: number } | undefined;
+  return row?.stale === 1;
+}
+
+function clearImportLeaseRow(): void {
+  ensureImportRunsSchema();
+  getDb()
+    .prepare(
+      'UPDATE import_lease SET lock_token = NULL, run_id = NULL, acquired_at = NULL WHERE id = ?',
+    )
+    .run(LEASE_ROW_ID);
+}
+
+function failInterruptedImportRuns(runId: number | null): void {
+  ensureImportRunsSchema();
+  const db = getDb();
+  if (runId != null) {
+    db.prepare(
+      `UPDATE import_runs
+       SET status = 'failed',
+           finished_at = datetime('now'),
+           error_text = COALESCE(error_text, ?),
+           lock_token = NULL
+       WHERE id = ? AND status IN ('pending', 'running')`,
+    ).run(IMPORT_INTERRUPTED_MESSAGE, runId);
+  }
+  db.prepare(
+    `UPDATE import_runs
+     SET status = 'failed',
+         finished_at = datetime('now'),
+         error_text = COALESCE(error_text, ?),
+         lock_token = NULL
+     WHERE status IN ('pending', 'running')`,
+  ).run(IMPORT_INTERRUPTED_MESSAGE);
+}
+
+export function releaseStaleImportLease(): boolean {
+  const row = getImportLeaseRow();
+  if (!row?.lock_token) return false;
+  if (!isLeaseRowStale(row.acquired_at)) return false;
+  const db = getDb();
+  db.transaction(() => {
+    clearImportLeaseRow();
+    failInterruptedImportRuns(row.run_id);
+  })();
+  return true;
+}
+
+export function recoverImportLeaseOnStartup(): void {
+  ensureImportRunsSchema();
+  const row = getImportLeaseRow();
+  if (!row?.lock_token) return;
+  const db = getDb();
+  db.transaction(() => {
+    clearImportLeaseRow();
+    failInterruptedImportRuns(row.run_id);
+  })();
+}
+
+export function forceReleaseImportLease(): boolean {
+  const row = getImportLeaseRow();
+  if (!row?.lock_token) return false;
+  const db = getDb();
+  db.transaction(() => {
+    clearImportLeaseRow();
+    failInterruptedImportRuns(row.run_id);
+  })();
+  return true;
+}
+
+export function isImportLeaseHeld(): boolean {
+  releaseStaleImportLease();
+  const row = getImportLeaseRow();
   return Boolean(row?.lock_token);
 }
 
 export function getActiveImportRunId(): number | null {
   ensureImportRunsSchema();
-  const row = getDb().prepare('SELECT run_id FROM import_lease WHERE id = ?').get(LEASE_ROW_ID) as
-    | { run_id: number | null }
-    | undefined;
+  const row = getImportLeaseRow();
   return row?.run_id ?? null;
+}
+
+export function getLatestImportRunRow(): ImportRunRow | null {
+  ensureImportRunsSchema();
+  const row = getDb()
+    .prepare(
+      `SELECT id, status, actor_hash, started_at, finished_at, steps_json, error_text, lock_token
+       FROM import_runs
+       ORDER BY id DESC
+       LIMIT 1`,
+    )
+    .get() as ImportRunRow | undefined;
+  return row ?? null;
 }

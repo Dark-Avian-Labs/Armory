@@ -16,6 +16,7 @@ import { getDb } from '../db/connection.js';
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
 import {
   getAdminImportSnapshot,
+  resetAdminImportLock,
   startAdminImportJob,
   subscribeAdminImportSnapshot,
 } from '../import/adminImportJob.js';
@@ -472,6 +473,14 @@ catalogRouter.get('/admin/import/state', requireArmoryAdmin, (_req: Request, res
     res.json(getAdminImportSnapshot());
   } catch (err) {
     sendInternalError(res, 'admin.import.state', err);
+  }
+});
+
+catalogRouter.post('/admin/import/reset', requireArmoryAdmin, (_req: Request, res: Response) => {
+  try {
+    res.json({ ok: true, snapshot: resetAdminImportLock() });
+  } catch (err) {
+    sendInternalError(res, 'admin.import.reset', err);
   }
 });
 

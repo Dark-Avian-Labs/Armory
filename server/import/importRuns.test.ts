@@ -17,7 +17,9 @@ vi.mock('../db/connection.js', () => {
 import {
   createImportRun,
   ensureImportRunsSchema,
+  isImportLeaseHeld,
   maskClerkUserId,
+  recoverImportLeaseOnStartup,
   releaseImportLease,
   tryAcquireImportLease,
 } from './importRuns.js';
@@ -48,5 +50,17 @@ describe('importRuns', () => {
     const third = tryAcquireImportLease(run.id + 1);
     expect(third).toBeTruthy();
     releaseImportLease(third!);
+  });
+
+  it('clears orphan leases on startup so imports can run again', () => {
+    const run = createImportRun('user_admin');
+    const token = tryAcquireImportLease(run.id);
+    expect(token).toBeTruthy();
+    expect(isImportLeaseHeld()).toBe(true);
+
+    recoverImportLeaseOnStartup();
+
+    expect(isImportLeaseHeld()).toBe(false);
+    expect(tryAcquireImportLease(run.id + 1)).toBeTruthy();
   });
 });
