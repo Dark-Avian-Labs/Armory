@@ -35,6 +35,7 @@ import { createSessionSchema } from './db/sessionSchema.js';
 import { createAppHelmet } from './http/helmetCsp.js';
 import { getRequestId, requestIdMiddleware } from './http/requestId.js';
 import { isAdminImportRunning, waitForAdminImportIdle } from './import/adminImportJob.js';
+import { recoverImportLeaseOnStartup } from './import/importRuns.js';
 import { log } from './logger.js';
 import { apiRouter } from './routes/api.js';
 import { authRouter } from './routes/auth.js';
@@ -47,6 +48,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 ensureDataDirs();
 createAppSchema();
+recoverImportLeaseOnStartup();
 
 const sessionDb = getSessionDb();
 createSessionSchema(sessionDb);

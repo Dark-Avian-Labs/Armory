@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AP_DISABLED,
   isArtifactSlotVisible,
+  isWarframeSecondAuraConfigured,
   isWarframeSecondAuraSlotActive,
   warframeExilusArtifactIndex,
 } from './artifactSlotState.js';
@@ -19,14 +20,25 @@ describe('artifactSlotState', () => {
     expect(warframeExilusArtifactIndex(slots)).toBe(10);
   });
 
-  it('shows second aura only on extended layouts when not disabled', () => {
+  it('treats compact 10-slot layouts as having no configured second aura', () => {
     const compact = Array.from({ length: 10 }, () => 'AP_UNIVERSAL');
+    expect(isWarframeSecondAuraConfigured(compact)).toBe(false);
     expect(isWarframeSecondAuraSlotActive(compact)).toBe(false);
+  });
 
-    const extended = [...compact, 'AP_DEFENSE'];
+  it('shows second aura in builder when extended and not disabled', () => {
+    const extended = [...Array.from({ length: 10 }, () => 'AP_UNIVERSAL'), 'AP_DEFENSE'];
+    expect(isWarframeSecondAuraConfigured(extended)).toBe(true);
     expect(isWarframeSecondAuraSlotActive(extended)).toBe(true);
 
     extended[9] = AP_DISABLED;
+    expect(isWarframeSecondAuraConfigured(extended)).toBe(false);
     expect(isWarframeSecondAuraSlotActive(extended)).toBe(false);
+  });
+
+  it('does not treat AP_UNIVERSAL at index 9 as a configured second aura', () => {
+    const extended = [...Array.from({ length: 10 }, () => 'AP_UNIVERSAL'), 'AP_UNIVERSAL'];
+    expect(isWarframeSecondAuraConfigured(extended)).toBe(false);
+    expect(isWarframeSecondAuraSlotActive(extended)).toBe(true);
   });
 });

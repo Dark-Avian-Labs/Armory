@@ -2,8 +2,13 @@ import type { PipelineStepKey } from '../../shared/pipelineSteps.js';
 import { bustModListCache } from '../cache/modListCache.js';
 import {
   createImportRun,
+  forceReleaseImportLease,
+  getActiveImportRunId,
+  getImportRunRow,
+  getLatestImportRunRow,
   isImportLeaseHeld,
   maskClerkUserId,
+  parseImportRunSteps,
   persistImportRunSteps,
   releaseImportLease,
   tryAcquireImportLease,
@@ -43,6 +48,34 @@ let state: AdminImportSnapshot = {
   summary: null,
   error: null,
 };
+
+let hydratedFromDb = false;
+
+function hydrateAdminImportFromDb(): void {
+  if (hydratedFromDb) return;
+  hydratedFromDb = true;
+  if (state.runId > 0 || state.lines.length > 0) return;
+  const activeRunId = getActiveImportRunId();
+  const row =
+    (activeRunId != null ? getImportRunRow(activeRunId) : null) ?? getLatestImportRunRow();
+  if (!row) return;
+  const steps = parseImportRunSteps(row.steps_json);
+  state = {
+    runId: row.id,
+    running: false,
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+    requestedByUserId: null,
+    requestedByUserMasked: null,
+    lines: steps.lines,
+    summary: steps.summary,
+    error: row.error_text,
+  };
+}
+
+function prepareAdminImportSnapshot(): void {
+  hydrateAdminImportFromDb();
+}
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -87,10 +120,29 @@ function notify(): void {
 }
 
 export function getAdminImportSnapshot(): AdminImportSnapshot {
+  prepareAdminImportSnapshot();
   return {
     ...state,
+    running: state.running || isImportLeaseHeld(),
     lines: [...state.lines],
   };
+}
+
+export function resetAdminImportLock(): AdminImportSnapshot {
+  forceReleaseImportLease();
+  state.running = false;
+  if (state.runId > 0 && !state.finishedAt) {
+    state.finishedAt = nowIso();
+    state.error = state.error ?? 'Import lock cleared by admin.';
+    updateImportRun(state.runId, {
+      status: 'failed',
+      finished_at: state.finishedAt,
+      error_text: state.error,
+    });
+    persistCurrentSteps();
+  }
+  notify();
+  return getAdminImportSnapshot();
 }
 
 export function subscribeAdminImportSnapshot(listener: SnapshotListener): () => void {

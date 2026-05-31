@@ -4,26 +4,39 @@ import { AP_DISABLED } from '../../shared/artifactSlotState.js';
 import { artifactSlotsFromEditorRows, buildArtifactSlotEditorRows } from './artifactSlotLayout.js';
 
 describe('artifactSlotLayout', () => {
-  it('shows Aura 2 for all warframes in the admin editor', () => {
-    const rows = buildArtifactSlotEditorRows('warframe', [], 'Excalibur');
-    expect(rows.some((r) => r.id === 'aura-2')).toBe(true);
+  it('shows Aura 2 as off for standard 10-slot warframes like Ash', () => {
+    const slots = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_ANY', 'AP_DEFENSE'];
+    const rows = buildArtifactSlotEditorRows('warframe', slots, 'Ash');
+    const aura2 = rows.find((r) => r.id === 'aura-2');
+    expect(aura2?.enabled).toBe(false);
   });
 
-  it('saves disabled Aura 2 as AP_DISABLED on 11-slot warframe arrays', () => {
-    const rows = buildArtifactSlotEditorRows('warframe', [], 'Excalibur');
+  it('saves compact 10-slot arrays when Aura 2 is off', () => {
+    const rows = buildArtifactSlotEditorRows('warframe', [], 'Ash');
+    const saved = artifactSlotsFromEditorRows('warframe', rows);
+    expect(saved).toHaveLength(10);
+    expect(saved[9]).not.toBe(AP_DISABLED);
+  });
+
+  it('saves extended 11-slot arrays when Aura 2 is on', () => {
+    const rows = buildArtifactSlotEditorRows('warframe', [], 'Jade');
     const aura2 = rows.find((r) => r.id === 'aura-2');
     expect(aura2).toBeDefined();
-    const saved = artifactSlotsFromEditorRows('warframe', rows);
+    const enabled = rows.map((row) =>
+      row.id === 'aura-2' ? { ...row, enabled: true, polarity: 'AP_DEFENSE' as const } : row,
+    );
+    const saved = artifactSlotsFromEditorRows('warframe', enabled);
     expect(saved).toHaveLength(11);
-    expect(saved[9]).toBe(AP_DISABLED);
+    expect(saved[9]).toBe('AP_DEFENSE');
   });
 
-  it('round-trips Jade extended layout with active Aura 2', () => {
+  it('round-trips Jade extended layout', () => {
     const slots = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_ANY', 'AP_DEFENSE', 'AP_UNIVERSAL'];
     const rows = buildArtifactSlotEditorRows('warframe', slots, 'Jade');
+    const aura2 = rows.find((r) => r.id === 'aura-2');
+    expect(aura2?.enabled).toBe(true);
     const saved = artifactSlotsFromEditorRows('warframe', rows);
     expect(saved).toHaveLength(11);
-    expect(saved[8]).toBe('AP_ANY');
     expect(saved[9]).toBe('AP_DEFENSE');
   });
 

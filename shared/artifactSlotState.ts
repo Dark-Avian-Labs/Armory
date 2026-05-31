@@ -1,4 +1,3 @@
-/** Slot turned off in admin; mod builder omits this slot entirely. */
 export const AP_DISABLED = 'AP_DISABLED' as const;
 
 export const ARTIFACT_SLOT_STORAGE_VALUES = new Set([
@@ -18,7 +17,6 @@ export function isArtifactSlotDisabled(ap: string | undefined): boolean {
   return ap === AP_DISABLED;
 }
 
-/** Whether the mod builder should render a slot backed by artifact data. */
 export function isArtifactSlotVisible(
   artifactSlots: string[],
   index: number,
@@ -41,9 +39,29 @@ export function warframeExilusArtifactIndex(artifactSlots: string[], generalSlot
   return warframeUsesExtendedArtifactLayout(artifactSlots) ? generalSlots + 2 : generalSlots + 1;
 }
 
-/** Second aura exists in data and is not admin-disabled. */
+export function isWarframeSecondAuraConfigured(artifactSlots: string[], generalSlots = 8): boolean {
+  if (!warframeUsesExtendedArtifactLayout(artifactSlots)) return false;
+  const ap = artifactSlots[warframeSecondAuraArtifactIndex(generalSlots)];
+  if (ap == null || isArtifactSlotDisabled(ap) || ap === 'AP_UNIVERSAL') return false;
+  return true;
+}
+
 export function isWarframeSecondAuraSlotActive(artifactSlots: string[], generalSlots = 8): boolean {
   if (!warframeUsesExtendedArtifactLayout(artifactSlots)) return false;
   const ap = artifactSlots[warframeSecondAuraArtifactIndex(generalSlots)];
   return ap != null && !isArtifactSlotDisabled(ap);
 }
+
+export function warframeArtifactWriteIndex(
+  rowId: string,
+  artifactIndex: number,
+  extendedLayout: boolean,
+  generalSlots = 8,
+): number {
+  if (rowId === 'aura-2') return warframeSecondAuraArtifactIndex(generalSlots);
+  if (rowId === 'exilus') return extendedLayout ? generalSlots + 2 : generalSlots + 1;
+  return artifactIndex;
+}
+
+export const WARFRAME_COMPACT_ARTIFACT_SLOT_COUNT = 10;
+export const WARFRAME_EXTENDED_ARTIFACT_SLOT_COUNT = 11;

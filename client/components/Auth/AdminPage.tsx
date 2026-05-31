@@ -56,7 +56,8 @@ interface ImportSnapshot {
   running: boolean;
   startedAt: string | null;
   finishedAt: string | null;
-  requestedByUserId: number | null;
+  requestedByUserId: string | null;
+  requestedByUserMasked?: string | null;
   lines: ImportLogLine[];
   summary: StartupPipelineSummary | null;
   error: string | null;
@@ -111,20 +112,27 @@ function DataImportAdmin() {
       }
     })();
 
-    const stream = new EventSource('/api/admin/import/stream');
+    const stream = new EventSource('/api/admin/import/stream', { withCredentials: true });
     stream.addEventListener('snapshot', (event) => {
       if (isDisposed) return;
       try {
         const next = JSON.parse((event as MessageEvent).data) as ImportSnapshot;
         setSnapshot(next);
         setRunningImport(next.running);
+        if (next.running) {
+          setErrorMessage(null);
+        }
       } catch {
         // ignore
       }
     });
     stream.onerror = () => {
       if (isDisposed) return;
-      setErrorMessage('Live import log disconnected. Reload page if updates stop.');
+      setErrorMessage((prev) =>
+        prev?.includes('already running')
+          ? prev
+          : 'Live import log disconnected. Polling will keep updating while a job runs.',
+      );
     };
 
     return () => {
@@ -132,6 +140,29 @@ function DataImportAdmin() {
       stream.close();
     };
   }, []);
+
+  useEffect(() => {
+    if (!runningImport && !snapshot?.running) return;
+
+    const poll = window.setInterval(() => {
+      void (async () => {
+        try {
+          const res = await apiFetch('/api/admin/import/state');
+          const body = (await res.json().catch(() => null)) as ImportSnapshot | null;
+          if (!res.ok || !body) return;
+          setSnapshot(body);
+          setRunningImport(body.running);
+          if (!body.running) {
+            setErrorMessage((prev) => (prev?.includes('already running') ? prev : null));
+          }
+        } catch {
+          // ignore transient poll errors
+        }
+      })();
+    }, 2000);
+
+    return () => window.clearInterval(poll);
+  }, [runningImport, snapshot?.running]);
 
   useEffect(() => {
     return () => {
@@ -157,9 +188,51 @@ function DataImportAdmin() {
   const statusText = useMemo(() => {
     if (!snapshot) return 'Loading import state...';
     if (snapshot.running) return `Import #${snapshot.runId} is running...`;
+    if (snapshot.error && !snapshot.startedAt) {
+      return 'Import lock may be stuck. Use Reset import lock below, then try again.';
+    }
     if (!snapshot.startedAt) return 'No import run has been started yet.';
+    if (snapshot.error) return `Last run #${snapshot.runId} failed.`;
     return `Last run #${snapshot.runId} finished ${snapshot.finishedAt ? 'successfully' : 'with unknown state'}.`;
   }, [snapshot]);
+
+  const refreshImportState = async (): Promise<ImportSnapshot | null> => {
+    const res = await apiFetch('/api/admin/import/state');
+    const body = (await res.json().catch(() => null)) as ImportSnapshot | { error?: string } | null;
+    if (!res.ok || !body || !('runId' in body)) {
+      const message =
+        body && 'error' in body && typeof body.error === 'string'
+          ? body.error
+          : 'Failed to load import state.';
+      throw new Error(message);
+    }
+    const snapshot = body as ImportSnapshot;
+    setSnapshot(snapshot);
+    setRunningImport(snapshot.running);
+    return snapshot;
+  };
+
+  const resetImportLock = async () => {
+    setErrorMessage(null);
+    try {
+      const res = await apiFetch('/api/admin/import/reset', { method: 'POST' });
+      const body = (await res.json().catch(() => null)) as {
+        snapshot?: ImportSnapshot;
+        error?: string;
+      } | null;
+      if (!res.ok || body?.error) {
+        throw new Error(body?.error || 'Failed to reset import lock.');
+      }
+      if (body?.snapshot) {
+        setSnapshot(body.snapshot);
+        setRunningImport(body.snapshot.running);
+      } else {
+        await refreshImportState();
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to reset import lock.');
+    }
+  };
 
   const runImport = async (options?: RunImportOptions) => {
     setErrorMessage(null);
@@ -175,11 +248,16 @@ function DataImportAdmin() {
         snapshot?: ImportSnapshot;
         error?: string;
       } | null;
-      if (!response.ok || (body && body.error)) {
-        throw new Error(body?.error || 'Failed to start import.');
-      }
       if (body?.snapshot) {
         setSnapshot(body.snapshot);
+        setRunningImport(body.snapshot.running);
+      }
+      if (!response.ok) {
+        throw new Error(body?.error || 'Failed to start import.');
+      }
+      if (body && body.started === false) {
+        setRunningImport(false);
+        throw new Error(body.error || 'Import did not start.');
       }
     } catch (error) {
       setRunningImport(false);
@@ -255,6 +333,17 @@ function DataImportAdmin() {
           <p className="text-danger text-sm" role="alert">
             {errorMessage}
           </p>
+        ) : null}
+        {errorMessage?.includes('already running') ? (
+          <button
+            type="button"
+            className="btn btn-secondary text-sm"
+            onClick={() => {
+              void resetImportLock();
+            }}
+          >
+            Reset import lock
+          </button>
         ) : null}
 
         <div>
@@ -433,6 +522,10 @@ function DataImportAdmin() {
                     {line.message}
                   </div>
                 ))
+              ) : snapshot?.error ? (
+                <div className="text-danger">{snapshot.error}</div>
+              ) : snapshot?.running ? (
+                <div className="text-muted">Waiting for pipeline output…</div>
               ) : (
                 <div className="text-muted">No output yet.</div>
               )}
