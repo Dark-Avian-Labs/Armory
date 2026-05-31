@@ -276,3 +276,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.60.4** `chore` [#320](https://github.com/Dark-Avian-Labs/Armory/pull/320): GTP5.5 and Coderabbit Audit
 - **v1.61.0** `feat` [#323](https://github.com/Dark-Avian-Labs/Armory/pull/323): add new scraping pipeline
 - **v1.61.1** `chore` [#326](https://github.com/Dark-Avian-Labs/Armory/pull/326): arcane exports
+- **v1.61.2** `fix` [#327](https://github.com/Dark-Avian-Labs/Armory/pull/327): arcane import
