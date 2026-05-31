@@ -31,5 +31,6 @@ export const REGULAR_POLARITIES: readonly string[] = [
 
 export const ARTIFACT_SLOT_POLARITIES = new Set<string>([
   'AP_UNIVERSAL',
+  'AP_DISABLED',
   ...Object.keys(POLARITIES),
 ]);
