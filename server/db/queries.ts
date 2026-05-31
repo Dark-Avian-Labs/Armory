@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 
+import {
+  isUnreleasedArcane,
+  resolveArcaneImportRarity,
+  UNRELEASED_ARCANE_UNIQUE_NAMES,
+} from '../arcaneCatalog.js';
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { EXPORTS_DIR } from '../config.js';
 import { getDb } from './connection.js';
@@ -655,8 +660,13 @@ function processArcanes(data: Record<string, unknown[]>): number {
     (item) =>
       typeof item.uniqueName === 'string' &&
       item.uniqueName.includes('CosmeticEnhancer') &&
-      item.rarity,
+      !isUnreleasedArcane(item.uniqueName),
   );
+
+  const deleteUnreleased = db.prepare('DELETE FROM arcanes WHERE unique_name = ?');
+  for (const uniqueName of UNRELEASED_ARCANE_UNIQUE_NAMES) {
+    deleteUnreleased.run(uniqueName);
+  }
 
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO arcanes
@@ -670,7 +680,7 @@ function processArcanes(data: Record<string, unknown[]>): number {
       stmt.run(
         item.uniqueName,
         item.name,
-        item.rarity ?? null,
+        resolveArcaneImportRarity(item.rarity),
         item.levelStats ? JSON.stringify(item.levelStats) : null,
         JSON.stringify(compatTags),
         item.codexSecret ? 1 : 0,

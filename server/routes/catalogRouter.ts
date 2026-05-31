@@ -1,7 +1,12 @@
 import { Router, type Request, type Response } from 'express';
 
 import { parseForceSteps } from '../../shared/pipelineSteps.js';
-import { classifyArcaneCompatTags } from '../arcaneCompat.js';
+import { ARCANE_PUBLIC_LIST_SQL, bindArcanePublicListParams } from '../arcaneCatalog.js';
+import {
+  classifyArcaneCompatTags,
+  isOperatorOnlyArcane,
+  type ArcaneCompatTag,
+} from '../arcaneCompat.js';
 import { getClerkUserId } from '../auth/clerkUser.js';
 import { requireArmoryAdmin } from '../auth/middleware.js';
 import { getCachedModList } from '../cache/modListCache.js';
@@ -279,21 +284,25 @@ catalogRouter.get('/arcanes', (req: Request, res: Response) => {
     const equipmentType =
       typeof req.query.equipment_type === 'string' ? req.query.equipment_type : undefined;
     const rows = db
-      .prepare("SELECT * FROM arcanes WHERE unique_name NOT LIKE '%Sub' ORDER BY name")
-      .all() as Array<Record<string, unknown>>;
+      .prepare(`SELECT * FROM arcanes WHERE ${ARCANE_PUBLIC_LIST_SQL} ORDER BY name`)
+      .all(...bindArcanePublicListParams()) as Array<Record<string, unknown>>;
 
-    const normalized = rows.map((row) => ({
-      ...row,
-      compat_tags: classifyArcaneCompatTags(row.unique_name, row.name),
-    }));
+    const normalized: Array<Record<string, unknown> & { compat_tags: ArcaneCompatTag[] }> =
+      rows.map((row) => ({
+        ...row,
+        compat_tags: classifyArcaneCompatTags(row.unique_name, row.name),
+      }));
 
     const allowedTags = getAllowedArcaneTags(equipmentType);
     const items =
       allowedTags === null
         ? normalized
-        : normalized.filter((row) =>
-            (row.compat_tags as string[]).some((tag) => allowedTags.has(tag)),
-          );
+        : normalized.filter((row) => {
+            if (allowedTags.has('warframe') && isOperatorOnlyArcane(row.unique_name, row.name)) {
+              return false;
+            }
+            return row.compat_tags.some((tag) => allowedTags.has(tag));
+          });
 
     res.json({ items });
   } catch (err) {

@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 
+import { ARCANE_PUBLIC_LIST_SQL, bindArcanePublicListParams } from '../arcaneCatalog.js';
 import type { WorksheetCategory } from './resolveHref.js';
 
 function loadNames(db: Database.Database, sql: string, args: unknown[] = []): string[] {
@@ -105,9 +106,10 @@ function loadArcaneNames(armoryDb: Database.Database): Set<string> {
     loadNames(
       armoryDb,
       `SELECT name FROM arcanes
-       WHERE unique_name NOT LIKE '%Sub'
+       WHERE ${ARCANE_PUBLIC_LIST_SQL}
          AND name IS NOT NULL AND TRIM(name) <> ''
        ORDER BY name`,
+      bindArcanePublicListParams(),
     ),
   );
 }
