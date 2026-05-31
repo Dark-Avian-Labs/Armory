@@ -6,7 +6,7 @@ import { EXPORTS_DIR, REQUIRED_EXPORTS } from '../config.js';
 import { getDb } from '../db/connection.js';
 import { processExports, backfillModDescriptions } from '../db/queries.js';
 import { createAppSchema } from '../db/schema.js';
-import { resetOverframeSession } from '../http/fetchOverframe.js';
+import { ensureOverframeFetchReady } from '../http/fetchOverframe.js';
 import { mergeScrapedData } from '../scraping/dataMerger.js';
 import {
   countMissingExaltedStanceSeeds,
@@ -40,6 +40,10 @@ import {
 
 const TAG = '[DataPipeline]';
 const EXPORT_HASH_STATE_FILE = path.join(EXPORTS_DIR, '.processed-export-hashes.json');
+
+async function prepareOverframeFetch(): Promise<void> {
+  await ensureOverframeFetchReady();
+}
 
 function getCurrentExportHashes(): Record<string, string> {
   const files = listExportFiles();
@@ -386,7 +390,7 @@ async function runStartupPipelineInner(
       countMissingExaltedStanceSeeds() > 0 ||
       isStepForced('exaltedStanceMods', options))
   ) {
-    resetOverframeSession();
+    await prepareOverframeFetch();
     log('[Exalted Stances] Syncing exalted stance mods from Overframe...');
     try {
       const result = await syncExaltedStanceModsFromOverframe((msg) => {
@@ -493,7 +497,7 @@ async function runStartupPipelineInner(
       options,
     )
   ) {
-    resetOverframeSession();
+    await prepareOverframeFetch();
     log('[Companion Weapons] Syncing hidden companion weapons from Overframe...');
     try {
       const result = await syncHiddenCompanionWeaponsFromOverframe((msg) => {
@@ -522,7 +526,7 @@ async function runStartupPipelineInner(
   const onlyMissingOverframe = usesOnlyMissingMode('overframe', options);
   const missingOverframeItems = countItemsMissingOverframeData();
   if (shouldRunStep('overframe', missingOverframeItems > 0, options)) {
-    resetOverframeSession();
+    await prepareOverframeFetch();
     log('[Overframe] Indexing and scraping build data...');
     try {
       const indexResult = await scrapeIndex(
