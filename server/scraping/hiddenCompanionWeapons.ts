@@ -3,9 +3,8 @@ import path from 'path';
 
 import { IMAGES_DIR, PROJECT_ROOT } from '../config.js';
 import { getDb } from '../db/connection.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
+import { scrapeItemPageByPath } from './itemScraper.js';
 
-const OVERFRAME_BASE_URL = 'https://overframe.gg';
 const BEAST_CLAWS_ICON_PATH = '/icons/beast-claws.png';
 const BEAST_CLAWS_ICON_FILE = 'beast-claws.png';
 
@@ -126,30 +125,60 @@ function extractWeaponDataFromNextData(nextData: unknown): OverframeWeaponData |
 }
 
 async function fetchOverframeNextData(relativeUrl: string): Promise<OverframeWeaponData | null> {
-  const url = `${OVERFRAME_BASE_URL}${relativeUrl}`;
-  try {
-    const response = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.overframeDetailHtml);
-    if (!response.ok) return null;
+  const scraped = await scrapeItemPageByPath(relativeUrl, relativeUrl);
+  if (!scraped) return null;
+  return extractWeaponDataFromNextData(scraped.nextData);
+}
 
-    const html = await response.text();
-    const marker = '<script id="__NEXT_DATA__" type="application/json">';
-    const markerStart = html.indexOf(marker);
-    if (markerStart < 0) return null;
-    const scriptEnd = html.indexOf('</script>', markerStart);
-    if (scriptEnd < 0) return null;
+function slugFromBuildPage(page: string): string | null {
+  const match = page.match(/\/build\/new\/\d+\/([^/]+)\/?$/);
+  return match?.[1] ?? null;
+}
 
-    const json = html.slice(markerStart + marker.length, scriptEnd);
-    const parsed = JSON.parse(json) as unknown;
-    return extractWeaponDataFromNextData(parsed);
-  } catch {
-    // Ignore
-    return null;
-  }
+function slugToDisplayName(slug: string): string {
+  return slug
+    .split('-')
+    .map((part) => (part.length > 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+    .join(' ');
+}
+
+function isBuildPageSynced(page: string): boolean {
+  const slug = slugFromBuildPage(page);
+  if (!slug) return false;
+
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT artifact_slots FROM weapons
+       WHERE product_category = 'SentinelWeapons'
+         AND lower(name) = lower(?)
+       LIMIT 1`,
+    )
+    .get(slugToDisplayName(slug)) as { artifact_slots: string | null } | undefined;
+
+  return row?.artifact_slots != null;
+}
+
+function pagesNeedingSync(onlyMissing: boolean): string[] {
+  if (!onlyMissing) return HIDDEN_BEAST_CLAW_BUILD_PAGES;
+  return HIDDEN_BEAST_CLAW_BUILD_PAGES.filter((page) => !isBuildPageSynced(page));
+}
+
+export function hiddenCompanionWeaponsNeedSync(onlyMissing: boolean): boolean {
+  if (!onlyMissing) return true;
+  return pagesNeedingSync(true).length > 0;
 }
 
 export async function syncHiddenCompanionWeaponsFromOverframe(
   onProgress?: (msg: string) => void,
+  onlyMissing = false,
 ): Promise<{ insertedOrUpdated: number; found: number }> {
+  const pages = pagesNeedingSync(onlyMissing);
+  if (pages.length === 0) {
+    onProgress?.('Overframe hidden claw sync: all companion weapons already synced; skipped.');
+    return { insertedOrUpdated: 0, found: 0 };
+  }
+
   ensureBeastClawsIconInDataImages(onProgress);
   const db = getDb();
   const upsert = db.prepare(`
@@ -185,7 +214,7 @@ export async function syncHiddenCompanionWeaponsFromOverframe(
 
   let found = 0;
   let insertedOrUpdated = 0;
-  for (const page of HIDDEN_BEAST_CLAW_BUILD_PAGES) {
+  for (const page of pages) {
     onProgress?.(`Overframe hidden claw sync: fetching ${page}`);
     const weapon = await fetchOverframeNextData(page);
     if (!weapon) continue;

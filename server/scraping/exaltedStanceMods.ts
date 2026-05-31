@@ -3,10 +3,11 @@ import path from 'path';
 
 import { IMAGES_DIR } from '../config.js';
 import { getDb } from '../db/connection.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import { fetchOverframeBytes } from '../http/fetchOverframe.js';
+import { FETCH_TIMEOUT_MS, isAbortError } from '../http/fetchWithTimeout.js';
 import { fetchWikiImageForExaltedStanceMod } from './exaltedStanceWikiImages.js';
+import { scrapeItemPageByPath } from './itemScraper.js';
 
-const OVERFRAME_BASE_URL = 'https://overframe.gg';
 const OVERFRAME_MEDIA_BASE_URL = 'https://media.overframe.gg/128x';
 const ARMORY_WIKI_STANCE_IMAGE_SQL_PREFIX = '/ArmoryWiki/StanceMod';
 
@@ -120,6 +121,28 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
   },
 ];
 
+export function countMissingExaltedStanceSeeds(): number {
+  const db = getDb();
+  const hasRow = db.prepare(
+    `SELECT 1 FROM mods WHERE name = ? AND upper(trim(type)) = 'STANCE' LIMIT 1`,
+  );
+  let missing = 0;
+  for (const seed of EXALTED_STANCE_SEEDS) {
+    const row = hasRow.get(seed.name);
+    if (!row) missing += 1;
+  }
+  return missing;
+}
+
+function seedsNeedingOverframeSync(onlyMissing: boolean): ExaltedStanceSeed[] {
+  if (!onlyMissing) return EXALTED_STANCE_SEEDS;
+  const db = getDb();
+  const hasRow = db.prepare(
+    `SELECT 1 FROM mods WHERE name = ? AND upper(trim(type)) = 'STANCE' LIMIT 1`,
+  );
+  return EXALTED_STANCE_SEEDS.filter((seed) => !hasRow.get(seed.name));
+}
+
 interface OverframeStanceData {
   uniqueName: string;
   name: string;
@@ -157,41 +180,30 @@ async function ensureOverframeTextureInDataImages(texturePath: string): Promise<
   }
 
   const url = `${OVERFRAME_MEDIA_BASE_URL}${dbImagePath}`;
-  let response: Response;
+  let bytes: Buffer;
   try {
-    response = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.binaryImage);
+    bytes = await fetchOverframeBytes(url, FETCH_TIMEOUT_MS.binaryImage);
   } catch (error: unknown) {
     if (isAbortError(error)) {
       return null;
     }
     throw error;
   }
-  if (!response.ok) return null;
+  if (bytes.length === 0) return null;
 
-  const bytes = Buffer.from(await response.arrayBuffer());
   fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
   fs.writeFileSync(localFilePath, bytes);
   return dbImagePath;
 }
 
 async function fetchOverframeStance(seed: ExaltedStanceSeed): Promise<OverframeStanceData | null> {
-  const url = `${OVERFRAME_BASE_URL}/items/arsenal/${seed.id}/${seed.slug}/`;
+  const pagePath = `/items/arsenal/${seed.id}/${seed.slug}/`;
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.overframeDetailHtml);
-      if (!response.ok) return null;
-
-      const html = await response.text();
-      const marker = '<script id="__NEXT_DATA__" type="application/json">';
-      const markerStart = html.indexOf(marker);
-      if (markerStart < 0) return null;
-      const scriptEnd = html.indexOf('</script>', markerStart);
-      if (scriptEnd < 0) return null;
-
-      const json = html.slice(markerStart + marker.length, scriptEnd);
-      const parsed = JSON.parse(json) as unknown;
-      return extractOverframeStanceData(parsed);
+      const scraped = await scrapeItemPageByPath(pagePath, seed.name);
+      if (!scraped) return null;
+      return extractOverframeStanceData(scraped.nextData);
     } catch (error) {
       console.warn(
         `[exaltedStanceMods] fetch attempt ${attempt}/${maxAttempts} failed for ${seed.id}/${seed.slug}:`,
@@ -242,8 +254,14 @@ async function applyExaltedStanceWikiImages(
 
 export async function syncExaltedStanceModsFromOverframe(
   onProgress?: (msg: string) => void,
+  onlyMissing = false,
 ): Promise<{ found: number; insertedOrUpdated: number; wikiImagesApplied: number }> {
   const db = getDb();
+  const seeds = seedsNeedingOverframeSync(onlyMissing);
+  if (seeds.length === 0) {
+    onProgress?.('Overframe exalted stance sync: all stance rows already present; skipped.');
+    return { found: 0, insertedOrUpdated: 0, wikiImagesApplied: 0 };
+  }
   const upsert = db.prepare(`
     INSERT INTO mods (
       unique_name,
@@ -305,7 +323,7 @@ export async function syncExaltedStanceModsFromOverframe(
   let wikiImagesApplied = 0;
   const updateImagePath = db.prepare(`UPDATE mods SET image_path = ? WHERE unique_name = ?`);
 
-  for (const seed of EXALTED_STANCE_SEEDS) {
+  for (const seed of seeds) {
     onProgress?.(`Overframe exalted stance sync: fetching ${seed.name} (${seed.id})`);
     const scraped = await fetchOverframeStance(seed);
     if (!scraped) continue;

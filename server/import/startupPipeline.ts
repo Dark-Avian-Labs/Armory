@@ -1,18 +1,24 @@
 import fs from 'fs';
 import path from 'path';
 
+import type { PipelineStepKey } from '../../shared/pipelineSteps.js';
 import { EXPORTS_DIR, REQUIRED_EXPORTS } from '../config.js';
 import { getDb } from '../db/connection.js';
 import { processExports, backfillModDescriptions } from '../db/queries.js';
 import { createAppSchema } from '../db/schema.js';
+import { resetOverframeSession } from '../http/fetchOverframe.js';
 import { mergeScrapedData } from '../scraping/dataMerger.js';
 import {
+  countMissingExaltedStanceSeeds,
   syncExaltedStanceModsFromOverframe,
   syncExaltedStanceWikiImagesOnly,
 } from '../scraping/exaltedStanceMods.js';
-import { syncHiddenCompanionWeaponsFromOverframe } from '../scraping/hiddenCompanionWeapons.js';
+import {
+  hiddenCompanionWeaponsNeedSync,
+  syncHiddenCompanionWeaponsFromOverframe,
+} from '../scraping/hiddenCompanionWeapons.js';
 import { syncIncarnonFromWiki } from '../scraping/incarnonWiki.js';
-import { scrapeIndex } from '../scraping/indexScraper.js';
+import { countItemsMissingOverframeData, scrapeIndex } from '../scraping/indexScraper.js';
 import { scrapeItems } from '../scraping/itemScraper.js';
 import { runWikiScrape } from '../scraping/wikiScraper.js';
 import { populateWarframeMarketLinksTable } from '../warframeMarket/populateWarframeMarketLinks.js';
@@ -25,6 +31,7 @@ import {
   tryAcquireImportLease,
 } from './importRuns.js';
 import { runImportPipeline, listExportFiles } from './pipeline.js';
+import { isStepForced, shouldRunStep, usesOnlyMissingMode } from './pipelineStepControl.js';
 import {
   printStartupPipelineSummary,
   type StartupPipelineSummary,
@@ -142,6 +149,7 @@ export interface StartupPipelineOptions {
   cliReport?: boolean;
   forceImport?: boolean;
   forceImages?: boolean;
+  forceSteps?: PipelineStepKey[];
   reporter?: (line: string, level: 'info' | 'error') => void;
   importRunId?: number;
   skipLease?: boolean;
@@ -193,8 +201,12 @@ async function runStartupPipelineInner(
 
   const summary = emptySummary(startTime);
 
-  if (forceImport || forceImages) {
-    const flags = [forceImport && 'forceImport', forceImages && 'forceImages']
+  if (forceImport || forceImages || (options.forceSteps?.length ?? 0) > 0) {
+    const flags = [
+      forceImport && 'forceImport',
+      forceImages && 'forceImages',
+      options.forceSteps?.length ? `forceSteps=${options.forceSteps.join(',')}` : null,
+    ]
       .filter(Boolean)
       .join(', ');
     log(`Starting pipeline with force flags: ${flags}`);
@@ -257,10 +269,11 @@ async function runStartupPipelineInner(
   try {
     currentExportHashes = getCurrentExportHashes();
     previousExportHashes = readProcessedExportHashes();
-    const shouldProcess = forceImport || hashesChanged(currentExportHashes, previousExportHashes);
-    dataChanged = shouldProcess;
+    const hashChanged = hashesChanged(currentExportHashes, previousExportHashes);
+    const rebuildSqlite = forceImport || hashChanged;
+    dataChanged = rebuildSqlite;
 
-    if (shouldProcess) {
+    if (shouldRunStep('sqliteFromExports', rebuildSqlite, options)) {
       const reason = forceImport
         ? 'Force import requested — rebuilding all game tables.'
         : previousExportHashes === null
@@ -315,8 +328,11 @@ async function runStartupPipelineInner(
     warframeMarketLinkRowCount = 0;
   }
 
-  const shouldRefreshWarframeMarket =
-    hasDbData() && (dataChanged || warframeMarketLinkRowCount === 0);
+  const shouldRefreshWarframeMarket = shouldRunStep(
+    'warframeMarketLinks',
+    hasDbData() && (dataChanged || warframeMarketLinkRowCount === 0),
+    options,
+  );
 
   if (shouldRefreshWarframeMarket) {
     log('[Warframe Market] Building trade link index from api.warframe.market...');
@@ -352,12 +368,30 @@ async function runStartupPipelineInner(
     };
   }
 
-  if (dataChanged) {
+  const onlyMissingStances = usesOnlyMissingMode('exaltedStanceMods', options);
+  const shouldSyncStancesFromOverframe = shouldRunStep(
+    'exaltedStanceMods',
+    dataChanged || countMissingExaltedStanceSeeds() > 0,
+    options,
+  );
+  const shouldRefreshStanceWikiImages = shouldRunStep(
+    'exaltedStanceMods',
+    hasDbData() && !dataChanged && countMissingExaltedStanceSeeds() === 0,
+    options,
+  );
+
+  if (
+    shouldSyncStancesFromOverframe &&
+    (dataChanged ||
+      countMissingExaltedStanceSeeds() > 0 ||
+      isStepForced('exaltedStanceMods', options))
+  ) {
+    resetOverframeSession();
     log('[Exalted Stances] Syncing exalted stance mods from Overframe...');
     try {
       const result = await syncExaltedStanceModsFromOverframe((msg) => {
         log(`[Exalted Stances] ${msg}`);
-      });
+      }, onlyMissingStances);
       log(
         `[Exalted Stances] Done — ${result.found} found, ${result.insertedOrUpdated} updated, ` +
           `${result.wikiImagesApplied} wiki images.`,
@@ -374,7 +408,7 @@ async function runStartupPipelineInner(
       summary.exaltedStanceMods = { outcome: 'failed', detail: 'Sync failed.', error: msg };
       err('[Exalted Stances] Sync failed —', e);
     }
-  } else if (hasDbData()) {
+  } else if (shouldRefreshStanceWikiImages) {
     log(
       '[Exalted Stances] Export unchanged — refreshing Warframe Wiki infobox images for exalted stances...',
     );
@@ -403,10 +437,10 @@ async function runStartupPipelineInner(
       err('[Exalted Stances] Wiki-only image refresh failed —', e);
     }
   } else {
-    log('[Exalted Stances] Skipped — no data in database yet.');
+    log('[Exalted Stances] Skipped — stance data already present and export unchanged.');
     summary.exaltedStanceMods = {
       outcome: 'skipped',
-      detail: 'No data changes and no game data loaded; skipped.',
+      detail: 'No stance sync needed; export unchanged and stance rows are present.',
     };
   }
 
@@ -451,12 +485,20 @@ async function runStartupPipelineInner(
     err('[Images] Download failed —', e);
   }
 
-  if (dataChanged) {
+  const onlyMissingCompanions = usesOnlyMissingMode('hiddenCompanionWeapons', options);
+  if (
+    shouldRunStep(
+      'hiddenCompanionWeapons',
+      dataChanged || hiddenCompanionWeaponsNeedSync(true),
+      options,
+    )
+  ) {
+    resetOverframeSession();
     log('[Companion Weapons] Syncing hidden companion weapons from Overframe...');
     try {
       const result = await syncHiddenCompanionWeaponsFromOverframe((msg) => {
         log(`[Companion Weapons] ${msg}`);
-      });
+      }, onlyMissingCompanions);
       log(`[Companion Weapons] Done — ${result.found} found, ${result.insertedOrUpdated} updated.`);
       summary.hiddenCompanionWeapons = {
         outcome: 'ok',
@@ -470,145 +512,176 @@ async function runStartupPipelineInner(
       err('[Companion Weapons] Sync failed —', e);
     }
   } else {
-    log('[Companion Weapons] Skipped — no data changes this run.');
+    log('[Companion Weapons] Skipped — hidden companion weapons already synced.');
     summary.hiddenCompanionWeapons = {
       outcome: 'skipped',
-      detail: 'No data changes detected; skipped re-fetch.',
+      detail: 'All hidden companion weapons already have build data.',
     };
   }
 
-  log('[Overframe] Indexing and scraping build data...');
-  try {
-    const onlyMissing = !forceImport;
-    const indexResult = await scrapeIndex(
-      undefined,
-      (msg) => log(`[Overframe] ${msg}`),
-      onlyMissing,
-    );
-
-    summary.overframe.totalIndexed = indexResult.totalFound;
-    summary.overframe.matchedNeedingWork = indexResult.entries.length;
-
-    if (indexResult.entries.length > 0) {
-      log(`[Overframe] Scraping ${indexResult.entries.length} detail pages...`);
-      const scrapedItems = await scrapeItems(indexResult.entries, 1500, (p) => {
-        const step = cli ? 25 : 50;
-        if (p.current === 1 || p.current % step === 0 || p.current === p.total) {
-          log(`[Overframe] ${p.current}/${p.total} — ${p.currentItem}`);
-        }
-      });
-      summary.overframe.pagesScraped = scrapedItems.length;
-
-      let mergeLogN = 0;
-      const mergeResult = mergeScrapedData(scrapedItems, (msg) => {
-        mergeLogN += 1;
-        if (mergeLogN <= 3 || mergeLogN % 40 === 0) log(`[Overframe] Merge: ${msg}`);
-      });
-      log(
-        `[Overframe] Done — merged ${mergeResult.warframesUpdated} warframes, ${mergeResult.weaponsUpdated} weapons, ${mergeResult.companionsUpdated} companions.`,
+  const onlyMissingOverframe = usesOnlyMissingMode('overframe', options);
+  const missingOverframeItems = countItemsMissingOverframeData();
+  if (shouldRunStep('overframe', missingOverframeItems > 0, options)) {
+    resetOverframeSession();
+    log('[Overframe] Indexing and scraping build data...');
+    try {
+      const indexResult = await scrapeIndex(
+        undefined,
+        (msg) => log(`[Overframe] ${msg}`),
+        onlyMissingOverframe,
       );
-      summary.overframe.outcome = 'ok';
-      summary.overframe.detail = `Scraped ${scrapedItems.length} pages, merged results into DB.`;
-      summary.overframe.merge = mergeResult;
-    } else {
-      log('[Overframe] Skipped — all matched items already have build data.');
-      summary.overframe.outcome = 'skipped';
-      summary.overframe.detail = 'All matched items already have build data; no scraping needed.';
-      summary.overframe.pagesScraped = 0;
-    }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    summary.overframe.outcome = 'failed';
-    summary.overframe.detail = 'Overframe scrape failed.';
-    summary.overframe.error = msg;
-    err('[Overframe] Scrape failed —', e);
-  }
 
-  log('[Wiki] Scraping warframe wiki for ability stats, shards, riven dispositions...');
-  let helminthWikiHtml: string | null = null;
-  try {
-    const wikiResult = await runWikiScrape((p) => {
-      if (p.log.length > 0) {
-        const last = p.log[p.log.length - 1];
-        if (
-          last.includes('Merged') ||
-          last.includes('complete') ||
-          last.includes('Merging') ||
-          last.includes('Found') ||
-          last.includes('Scraped') ||
-          last.includes('Fetching') ||
-          last.toLowerCase().includes('failed')
-        ) {
-          log(`[Wiki] ${last}`);
-        }
+      summary.overframe.totalIndexed = indexResult.totalFound;
+      summary.overframe.matchedNeedingWork = indexResult.entries.length;
+
+      if (indexResult.entries.length > 0) {
+        log(`[Overframe] Scraping ${indexResult.entries.length} detail pages...`);
+        const scrapedItems = await scrapeItems(indexResult.entries, 1500, (p) => {
+          const step = cli ? 25 : 50;
+          if (p.current === 1 || p.current % step === 0 || p.current === p.total) {
+            log(`[Overframe] ${p.current}/${p.total} — ${p.currentItem}`);
+          }
+        });
+        summary.overframe.pagesScraped = scrapedItems.length;
+
+        let mergeLogN = 0;
+        const mergeResult = mergeScrapedData(scrapedItems, (msg) => {
+          mergeLogN += 1;
+          if (mergeLogN <= 3 || mergeLogN % 40 === 0) log(`[Overframe] Merge: ${msg}`);
+        });
+        log(
+          `[Overframe] Done — merged ${mergeResult.warframesUpdated} warframes, ${mergeResult.weaponsUpdated} weapons, ${mergeResult.companionsUpdated} companions.`,
+        );
+        summary.overframe.outcome = 'ok';
+        summary.overframe.detail = `Scraped ${scrapedItems.length} pages, merged results into DB.`;
+        summary.overframe.merge = mergeResult;
+      } else {
+        log('[Overframe] Skipped — all matched items already have build data.');
+        summary.overframe.outcome = 'skipped';
+        summary.overframe.detail = 'All matched items already have build data; no scraping needed.';
+        summary.overframe.pagesScraped = 0;
       }
-    }, true);
-    helminthWikiHtml = wikiResult.helminthWikiHtml;
-    const wikiMerge = wikiResult.merge;
-    log(
-      `[Wiki] Done — ${wikiMerge.abilitiesUpdated} abilities, ${wikiMerge.passivesUpdated} passives, ` +
-        `${wikiMerge.augmentsUpdated} augments, ${wikiMerge.weaponsProjectileSpeedsUpdated} projectile speeds.`,
-    );
-    summary.wiki = {
-      outcome: 'ok',
-      detail: `Updated ${wikiMerge.abilitiesUpdated} abilities, ${wikiMerge.passivesUpdated} passives, ${wikiMerge.augmentsUpdated} augments.`,
-      merge: wikiMerge,
-    };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    summary.wiki = { outcome: 'failed', detail: 'Wiki scrape failed.', error: msg };
-    err('[Wiki] Scrape failed —', e);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      summary.overframe.outcome = 'failed';
+      summary.overframe.detail = 'Overframe scrape failed.';
+      summary.overframe.error = msg;
+      err('[Overframe] Scrape failed —', e);
+    }
+  } else {
+    log('[Overframe] Skipped — all matched items already have build data.');
+    summary.overframe.outcome = 'skipped';
+    summary.overframe.detail =
+      missingOverframeItems > 0
+        ? `${missingOverframeItems} items still missing build data; step was not scheduled.`
+        : 'All matched items already have build data; no Overframe requests made.';
+    summary.overframe.pagesScraped = 0;
   }
 
-  log('[Helminth] Syncing helminth-infusable ability flags from wiki...');
-  try {
-    const db = getDb();
-    const helminthResult = await syncHelminthFlagsFromWiki(db, { html: helminthWikiHtml });
-    if (!helminthResult.fetchOk) {
+  let helminthWikiHtml: string | null = null;
+  if (shouldRunStep('wiki', hasDbData(), options)) {
+    log('[Wiki] Scraping warframe wiki for ability stats, shards, riven dispositions...');
+    try {
+      const wikiResult = await runWikiScrape(
+        (p) => {
+          if (p.log.length > 0) {
+            const last = p.log[p.log.length - 1];
+            if (
+              last.includes('Merged') ||
+              last.includes('complete') ||
+              last.includes('Merging') ||
+              last.includes('Found') ||
+              last.includes('Scraped') ||
+              last.includes('Fetching') ||
+              last.toLowerCase().includes('failed')
+            ) {
+              log(`[Wiki] ${last}`);
+            }
+          }
+        },
+        usesOnlyMissingMode('wiki', options),
+      );
+      helminthWikiHtml = wikiResult.helminthWikiHtml;
+      const wikiMerge = wikiResult.merge;
+      log(
+        `[Wiki] Done — ${wikiMerge.abilitiesUpdated} abilities, ${wikiMerge.passivesUpdated} passives, ` +
+          `${wikiMerge.augmentsUpdated} augments, ${wikiMerge.weaponsProjectileSpeedsUpdated} projectile speeds.`,
+      );
+      summary.wiki = {
+        outcome: 'ok',
+        detail: `Updated ${wikiMerge.abilitiesUpdated} abilities, ${wikiMerge.passivesUpdated} passives, ${wikiMerge.augmentsUpdated} augments.`,
+        merge: wikiMerge,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      summary.wiki = { outcome: 'failed', detail: 'Wiki scrape failed.', error: msg };
+      err('[Wiki] Scrape failed —', e);
+    }
+  } else {
+    log('[Wiki] Skipped — no game data loaded yet.');
+    summary.wiki = {
+      outcome: 'skipped',
+      detail: 'No game data in SQLite; skipped wiki enrichment.',
+    };
+  }
+
+  if (shouldRunStep('helminthWiki', hasDbData(), options)) {
+    log('[Helminth] Syncing helminth-infusable ability flags from wiki...');
+    try {
+      const db = getDb();
+      const helminthResult = await syncHelminthFlagsFromWiki(db, { html: helminthWikiHtml });
+      if (!helminthResult.fetchOk) {
+        summary.helminthWiki = {
+          outcome: 'failed',
+          detail: 'Wiki fetch failed.',
+          wikiNamesFound: helminthResult.wikiNamesFound,
+          abilitiesFlagged: helminthResult.abilitiesFlagged,
+          fetchOk: false,
+          error: helminthResult.error ?? 'Unknown fetch error.',
+        };
+        err(
+          `[Helminth] Fetch failed — ${helminthResult.error ?? 'unknown'} (names parsed: ${helminthResult.wikiNamesFound})`,
+        );
+      } else if (helminthResult.wikiNamesFound === 0) {
+        summary.helminthWiki = {
+          outcome: 'partial',
+          detail: 'No ability names parsed from wiki page (HTML layout may have changed).',
+          wikiNamesFound: 0,
+          abilitiesFlagged: 0,
+          fetchOk: true,
+        };
+        log('[Helminth] No ability names parsed from wiki page.');
+      } else {
+        log(
+          `[Helminth] Done — ${helminthResult.wikiNamesFound} wiki tokens, ${helminthResult.abilitiesFlagged} abilities flagged.`,
+        );
+        summary.helminthWiki = {
+          outcome: helminthResult.abilitiesFlagged > 0 ? 'ok' : 'partial',
+          detail:
+            helminthResult.abilitiesFlagged > 0
+              ? `Matched ${helminthResult.abilitiesFlagged} abilities from ${helminthResult.wikiNamesFound} wiki tokens.`
+              : `Found ${helminthResult.wikiNamesFound} wiki tokens but none matched DB ability names.`,
+          wikiNamesFound: helminthResult.wikiNamesFound,
+          abilitiesFlagged: helminthResult.abilitiesFlagged,
+          fetchOk: true,
+        };
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       summary.helminthWiki = {
         outcome: 'failed',
-        detail: 'Wiki fetch failed.',
-        wikiNamesFound: helminthResult.wikiNamesFound,
-        abilitiesFlagged: helminthResult.abilitiesFlagged,
+        detail: 'Helminth sync failed.',
+        error: msg,
         fetchOk: false,
-        error: helminthResult.error ?? 'Unknown fetch error.',
       };
-      err(
-        `[Helminth] Fetch failed — ${helminthResult.error ?? 'unknown'} (names parsed: ${helminthResult.wikiNamesFound})`,
-      );
-    } else if (helminthResult.wikiNamesFound === 0) {
-      summary.helminthWiki = {
-        outcome: 'partial',
-        detail: 'No ability names parsed from wiki page (HTML layout may have changed).',
-        wikiNamesFound: 0,
-        abilitiesFlagged: 0,
-        fetchOk: true,
-      };
-      log('[Helminth] No ability names parsed from wiki page.');
-    } else {
-      log(
-        `[Helminth] Done — ${helminthResult.wikiNamesFound} wiki tokens, ${helminthResult.abilitiesFlagged} abilities flagged.`,
-      );
-      summary.helminthWiki = {
-        outcome: helminthResult.abilitiesFlagged > 0 ? 'ok' : 'partial',
-        detail:
-          helminthResult.abilitiesFlagged > 0
-            ? `Matched ${helminthResult.abilitiesFlagged} abilities from ${helminthResult.wikiNamesFound} wiki tokens.`
-            : `Found ${helminthResult.wikiNamesFound} wiki tokens but none matched DB ability names.`,
-        wikiNamesFound: helminthResult.wikiNamesFound,
-        abilitiesFlagged: helminthResult.abilitiesFlagged,
-        fetchOk: true,
-      };
+      err('[Helminth] Sync failed —', e);
     }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+  } else {
+    log('[Helminth] Skipped — no game data loaded yet.');
     summary.helminthWiki = {
-      outcome: 'failed',
-      detail: 'Helminth sync failed.',
-      error: msg,
-      fetchOk: false,
+      outcome: 'skipped',
+      detail: 'No game data in SQLite; skipped helminth sync.',
     };
-    err('[Helminth] Sync failed —', e);
   }
 
   const weaponsExportChanged = exportHashChanged(
@@ -616,7 +689,11 @@ async function runStartupPipelineInner(
     currentExportHashes,
     previousExportHashes,
   );
-  const shouldSyncIncarnon = forceImport || !hasIncarnonDataInDb() || weaponsExportChanged;
+  const shouldSyncIncarnon = shouldRunStep(
+    'incarnonWiki',
+    forceImport || !hasIncarnonDataInDb() || weaponsExportChanged,
+    options,
+  );
 
   if (!shouldSyncIncarnon) {
     log('[Incarnon] Skipped — incarnon data already loaded and ExportWeapons unchanged.');

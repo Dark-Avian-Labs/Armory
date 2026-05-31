@@ -33,6 +33,7 @@
     "clsx": "^2.1.1",
     "cookie-parser": "^1.4.7",
     "csrf-sync": "^4.2.1",
+    "cuimp": "^2.0.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "express-session": "^1.19.0",

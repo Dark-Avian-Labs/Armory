@@ -1,9 +1,6 @@
-import * as cheerio from 'cheerio';
-
-import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import { fetchOverframePageJson } from '../http/fetchOverframe.js';
+import { FETCH_TIMEOUT_MS, isAbortError } from '../http/fetchWithTimeout.js';
 import type { OverframeIndexEntry } from './indexScraper.js';
-
-const BASE_URL = 'https://overframe.gg';
 
 export interface ScrapedAbilityStat {
   label: string;
@@ -25,12 +22,10 @@ export interface ScrapedItemData {
   fireBehaviors: Record<string, unknown>[];
 }
 
-interface NextDataShape {
-  props?: {
-    pageProps?: {
-      item?: {
-        data?: Record<string, unknown>;
-      };
+interface OverframeDetailJson {
+  pageProps?: {
+    item?: {
+      data?: Record<string, unknown>;
     };
   };
 }
@@ -39,40 +34,39 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function pagePathForEntry(entry: OverframeIndexEntry): string {
+  return `/build/new/${entry.overframeId}/${entry.slug}/`;
+}
+
+function parseItemData(payload: OverframeDetailJson): Record<string, unknown> {
+  return payload.pageProps?.item?.data ?? {};
+}
+
 export async function scrapeItemPage(entry: OverframeIndexEntry): Promise<ScrapedItemData> {
-  const url = `${BASE_URL}/build/new/${entry.overframeId}/${entry.slug}/`;
-  let res: Response;
+  const pagePath = pagePathForEntry(entry);
+  const url = `https://overframe.gg${pagePath}`;
+
+  let payload: OverframeDetailJson;
   try {
-    res = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.htmlPage);
+    payload = await fetchOverframePageJson<OverframeDetailJson>(
+      pagePath,
+      FETCH_TIMEOUT_MS.overframeDetailHtml,
+    );
   } catch (error: unknown) {
     if (isAbortError(error)) {
-      throw new Error(`Failed to fetch ${url}: timed out after ${FETCH_TIMEOUT_MS.htmlPage}ms`);
+      throw new Error(
+        `Failed to fetch ${url}: timed out after ${FETCH_TIMEOUT_MS.overframeDetailHtml}ms`,
+      );
     }
     throw error;
   }
-  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
 
-  const html = await res.text();
-  const $ = cheerio.load(html);
-
-  const scriptContent = $('#__NEXT_DATA__').html();
-  if (!scriptContent) throw new Error(`No __NEXT_DATA__ found on ${url}`);
-
-  let nextData: Record<string, unknown> = {};
-  try {
-    const parsed = JSON.parse(scriptContent) as unknown;
-    if (parsed && typeof parsed === 'object') {
-      nextData = parsed as Record<string, unknown>;
-    } else {
-      console.warn(`[Scraper] __NEXT_DATA__ for ${url} was not an object; using empty data`);
-    }
-  } catch (err) {
-    console.warn(
-      `[Scraper] Failed to parse __NEXT_DATA__ for ${url}:`,
-      err instanceof Error ? err.message : err,
-    );
-  }
-  const itemData = (nextData as NextDataShape).props?.pageProps?.item?.data || {};
+  const itemData = parseItemData(payload);
+  const nextData = {
+    props: {
+      pageProps: payload.pageProps ?? {},
+    },
+  };
 
   const artifactSlots = Array.isArray(itemData.ArtifactSlots)
     ? itemData.ArtifactSlots.filter((slot): slot is string => typeof slot === 'string')
@@ -84,35 +78,12 @@ export async function scrapeItemPage(entry: OverframeIndexEntry): Promise<Scrape
       )
     : [];
 
-  const abilities: ScrapedAbility[] = [];
-  $('[class*="abilityTooltip"]').each((_, tooltipEl) => {
-    const $tip = $(tooltipEl);
-    const name = $tip.find('h1').first().text().trim();
-    const description = $tip.find('.wfic').first().text().trim();
-    const stats: ScrapedAbilityStat[] = [];
-
-    $tip.find('[class*="abilityTooltipStatLine"]').each((__, statEl) => {
-      const $stat = $(statEl);
-      const divs = $stat.children('div');
-      if (divs.length >= 2) {
-        stats.push({
-          label: $(divs[0]).text().trim(),
-          value: $(divs[1]).text().trim(),
-        });
-      }
-    });
-
-    if (name) {
-      abilities.push({ name, description, stats });
-    }
-  });
-
   return {
     entry,
     nextData,
     itemData,
     artifactSlots,
-    abilities,
+    abilities: [],
     fireBehaviors,
   };
 }
@@ -156,4 +127,34 @@ export async function scrapeItems(
   }
 
   return results;
+}
+
+export async function scrapeItemPageByPath(
+  pagePath: string,
+  label: string,
+): Promise<{ itemData: Record<string, unknown>; nextData: Record<string, unknown> } | null> {
+  try {
+    const payload = await fetchOverframePageJson<OverframeDetailJson>(
+      pagePath,
+      FETCH_TIMEOUT_MS.overframeDetailHtml,
+    );
+    const item = payload.pageProps?.item;
+    if (!item || typeof item !== 'object') return null;
+
+    const itemData = parseItemData(payload);
+    return {
+      itemData,
+      nextData: {
+        props: {
+          pageProps: payload.pageProps ?? {},
+        },
+      },
+    };
+  } catch (error) {
+    console.warn(
+      `[Scraper] Failed to scrape ${label} (${pagePath}):`,
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
 }
