@@ -39,13 +39,11 @@ export function warframeExilusArtifactIndex(artifactSlots: string[], generalSlot
   return warframeUsesExtendedArtifactLayout(artifactSlots) ? generalSlots + 2 : generalSlots + 1;
 }
 
-/** AP value at the second-aura index (10-slot layouts have no second aura). */
 export function warframeSecondAuraApFromStorage(artifactSlots: string[], generalSlots = 8): string {
   if (!warframeUsesExtendedArtifactLayout(artifactSlots)) return AP_DISABLED;
   return artifactSlots[warframeSecondAuraArtifactIndex(generalSlots)] ?? AP_DISABLED;
 }
 
-/** Whether the mod builder shows a second aura slot (11-slot layout, slot not disabled). */
 export function isWarframeSecondAuraSlotActive(artifactSlots: string[], generalSlots = 8): boolean {
   if (!warframeUsesExtendedArtifactLayout(artifactSlots)) return false;
   return !isArtifactSlotDisabled(warframeSecondAuraApFromStorage(artifactSlots, generalSlots));
