@@ -218,7 +218,43 @@ export function ModSlotGrid({
           ) : (
             <div />
           )}
-          {exilusSlot ? (
+          {specialSlots[1] ? (
+            <SlotCell
+              slot={specialSlots[1]}
+              umbraSetEquippedCount={umbraSetEquippedCount}
+              active={activeSlotIndex === specialSlots[1].index}
+              formaMode={formaMode}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(specialSlots[1].index, e)}
+              onRemove={() => onRemove(specialSlots[1].index)}
+              onRankChange={(rank) => onRankChange(specialSlots[1].index, rank)}
+              onSetRankChange={(sr) => onSetRankChange(specialSlots[1].index, sr)}
+              onEditRiven={onEditRiven ? () => onEditRiven(specialSlots[1].index) : undefined}
+              onClick={() =>
+                formaMode
+                  ? handleFormaClick(
+                      specialSlots[1].index,
+                      specialSlots[1].polarity,
+                      specialSlots[1].type,
+                    )
+                  : onSlotClick?.(specialSlots[1].index, specialSlots[1].type)
+              }
+              onRightClick={() =>
+                handleFormaClick(
+                  specialSlots[1].index,
+                  specialSlots[1].polarity,
+                  specialSlots[1].type,
+                  true,
+                )
+              }
+              label={
+                specialSlots[1].type === 'aura'
+                  ? 'Aura 2'
+                  : specialSlots[1].type.charAt(0).toUpperCase() + specialSlots[1].type.slice(1)
+              }
+              readOnly={readOnly}
+            />
+          ) : exilusSlot ? (
             <SlotCell
               slot={exilusSlot}
               umbraSetEquippedCount={umbraSetEquippedCount}
@@ -244,7 +280,32 @@ export function ModSlotGrid({
           ) : (
             <div />
           )}
-          <div />
+          {specialSlots[1] && exilusSlot ? (
+            <SlotCell
+              slot={exilusSlot}
+              umbraSetEquippedCount={umbraSetEquippedCount}
+              active={activeSlotIndex === exilusSlot.index}
+              formaMode={formaMode}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(exilusSlot.index, e)}
+              onRemove={() => onRemove(exilusSlot.index)}
+              onRankChange={(rank) => onRankChange(exilusSlot.index, rank)}
+              onSetRankChange={(sr) => onSetRankChange(exilusSlot.index, sr)}
+              onEditRiven={onEditRiven ? () => onEditRiven(exilusSlot.index) : undefined}
+              onClick={() =>
+                formaMode
+                  ? handleFormaClick(exilusSlot.index, exilusSlot.polarity, exilusSlot.type)
+                  : onSlotClick?.(exilusSlot.index, exilusSlot.type)
+              }
+              onRightClick={() =>
+                handleFormaClick(exilusSlot.index, exilusSlot.polarity, exilusSlot.type, true)
+              }
+              label="Exilus"
+              readOnly={readOnly}
+            />
+          ) : (
+            <div />
+          )}
         </div>
       )}
 

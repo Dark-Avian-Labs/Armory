@@ -1,4 +1,11 @@
 import {
+  AP_DISABLED,
+  isArtifactSlotDisabled,
+  warframeExilusArtifactIndex,
+  warframeSecondAuraArtifactIndex,
+  warframeUsesExtendedArtifactLayout,
+} from '../../shared/artifactSlotState.js';
+import {
   artifactSlotsStorageLength,
   EQUIPMENT_SLOT_CONFIGS,
   type EquipmentSlotConfig,
@@ -24,8 +31,12 @@ export function isArtifactSlotPolarity(value: string): value is ArtifactSlotPola
 }
 
 function polarityFromAp(ap: string | undefined): ArtifactSlotPolarity {
-  if (!ap || ap === 'AP_UNIVERSAL') return 'AP_UNIVERSAL';
+  if (!ap || ap === 'AP_UNIVERSAL' || isArtifactSlotDisabled(ap)) return 'AP_UNIVERSAL';
   return isArtifactSlotPolarity(ap) ? ap : 'AP_UNIVERSAL';
+}
+
+function slotEnabledFromAp(ap: string | undefined): boolean {
+  return ap != null && !isArtifactSlotDisabled(ap);
 }
 
 export function parseArtifactSlotsJson(raw: string | undefined | null): string[] {
@@ -42,15 +53,30 @@ function slotConfigForType(equipmentType: EquipmentType): EquipmentSlotConfig {
   return EQUIPMENT_SLOT_CONFIGS[equipmentType] ?? EQUIPMENT_SLOT_CONFIGS.warframe;
 }
 
+const WARFRAME_ARTIFACT_SLOT_COUNT = 11;
+
+function editorStorageLength(equipmentType: EquipmentType, config: EquipmentSlotConfig): number {
+  if (equipmentType === 'warframe') return WARFRAME_ARTIFACT_SLOT_COUNT;
+  return artifactSlotsStorageLength(config);
+}
+
 export function buildArtifactSlotEditorRows(
   equipmentType: EquipmentType,
   artifactSlots: string[],
   equipmentName?: string,
 ): ArtifactSlotEditorRow[] {
   const config = slotConfigForType(equipmentType);
-  const totalSlots = artifactSlotsStorageLength(config);
+  const extendedWarframe =
+    equipmentType === 'warframe' && warframeUsesExtendedArtifactLayout(artifactSlots);
+  const totalSlots = editorStorageLength(equipmentType, config);
   const specialSlotIndex = config.generalSlots;
-  const exilusIndex = config.generalSlots + 1;
+  const secondAuraIndex = warframeSecondAuraArtifactIndex(config.generalSlots);
+  const exilusIndex =
+    equipmentType === 'warframe' ? WARFRAME_ARTIFACT_SLOT_COUNT - 1 : config.generalSlots + 1;
+  const exilusReadIndex =
+    equipmentType === 'warframe'
+      ? warframeExilusArtifactIndex(artifactSlots, config.generalSlots)
+      : exilusIndex;
   const rows: ArtifactSlotEditorRow[] = [];
   const padded = [...artifactSlots];
   while (padded.length < totalSlots) padded.push('AP_UNIVERSAL');
@@ -61,7 +87,17 @@ export function buildArtifactSlotEditorRows(
       id: 'aura',
       label: 'Aura',
       artifactIndex: specialSlotIndex,
-      enabled: ap !== 'AP_UNIVERSAL',
+      enabled: slotEnabledFromAp(ap),
+      polarity: polarityFromAp(ap),
+    });
+  }
+  if (equipmentType === 'warframe') {
+    const ap = extendedWarframe ? padded[secondAuraIndex] : AP_DISABLED;
+    rows.push({
+      id: 'aura-2',
+      label: 'Aura 2',
+      artifactIndex: secondAuraIndex,
+      enabled: slotEnabledFromAp(ap),
       polarity: polarityFromAp(ap),
     });
   }
@@ -71,7 +107,7 @@ export function buildArtifactSlotEditorRows(
       id: 'stance',
       label: 'Stance',
       artifactIndex: specialSlotIndex,
-      enabled: ap !== 'AP_UNIVERSAL',
+      enabled: slotEnabledFromAp(ap),
       polarity: polarityFromAp(ap),
     });
   }
@@ -81,7 +117,7 @@ export function buildArtifactSlotEditorRows(
       id: 'posture',
       label: 'Posture',
       artifactIndex: specialSlotIndex,
-      enabled: ap !== 'AP_UNIVERSAL',
+      enabled: slotEnabledFromAp(ap),
       polarity: polarityFromAp(ap),
     });
   }
@@ -93,19 +129,19 @@ export function buildArtifactSlotEditorRows(
       id: `general-${i}`,
       label: `Slot ${i + 1}`,
       artifactIndex: config.generalSlots - 1 - i,
-      enabled: ap !== 'AP_UNIVERSAL',
+      enabled: slotEnabledFromAp(ap),
       polarity: polarityFromAp(ap),
     });
   }
 
   const skipExilus = weaponOmitsExilusSlot(equipmentName, equipmentType);
   if (config.hasExilus && !skipExilus) {
-    const ap = padded[exilusIndex];
+    const ap = padded[exilusReadIndex];
     rows.push({
       id: 'exilus',
       label: 'Exilus',
       artifactIndex: exilusIndex,
-      enabled: ap !== 'AP_UNIVERSAL',
+      enabled: slotEnabledFromAp(ap),
       polarity: polarityFromAp(ap),
     });
   }
@@ -116,14 +152,18 @@ export function buildArtifactSlotEditorRows(
 export function artifactSlotsFromEditorRows(
   equipmentType: EquipmentType,
   rows: ArtifactSlotEditorRow[],
-  equipmentName?: string,
 ): string[] {
   const config = slotConfigForType(equipmentType);
-  const result = Array.from({ length: artifactSlotsStorageLength(config) }, () => 'AP_UNIVERSAL');
+  const result: string[] = Array.from({ length: editorStorageLength(equipmentType, config) }, () =>
+    equipmentType === 'warframe' ? AP_DISABLED : 'AP_UNIVERSAL',
+  );
   for (const row of rows) {
-    result[row.artifactIndex] = row.enabled ? row.polarity : 'AP_UNIVERSAL';
+    if (!row.enabled) {
+      result[row.artifactIndex] = AP_DISABLED;
+      continue;
+    }
+    result[row.artifactIndex] = row.polarity;
   }
-  void equipmentName;
   return result;
 }
 

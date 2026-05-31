@@ -120,14 +120,19 @@ export const EQUIPMENT_SLOT_CONFIGS: Record<EquipmentSlotConfigKey, EquipmentSlo
   },
 };
 
-export function artifactSlotsStorageLength(config: EquipmentSlotConfig): number {
+export function artifactSlotsStorageLength(
+  config: EquipmentSlotConfig,
+  options?: { hasSecondAura?: boolean },
+): number {
   return (
     config.generalSlots +
     (config.hasAura || config.hasStance || config.hasPosture ? 1 : 0) +
+    (options?.hasSecondAura ? 1 : 0) +
     (config.hasExilus ? 1 : 0)
   );
 }
 
 export const MAX_ARTIFACT_SLOTS_STORAGE_LENGTH = Math.max(
-  ...Object.values(EQUIPMENT_SLOT_CONFIGS).map(artifactSlotsStorageLength),
+  ...Object.values(EQUIPMENT_SLOT_CONFIGS).map((config) => artifactSlotsStorageLength(config)),
+  artifactSlotsStorageLength(EQUIPMENT_SLOT_CONFIGS.warframe, { hasSecondAura: true }),
 );

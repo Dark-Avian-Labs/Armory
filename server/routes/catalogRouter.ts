@@ -1,8 +1,8 @@
 import { Router, type Request, type Response } from 'express';
 
+import { ARTIFACT_SLOT_STORAGE_VALUES } from '../../shared/artifactSlotState.js';
 import { MAX_ARTIFACT_SLOTS_STORAGE_LENGTH } from '../../shared/equipmentSlotConfig.js';
 import { parseForceSteps } from '../../shared/pipelineSteps.js';
-import { ARTIFACT_SLOT_POLARITIES } from '../../shared/polarities.js';
 import { ARCANE_PUBLIC_LIST_SQL, bindArcanePublicListParams } from '../arcaneCatalog.js';
 import {
   classifyArcaneCompatTags,
@@ -439,7 +439,7 @@ catalogRouter.patch(
         return;
       }
       for (const entry of body.artifact_slots) {
-        if (typeof entry !== 'string' || !ARTIFACT_SLOT_POLARITIES.has(entry)) {
+        if (typeof entry !== 'string' || !ARTIFACT_SLOT_STORAGE_VALUES.has(entry)) {
           res.status(400).json({ error: 'artifact_slots contains invalid polarity values' });
           return;
         }

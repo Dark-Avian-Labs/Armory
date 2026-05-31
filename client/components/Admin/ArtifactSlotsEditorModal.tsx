@@ -139,7 +139,7 @@ export function ArtifactSlotsEditorModal({
     setSaving(true);
     setError(null);
     try {
-      const artifact_slots = artifactSlotsFromEditorRows(equipmentType, rows, displayName);
+      const artifact_slots = artifactSlotsFromEditorRows(equipmentType, rows);
       const res = await apiFetch('/api/admin/catalog/artifact-slots', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
