@@ -100,6 +100,18 @@ function loadCompanionNames(armoryDb: Database.Database): Set<string> {
   return companionNames;
 }
 
+function loadArcaneNames(armoryDb: Database.Database): Set<string> {
+  return new Set(
+    loadNames(
+      armoryDb,
+      `SELECT name FROM arcanes
+       WHERE unique_name NOT LIKE '%Sub'
+         AND name IS NOT NULL AND TRIM(name) <> ''
+       ORDER BY name`,
+    ),
+  );
+}
+
 const WORKSHEET_ORDER: WorksheetCategory[] = [
   'Warframes',
   'Primary Weapons',
@@ -110,6 +122,7 @@ const WORKSHEET_ORDER: WorksheetCategory[] = [
   'Companion Weapons',
   'Archwing Weapons',
   'Accessories',
+  'Arcanes',
 ];
 
 export function loadArmoryWorksheetSources(
@@ -156,6 +169,7 @@ export function loadArmoryWorksheetSources(
   );
   const modular = loadModularWeaponNames(armoryDb);
   const companions = loadCompanionNames(armoryDb);
+  const arcanes = loadArcaneNames(armoryDb);
 
   return {
     Warframes: warframes,
@@ -167,6 +181,7 @@ export function loadArmoryWorksheetSources(
     'Companion Weapons': companionWeapons,
     'Archwing Weapons': archwing,
     'Modular Weapons': modular,
+    Arcanes: arcanes,
   };
 }
 
