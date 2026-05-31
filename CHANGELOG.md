@@ -277,3 +277,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.61.0** `feat` [#323](https://github.com/Dark-Avian-Labs/Armory/pull/323): add new scraping pipeline
 - **v1.61.1** `chore` [#326](https://github.com/Dark-Avian-Labs/Armory/pull/326): arcane exports
 - **v1.61.2** `fix` [#327](https://github.com/Dark-Avian-Labs/Armory/pull/327): arcane import
+- **v1.62.0** `feat` [#328](https://github.com/Dark-Avian-Labs/Armory/pull/328): remove automatic overframe scraping
