@@ -39,10 +39,7 @@ const HIDDEN_BEAST_CLAW_BUILD_PAGES = [
   '/build/new/7164/raksa-claws/',
   '/build/new/7165/panzer-claws/',
   '/build/new/7166/sahasa-claws/',
-  '/build/new/7167/kubrow-claws/',
-  '/build/new/7168/claws/',
   '/build/new/7169/venari-claws/',
-  '/build/new/7170/kavat-claws/',
   '/build/new/7171/venari-prime-claws/',
 ];
 
