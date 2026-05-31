@@ -17,7 +17,8 @@ export const PIPELINE_STEPS = [
   {
     key: 'exaltedStanceMods',
     label: 'Exalted Stances',
-    description: 'Sync exalted stance mods from Overframe; wiki images when exports are unchanged.',
+    description:
+      'Exalted stance mods: Overframe only when forced; otherwise wiki stance images when exports are unchanged.',
   },
   {
     key: 'images',
@@ -27,22 +28,24 @@ export const PIPELINE_STEPS = [
   {
     key: 'hiddenCompanionWeapons',
     label: 'Companion Weapons',
-    description: 'Sync hidden beast claw weapons from Overframe.',
+    description: 'Hidden beast claws from Overframe (manual force only; not run automatically).',
   },
   {
     key: 'overframe',
     label: 'Overframe',
-    description: 'Scrape artifact slots and weapon behaviors for items missing build data.',
+    description:
+      'Overframe artifact slots (manual force only). Use Admin slot editor for polarity fixes.',
   },
   {
     key: 'wiki',
     label: 'Wiki',
-    description: 'Scrape ability stats, augments, shards, and riven dispositions.',
+    description:
+      'Wiki: abilities, shards, riven dispositions, projectile speeds, and weapon fire behaviors.',
   },
   {
     key: 'helminthWiki',
     label: 'Helminth',
-    description: 'Flag helminth-infusable abilities from the wiki.',
+    description: 'Helminth subsumable flags from wiki (Helminth page + each warframe /Abilities).',
   },
   {
     key: 'incarnonWiki',

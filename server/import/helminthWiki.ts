@@ -1,11 +1,14 @@
 import type Database from 'better-sqlite3';
 
-import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
 import {
   fetchHelminthWikiHtml,
   normalizeAbilityName,
   parseHelminthExtractableAbilityNames,
 } from '../scraping/helminthWikiPage.js';
+import {
+  applyHelminthFlagsFromWikiNames,
+  collectHelminthAbilityNamesFromWarframeWikiPages,
+} from '../scraping/warframeHelminthAbilityWiki.js';
 
 export async function fetchHelminthAbilityNameSet(options?: { html?: string | null }): Promise<{
   names: Set<string>;
@@ -37,45 +40,39 @@ export interface HelminthWikiSyncResult {
 
 export async function syncHelminthFlagsFromWiki(
   db: Database.Database,
-  options?: { html?: string | null },
+  options?: { html?: string | null; onProgress?: (msg: string) => void },
 ): Promise<HelminthWikiSyncResult> {
-  const { names, fetchOk, error } = await fetchHelminthAbilityNameSet(options);
-  if (!fetchOk || names.size === 0) {
+  const combined = new Set<string>();
+  const { names: helminthPageNames, fetchOk, error } = await fetchHelminthAbilityNameSet(options);
+  for (const name of helminthPageNames) combined.add(name);
+
+  if (!fetchOk) {
     return {
-      wikiNamesFound: names.size,
+      wikiNamesFound: combined.size,
       abilitiesFlagged: 0,
       fetchOk,
       error,
     };
   }
 
-  const rows = db
-    .prepare(`SELECT unique_name, name FROM abilities WHERE name IS NOT NULL AND TRIM(name) != ''`)
-    .all() as Array<{ unique_name: string; name: string }>;
+  const warframePageNames = await collectHelminthAbilityNamesFromWarframeWikiPages(
+    options?.onProgress,
+  );
+  for (const name of warframePageNames) combined.add(name);
 
-  const matched: Array<{ unique_name: string; name: string }> = [];
-  for (const row of rows) {
-    const key = normalizeAbilityName(row.name);
-    if (key && names.has(key)) {
-      matched.push(row);
-    }
+  if (combined.size === 0) {
+    return {
+      wikiNamesFound: 0,
+      abilitiesFlagged: 0,
+      fetchOk: true,
+    };
   }
-  const toUpdate = dedupeHelminthAbilityRows(matched).map((r) => r.unique_name);
 
-  const resetAll = db.prepare('UPDATE abilities SET is_helminth_extractable = 0');
-  const stmt = db.prepare('UPDATE abilities SET is_helminth_extractable = 1 WHERE unique_name = ?');
-  const runMany = db.transaction((ids: string[]) => {
-    resetAll.run();
-    for (const id of ids) {
-      stmt.run(id);
-    }
-  });
-
-  runMany(toUpdate);
+  const abilitiesFlagged = applyHelminthFlagsFromWikiNames(db, combined);
 
   return {
-    wikiNamesFound: names.size,
-    abilitiesFlagged: toUpdate.length,
+    wikiNamesFound: combined.size,
+    abilitiesFlagged,
     fetchOk: true,
   };
 }

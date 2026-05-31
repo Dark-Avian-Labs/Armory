@@ -20,6 +20,7 @@ import {
 import { syncIncarnonFromWiki } from '../scraping/incarnonWiki.js';
 import { countItemsMissingOverframeData, scrapeIndex } from '../scraping/indexScraper.js';
 import { scrapeItems } from '../scraping/itemScraper.js';
+import { syncWeaponFireBehaviorsFromWiki } from '../scraping/weaponFireBehaviorsWiki.js';
 import { runWikiScrape } from '../scraping/wikiScraper.js';
 import { populateWarframeMarketLinksTable } from '../warframeMarket/populateWarframeMarketLinks.js';
 import { syncHelminthFlagsFromWiki } from './helminthWiki.js';
@@ -386,9 +387,8 @@ async function runStartupPipelineInner(
 
   if (
     shouldSyncStancesFromOverframe &&
-    (dataChanged ||
-      countMissingExaltedStanceSeeds() > 0 ||
-      isStepForced('exaltedStanceMods', options))
+    isStepForced('exaltedStanceMods', options) &&
+    (dataChanged || countMissingExaltedStanceSeeds() > 0)
   ) {
     await prepareOverframeFetch();
     log('[Exalted Stances] Syncing exalted stance mods from Overframe...');
@@ -490,13 +490,7 @@ async function runStartupPipelineInner(
   }
 
   const onlyMissingCompanions = usesOnlyMissingMode('hiddenCompanionWeapons', options);
-  if (
-    shouldRunStep(
-      'hiddenCompanionWeapons',
-      dataChanged || hiddenCompanionWeaponsNeedSync(true),
-      options,
-    )
-  ) {
+  if (shouldRunStep('hiddenCompanionWeapons', false, options)) {
     await prepareOverframeFetch();
     log('[Companion Weapons] Syncing hidden companion weapons from Overframe...');
     try {
@@ -525,7 +519,7 @@ async function runStartupPipelineInner(
 
   const onlyMissingOverframe = usesOnlyMissingMode('overframe', options);
   const missingOverframeItems = countItemsMissingOverframeData();
-  if (shouldRunStep('overframe', missingOverframeItems > 0, options)) {
+  if (shouldRunStep('overframe', false, options)) {
     await prepareOverframeFetch();
     log('[Overframe] Indexing and scraping build data...');
     try {
@@ -573,12 +567,14 @@ async function runStartupPipelineInner(
       err('[Overframe] Scrape failed —', e);
     }
   } else {
-    log('[Overframe] Skipped — all matched items already have build data.');
+    log(
+      '[Overframe] Skipped — automatic Overframe scrape disabled (force this step in Admin if needed).',
+    );
     summary.overframe.outcome = 'skipped';
     summary.overframe.detail =
       missingOverframeItems > 0
-        ? `${missingOverframeItems} items still missing build data; step was not scheduled.`
-        : 'All matched items already have build data; no Overframe requests made.';
+        ? `${missingOverframeItems} items still missing artifact slots; use Admin slot editor or force Overframe step.`
+        : 'Automatic Overframe scrape disabled; no requests made.';
     summary.overframe.pagesScraped = 0;
   }
 
@@ -616,6 +612,17 @@ async function runStartupPipelineInner(
         detail: `Updated ${wikiMerge.abilitiesUpdated} abilities, ${wikiMerge.passivesUpdated} passives, ${wikiMerge.augmentsUpdated} augments.`,
         merge: wikiMerge,
       };
+
+      log('[Wiki] Syncing weapon fire behaviors from wiki infoboxes...');
+      try {
+        const fireResult = await syncWeaponFireBehaviorsFromWiki(
+          (msg) => log(`[Wiki] ${msg}`),
+          true,
+        );
+        log(`[Wiki] Fire behaviors — ${fireResult.updated} weapon(s) updated.`);
+      } catch (fireErr) {
+        err('[Wiki] Weapon fire behavior sync failed —', fireErr);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       summary.wiki = { outcome: 'failed', detail: 'Wiki scrape failed.', error: msg };
@@ -633,7 +640,10 @@ async function runStartupPipelineInner(
     log('[Helminth] Syncing helminth-infusable ability flags from wiki...');
     try {
       const db = getDb();
-      const helminthResult = await syncHelminthFlagsFromWiki(db, { html: helminthWikiHtml });
+      const helminthResult = await syncHelminthFlagsFromWiki(db, {
+        html: helminthWikiHtml,
+        onProgress: (msg) => log(`[Helminth] ${msg}`),
+      });
       if (!helminthResult.fetchOk) {
         summary.helminthWiki = {
           outcome: 'failed',
