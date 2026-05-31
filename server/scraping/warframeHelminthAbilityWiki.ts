@@ -13,7 +13,6 @@ function warframeWikiSlug(displayName: string): string {
   return encodeURIComponent(clean.replace(/ /g, '_'));
 }
 
-/** Ability names marked "Subsumable to Helminth" on a warframe /Abilities page. */
 export function parseSubsumableAbilitiesFromWarframeAbilitiesHtml(html: string): string[] {
   const $ = cheerio.load(html);
   const names = new Set<string>();
@@ -89,6 +88,10 @@ export function applyHelminthFlagsFromWikiNames(
   db: import('better-sqlite3').Database,
   names: Set<string>,
 ): number {
+  if (names.size === 0) {
+    return 0;
+  }
+
   const rows = db
     .prepare(`SELECT unique_name, name FROM abilities WHERE name IS NOT NULL AND TRIM(name) != ''`)
     .all() as Array<{ unique_name: string; name: string }>;

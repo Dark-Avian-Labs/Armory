@@ -249,36 +249,19 @@ export const EQUIPMENT_TYPE_ORDER: EquipmentType[] = [
   'tektolyst',
 ];
 
-export const POLARITIES = {
-  AP_ATTACK: 'Madurai',
-  AP_DEFENSE: 'Vazarin',
-  AP_TACTIC: 'Naramon',
-  AP_WARD: 'Unairu',
-  AP_POWER: 'Zenurik',
-  AP_PRECEPT: 'Penjaga',
-  AP_UMBRA: 'Umbra',
-  AP_ANY: 'Aura',
-} as const;
-
-export type PolarityKey = keyof typeof POLARITIES;
-
-export const AP_ATTACK = 'AP_ATTACK' as const;
-export const AP_DEFENSE = 'AP_DEFENSE' as const;
-export const AP_TACTIC = 'AP_TACTIC' as const;
-export const AP_WARD = 'AP_WARD' as const;
-export const AP_POWER = 'AP_POWER' as const;
-export const AP_PRECEPT = 'AP_PRECEPT' as const;
-export const AP_UMBRA = 'AP_UMBRA' as const;
-export const AP_ANY = 'AP_ANY' as const;
-
-export const REGULAR_POLARITIES: readonly string[] = [
+export {
+  POLARITIES,
+  type PolarityKey,
   AP_ATTACK,
   AP_DEFENSE,
   AP_TACTIC,
   AP_WARD,
   AP_POWER,
   AP_PRECEPT,
-];
+  AP_UMBRA,
+  AP_ANY,
+  REGULAR_POLARITIES,
+} from '../../shared/polarities.js';
 
 export const DAMAGE_TYPES = [
   'Impact',
@@ -319,110 +302,5 @@ export const ELEMENT_COMBINATIONS: Record<string, { a: PrimaryElement; b: Primar
 
 export const ELEMENT_PRIORITY: PrimaryElement[] = ['Heat', 'Cold', 'Electricity', 'Toxin'];
 
-export interface EquipmentSlotConfig {
-  generalSlots: number;
-  hasAura: boolean;
-  hasStance: boolean;
-  hasExilus: boolean;
-  hasPosture: boolean;
-  hasSecondAura: boolean;
-}
-
-export const EQUIPMENT_SLOT_CONFIGS: Record<EquipmentType, EquipmentSlotConfig> = {
-  warframe: {
-    generalSlots: 8,
-    hasAura: true,
-    hasStance: false,
-    hasExilus: true,
-    hasPosture: false,
-    hasSecondAura: false,
-  },
-  primary: {
-    generalSlots: 8,
-    hasAura: false,
-    hasStance: false,
-    hasExilus: true,
-    hasPosture: false,
-    hasSecondAura: false,
-  },
-  secondary: {
-    generalSlots: 8,
-    hasAura: false,
-    hasStance: false,
-    hasExilus: true,
-    hasPosture: false,
-    hasSecondAura: false,
-  },
-  melee: {
-    generalSlots: 8,
-    hasAura: false,
-    hasStance: true,
-    hasExilus: true,
-    hasPosture: false,
-    hasSecondAura: false,
-  },
-  archgun: {
-    generalSlots: 8,
-    hasAura: false,
-    hasStance: false,
-    hasExilus: false,
-    hasPosture: false,
-    hasSecondAura: false,
-  },
-  archmelee: {
-    generalSlots: 8,
-    hasAura: false,
-    hasStance: false,
-    hasExilus: false,
-    hasPosture: false,
-    hasSecondAura: false,
-  },
-  companion: {
-    generalSlots: 10,
-    hasAura: false,
-    hasStance: false,
-    hasExilus: false,
-    hasPosture: false,
-    hasSecondAura: false,
-  },
-  beast_claws: {
-    generalSlots: 8,
-    hasAura: false,
-    hasStance: false,
-    hasExilus: false,
-    hasPosture: true,
-    hasSecondAura: false,
-  },
-  archwing: {
-    generalSlots: 8,
-    hasAura: false,
-    hasStance: false,
-    hasExilus: false,
-    hasPosture: false,
-    hasSecondAura: false,
-  },
-  necramech: {
-    generalSlots: 12,
-    hasAura: false,
-    hasStance: false,
-    hasExilus: false,
-    hasPosture: false,
-    hasSecondAura: false,
-  },
-  kdrive: {
-    generalSlots: 8,
-    hasAura: false,
-    hasStance: false,
-    hasExilus: false,
-    hasPosture: false,
-    hasSecondAura: false,
-  },
-  tektolyst: {
-    generalSlots: 5,
-    hasAura: false,
-    hasStance: false,
-    hasExilus: false,
-    hasPosture: false,
-    hasSecondAura: false,
-  },
-};
+export type { EquipmentSlotConfig } from '../../shared/equipmentSlotConfig.js';
+export { EQUIPMENT_SLOT_CONFIGS } from '../../shared/equipmentSlotConfig.js';

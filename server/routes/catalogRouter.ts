@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from 'express';
 
+import { MAX_ARTIFACT_SLOTS_STORAGE_LENGTH } from '../../shared/equipmentSlotConfig.js';
 import { parseForceSteps } from '../../shared/pipelineSteps.js';
+import { ARTIFACT_SLOT_POLARITIES } from '../../shared/polarities.js';
 import { ARCANE_PUBLIC_LIST_SQL, bindArcanePublicListParams } from '../arcaneCatalog.js';
 import {
   classifyArcaneCompatTags,
@@ -399,18 +401,6 @@ catalogRouter.get('/archon-shards', (_req: Request, res: Response) => {
   }
 });
 
-const ARTIFACT_SLOT_POLARITIES = new Set([
-  'AP_UNIVERSAL',
-  'AP_ATTACK',
-  'AP_DEFENSE',
-  'AP_TACTIC',
-  'AP_WARD',
-  'AP_POWER',
-  'AP_PRECEPT',
-  'AP_UMBRA',
-  'AP_ANY',
-]);
-
 function resolveArtifactSlotsTable(
   uniqueName: string,
 ): 'warframes' | 'weapons' | 'companions' | null {
@@ -442,8 +432,10 @@ catalogRouter.patch(
         res.status(400).json({ error: 'artifact_slots must be a non-empty array' });
         return;
       }
-      if (body.artifact_slots.length > 10) {
-        res.status(400).json({ error: 'artifact_slots supports at most 10 entries' });
+      if (body.artifact_slots.length > MAX_ARTIFACT_SLOTS_STORAGE_LENGTH) {
+        res.status(400).json({
+          error: `artifact_slots supports at most ${MAX_ARTIFACT_SLOTS_STORAGE_LENGTH} entries`,
+        });
         return;
       }
       for (const entry of body.artifact_slots) {

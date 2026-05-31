@@ -39,7 +39,6 @@ function readInfoboxRowValue(
   return found;
 }
 
-/** Parse weapon wiki infobox into simplified fire_behaviors JSON (ammo + optional fire rate per mode). */
 export function parseWeaponFireBehaviorsFromWikiHtml(html: string): WikiFireBehavior[] {
   const $ = cheerio.load(html);
   const infobox = $('div.infobox').first();

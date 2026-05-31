@@ -13,10 +13,7 @@ import {
   syncExaltedStanceModsFromOverframe,
   syncExaltedStanceWikiImagesOnly,
 } from '../scraping/exaltedStanceMods.js';
-import {
-  hiddenCompanionWeaponsNeedSync,
-  syncHiddenCompanionWeaponsFromOverframe,
-} from '../scraping/hiddenCompanionWeapons.js';
+import { syncHiddenCompanionWeaponsFromOverframe } from '../scraping/hiddenCompanionWeapons.js';
 import { syncIncarnonFromWiki } from '../scraping/incarnonWiki.js';
 import { countItemsMissingOverframeData, scrapeIndex } from '../scraping/indexScraper.js';
 import { scrapeItems } from '../scraping/itemScraper.js';

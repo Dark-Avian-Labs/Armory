@@ -2,7 +2,6 @@ import type Database from 'better-sqlite3';
 
 import {
   fetchHelminthWikiHtml,
-  normalizeAbilityName,
   parseHelminthExtractableAbilityNames,
 } from '../scraping/helminthWikiPage.js';
 import {

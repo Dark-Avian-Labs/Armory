@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import {
-  EQUIPMENT_SLOT_CONFIGS,
   POLARITIES,
   type EquipmentType,
   type Warframe,
@@ -75,8 +74,6 @@ export function ArtifactSlotsEditorModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const config = EQUIPMENT_SLOT_CONFIGS[equipmentType] ?? EQUIPMENT_SLOT_CONFIGS.warframe;
 
   useEffect(() => {
     const url = equipmentFetchUrl(equipmentType);
