@@ -1,3 +1,14 @@
+export function isOperatorOnlyArcane(uniqueNameRaw: unknown, nameRaw?: unknown): boolean {
+  const uniqueName = String(uniqueNameRaw ?? '').toLowerCase();
+  const name = String(nameRaw ?? '').toLowerCase();
+  return (
+    uniqueName.includes('/operatoramps/') ||
+    uniqueName.includes('/operatorarmour/') ||
+    name.startsWith('magus ') ||
+    name.startsWith('virtuos ')
+  );
+}
+
 export type ArcaneCompatTag =
   | 'warframe'
   | 'primary'
@@ -21,6 +32,7 @@ export function classifyArcaneCompatTags(
     tags.add('amp');
   }
   if (
+    uniqueName.includes('/operatorarmour/') ||
     (uniqueName.includes('/operator') &&
       !uniqueName.includes('/operatoramps/') &&
       !uniqueName.includes('/operatorarmour/')) ||
@@ -79,6 +91,7 @@ export function classifyArcaneCompatTags(
   }
 
   if (
+    !isOperatorOnlyArcane(uniqueName, name) &&
     !tags.has('amp') &&
     !tags.has('operator') &&
     !tags.has('kitgun') &&
