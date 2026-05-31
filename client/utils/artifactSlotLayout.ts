@@ -1,8 +1,8 @@
 import {
   AP_DISABLED,
   isArtifactSlotDisabled,
-  isWarframeSecondAuraConfigured,
   warframeArtifactWriteIndex,
+  warframeSecondAuraApFromStorage,
   warframeExilusArtifactIndex,
   warframeSecondAuraArtifactIndex,
   WARFRAME_COMPACT_ARTIFACT_SLOT_COUNT,
@@ -40,11 +40,6 @@ function polarityFromAp(ap: string | undefined): ArtifactSlotPolarity {
 
 function slotEnabledFromAp(ap: string | undefined): boolean {
   return ap != null && !isArtifactSlotDisabled(ap);
-}
-
-function warframeSecondAuraApForEditor(artifactSlots: string[], secondAuraIndex: number): string {
-  if (!isWarframeSecondAuraConfigured(artifactSlots)) return AP_DISABLED;
-  return artifactSlots[secondAuraIndex] ?? AP_DISABLED;
 }
 
 export function parseArtifactSlotsJson(raw: string | undefined | null): string[] {
@@ -98,7 +93,7 @@ export function buildArtifactSlotEditorRows(
     });
   }
   if (equipmentType === 'warframe') {
-    const ap = warframeSecondAuraApForEditor(artifactSlots, secondAuraIndex);
+    const ap = warframeSecondAuraApFromStorage(artifactSlots, config.generalSlots);
     rows.push({
       id: 'aura-2',
       label: 'Aura 2',

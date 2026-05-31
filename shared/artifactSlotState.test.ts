@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   AP_DISABLED,
   isArtifactSlotVisible,
-  isWarframeSecondAuraConfigured,
   isWarframeSecondAuraSlotActive,
   warframeExilusArtifactIndex,
+  warframeSecondAuraApFromStorage,
 } from './artifactSlotState.js';
 
 describe('artifactSlotState', () => {
@@ -20,25 +20,24 @@ describe('artifactSlotState', () => {
     expect(warframeExilusArtifactIndex(slots)).toBe(10);
   });
 
-  it('treats compact 10-slot layouts as having no configured second aura', () => {
+  it('treats compact 10-slot layouts as no second aura', () => {
     const compact = Array.from({ length: 10 }, () => 'AP_UNIVERSAL');
-    expect(isWarframeSecondAuraConfigured(compact)).toBe(false);
+    expect(warframeSecondAuraApFromStorage(compact)).toBe(AP_DISABLED);
     expect(isWarframeSecondAuraSlotActive(compact)).toBe(false);
+    expect(warframeExilusArtifactIndex(compact)).toBe(9);
   });
 
-  it('shows second aura in builder when extended and not disabled', () => {
-    const extended = [...Array.from({ length: 10 }, () => 'AP_UNIVERSAL'), 'AP_DEFENSE'];
-    expect(isWarframeSecondAuraConfigured(extended)).toBe(true);
+  it('loads 11-slot second aura from index 9 including AP_UNIVERSAL', () => {
+    const extended = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_ANY', 'AP_UNIVERSAL', 'AP_DEFENSE'];
+    expect(warframeSecondAuraApFromStorage(extended)).toBe('AP_UNIVERSAL');
+    expect(isWarframeSecondAuraSlotActive(extended)).toBe(true);
+
+    extended[9] = 'AP_DEFENSE';
+    expect(warframeSecondAuraApFromStorage(extended)).toBe('AP_DEFENSE');
     expect(isWarframeSecondAuraSlotActive(extended)).toBe(true);
 
     extended[9] = AP_DISABLED;
-    expect(isWarframeSecondAuraConfigured(extended)).toBe(false);
+    expect(warframeSecondAuraApFromStorage(extended)).toBe(AP_DISABLED);
     expect(isWarframeSecondAuraSlotActive(extended)).toBe(false);
-  });
-
-  it('does not treat AP_UNIVERSAL at index 9 as a configured second aura', () => {
-    const extended = [...Array.from({ length: 10 }, () => 'AP_UNIVERSAL'), 'AP_UNIVERSAL'];
-    expect(isWarframeSecondAuraConfigured(extended)).toBe(false);
-    expect(isWarframeSecondAuraSlotActive(extended)).toBe(true);
   });
 });
