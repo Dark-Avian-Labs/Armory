@@ -274,3 +274,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.60.2** `chore` [#315](https://github.com/Dark-Avian-Labs/Armory/pull/315): CodeQL review
 - **v1.60.3** `chore` [#317](https://github.com/Dark-Avian-Labs/Armory/pull/317): codeQL
 - **v1.60.4** `chore` [#320](https://github.com/Dark-Avian-Labs/Armory/pull/320): GTP5.5 and Coderabbit Audit
+- **v1.61.0** `feat` [#323](https://github.com/Dark-Avian-Labs/Armory/pull/323): add new scraping pipeline
