@@ -130,23 +130,43 @@ async function fetchOverframeNextData(relativeUrl: string): Promise<OverframeWea
   return extractWeaponDataFromNextData(scraped.nextData);
 }
 
-export function hiddenCompanionWeaponsNeedSync(onlyMissing: boolean): boolean {
-  if (!onlyMissing) return true;
+function slugFromBuildPage(page: string): string | null {
+  const match = page.match(/\/build\/new\/\d+\/([^/]+)\/?$/);
+  return match?.[1] ?? null;
+}
+
+function slugToDisplayName(slug: string): string {
+  return slug
+    .split('-')
+    .map((part) => (part.length > 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+    .join(' ');
+}
+
+function isBuildPageSynced(page: string): boolean {
+  const slug = slugFromBuildPage(page);
+  if (!slug) return false;
+
   const db = getDb();
   const row = db
     .prepare(
-      `SELECT COUNT(*) as c FROM weapons
+      `SELECT artifact_slots FROM weapons
        WHERE product_category = 'SentinelWeapons'
-         AND sentinel = 1
-         AND artifact_slots IS NOT NULL`,
+         AND lower(name) = lower(?)
+       LIMIT 1`,
     )
-    .get() as { c: number };
-  return row.c < HIDDEN_BEAST_CLAW_BUILD_PAGES.length;
+    .get(slugToDisplayName(slug)) as { artifact_slots: string | null } | undefined;
+
+  return row?.artifact_slots != null;
 }
 
 function pagesNeedingSync(onlyMissing: boolean): string[] {
   if (!onlyMissing) return HIDDEN_BEAST_CLAW_BUILD_PAGES;
-  return hiddenCompanionWeaponsNeedSync(true) ? HIDDEN_BEAST_CLAW_BUILD_PAGES : [];
+  return HIDDEN_BEAST_CLAW_BUILD_PAGES.filter((page) => !isBuildPageSynced(page));
+}
+
+export function hiddenCompanionWeaponsNeedSync(onlyMissing: boolean): boolean {
+  if (!onlyMissing) return true;
+  return pagesNeedingSync(true).length > 0;
 }
 
 export async function syncHiddenCompanionWeaponsFromOverframe(

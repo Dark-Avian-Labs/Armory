@@ -60,16 +60,26 @@ async function fetchOverframeRaw(
   timeoutMs: number,
 ): Promise<{ status: number; body: string; rawBody: Buffer }> {
   const url = toAbsoluteOverframeUrl(pathOrUrl);
-  const response = await overframeClient.get(url, {
-    timeout: timeoutMs,
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  const body = responseBodyText(response.rawBody, response.data);
-  if (response.status < 200 || response.status >= 300) {
-    throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  try {
+    const response = await overframeClient.get(url, { signal: controller.signal });
+    const body = responseBodyText(response.rawBody, response.data);
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(`Failed to fetch ${url}: ${response.status}`);
+    }
+    return { status: response.status, body, rawBody: response.rawBody };
+  } catch (error: unknown) {
+    if (controller.signal.aborted) {
+      const timeoutError = new Error(`Failed to fetch ${url}: timed out after ${timeoutMs}ms`);
+      timeoutError.name = 'AbortError';
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return { status: response.status, body, rawBody: response.rawBody };
 }
 
 export async function fetchOverframeHtml(

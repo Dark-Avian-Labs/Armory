@@ -138,8 +138,10 @@ export async function scrapeItemPageByPath(
       pagePath,
       FETCH_TIMEOUT_MS.overframeDetailHtml,
     );
+    const item = payload.pageProps?.item;
+    if (!item || typeof item !== 'object') return null;
+
     const itemData = parseItemData(payload);
-    if (Object.keys(itemData).length === 0) return null;
     return {
       itemData,
       nextData: {
