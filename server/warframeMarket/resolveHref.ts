@@ -10,7 +10,8 @@ export type WorksheetCategory =
   | 'Companions'
   | 'Companion Weapons'
   | 'Archwing Weapons'
-  | 'Accessories';
+  | 'Accessories'
+  | 'Arcanes';
 
 export type MarketLinkKind = 'item' | 'sister' | 'lich';
 
