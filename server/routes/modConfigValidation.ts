@@ -76,10 +76,20 @@ export const ModConfigSchema = z
     equipment_unique_name: z.string().trim().min(1),
     slots: z.array(ModSlotSchema),
     helminth: z
-      .object({
-        replaced_ability_index: z.number().int().min(0),
-        replacement_ability_unique_name: z.string().trim().min(1),
-      })
+      .union([
+        z
+          .object({
+            replaced_ability_index: z.number().int().min(0),
+            replacement_ability_unique_name: z.string().trim().min(1),
+          })
+          .strict(),
+        z
+          .object({
+            replaced_ability_key: z.string().trim().min(1),
+            replacement_ability_key: z.string().trim().min(1),
+          })
+          .strict(),
+      ])
       .optional(),
     arcaneSlots: z
       .array(
@@ -99,11 +109,16 @@ export const ModConfigSchema = z
       .optional(),
     shardSlots: z
       .array(
-        z.object({
-          shard_type_id: z.coerce.string().trim().min(1).optional(),
-          buff_id: z.coerce.number().int().positive().optional(),
-          tauforged: z.boolean(),
-        }),
+        z.union([
+          z
+            .object({
+              shard_type_id: z.coerce.string().trim().min(1).optional(),
+              buff_id: z.coerce.number().int().positive().optional(),
+              tauforged: z.boolean(),
+            })
+            .strict(),
+          z.object({ armory_shard_key: z.string().trim().min(1) }).strict(),
+        ]),
       )
       .optional(),
     orokinReactor: z.boolean().optional(),

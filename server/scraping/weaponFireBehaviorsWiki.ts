@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 
-import { getDb } from '../db/connection.js';
+import { getCatalogDb } from '../db/connection.js';
 import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
 import { getWikiUserAgent } from './wikiUserAgent.js';
 
@@ -98,7 +98,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 export function countWeaponsMissingFireBehaviors(): number {
-  const db = getDb();
+  const db = getCatalogDb();
   const row = db
     .prepare(
       `SELECT COUNT(*) AS c FROM weapons
@@ -112,7 +112,7 @@ export async function syncWeaponFireBehaviorsFromWiki(
   onProgress?: (msg: string) => void,
   onlyMissing = true,
 ): Promise<{ attempted: number; updated: number }> {
-  const db = getDb();
+  const db = getCatalogDb();
   const rows = db
     .prepare(
       onlyMissing

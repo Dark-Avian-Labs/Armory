@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 
-import { getDb } from '../db/connection.js';
+import { getCatalogDb } from '../db/connection.js';
 import { fetchOverframeHtml } from '../http/fetchOverframe.js';
 import { FETCH_TIMEOUT_MS, isAbortError } from '../http/fetchWithTimeout.js';
 
@@ -24,7 +24,7 @@ const CATEGORY_URLS: Record<string, string> = {
 };
 
 export function countItemsMissingOverframeData(): number {
-  const db = getDb();
+  const db = getCatalogDb();
   let total = 0;
   for (const table of ['warframes', 'weapons', 'companions'] as const) {
     const row = db
@@ -67,7 +67,7 @@ async function scrapeCategory(category: string, urlPath: string): Promise<Overfr
 }
 
 function matchToDb(entries: OverframeIndexEntry[], onlyMissing = false): OverframeIndexEntry[] {
-  const db = getDb();
+  const db = getCatalogDb();
 
   const warframes = db.prepare('SELECT unique_name, name FROM warframes').all() as {
     unique_name: string;

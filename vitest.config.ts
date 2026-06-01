@@ -6,6 +6,7 @@ export default defineConfig({
     include: [
       'server/**/*.test.ts',
       'client/**/*.test.ts',
+      'shared/**/*.test.ts',
       'scripts/**/*.test.ts',
       'tests/**/*.test.ts',
     ],
@@ -16,7 +17,7 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
-      include: ['server/**/*.ts', 'client/utils/**/*.ts', 'scripts/**/*.mjs'],
+      include: ['server/**/*.ts', 'client/utils/**/*.ts', 'shared/**/*.ts', 'scripts/**/*.mjs'],
       exclude: ['**/*.test.ts', 'dist/**', 'node_modules/**'],
     },
   },

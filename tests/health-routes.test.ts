@@ -3,7 +3,7 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { APP_NAME } from '../server/config.js';
-import { getDb, getSessionDb } from '../server/db/connection.js';
+import { getCatalogDb, getSessionDb, getUserDb } from '../server/db/connection.js';
 import { testRateLimiter } from './helpers/testExpress.js';
 
 const dbMocks = vi.hoisted(() => ({
@@ -12,10 +12,18 @@ const dbMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../server/db/connection.js', () => ({
-  getDb: () => ({
+  getCatalogDb: () => ({
     prepare: () => ({
       get: () => {
         if (!dbMocks.appOk) throw new Error('app db unavailable');
+        return { ok: 1 };
+      },
+    }),
+  }),
+  getUserDb: () => ({
+    prepare: () => ({
+      get: () => {
+        if (!dbMocks.appOk) throw new Error('user db unavailable');
         return { ok: 1 };
       },
     }),
@@ -39,7 +47,8 @@ function createProbeApp() {
   app.get('/readyz', (_req, res) => {
     try {
       getSessionDb().prepare('SELECT 1').get();
-      getDb().prepare('SELECT 1').get();
+      getCatalogDb().prepare('SELECT 1').get();
+      getUserDb().prepare('SELECT 1').get();
       res.json({ status: 'ready', app: APP_NAME });
     } catch {
       res.status(503).json({ status: 'not_ready', app: APP_NAME });

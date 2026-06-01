@@ -1,5 +1,5 @@
 import { hasMeaningfulArtifactSlotOverrides } from '../../shared/artifactSlotState.js';
-import { getDb } from './connection.js';
+import { getCatalogDb } from './connection.js';
 
 function parseArtifactSlots(raw: string | null): string[] {
   if (!raw) return [];
@@ -12,7 +12,7 @@ function parseArtifactSlots(raw: string | null): string[] {
 }
 
 export function repairPlaceholderArtifactSlots(): number {
-  const db = getDb();
+  const db = getCatalogDb();
   let cleared = 0;
 
   const clearWarframe = db.prepare(

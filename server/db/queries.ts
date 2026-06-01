@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { helminthEntryByDePath } from '../../shared/helminthRegistry.js';
 import {
   isUnreleasedArcane,
   resolveArcaneImportRarity,
@@ -8,9 +9,9 @@ import {
 } from '../arcaneCatalog.js';
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { EXPORTS_DIR } from '../config.js';
-import { getDb } from './connection.js';
+import { getCatalogDb } from './connection.js';
 
-export function processExports(): {
+export function processExports(options?: { skipPreserve?: boolean }): {
   warframes: number;
   weapons: number;
   companions: number;
@@ -29,8 +30,11 @@ export function processExports(): {
     abilities: 0,
   };
 
-  const savedImagePaths = saveImagePaths();
-  const savedScrapedData = saveScrapedData();
+  const skipPreserve = options?.skipPreserve === true;
+  const savedImagePaths = skipPreserve ? new Map<string, string>() : saveImagePaths();
+  const savedScrapedData = skipPreserve
+    ? { warframes: [], weapons: [], companions: [], abilities: [], mods: [] }
+    : saveScrapedData();
 
   const warframesData = readExport('ExportWarframes_en');
   if (warframesData) {
@@ -60,8 +64,10 @@ export function processExports(): {
     counts.arcanes = processArcanes(arcaneData);
   }
 
-  restoreImagePaths(savedImagePaths);
-  restoreScrapedData(savedScrapedData);
+  if (!skipPreserve) {
+    restoreImagePaths(savedImagePaths);
+    restoreScrapedData(savedScrapedData);
+  }
 
   return counts;
 }
@@ -76,7 +82,7 @@ const IMAGE_PATH_TABLES = [
 ] as const;
 
 function saveImagePaths(): Map<string, string> {
-  const db = getDb();
+  const db = getCatalogDb();
   const pathMap = new Map<string, string>();
   for (const table of IMAGE_PATH_TABLES) {
     const rows = db
@@ -94,7 +100,7 @@ function saveImagePaths(): Map<string, string> {
 
 function restoreImagePaths(pathMap: Map<string, string>): void {
   if (pathMap.size === 0) return;
-  const db = getDb();
+  const db = getCatalogDb();
   const stmts = IMAGE_PATH_TABLES.map((table) =>
     db.prepare(`UPDATE ${table} SET image_path = ? WHERE unique_name = ?`),
   );
@@ -121,7 +127,7 @@ function saveScrapedData(): {
   abilities: ScrapedRow[];
   mods: ScrapedRow[];
 } {
-  const db = getDb();
+  const db = getCatalogDb();
   const saved = {
     warframes: [] as ScrapedRow[],
     weapons: [] as ScrapedRow[],
@@ -174,7 +180,7 @@ function saveScrapedData(): {
 }
 
 function restoreScrapedData(saved: ReturnType<typeof saveScrapedData>): void {
-  const db = getDb();
+  const db = getCatalogDb();
   const total =
     saved.warframes.length +
     saved.weapons.length +
@@ -239,7 +245,7 @@ function readExport(category: string): Record<string, unknown[]> | null {
 }
 
 function processWarframes(data: Record<string, unknown[]>): number {
-  const db = getDb();
+  const db = getCatalogDb();
   const items = (data.ExportWarframes || []) as Record<string, unknown>[];
 
   const stmt = db.prepare(`
@@ -297,35 +303,40 @@ function processWarframes(data: Record<string, unknown[]>): number {
 }
 
 function processAbilities(data: Record<string, unknown[]>): number {
-  const db = getDb();
+  const db = getCatalogDb();
 
   const stmt = db.prepare(`
     INSERT INTO abilities
-    (unique_name, name, description, warframe_unique_name, is_helminth_extractable)
-    VALUES (?, ?, ?, ?, ?)
+    (unique_name, name, description, warframe_unique_name, is_helminth_extractable, armory_helminth_key)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(unique_name) DO UPDATE SET
       name = excluded.name,
       description = excluded.description,
-      -- Abilities are shared across base/prime; do not overwrite warframe_unique_name.
-      -- Preserve Helminth eligibility when the same ability is imported
-      -- again from a warframe ability list.
       is_helminth_extractable = MAX(
         abilities.is_helminth_extractable,
         excluded.is_helminth_extractable
-      )
+      ),
+      armory_helminth_key = COALESCE(abilities.armory_helminth_key, excluded.armory_helminth_key)
   `);
+
+  const helminthKeyFor = (uniqueName: string, extractable: number): string | null => {
+    if (!extractable) return null;
+    return helminthEntryByDePath(uniqueName)?.armory_key ?? null;
+  };
 
   let count = 0;
 
   const tx = db.transaction(() => {
     const helminthAbilities = (data.ExportAbilities || []) as Record<string, unknown>[];
     for (const item of helminthAbilities) {
+      const uniqueName = item.abilityUniqueName || item.uniqueName;
       stmt.run(
-        item.abilityUniqueName || item.uniqueName,
+        uniqueName,
         item.abilityName || item.name,
         item.description ?? null,
         null,
         1,
+        helminthKeyFor(String(uniqueName), 1),
       );
       count++;
     }
@@ -340,7 +351,7 @@ function processAbilities(data: Record<string, unknown[]>): number {
         const name = (ab.abilityName || ab.name) as string | undefined;
         if (!uniqueName || !name) continue;
 
-        stmt.run(uniqueName, name, ab.description ?? null, wf.uniqueName ?? null, 0);
+        stmt.run(uniqueName, name, ab.description ?? null, wf.uniqueName ?? null, 0, null);
         count++;
       }
     }
@@ -352,7 +363,7 @@ function processAbilities(data: Record<string, unknown[]>): number {
 }
 
 function processWeapons(data: Record<string, unknown[]>): number {
-  const db = getDb();
+  const db = getCatalogDb();
   const items = (data.ExportWeapons || []) as Record<string, unknown>[];
 
   const stmt = db.prepare(`
@@ -453,7 +464,7 @@ function processWeapons(data: Record<string, unknown[]>): number {
 }
 
 function processCompanions(data: Record<string, unknown[]>): number {
-  const db = getDb();
+  const db = getCatalogDb();
   const items = (data.ExportSentinels || []) as Record<string, unknown>[];
 
   const stmt = db.prepare(`
@@ -519,7 +530,7 @@ function resolveGenericModType(
 }
 
 function processMods(data: Record<string, unknown[]>): number {
-  const db = getDb();
+  const db = getCatalogDb();
   const items = (data.ExportUpgrades || []) as Record<string, unknown>[];
 
   const modStmt = db.prepare(`
@@ -628,7 +639,7 @@ function processMods(data: Record<string, unknown[]>): number {
 }
 
 function processModSets(data: Record<string, unknown[]>): number {
-  const db = getDb();
+  const db = getCatalogDb();
   const items = (data.ExportModSet || []) as Record<string, unknown>[];
 
   const stmt = db.prepare(`
@@ -650,7 +661,7 @@ function processModSets(data: Record<string, unknown[]>): number {
 }
 
 function processArcanes(data: Record<string, unknown[]>): number {
-  const db = getDb();
+  const db = getCatalogDb();
   const items = (data.ExportRelicArcane || []) as Record<string, unknown>[];
 
   const arcanes = items.filter(
@@ -694,7 +705,7 @@ function processArcanes(data: Record<string, unknown[]>): number {
 }
 
 export function backfillModDescriptions(): number {
-  const db = getDb();
+  const db = getCatalogDb();
 
   const modsWithoutDesc = db
     .prepare(`SELECT unique_name FROM mods WHERE description IS NULL OR description = ''`)

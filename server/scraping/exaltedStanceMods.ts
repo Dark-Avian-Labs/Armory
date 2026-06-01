@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { IMAGES_DIR } from '../config.js';
-import { getDb } from '../db/connection.js';
+import { getCatalogDb } from '../db/connection.js';
 import { fetchOverframeBytes } from '../http/fetchOverframe.js';
 import { FETCH_TIMEOUT_MS, isAbortError } from '../http/fetchWithTimeout.js';
 import { fetchWikiImageForExaltedStanceMod } from './exaltedStanceWikiImages.js';
@@ -122,7 +122,7 @@ const EXALTED_STANCE_SEEDS: ExaltedStanceSeed[] = [
 ];
 
 export function countMissingExaltedStanceSeeds(): number {
-  const db = getDb();
+  const db = getCatalogDb();
   const hasRow = db.prepare(
     `SELECT 1 FROM mods WHERE name = ? AND upper(trim(type)) = 'STANCE' LIMIT 1`,
   );
@@ -136,7 +136,7 @@ export function countMissingExaltedStanceSeeds(): number {
 
 function seedsNeedingOverframeSync(onlyMissing: boolean): ExaltedStanceSeed[] {
   if (!onlyMissing) return EXALTED_STANCE_SEEDS;
-  const db = getDb();
+  const db = getCatalogDb();
   const hasRow = db.prepare(
     `SELECT 1 FROM mods WHERE name = ? AND upper(trim(type)) = 'STANCE' LIMIT 1`,
   );
@@ -256,7 +256,7 @@ export async function syncExaltedStanceModsFromOverframe(
   onProgress?: (msg: string) => void,
   onlyMissing = false,
 ): Promise<{ found: number; insertedOrUpdated: number; wikiImagesApplied: number }> {
-  const db = getDb();
+  const db = getCatalogDb();
   const seeds = seedsNeedingOverframeSync(onlyMissing);
   if (seeds.length === 0) {
     onProgress?.('Overframe exalted stance sync: all stance rows already present; skipped.');
@@ -382,7 +382,7 @@ export async function syncExaltedStanceModsFromOverframe(
 export async function syncExaltedStanceWikiImagesOnly(
   onProgress?: (msg: string) => void,
 ): Promise<{ attempted: number; applied: number }> {
-  const db = getDb();
+  const db = getCatalogDb();
   const selectUniques = db.prepare(
     `SELECT unique_name FROM mods WHERE name = ? AND upper(trim(type)) = 'STANCE'`,
   );

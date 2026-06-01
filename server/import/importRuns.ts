@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import type Database from 'better-sqlite3';
 
-import { getDb } from '../db/connection.js';
+import { getCatalogDb } from '../db/connection.js';
 import type { StartupPipelineSummary } from './pipelineSummary.js';
 
 export type ImportRunStatus = 'pending' | 'running' | 'succeeded' | 'failed';
@@ -50,7 +50,7 @@ export class ImportAlreadyRunningError extends Error {
   }
 }
 
-export function ensureImportRunsSchema(db: Database.Database = getDb()): void {
+export function ensureImportRunsSchema(db: Database.Database = getCatalogDb()): void {
   if (schemaReady) return;
   db.exec(`
     CREATE TABLE IF NOT EXISTS import_runs (
@@ -91,7 +91,7 @@ export function actorMaskedFromHash(actorHash: string): string {
 
 export function createImportRun(actorClerkUserId: string): ImportRunRow {
   ensureImportRunsSchema();
-  const db = getDb();
+  const db = getCatalogDb();
   const actor_hash = hashActor(actorClerkUserId);
   const result = db
     .prepare(`INSERT INTO import_runs (status, actor_hash) VALUES ('pending', ?)`)
@@ -102,7 +102,7 @@ export function createImportRun(actorClerkUserId: string): ImportRunRow {
 
 export function getImportRunRow(id: number): ImportRunRow | null {
   ensureImportRunsSchema();
-  const row = getDb()
+  const row = getCatalogDb()
     .prepare(
       `SELECT id, status, actor_hash, started_at, finished_at, steps_json, error_text, lock_token
        FROM import_runs WHERE id = ?`,
@@ -170,7 +170,7 @@ export function updateImportRun(
   }
   if (fields.length === 0) return;
   values.push(id);
-  getDb()
+  getCatalogDb()
     .prepare(`UPDATE import_runs SET ${fields.join(', ')} WHERE id = ?`)
     .run(...values);
 }
@@ -185,7 +185,7 @@ const IMPORT_INTERRUPTED_MESSAGE = 'Interrupted by server restart or stale impor
 export function tryAcquireImportLease(runId: number | null): string | null {
   ensureImportRunsSchema();
   const lockToken = randomUUID();
-  const db = getDb();
+  const db = getCatalogDb();
   const acquired = db.transaction(() => {
     db.prepare(
       'INSERT OR IGNORE INTO import_lease (id, lock_token, run_id, acquired_at) VALUES (1, NULL, NULL, NULL)',
@@ -213,7 +213,7 @@ export function tryAcquireImportLease(runId: number | null): string | null {
 
 export function releaseImportLease(lockToken: string): void {
   ensureImportRunsSchema();
-  const db = getDb();
+  const db = getCatalogDb();
   db.transaction(() => {
     db.prepare(
       'UPDATE import_lease SET lock_token = NULL, run_id = NULL WHERE id = ? AND lock_token = ?',
@@ -228,7 +228,7 @@ function getImportLeaseRow(): {
   acquired_at: string | null;
 } | null {
   ensureImportRunsSchema();
-  const row = getDb()
+  const row = getCatalogDb()
     .prepare('SELECT lock_token, run_id, acquired_at FROM import_lease WHERE id = ?')
     .get(LEASE_ROW_ID) as
     | { lock_token: string | null; run_id: number | null; acquired_at: string | null }
@@ -239,7 +239,7 @@ function getImportLeaseRow(): {
 function isLeaseRowStale(acquiredAt: string | null): boolean {
   if (!acquiredAt) return true;
   ensureImportRunsSchema();
-  const row = getDb()
+  const row = getCatalogDb()
     .prepare(
       `SELECT CASE WHEN ? <= datetime('now', '-${IMPORT_LEASE_TTL_MINUTES} minutes') THEN 1 ELSE 0 END AS stale`,
     )
@@ -249,7 +249,7 @@ function isLeaseRowStale(acquiredAt: string | null): boolean {
 
 function clearImportLeaseRow(): void {
   ensureImportRunsSchema();
-  getDb()
+  getCatalogDb()
     .prepare(
       'UPDATE import_lease SET lock_token = NULL, run_id = NULL, acquired_at = NULL WHERE id = ?',
     )
@@ -258,7 +258,7 @@ function clearImportLeaseRow(): void {
 
 function failInterruptedImportRuns(runId: number | null): void {
   ensureImportRunsSchema();
-  const db = getDb();
+  const db = getCatalogDb();
   if (runId != null) {
     db.prepare(
       `UPDATE import_runs
@@ -283,7 +283,7 @@ export function releaseStaleImportLease(): boolean {
   const row = getImportLeaseRow();
   if (!row?.lock_token) return false;
   if (!isLeaseRowStale(row.acquired_at)) return false;
-  const db = getDb();
+  const db = getCatalogDb();
   db.transaction(() => {
     clearImportLeaseRow();
     failInterruptedImportRuns(row.run_id);
@@ -295,7 +295,7 @@ export function recoverImportLeaseOnStartup(): void {
   ensureImportRunsSchema();
   const row = getImportLeaseRow();
   if (!row?.lock_token) return;
-  const db = getDb();
+  const db = getCatalogDb();
   db.transaction(() => {
     clearImportLeaseRow();
     failInterruptedImportRuns(row.run_id);
@@ -305,7 +305,7 @@ export function recoverImportLeaseOnStartup(): void {
 export function forceReleaseImportLease(): boolean {
   const row = getImportLeaseRow();
   if (!row?.lock_token) return false;
-  const db = getDb();
+  const db = getCatalogDb();
   db.transaction(() => {
     clearImportLeaseRow();
     failInterruptedImportRuns(row.run_id);
@@ -327,7 +327,7 @@ export function getActiveImportRunId(): number | null {
 
 export function getLatestImportRunRow(): ImportRunRow | null {
   ensureImportRunsSchema();
-  const row = getDb()
+  const row = getCatalogDb()
     .prepare(
       `SELECT id, status, actor_hash, started_at, finished_at, steps_json, error_text, lock_token
        FROM import_runs

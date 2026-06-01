@@ -28,7 +28,7 @@ import {
   ensureDataDirs,
   SHUTDOWN_TIMEOUT_MS,
 } from './config.js';
-import { closeAll, getSessionDb, getDb } from './db/connection.js';
+import { closeAll, getCatalogDb, getSessionDb, getUserDb } from './db/connection.js';
 import { repairPlaceholderArtifactSlots } from './db/repairArtifactSlots.js';
 import { createAppSchema } from './db/schema.js';
 import { createSessionSchema } from './db/sessionSchema.js';
@@ -223,7 +223,8 @@ app.get('/healthz', (_req, res) => {
 app.get('/readyz', (_req, res) => {
   try {
     sessionDb.prepare('SELECT 1').get();
-    getDb().prepare('SELECT 1').get();
+    getCatalogDb().prepare('SELECT 1').get();
+    getUserDb().prepare('SELECT 1').get();
     res.json({ status: 'ready', app: APP_NAME });
   } catch (err) {
     log('error', 'Readiness check failed', {

@@ -23,7 +23,6 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { useApi } from '../../hooks/useApi';
 import { useBuildFavorites } from '../../hooks/useBuildFavorites';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
-import { useHelminthReplacement } from '../../hooks/useHelminthReplacement';
 import type { IncarnonData, IncarnonSelection } from '../../types/incarnon';
 import {
   EQUIPMENT_SLOT_CONFIGS,
@@ -43,6 +42,11 @@ import {
 } from '../../types/warframe';
 import { apiFetch } from '../../utils/api';
 import { getMaxRank } from '../../utils/arcaneUtils';
+import {
+  buildArmoryShardKeyFromPicker,
+  persistHelminthForSave,
+  persistShardSlotsForSave,
+} from '../../utils/buildConfigPersist';
 import { getCompanionWeaponSelectionType, isCompanionWeapon } from '../../utils/companionWeapons';
 import { calculateBuildDamage } from '../../utils/damage';
 import { calculateWeaponDps } from '../../utils/damageCalc';
@@ -362,10 +366,6 @@ export function ModBuilder() {
     dirtyRouteCapturedRef,
     prevRightPanelModeRef,
   } = useModBuilderState(routeKey, buildId, routeEqType);
-
-  const { canonicalReplacementUniqueName } = useHelminthReplacement(
-    equipmentType === 'warframe' ? helminthConfig : undefined,
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -1426,15 +1426,18 @@ export function ModBuilder() {
   );
 
   const handleShardSelect = useCallback(
-    (shardTypeId: string, buffId: number, tauforged: boolean) => {
+    (shardTypeId: string, buffId: number, tauforged: boolean, buffArmoryKey?: string) => {
       if (activeShardSlot === null) return;
       setShardSlots((prev) => {
         const next = [...prev];
-        next[activeShardSlot] = {
-          shard_type_id: shardTypeId,
-          buff_id: buffId,
-          tauforged,
-        };
+        const armoryKey = buildArmoryShardKeyFromPicker(buffArmoryKey, tauforged);
+        next[activeShardSlot] = armoryKey
+          ? { armory_shard_key: armoryKey }
+          : {
+              shard_type_id: shardTypeId,
+              buff_id: buffId,
+              tauforged,
+            };
         return next;
       });
       setActiveShardSlot(null);
@@ -1694,23 +1697,19 @@ export function ModBuilder() {
         return;
       }
 
+      const warframeForSave = equipmentType === 'warframe' ? (selectedEquipment as Warframe) : null;
+
       const config: BuildConfig = {
         id: isOwnBuild ? currentBuildId : undefined,
         name: finalName,
         equipment_type: equipmentType,
         equipment_unique_name: selectedEquipment.unique_name,
         slots,
-        helminth: helminthConfig
-          ? {
-              ...helminthConfig,
-              replacement_ability_unique_name:
-                canonicalReplacementUniqueName ?? helminthConfig.replacement_ability_unique_name,
-            }
-          : undefined,
+        helminth: persistHelminthForSave(helminthConfig, warframeForSave),
         incarnonEnabled: hasIncarnon ? incarnonEnabled : undefined,
         incarnonSelections: hasIncarnon ? incarnonSelections : undefined,
         arcaneSlots,
-        shardSlots,
+        shardSlots: persistShardSlotsForSave(shardSlots, shardTypes),
         orokinReactor,
         valenceBonus: effectiveValenceBonus ?? undefined,
       };

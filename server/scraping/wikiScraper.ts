@@ -1,7 +1,8 @@
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 
-import { getDb } from '../db/connection.js';
+import { catalogArmoryKeyForArchonBuff } from '../db/catalogKeys.js';
+import { getCatalogDb } from '../db/connection.js';
 import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
 import {
   fetchHelminthWikiHtml,
@@ -338,7 +339,7 @@ export async function scrapeAbilities(
   onlyMissing = false,
   helminthWikiHtml?: string | null,
 ): Promise<WikiAbilityResult[]> {
-  const db = getDb();
+  const db = getCatalogDb();
   const missingStatsWhereClause = onlyMissing ? 'WHERE a.wiki_stats IS NULL' : '';
   const abilities = db
     .prepare(
@@ -479,7 +480,7 @@ export async function scrapePassives(
   onProgress?: (msg: string) => void,
   onlyMissing = false,
 ): Promise<WikiPassiveResult[]> {
-  const db = getDb();
+  const db = getCatalogDb();
   const query = onlyMissing
     ? `SELECT unique_name, name FROM warframes WHERE ${WARFRAME_SUITS_BASE_WHERE} AND passive_description_wiki IS NULL ORDER BY name`
     : `SELECT unique_name, name FROM warframes WHERE ${WARFRAME_SUITS_BASE_WHERE} ORDER BY name`;
@@ -617,7 +618,7 @@ function deriveValueFormat(text: string, isPercent: boolean): string {
 
 export function hasArchonShardDataInDb(): boolean {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const row = db.prepare('SELECT COUNT(*) AS c FROM archon_shard_types').get() as { c: number };
     return row.c > 0;
   } catch {
@@ -969,7 +970,7 @@ function mergeProjectileSpeedsIntoWeapons(
   wikiMap: Map<string, Array<number | null>>,
   onProgress?: (msg: string) => void,
 ): number {
-  const db = getDb();
+  const db = getCatalogDb();
   const update = db.prepare('UPDATE weapons SET fire_behaviors = ? WHERE unique_name = ?');
   const rows = db
     .prepare(
@@ -1029,7 +1030,7 @@ export function mergeWikiData(
   data: WikiScrapeResult,
   onProgress?: (msg: string) => void,
 ): WikiMergeResult {
-  const db = getDb();
+  const db = getCatalogDb();
   const result: WikiMergeResult = {
     abilitiesUpdated: 0,
     passivesUpdated: 0,
@@ -1097,13 +1098,14 @@ export function mergeWikiData(
         'SELECT id FROM archon_shard_buffs WHERE shard_type_id = ? AND sort_order = ? LIMIT 1',
       );
       const insertBuff = db.prepare(
-        'INSERT INTO archon_shard_buffs (shard_type_id, description, base_value, tauforged_value, value_format, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO archon_shard_buffs (shard_type_id, description, base_value, tauforged_value, value_format, sort_order, armory_key) VALUES (?, ?, ?, ?, ?, ?, ?)',
       );
       const updateBuff = db.prepare(
-        'UPDATE archon_shard_buffs SET description = ?, base_value = ?, tauforged_value = ?, value_format = ? WHERE id = ?',
+        'UPDATE archon_shard_buffs SET description = ?, base_value = ?, tauforged_value = ?, value_format = ?, armory_key = ? WHERE id = ?',
       );
 
       const typeIdMap = new Map<string, number>();
+      const dbTypeNameById = new Map<number, string>();
       for (const st of data.shards.types) {
         const existingType = getTypeByName.get(st.name) as { id: number } | undefined;
         if (existingType) {
@@ -1115,6 +1117,7 @@ export function mergeWikiData(
             existingType.id,
           );
           typeIdMap.set(st.id, existingType.id);
+          dbTypeNameById.set(existingType.id, st.name);
         } else {
           const insertResult = insertType.run(
             st.name,
@@ -1126,6 +1129,7 @@ export function mergeWikiData(
             (insertResult as { lastInsertRowid: number | bigint }).lastInsertRowid,
           );
           typeIdMap.set(st.id, insertedTypeId);
+          dbTypeNameById.set(insertedTypeId, st.name);
         }
         result.shardTypes++;
       }
@@ -1139,6 +1143,10 @@ export function mergeWikiData(
           continue;
         }
 
+        const typeName = dbTypeNameById.get(shardTypeId);
+        const armoryKey =
+          typeName != null ? catalogArmoryKeyForArchonBuff(typeName, sb.sort_order) : null;
+
         const existingBuff = getBuffByTypeAndOrder.get(shardTypeId, sb.sort_order) as
           | { id: number }
           | undefined;
@@ -1148,6 +1156,7 @@ export function mergeWikiData(
             sb.base_value,
             sb.tauforged_value,
             sb.value_format,
+            armoryKey,
             existingBuff.id,
           );
         } else {
@@ -1158,6 +1167,7 @@ export function mergeWikiData(
             sb.tauforged_value,
             sb.value_format,
             sb.sort_order,
+            armoryKey,
           );
         }
         result.shardBuffs++;

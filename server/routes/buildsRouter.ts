@@ -9,7 +9,7 @@ import {
 import { getClerkUserId } from '../auth/clerkUser.js';
 import { getClerkAuthState } from '../auth/middleware.js';
 import { canReadBuild } from '../buildAccess.js';
-import { getDb } from '../db/connection.js';
+import { getUserDb } from '../db/connection.js';
 import {
   buildReadAccessContext,
   parseVisibility,
@@ -44,7 +44,7 @@ buildsRouter.get('/users/:username/builds', async (req: Request, res: Response) 
       res.status(404).json({ error: 'User not found' });
       return;
     }
-    const db = getDb();
+    const db = getUserDb();
     const rows = db
       .prepare(
         `SELECT ${BUILD_SELECT_LIST} FROM builds
@@ -67,7 +67,7 @@ buildsRouter.get('/users/:username/builds', async (req: Request, res: Response) 
 
 buildsRouter.get('/builds', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -90,7 +90,7 @@ buildsRouter.get('/builds', (req: Request, res: Response) => {
 
 buildsRouter.get('/builds/catalog', (_req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const rows = db
       .prepare(
         `SELECT equipment_type, equipment_unique_name, COUNT(*) AS build_count
@@ -113,7 +113,7 @@ buildsRouter.get('/builds/catalog', (_req: Request, res: Response) => {
 
 buildsRouter.get('/builds/by-user', async (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
 
     const userIdRaw = req.query.clerk_user_id;
     const clerkUserId =
@@ -147,7 +147,7 @@ buildsRouter.get('/builds/by-user', async (req: Request, res: Response) => {
 
 buildsRouter.get('/builds/by-equipment', async (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const sessionUserId = getClerkUserId(req);
 
     const equipmentType =
@@ -214,7 +214,7 @@ buildsRouter.get('/builds/by-equipment', async (req: Request, res: Response) => 
 
 buildsRouter.get('/builds/favorites', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -245,7 +245,7 @@ buildsRouter.get('/builds/favorites', (req: Request, res: Response) => {
 
 buildsRouter.post('/builds/:id/favorite', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -286,7 +286,7 @@ buildsRouter.post('/builds/:id/favorite', (req: Request, res: Response) => {
 
 buildsRouter.delete('/builds/:id/favorite', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -312,7 +312,7 @@ buildsRouter.delete('/builds/:id/favorite', (req: Request, res: Response) => {
 
 buildsRouter.get('/builds/:id/loadouts', async (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const id = parseNumericId(req.params.id);
     if (id === null) {
       res.status(400).json({ error: 'Invalid build id' });
@@ -360,7 +360,7 @@ buildsRouter.get('/builds/:id/loadouts', async (req: Request, res: Response) => 
 
 buildsRouter.get('/builds/:id', async (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const id = parseNumericId(req.params.id);
     if (id === null) {
       res.status(400).json({ error: 'Invalid build id' });
@@ -414,7 +414,7 @@ buildsRouter.get('/builds/:id', async (req: Request, res: Response) => {
 
 buildsRouter.post('/builds', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -466,7 +466,7 @@ buildsRouter.post('/builds', (req: Request, res: Response) => {
 
 buildsRouter.put('/builds/:id', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -551,7 +551,7 @@ buildsRouter.put('/builds/:id', (req: Request, res: Response) => {
 
 buildsRouter.delete('/builds/:id', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -594,7 +594,7 @@ buildsRouter.delete('/builds/:id', (req: Request, res: Response) => {
 
 buildsRouter.post('/builds/:id/copy', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });

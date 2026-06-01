@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../db/connection.js', () => {
   let db: Database.Database | null = null;
   return {
-    getDb: () => {
+    getCatalogDb: () => {
       if (!db) {
         db = new Database(':memory:');
         db.pragma('foreign_keys = ON');
@@ -30,8 +30,8 @@ describe('importRuns', () => {
   });
 
   afterEach(async () => {
-    const { getDb } = await import('../db/connection.js');
-    const db = getDb();
+    const { getCatalogDb } = await import('../db/connection.js');
+    const db = getCatalogDb();
     db.exec('DELETE FROM import_runs');
     db.exec('UPDATE import_lease SET lock_token = NULL, run_id = NULL WHERE id = 1');
   });

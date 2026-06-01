@@ -1,6 +1,6 @@
 import { clerkClient } from '@clerk/express';
 
-import { getDb } from '../db/connection.js';
+import { getCatalogDb } from '../db/connection.js';
 import { log } from '../logger.js';
 
 const DELETED_USER_LABEL = '[Deleted User]';
@@ -10,7 +10,7 @@ function isDuplicateColumnError(err: unknown): boolean {
   return err instanceof Error && err.message.toLowerCase().includes('duplicate column');
 }
 
-export function ensureArmoryUsersSchema(db: ReturnType<typeof getDb>): void {
+export function ensureArmoryUsersSchema(db: ReturnType<typeof getCatalogDb>): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS armory_users (
       clerk_user_id TEXT PRIMARY KEY,
@@ -35,7 +35,7 @@ export function ensureArmoryUsersSchema(db: ReturnType<typeof getDb>): void {
 }
 
 export function upsertArmoryUser(clerkUserId: string, username: string | null): void {
-  const db = getDb();
+  const db = getCatalogDb();
   if (!schemaInitialized) {
     ensureArmoryUsersSchema(db);
     schemaInitialized = true;
@@ -55,7 +55,7 @@ export function upsertArmoryUser(clerkUserId: string, username: string | null): 
 }
 
 export function markArmoryUserDeleted(clerkUserId: string): void {
-  const db = getDb();
+  const db = getCatalogDb();
   ensureArmoryUsersSchema(db);
   db.prepare(`UPDATE armory_users SET deleted_at = datetime('now') WHERE clerk_user_id = ?`).run(
     clerkUserId,
@@ -79,7 +79,7 @@ export async function syncArmoryUserFromClerk(clerkUserId: string): Promise<stri
 }
 
 export function resolveClerkUserIdByUsername(username: string): string | null {
-  const db = getDb();
+  const db = getCatalogDb();
   ensureArmoryUsersSchema(db);
   const row = db
     .prepare(
@@ -127,7 +127,7 @@ export function getOwnerUsernames(clerkUserIds: string[]): Map<string, string | 
   if (unique.length === 0) return map;
 
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     ensureArmoryUsersSchema(db);
     const placeholders = unique.map(() => '?').join(',');
     const rows = db
