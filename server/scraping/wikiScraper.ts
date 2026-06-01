@@ -615,6 +615,16 @@ function deriveValueFormat(text: string, isPercent: boolean): string {
   return '+flat';
 }
 
+export function hasArchonShardDataInDb(): boolean {
+  try {
+    const db = getDb();
+    const row = db.prepare('SELECT COUNT(*) AS c FROM archon_shard_types').get() as { c: number };
+    return row.c > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function scrapeArchonShards(
   onProgress?: (msg: string) => void,
 ): Promise<WikiShardResult> {

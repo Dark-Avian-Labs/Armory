@@ -30,13 +30,11 @@ import {
 } from './config.js';
 import { closeAll, getSessionDb, getDb } from './db/connection.js';
 import { createAppSchema } from './db/schema.js';
-import { seedArchonShards } from './db/seedArchonShards.js';
 import { createSessionSchema } from './db/sessionSchema.js';
 import { createAppHelmet } from './http/helmetCsp.js';
 import { getRequestId, requestIdMiddleware } from './http/requestId.js';
 import { isAdminImportRunning, waitForAdminImportIdle } from './import/adminImportJob.js';
 import { recoverImportLeaseOnStartup } from './import/importRuns.js';
-import { runArtifactSlotsFromOverframeMigrationOnStartup } from './import/migrateArtifactSlotsFromOverframe.js';
 import { log } from './logger.js';
 import { apiRouter } from './routes/api.js';
 import { authRouter } from './routes/auth.js';
@@ -49,18 +47,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 ensureDataDirs();
 createAppSchema();
-runArtifactSlotsFromOverframeMigrationOnStartup();
 recoverImportLeaseOnStartup();
 
 const sessionDb = getSessionDb();
 createSessionSchema(sessionDb);
 console.log(`[${APP_NAME}] Session DB ready (${SESSION_DB_PATH})`);
-
-try {
-  seedArchonShards();
-} catch (e) {
-  console.warn('[DB] Archon shard seed skipped:', e);
-}
 
 const app = express();
 

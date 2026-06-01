@@ -4,15 +4,6 @@ import { getDb } from './connection.js';
 export function createAppSchema(): void {
   const db = getDb();
   db.exec(`
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-      id TEXT PRIMARY KEY,
-      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
-  const hasMigration = db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?');
-  const markMigration = db.prepare('INSERT OR IGNORE INTO schema_migrations (id) VALUES (?)');
-
-  db.exec(`
     -- Warframes (includes Archwings, Necramechs)
     CREATE TABLE IF NOT EXISTS warframes (
       unique_name TEXT PRIMARY KEY,
@@ -33,7 +24,9 @@ export function createAppSchema(): void {
       mastery_req INTEGER DEFAULT 0,
       image_path TEXT,
       codex_secret INTEGER DEFAULT 0,
-      exclude_from_codex INTEGER DEFAULT 0
+      exclude_from_codex INTEGER DEFAULT 0,
+      artifact_slots TEXT,
+      passive_description_wiki TEXT
     );
 
     -- Warframe abilities
@@ -44,6 +37,9 @@ export function createAppSchema(): void {
       warframe_unique_name TEXT,
       is_helminth_extractable INTEGER DEFAULT 0,
       image_path TEXT,
+      ability_stats TEXT,
+      wiki_stats TEXT,
+      energy_cost INTEGER,
       FOREIGN KEY (warframe_unique_name) REFERENCES warframes(unique_name)
     );
 
@@ -88,7 +84,11 @@ export function createAppSchema(): void {
       -- Metadata
       image_path TEXT,
       codex_secret INTEGER DEFAULT 0,
-      exclude_from_codex INTEGER DEFAULT 0
+      exclude_from_codex INTEGER DEFAULT 0,
+      artifact_slots TEXT,
+      fire_behaviors TEXT,
+      has_incarnon INTEGER DEFAULT 0,
+      incarnon_data TEXT
     );
 
     -- Companions (Sentinels, Kubrows, Kavats, etc.)
@@ -105,7 +105,8 @@ export function createAppSchema(): void {
       product_category TEXT,
       mastery_req INTEGER DEFAULT 0,
       image_path TEXT,
-      codex_secret INTEGER DEFAULT 0
+      codex_secret INTEGER DEFAULT 0,
+      artifact_slots TEXT
     );
 
     -- Mods / Upgrades
@@ -120,7 +121,9 @@ export function createAppSchema(): void {
       fusion_limit INTEGER,        -- Max rank
       is_utility INTEGER DEFAULT 0,-- Can fit in Exilus slot
       is_augment INTEGER DEFAULT 0,
+      augment_for_ability TEXT,
       subtype TEXT,                -- For augments: warframe unique_name
+      mod_set TEXT REFERENCES mod_sets(unique_name),
       description TEXT,            -- JSON array of description strings
       upgrade_entries TEXT,         -- JSON: available riven stats (for riven mods)
       image_path TEXT,
@@ -192,6 +195,7 @@ export function createAppSchema(): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clerk_user_id TEXT NOT NULL,
       name TEXT NOT NULL,
+      description TEXT,
       visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'public', 'unlisted')),
       share_token TEXT,
       created_at TEXT DEFAULT (datetime('now')),
@@ -212,6 +216,7 @@ export function createAppSchema(): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clerk_user_id TEXT NOT NULL,
       name TEXT NOT NULL,
+      description TEXT,
       visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'public', 'unlisted')),
       share_token TEXT,
       equipment_type TEXT NOT NULL,       -- warframe, primary, secondary, melee, etc.
@@ -252,163 +257,6 @@ export function createAppSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_build_favorites_user ON build_favorites(clerk_user_id);
   `);
 
-  const migrations: Array<{
-    id: string;
-    table: string;
-    column: string;
-    sql: string;
-  }> = [
-    {
-      id: '20260301_abilities_image_path',
-      table: 'abilities',
-      column: 'image_path',
-      sql: 'ALTER TABLE abilities ADD COLUMN image_path TEXT',
-    },
-    {
-      id: '20260301_mods_mod_set',
-      table: 'mods',
-      column: 'mod_set',
-      sql: 'ALTER TABLE mods ADD COLUMN mod_set TEXT REFERENCES mod_sets(unique_name)',
-    },
-    {
-      id: '20260301_warframes_artifact_slots',
-      table: 'warframes',
-      column: 'artifact_slots',
-      sql: 'ALTER TABLE warframes ADD COLUMN artifact_slots TEXT',
-    },
-    {
-      id: '20260301_weapons_artifact_slots',
-      table: 'weapons',
-      column: 'artifact_slots',
-      sql: 'ALTER TABLE weapons ADD COLUMN artifact_slots TEXT',
-    },
-    {
-      id: '20260301_weapons_fire_behaviors',
-      table: 'weapons',
-      column: 'fire_behaviors',
-      sql: 'ALTER TABLE weapons ADD COLUMN fire_behaviors TEXT',
-    },
-    {
-      id: '20260301_weapons_riven_disposition',
-      table: 'weapons',
-      column: 'riven_disposition',
-      sql: 'ALTER TABLE weapons ADD COLUMN riven_disposition REAL',
-    },
-    {
-      id: '20260301_abilities_ability_stats',
-      table: 'abilities',
-      column: 'ability_stats',
-      sql: 'ALTER TABLE abilities ADD COLUMN ability_stats TEXT',
-    },
-    {
-      id: '20260301_companions_artifact_slots',
-      table: 'companions',
-      column: 'artifact_slots',
-      sql: 'ALTER TABLE companions ADD COLUMN artifact_slots TEXT',
-    },
-    {
-      id: '20260301_abilities_wiki_stats',
-      table: 'abilities',
-      column: 'wiki_stats',
-      sql: 'ALTER TABLE abilities ADD COLUMN wiki_stats TEXT',
-    },
-    {
-      id: '20260301_abilities_energy_cost',
-      table: 'abilities',
-      column: 'energy_cost',
-      sql: 'ALTER TABLE abilities ADD COLUMN energy_cost INTEGER',
-    },
-    {
-      id: '20260301_warframes_passive_description_wiki',
-      table: 'warframes',
-      column: 'passive_description_wiki',
-      sql: 'ALTER TABLE warframes ADD COLUMN passive_description_wiki TEXT',
-    },
-    {
-      id: '20260301_mods_augment_for_ability',
-      table: 'mods',
-      column: 'augment_for_ability',
-      sql: 'ALTER TABLE mods ADD COLUMN augment_for_ability TEXT',
-    },
-    {
-      id: '20260301_builds_visibility',
-      table: 'builds',
-      column: 'visibility',
-      sql: "ALTER TABLE builds ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'public', 'unlisted'))",
-    },
-    {
-      id: '20260301_builds_share_token',
-      table: 'builds',
-      column: 'share_token',
-      sql: 'ALTER TABLE builds ADD COLUMN share_token TEXT',
-    },
-    {
-      id: '20260301_loadouts_visibility',
-      table: 'loadouts',
-      column: 'visibility',
-      sql: "ALTER TABLE loadouts ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'public', 'unlisted'))",
-    },
-    {
-      id: '20260301_loadouts_share_token',
-      table: 'loadouts',
-      column: 'share_token',
-      sql: 'ALTER TABLE loadouts ADD COLUMN share_token TEXT',
-    },
-    {
-      id: '20260308_arcanes_compat_tags',
-      table: 'arcanes',
-      column: 'compat_tags',
-      sql: 'ALTER TABLE arcanes ADD COLUMN compat_tags TEXT',
-    },
-    {
-      id: '20260501_warframe_market_links_prime',
-      table: 'warframe_market_links',
-      column: 'market_href_prime',
-      sql: 'ALTER TABLE warframe_market_links ADD COLUMN market_href_prime TEXT',
-    },
-    {
-      id: '20260514_builds_description',
-      table: 'builds',
-      column: 'description',
-      sql: 'ALTER TABLE builds ADD COLUMN description TEXT',
-    },
-    {
-      id: '20260514_loadouts_description',
-      table: 'loadouts',
-      column: 'description',
-      sql: 'ALTER TABLE loadouts ADD COLUMN description TEXT',
-    },
-    {
-      id: '20260524_weapons_has_incarnon',
-      table: 'weapons',
-      column: 'has_incarnon',
-      sql: 'ALTER TABLE weapons ADD COLUMN has_incarnon INTEGER DEFAULT 0',
-    },
-    {
-      id: '20260524_weapons_incarnon_data',
-      table: 'weapons',
-      column: 'incarnon_data',
-      sql: 'ALTER TABLE weapons ADD COLUMN incarnon_data TEXT',
-    },
-  ];
-  const ALLOWED_MIGRATION_TABLES = new Set(migrations.map((migration) => migration.table));
-  for (const m of migrations) {
-    if (hasMigration.get(m.id)) {
-      continue;
-    }
-    if (!ALLOWED_MIGRATION_TABLES.has(m.table)) {
-      throw new Error(`[DB] Migration ${m.id} references unexpected table: ${m.table}`);
-    }
-    const cols = db.prepare(`PRAGMA table_info(${m.table})`).all() as {
-      name: string;
-    }[];
-    if (!cols.some((c) => c.name === m.column)) {
-      db.exec(m.sql);
-      console.log(`[DB] Migration: added ${m.table}.${m.column}`);
-    }
-    markMigration.run(m.id);
-  }
-
   const hasColumn = db.prepare(
     `SELECT 1
        FROM pragma_table_info(?)
@@ -420,105 +268,6 @@ export function createAppSchema(): void {
   }
   if (hasColumn.get('loadouts', 'share_token')) {
     db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_loadouts_share_token ON loadouts(share_token)');
-  }
-
-  const ARCHON_MIGRATION_ID = '20260301_archon_shard_types_id_integer';
-  if (!hasMigration.get(ARCHON_MIGRATION_ID)) {
-    const archonCols = db.prepare('PRAGMA table_info(archon_shard_types)').all() as {
-      name: string;
-      type: string;
-    }[];
-    const idCol = archonCols.find((c) => c.name === 'id');
-    if (idCol && idCol.type.toUpperCase() === 'TEXT') {
-      try {
-        db.transaction(() => {
-          db.exec(`
-          CREATE TABLE archon_shard_types_new (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            icon_path TEXT NOT NULL,
-            tauforged_icon_path TEXT NOT NULL,
-            sort_order INTEGER DEFAULT 0
-          );
-        `);
-          const oldTypes = db
-            .prepare(
-              'SELECT id, name, icon_path, tauforged_icon_path, sort_order FROM archon_shard_types ORDER BY sort_order, name',
-            )
-            .all() as {
-            id: string;
-            name: string;
-            icon_path: string;
-            tauforged_icon_path: string;
-            sort_order: number;
-          }[];
-          const insertType = db.prepare(
-            'INSERT INTO archon_shard_types_new (name, icon_path, tauforged_icon_path, sort_order) VALUES (?, ?, ?, ?)',
-          );
-          const typeIdMap = new Map<string, number>();
-          for (const row of oldTypes) {
-            const result = insertType.run(
-              row.name,
-              row.icon_path,
-              row.tauforged_icon_path,
-              row.sort_order,
-            );
-            typeIdMap.set(row.id, (result as { lastInsertRowid: number }).lastInsertRowid);
-          }
-          const oldBuffs = db
-            .prepare(
-              'SELECT shard_type_id, description, base_value, tauforged_value, value_format, sort_order FROM archon_shard_buffs',
-            )
-            .all() as {
-            shard_type_id: string;
-            description: string;
-            base_value: number;
-            tauforged_value: number;
-            value_format: string;
-            sort_order: number;
-          }[];
-          db.exec(`DROP TABLE archon_shard_buffs`);
-          db.exec(`DROP TABLE archon_shard_types`);
-          db.exec(`ALTER TABLE archon_shard_types_new RENAME TO archon_shard_types`);
-          db.exec(`
-          CREATE TABLE archon_shard_buffs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            shard_type_id INTEGER NOT NULL,
-            description TEXT NOT NULL,
-            base_value REAL NOT NULL,
-            tauforged_value REAL NOT NULL,
-            value_format TEXT DEFAULT '%',
-            sort_order INTEGER DEFAULT 0,
-            FOREIGN KEY (shard_type_id) REFERENCES archon_shard_types(id)
-          );
-        `);
-          const insertBuff = db.prepare(
-            'INSERT INTO archon_shard_buffs (shard_type_id, description, base_value, tauforged_value, value_format, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-          );
-          for (const row of oldBuffs) {
-            const newTypeId = typeIdMap.get(row.shard_type_id);
-            if (newTypeId === undefined) {
-              const msg = `Migration failed: archon_shard_buffs row has unmapped shard_type_id "${row.shard_type_id}" (typeIdMap has no mapping; oldBuffs/insertBuff migration cannot proceed)`;
-              console.error(`[DB] ${msg}`);
-              throw new Error(msg);
-            }
-            insertBuff.run(
-              newTypeId,
-              row.description,
-              row.base_value,
-              row.tauforged_value,
-              row.value_format,
-              row.sort_order,
-            );
-          }
-        })();
-        markMigration.run(ARCHON_MIGRATION_ID);
-        console.log('[DB] Migration: archon_shard_types id TEXT -> INTEGER AUTOINCREMENT');
-      } catch (err) {
-        console.error('[DB] Migration failed, rolled back:', err);
-        throw err;
-      }
-    }
   }
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_builds_clerk_user ON builds(clerk_user_id)');

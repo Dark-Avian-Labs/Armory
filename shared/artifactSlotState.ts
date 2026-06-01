@@ -38,10 +38,6 @@ export function warframeExilusArtifactIndex(artifactSlots: string[], generalSlot
     : generalSlots + 1;
 }
 
-/**
- * Fold mistaken 11-slot rows (Aura2 + Exilus both universal from an old save) into compact 10-slot
- * layout. True dual-aura frames keep 11 when exilus at index 10 has a real polarity (e.g. AP_ANY).
- */
 export function normalizeWarframeArtifactSlotsForLoad(
   artifactSlots: string[],
   generalSlots = 8,
