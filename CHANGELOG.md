@@ -280,3 +280,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.62.0** `feat` [#328](https://github.com/Dark-Avian-Labs/Armory/pull/328): remove automatic overframe scraping
 - **v1.62.1** `fix` [#329](https://github.com/Dark-Avian-Labs/Armory/pull/329): second aura slot
 - **v1.62.2** `fix` [#330](https://github.com/Dark-Avian-Labs/Armory/pull/330): import lease & admin editor
+- **v1.62.3** `fix` [#331](https://github.com/Dark-Avian-Labs/Armory/pull/331): jade
