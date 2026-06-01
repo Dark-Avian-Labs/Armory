@@ -2,6 +2,7 @@ import { toBlob } from 'html-to-image';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 
+import { helminthReplacedAbilityIndex } from '../../../shared/buildReference.js';
 import feathers from '../../assets/feathers.svg';
 import orokinReactorImg from '../../assets/orokin-reactor.png';
 import type { IncarnonSelection } from '../../types/incarnon';
@@ -16,6 +17,7 @@ import type {
 } from '../../types/warframe';
 import { getMaxRank } from '../../utils/arcaneUtils';
 import { extractArchonShardBonuses } from '../../utils/archonShardBonuses';
+import { resolveShardSlotForDisplay } from '../../utils/buildConfigPersist';
 import { calculateBuildDamage, formatDamage } from '../../utils/damage';
 import { calculateWeaponDps } from '../../utils/damageCalc';
 import { getElementColor } from '../../utils/elements';
@@ -453,15 +455,13 @@ function ShareShardColumn({
   const lines: { key: string; name: string; tau: boolean; buff: string }[] = [];
   for (let i = 0; i < 5; i++) {
     const slot = slots[i] ?? { tauforged: false };
-    if (!slot.shard_type_id) continue;
-    const shard = shards.find((s) => String(s.id) === String(slot.shard_type_id));
-    if (!shard) continue;
-    const buff = shard.buffs.find((b) => String(b.id) === String(slot.buff_id));
-    const buffText = formatShardBuffDescription(buff, slot.tauforged === true);
+    const resolved = resolveShardSlotForDisplay(slot, shards);
+    if (!resolved) continue;
+    const buffText = formatShardBuffDescription(resolved.buff, resolved.tauforged);
     lines.push({
-      key: `shard-${i}-${String(slot.shard_type_id)}`,
-      name: shard.name,
-      tau: slot.tauforged === true,
+      key: `shard-${i}-${resolved.shard.name}`,
+      name: resolved.shard.name,
+      tau: resolved.tauforged,
       buff: buffText,
     });
   }
@@ -469,8 +469,9 @@ function ShareShardColumn({
   const iconSize = compact ? 'h-7 w-7' : 'h-9 w-9';
   const gapClass = compact ? 'space-y-1' : 'space-y-2';
 
-  const shardIcon = (slot: ShardSlotConfig, shard?: ShardType) => {
-    if (!slot.shard_type_id) {
+  const shardIcon = (slot: ShardSlotConfig, shard?: ShardType, tauforged = false) => {
+    const resolved = resolveShardSlotForDisplay(slot, shards);
+    if (!resolved) {
       return (
         <div
           className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-md ${iconSize}`}
@@ -484,10 +485,8 @@ function ShareShardColumn({
         </div>
       );
     }
-    if (!shard) {
-      return <div className={`shrink-0 rounded-md bg-white/10 ${iconSize}`} />;
-    }
-    const iconPath = slot.tauforged ? shard.tauforged_icon_path : shard.icon_path;
+    const displayShard = shard ?? resolved.shard;
+    const iconPath = tauforged ? displayShard.tauforged_icon_path : displayShard.icon_path;
     return (
       <div
         className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-md ${iconSize}`}
@@ -495,7 +494,7 @@ function ShareShardColumn({
         <img
           src="/icons/shards/filledBackground.svg"
           alt=""
-          className={`absolute inset-0 h-full w-full object-contain ${slot.tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
+          className={`absolute inset-0 h-full w-full object-contain ${tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
           draggable={false}
         />
         <img
@@ -512,7 +511,8 @@ function ShareShardColumn({
     <ul className={`${gapClass} ${textLeftIconRight ? 'flex w-full flex-col items-end' : ''}`}>
       {Array.from({ length: 5 }, (_, i) => {
         const slot = slots[i] ?? { tauforged: false };
-        if (!slot.shard_type_id) {
+        const resolved = resolveShardSlotForDisplay(slot, shards);
+        if (!resolved) {
           return (
             <li
               key={i}
@@ -521,38 +521,18 @@ function ShareShardColumn({
               {textLeftIconRight ? (
                 <>
                   <span className="text-[10px] text-[#8fa4d4]">Empty</span>
-                  {shardIcon(slot, undefined)}
+                  {shardIcon(slot, undefined, false)}
                 </>
               ) : (
                 <>
-                  {shardIcon(slot, undefined)}
+                  {shardIcon(slot, undefined, false)}
                   <span className="text-[10px] text-[#8fa4d4]">Empty</span>
                 </>
               )}
             </li>
           );
         }
-        const shard = shards.find((s) => String(s.id) === String(slot.shard_type_id));
-        if (!shard) {
-          return (
-            <li
-              key={i}
-              className={`flex items-center gap-2 ${textLeftIconRight ? 'w-full max-w-full justify-end' : ''}`}
-            >
-              {textLeftIconRight ? (
-                <>
-                  <span className="text-[10px] text-[#8fa4d4]">—</span>
-                  {shardIcon(slot, undefined)}
-                </>
-              ) : (
-                <>
-                  {shardIcon(slot, undefined)}
-                  <span className="text-[10px] text-[#8fa4d4]">—</span>
-                </>
-              )}
-            </li>
-          );
-        }
+        const { shard, tauforged } = resolved;
         const line = lines.find((l) => l.key.startsWith(`shard-${i}`));
         const textBlock = (
           <div className={`min-w-0 ${textLeftIconRight ? 'flex-1 text-right' : 'flex-1'}`}>
@@ -577,11 +557,11 @@ function ShareShardColumn({
             {textLeftIconRight ? (
               <>
                 {textBlock}
-                {shardIcon(slot, shard)}
+                {shardIcon(slot, shard, tauforged)}
               </>
             ) : (
               <>
-                {shardIcon(slot, shard)}
+                {shardIcon(slot, shard, tauforged)}
                 {textBlock}
               </>
             )}
@@ -621,7 +601,14 @@ function ShareSkillsPanel({
     <div className="flex min-h-0 flex-col gap-2">
       <div className="flex justify-center gap-1.5">
         {ownAbilities.map((ability) => {
-          const isReplaced = helminthConfig?.replaced_ability_index === ability.index;
+          const isReplaced =
+            helminthReplacedAbilityIndex(
+              helminthConfig,
+              ownAbilities.map((a) => ({
+                abilityName: a.name,
+                abilityUniqueName: a.unique_name,
+              })),
+            ) === ability.index;
           const icon =
             isReplaced && selectedReplacement?.image_path
               ? `/images${selectedReplacement.image_path}`

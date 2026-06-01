@@ -38,7 +38,11 @@ vi.mock('../auth/armoryUsers.js', () => ({
 }));
 
 vi.mock('../db/connection.js', () => ({
-  getDb: () => {
+  getCatalogDb: () => {
+    if (!dbState.db) throw new Error('Test DB not initialized');
+    return dbState.db;
+  },
+  getUserDb: () => {
     if (!dbState.db) throw new Error('Test DB not initialized');
     return dbState.db;
   },

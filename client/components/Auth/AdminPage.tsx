@@ -83,6 +83,7 @@ function DataImportAdmin() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'error'>('idle');
   const [forcedSteps, setForcedSteps] = useState<PipelineStepKey[]>([]);
+  const [confirmForceImport, setConfirmForceImport] = useState(false);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
   const copyFeedbackResetTimeoutRef = useRef<number | null>(null);
 
@@ -362,9 +363,7 @@ function DataImportAdmin() {
             <button
               type="button"
               className="btn btn-secondary text-warning text-sm"
-              onClick={() => {
-                void runImport({ forceImport: true, forceImages: true });
-              }}
+              onClick={() => setConfirmForceImport(true)}
               disabled={runningImport}
             >
               Force Full Re-import
@@ -542,6 +541,41 @@ function DataImportAdmin() {
           </div>
         </Modal>
       </div>
+
+      <Modal
+        open={confirmForceImport}
+        onClose={() => setConfirmForceImport(false)}
+        ariaLabelledBy="armory-force-import-title"
+        className="glass-modal-surface max-w-md"
+      >
+        <h3 id="armory-force-import-title" className="text-foreground mb-2 text-lg font-semibold">
+          Reset catalog and re-import?
+        </h3>
+        <p className="text-muted text-sm">
+          This wipes all catalog game data (warframes, mods, abilities, archon shards, etc.) and
+          re-downloads exports. Saved builds and loadouts in the user database are not affected.
+        </p>
+        <div className="modal-actions">
+          <button
+            type="button"
+            className="btn btn-cancel text-sm"
+            onClick={() => setConfirmForceImport(false)}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger text-sm"
+            onClick={() => {
+              setConfirmForceImport(false);
+              void runImport({ forceImport: true, forceImages: true });
+            }}
+            disabled={runningImport}
+          >
+            Reset catalog and re-import
+          </button>
+        </div>
+      </Modal>
 
       {snapshot?.summary ? (
         <div className="glass-surface p-6">

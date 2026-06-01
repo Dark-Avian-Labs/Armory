@@ -3,7 +3,7 @@ import { Router, type Request, type Response } from 'express';
 import { getClerkUserId } from '../auth/clerkUser.js';
 import { getClerkAuthState } from '../auth/middleware.js';
 import { canReadBuild } from '../buildAccess.js';
-import { getDb } from '../db/connection.js';
+import { getUserDb } from '../db/connection.js';
 import { canReadLoadout } from '../loadoutAccess.js';
 import {
   buildReadAccessContext,
@@ -27,7 +27,7 @@ export const loadoutsRouter = Router();
 
 loadoutsRouter.get('/loadouts', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -78,7 +78,7 @@ loadoutsRouter.get('/loadouts', (req: Request, res: Response) => {
 
 loadoutsRouter.get('/loadouts/:id', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const id = parseNumericId(req.params.id);
     if (id === null) {
       res.status(400).json({ error: 'Invalid loadout id' });
@@ -167,7 +167,7 @@ loadoutsRouter.get('/loadouts/:id', (req: Request, res: Response) => {
 
 loadoutsRouter.post('/loadouts', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -196,7 +196,7 @@ loadoutsRouter.post('/loadouts', (req: Request, res: Response) => {
 
 loadoutsRouter.put('/loadouts/:id', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -292,7 +292,7 @@ loadoutsRouter.put('/loadouts/:id', (req: Request, res: Response) => {
 
 loadoutsRouter.post('/loadouts/:id/publish', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -351,7 +351,7 @@ loadoutsRouter.post('/loadouts/:id/publish', (req: Request, res: Response) => {
 
 loadoutsRouter.delete('/loadouts/:id', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -381,7 +381,7 @@ loadoutsRouter.delete('/loadouts/:id', (req: Request, res: Response) => {
 
 loadoutsRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -464,7 +464,7 @@ loadoutsRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
 
 loadoutsRouter.post('/loadouts/:id/builds', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -500,7 +500,7 @@ loadoutsRouter.post('/loadouts/:id/builds', (req: Request, res: Response) => {
 
 loadoutsRouter.delete('/loadouts/:id/builds/:slotType', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getUserDb();
     const clerkUserId = getClerkUserId(req);
     if (!clerkUserId) {
       res.status(401).json({ error: 'Not authenticated' });

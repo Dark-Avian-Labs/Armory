@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { IMAGE_BASE_URL, IMAGES_DIR, EXPORTS_DIR } from '../config.js';
-import { getDb } from '../db/connection.js';
+import { getCatalogDb } from '../db/connection.js';
 import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
 
 export interface ImageDownloadResult {
@@ -21,7 +21,7 @@ interface ManifestImageEntry {
 const CONCURRENCY = 15;
 
 export function collectDbUniqueNames(): Set<string> {
-  const db = getDb();
+  const db = getCatalogDb();
   const names = new Set<string>();
 
   const tables = ['warframes', 'weapons', 'companions', 'mods', 'arcanes', 'abilities'];
@@ -186,7 +186,7 @@ export async function downloadImages(
 }
 
 function updateDbImagePaths(pathMap: Map<string, string>): void {
-  const db = getDb();
+  const db = getCatalogDb();
   const stmts = {
     warframes: db.prepare(`UPDATE warframes SET image_path = ? WHERE unique_name = ?`),
     weapons: db.prepare(`UPDATE weapons SET image_path = ? WHERE unique_name = ?`),

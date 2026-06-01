@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { IMAGES_DIR, PROJECT_ROOT } from '../config.js';
-import { getDb } from '../db/connection.js';
+import { getCatalogDb } from '../db/connection.js';
 import { scrapeItemPageByPath } from './itemScraper.js';
 
 const BEAST_CLAWS_ICON_PATH = '/icons/beast-claws.png';
@@ -143,7 +143,7 @@ function isBuildPageSynced(page: string): boolean {
   const slug = slugFromBuildPage(page);
   if (!slug) return false;
 
-  const db = getDb();
+  const db = getCatalogDb();
   const row = db
     .prepare(
       `SELECT artifact_slots FROM weapons
@@ -177,7 +177,7 @@ export async function syncHiddenCompanionWeaponsFromOverframe(
   }
 
   ensureBeastClawsIconInDataImages(onProgress);
-  const db = getDb();
+  const db = getCatalogDb();
   const upsert = db.prepare(`
     INSERT INTO weapons (
       unique_name,

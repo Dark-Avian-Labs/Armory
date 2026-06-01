@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 
-import { getDb } from '../db/connection.js';
+import { getCatalogDb } from '../db/connection.js';
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
 import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
 import { normalizeAbilityName } from './helminthWikiPage.js';
@@ -76,7 +76,7 @@ export function warframeNamesNeedingHelminthWikiScrape(
 export async function collectHelminthAbilityNamesFromWarframeWikiPages(
   onProgress?: (msg: string) => void,
 ): Promise<Set<string>> {
-  const db = getDb();
+  const db = getCatalogDb();
   const warframes = warframeNamesNeedingHelminthWikiScrape(db).map((name) => ({ name }));
   if (warframes.length === 0) {
     onProgress?.(

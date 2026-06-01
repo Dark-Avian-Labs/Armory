@@ -12,7 +12,7 @@ import {
 import { getClerkUserId } from '../auth/clerkUser.js';
 import { requireArmoryAdmin } from '../auth/middleware.js';
 import { getCachedModList } from '../cache/modListCache.js';
-import { getDb } from '../db/connection.js';
+import { getCatalogDb } from '../db/connection.js';
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
 import {
   getAdminImportSnapshot,
@@ -43,7 +43,7 @@ catalogRouter.get('/health', (_req: Request, res: Response) => {
 
 catalogRouter.get('/warframes', (_req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const rows = db.prepare('SELECT * FROM warframes ORDER BY name').all();
     res.json({ items: rows });
   } catch (err) {
@@ -53,7 +53,7 @@ catalogRouter.get('/warframes', (_req: Request, res: Response) => {
 
 catalogRouter.get('/weapons', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const type = typeof req.query.type === 'string' ? req.query.type : undefined;
 
     let rows;
@@ -81,7 +81,7 @@ catalogRouter.get('/incarnon', (req: Request, res: Response) => {
       return;
     }
 
-    const db = getDb();
+    const db = getCatalogDb();
     const row = db
       .prepare('SELECT has_incarnon, incarnon_data FROM weapons WHERE unique_name = ?')
       .get(weaponUniqueName) as
@@ -118,7 +118,7 @@ catalogRouter.get('/incarnon', (req: Request, res: Response) => {
 
 catalogRouter.get('/companions', (_req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const rows = db.prepare('SELECT * FROM companions ORDER BY name').all();
     res.json({ items: rows });
   } catch (err) {
@@ -128,7 +128,7 @@ catalogRouter.get('/companions', (_req: Request, res: Response) => {
 
 catalogRouter.get('/search', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const term = String(req.query.q ?? '')
       .trim()
       .toLowerCase();
@@ -234,7 +234,7 @@ catalogRouter.get('/search', (req: Request, res: Response) => {
 
 catalogRouter.get('/mods', async (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const typesRaw = typeof req.query.types === 'string' ? req.query.types : undefined;
     const typeRaw = typeof req.query.type === 'string' ? req.query.type : undefined;
     const rarity = typeof req.query.rarity === 'string' ? req.query.rarity : undefined;
@@ -261,7 +261,7 @@ catalogRouter.get('/mods', async (req: Request, res: Response) => {
 
 catalogRouter.get('/mods/:uniqueName', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const uniqueName = String(req.params.uniqueName);
     const raw = db
       .prepare(`SELECT ${MOD_API_SELECT_LIST} ${MOD_API_FROM} WHERE m.unique_name = ?`)
@@ -284,7 +284,7 @@ catalogRouter.get('/mods/:uniqueName', (req: Request, res: Response) => {
 
 catalogRouter.get('/arcanes', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const equipmentType =
       typeof req.query.equipment_type === 'string' ? req.query.equipment_type : undefined;
     const rows = db
@@ -316,7 +316,7 @@ catalogRouter.get('/arcanes', (req: Request, res: Response) => {
 
 catalogRouter.get('/abilities', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const warframe = typeof req.query.warframe === 'string' ? req.query.warframe : undefined;
     const abilityNames =
       typeof req.query.ability_names === 'string'
@@ -337,7 +337,7 @@ catalogRouter.get('/abilities', (req: Request, res: Response) => {
 
 catalogRouter.get('/helminth-abilities', (_req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const rows = db
       .prepare('SELECT * FROM abilities WHERE is_helminth_extractable = 1 ORDER BY name')
       .all() as Array<Record<string, unknown> & { unique_name: string; name?: string }>;
@@ -349,7 +349,7 @@ catalogRouter.get('/helminth-abilities', (_req: Request, res: Response) => {
 
 catalogRouter.get('/riven-stats', (req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const weaponType =
       typeof req.query.weapon_type === 'string' ? req.query.weapon_type : undefined;
 
@@ -372,7 +372,7 @@ catalogRouter.get('/riven-stats', (req: Request, res: Response) => {
 
 catalogRouter.get('/archon-shards', (_req: Request, res: Response) => {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const types = db.prepare('SELECT * FROM archon_shard_types ORDER BY sort_order').all() as Array<
       Record<string, unknown>
     >;
@@ -394,7 +394,7 @@ catalogRouter.get('/archon-shards', (_req: Request, res: Response) => {
 function resolveArtifactSlotsTable(
   uniqueName: string,
 ): 'warframes' | 'weapons' | 'companions' | null {
-  const db = getDb();
+  const db = getCatalogDb();
   const row = db
     .prepare(
       `SELECT 'warframes' AS tbl FROM warframes WHERE unique_name = ?
@@ -441,7 +441,7 @@ catalogRouter.patch(
         return;
       }
 
-      const db = getDb();
+      const db = getCatalogDb();
       const json = JSON.stringify(body.artifact_slots);
       const stmt = db.prepare(`UPDATE ${table} SET artifact_slots = ? WHERE unique_name = ?`);
       const result = stmt.run(json, uniqueName);

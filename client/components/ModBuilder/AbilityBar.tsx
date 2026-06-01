@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
 
+import { helminthReplacedAbilityIndex } from '../../../shared/buildReference.js';
 import { useApi } from '../../hooks/useApi';
 import { useHelminthReplacement } from '../../hooks/useHelminthReplacement';
 import type { Warframe, Ability, BuildConfig } from '../../types/warframe';
+import { parseWarframeAbilityRefs } from '../../utils/buildConfigPersist';
 import {
   getDamageTypeIconPath,
   sanitizeDisplayTextKeepDamageTokens,
@@ -60,7 +62,9 @@ export function AbilityBar({
     });
   };
 
-  const { selectedReplacement } = useHelminthReplacement(helminthConfig);
+  const warframeAbilityRefs = parseWarframeAbilityRefs(warframe);
+  const { selectedReplacement } = useHelminthReplacement(helminthConfig, warframeAbilityRefs);
+  const replacedAbilityIndex = helminthReplacedAbilityIndex(helminthConfig, warframeAbilityRefs);
 
   const abilityUniqueNames = useMemo(() => {
     try {
@@ -131,7 +135,7 @@ export function AbilityBar({
       <div className="text-muted mb-2 text-[10px] font-semibold uppercase">Abilities</div>
       <div className="flex flex-wrap items-center justify-center gap-2">
         {ownAbilities.map((ability) => {
-          const isReplaced = helminthConfig?.replaced_ability_index === ability.index;
+          const isReplaced = replacedAbilityIndex === ability.index;
           const isActive = activeAbilityIndex === ability.index;
           const displayName =
             isReplaced && selectedReplacement ? selectedReplacement.name : ability.name;

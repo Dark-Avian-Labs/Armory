@@ -179,10 +179,15 @@ export interface BuildConfig {
   equipment_unique_name: string;
   slots: ModSlot[];
   valenceBonus?: ValenceBonus | null;
-  helminth?: {
-    replaced_ability_index: number;
-    replacement_ability_unique_name: string;
-  };
+  helminth?:
+    | {
+        replaced_ability_index: number;
+        replacement_ability_unique_name: string;
+      }
+    | {
+        replaced_ability_key: string;
+        replacement_ability_key: string;
+      };
   arcaneSlots?: {
     arcane?: {
       unique_name: string;
@@ -193,11 +198,14 @@ export interface BuildConfig {
     };
     rank: number;
   }[];
-  shardSlots?: {
-    shard_type_id?: string | number;
-    buff_id?: string | number;
-    tauforged: boolean;
-  }[];
+  shardSlots?: Array<
+    | {
+        shard_type_id?: string | number;
+        buff_id?: string | number;
+        tauforged?: boolean;
+      }
+    | { armory_shard_key: string }
+  >;
   orokinReactor?: boolean;
   incarnonEnabled?: boolean;
   incarnonSelections?: {

@@ -86,6 +86,17 @@ export const EXPORTS_DIR = path.join(DATA_DIR, 'exports');
 export const IMAGES_DIR = path.join(DATA_DIR, 'images');
 export const ARMORY_DB_PATH =
   process.env.ARMORY_DB_PATH?.trim() || path.join(DATA_DIR, 'armory.db');
+
+function resolveUserDbPath(): string {
+  const configured = process.env.USER_DB_PATH?.trim();
+  if (configured) {
+    return path.isAbsolute(configured) ? configured : path.resolve(PROJECT_ROOT, configured);
+  }
+  return path.join(DATA_DIR, 'builds.db');
+}
+
+export const USER_DB_PATH = resolveUserDbPath();
+
 function resolveSessionDbPath(): string {
   const configured = process.env.SESSION_DB_PATH?.trim();
   if (configured) {
@@ -103,6 +114,11 @@ export const SHUTDOWN_TIMEOUT_MS =
   Number.isFinite(_shutdownTimeoutMs) && _shutdownTimeoutMs > 0 ? _shutdownTimeoutMs : 10_000;
 export const HOST = process.env.HOST || '127.0.0.1';
 export const NODE_ENV = process.env.NODE_ENV || 'development';
+
+if (NODE_ENV === 'production' && !path.isAbsolute(USER_DB_PATH)) {
+  throw new Error('[FATAL] USER_DB_PATH must be an absolute path in production.');
+}
+
 const DEV_SESSION_SECRET = 'armory-dev-only-session-secret-32ch';
 const rawSessionSecret =
   process.env.SESSION_SECRET?.trim() || (NODE_ENV === 'production' ? '' : DEV_SESSION_SECRET);
@@ -165,4 +181,5 @@ export function ensureDataDirs(): void {
     }
   }
   fs.mkdirSync(path.dirname(SESSION_DB_PATH), { recursive: true });
+  fs.mkdirSync(path.dirname(USER_DB_PATH), { recursive: true });
 }

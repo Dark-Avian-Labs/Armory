@@ -1,3 +1,6 @@
+import { parseArchonShardKey } from '../../../shared/archonShardRegistry.js';
+import { isShardSlotV2 } from '../../../shared/buildReference.js';
+import { shardSlotTauforged } from '../../utils/buildConfigPersist';
 import { formatShardBuffDescription } from '../../utils/shardBuffFormat';
 import { GlassTooltip } from '../GlassTooltip';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -5,7 +8,8 @@ import { MaterialSymbol } from '../ui/MaterialSymbol';
 export interface ShardSlotConfig {
   shard_type_id?: string | number;
   buff_id?: number | string;
-  tauforged: boolean;
+  tauforged?: boolean;
+  armory_shard_key?: string;
 }
 
 export interface ShardBuff {
@@ -14,6 +18,8 @@ export interface ShardBuff {
   base_value: number;
   tauforged_value: number;
   value_format: string;
+  sort_order?: number;
+  armory_key?: string;
 }
 
 export interface ShardType {
@@ -44,6 +50,19 @@ export function ArchonShardSlots({
   readOnly = false,
 }: ArchonShardSlotsProps) {
   const getShardInfo = (slot: ShardSlotConfig) => {
+    if (isShardSlotV2(slot)) {
+      const parsed = parseArchonShardKey(slot.armory_shard_key);
+      if (!parsed) return null;
+      const shard = shards.find((s) => s.name === parsed.color);
+      if (!shard) return null;
+      const buff = shard.buffs.find(
+        (b) =>
+          b.armory_key != null && parseArchonShardKey(b.armory_key)?.buffSlug === parsed.buffSlug,
+      );
+      if (!buff) return null;
+      return { shard, buff };
+    }
+
     if (!slot.shard_type_id) return null;
     const shard = shards.find((s) => String(s.id) === String(slot.shard_type_id));
     if (!shard) return null;
@@ -64,9 +83,10 @@ export function ArchonShardSlots({
           const vOffset = V_OFFSETS[i];
 
           if (info) {
-            const iconPath = slot.tauforged ? info.shard.tauforged_icon_path : info.shard.icon_path;
-            const shardLabel = slot.tauforged ? `${info.shard.name} (Tauforged)` : info.shard.name;
-            const buffText = formatShardBuffDescription(info.buff, slot.tauforged);
+            const tauforged = shardSlotTauforged(slot);
+            const iconPath = tauforged ? info.shard.tauforged_icon_path : info.shard.icon_path;
+            const shardLabel = tauforged ? `${info.shard.name} (Tauforged)` : info.shard.name;
+            const buffText = formatShardBuffDescription(info.buff, tauforged);
 
             return (
               <div
@@ -103,7 +123,7 @@ export function ArchonShardSlots({
                     <img
                       src="/icons/shards/filledBackground.svg"
                       alt=""
-                      className={`absolute inset-0 h-full w-full object-contain ${slot.tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
+                      className={`absolute inset-0 h-full w-full object-contain ${tauforged ? 'archon-shard-filled-bg--tau' : 'invert-on-light'}`}
                       draggable={false}
                     />
                     <img

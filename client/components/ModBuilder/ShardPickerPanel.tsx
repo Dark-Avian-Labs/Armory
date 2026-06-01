@@ -6,7 +6,12 @@ import type { ShardType, ShardSlotConfig } from './ArchonShardSlots';
 interface ShardPickerPanelProps {
   shards: ShardType[];
   currentSlot: ShardSlotConfig;
-  onSelect: (shardTypeId: string, buffId: number, tauforged: boolean) => void;
+  onSelect: (
+    shardTypeId: string,
+    buffId: number,
+    tauforged: boolean,
+    buffArmoryKey?: string,
+  ) => void;
   onRemove: () => void;
   onClose: () => void;
 }
@@ -92,7 +97,7 @@ export function ShardPickerPanel({
           </button>
           {activeShard &&
             activeShard.buffs.map((buff) => {
-              const formattedValue = formatBuffValue(buff, tauforged);
+              const formattedValue = formatBuffValue(buff, tauforged === true);
               const buffId = typeof buff.id === 'number' ? buff.id : Number(buff.id);
               return (
                 <button
@@ -107,7 +112,7 @@ export function ShardPickerPanel({
                       }
                       return;
                     }
-                    onSelect(selectedType, buffId, tauforged);
+                    onSelect(selectedType, buffId, tauforged === true, buff.armory_key);
                   }}
                   className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-[color,background-color,border-color] duration-200"
                 >

@@ -1,4 +1,4 @@
-import { getDb } from '../db/connection.js';
+import { getCatalogDb } from '../db/connection.js';
 import type { ScrapedItemData } from './itemScraper.js';
 
 interface AbilityTypeEntry {
@@ -19,7 +19,7 @@ export function mergeScrapedData(
   items: ScrapedItemData[],
   onProgress?: (msg: string) => void,
 ): MergeResult {
-  const db = getDb();
+  const db = getCatalogDb();
   const result: MergeResult = {
     warframesUpdated: 0,
     weaponsUpdated: 0,

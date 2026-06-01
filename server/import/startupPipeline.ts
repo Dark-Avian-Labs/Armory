@@ -3,8 +3,9 @@ import path from 'path';
 
 import type { PipelineStepKey } from '../../shared/pipelineSteps.js';
 import { EXPORTS_DIR, REQUIRED_EXPORTS } from '../config.js';
-import { getDb } from '../db/connection.js';
+import { getCatalogDb } from '../db/connection.js';
 import { processExports, backfillModDescriptions } from '../db/queries.js';
+import { resetCatalogData } from '../db/resetCatalogData.js';
 import { createAppSchema } from '../db/schema.js';
 import { ensureOverframeFetchReady } from '../http/fetchOverframe.js';
 import { mergeScrapedData } from '../scraping/dataMerger.js';
@@ -110,7 +111,7 @@ function exportHashChanged(
 
 function hasIncarnonDataInDb(): boolean {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const row = db
       .prepare(
         'SELECT COUNT(*) as c FROM weapons WHERE has_incarnon = 1 AND incarnon_data IS NOT NULL',
@@ -124,7 +125,7 @@ function hasIncarnonDataInDb(): boolean {
 
 function hasDbData(): boolean {
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     const count = (db.prepare('SELECT COUNT(*) as c FROM warframes').get() as { c: number }).c;
     return count > 0;
   } catch {
@@ -234,6 +235,22 @@ async function runStartupPipelineInner(
     return summary;
   }
 
+  if (forceImport) {
+    log('[Database] Force import — resetting catalog tables...');
+    try {
+      const cleared = resetCatalogData();
+      const total = Object.values(cleared).reduce((sum, n) => sum + n, 0);
+      log(`[Database] Catalog reset complete (${total} row(s) cleared).`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      summary.blockingIssues.push(`Catalog reset failed: ${msg}`);
+      err('[Database] Catalog reset failed —', e);
+      summary.durationMs = Date.now() - startTime;
+      if (cli) printStartupPipelineSummary(summary);
+      return summary;
+    }
+  }
+
   log('[Exports] Downloading manifest and export files...');
   try {
     const importResult = await runImportPipeline((status) => {
@@ -285,7 +302,7 @@ async function runStartupPipelineInner(
           ? 'First run — importing export JSON into database.'
           : 'Export hashes changed — rebuilding game tables.';
       log(`[Database] ${reason}`);
-      const counts = processExports();
+      const counts = processExports({ skipPreserve: forceImport });
       const backfillCount = backfillModDescriptions();
       writeProcessedExportHashes(currentExportHashes);
       log(
@@ -325,7 +342,7 @@ async function runStartupPipelineInner(
 
   let warframeMarketLinkRowCount = 0;
   try {
-    const db = getDb();
+    const db = getCatalogDb();
     warframeMarketLinkRowCount = (
       db.prepare('SELECT COUNT(*) as c FROM warframe_market_links').get() as { c: number }
     ).c;
@@ -342,7 +359,7 @@ async function runStartupPipelineInner(
   if (shouldRefreshWarframeMarket) {
     log('[Warframe Market] Building trade link index from api.warframe.market...');
     try {
-      const db = getDb();
+      const db = getCatalogDb();
       const wmResult = await populateWarframeMarketLinksTable(db);
       log(
         `[Warframe Market] Done — ${wmResult.rowsUpserted} rows upserted, ${wmResult.slugCount} catalog slugs.`,
@@ -650,7 +667,7 @@ async function runStartupPipelineInner(
   if (shouldRunStep('helminthWiki', dataChanged || !hasArchonShardDataInDb(), options)) {
     log('[Helminth] Syncing helminth-infusable ability flags from wiki...');
     try {
-      const db = getDb();
+      const db = getCatalogDb();
       const helminthResult = await syncHelminthFlagsFromWiki(db, {
         html: helminthWikiHtml,
         onProgress: (msg) => log(`[Helminth] ${msg}`),
@@ -724,7 +741,7 @@ async function runStartupPipelineInner(
   } else {
     log('[Incarnon] Syncing incarnon evolution data from wiki...');
     try {
-      const db = getDb();
+      const db = getCatalogDb();
       const incarnonResult = await syncIncarnonFromWiki(db, (msg) => log(`[Incarnon] ${msg}`));
 
       if (!incarnonResult.fetchOk && incarnonResult.pagesScraped === 0) {
