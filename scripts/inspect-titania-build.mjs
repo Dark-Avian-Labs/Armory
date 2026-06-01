@@ -19,7 +19,7 @@ for (const b of builds) {
   try {
     mod = JSON.parse(b.mod_config);
   } catch {
-    /* ignore */
+    // ignore
   }
   console.log('\nmod_config.helminth:', mod?.helminth);
   console.log('helminth_config column:', b.helminth_config);

@@ -3,7 +3,6 @@ export function abilityPathBasename(uniqueName: string): string {
   return i >= 0 ? uniqueName.slice(i + 1) : uniqueName;
 }
 
-/** Prefer canonical /Abilities/ paths over legacy /PowersuitAbilities/ duplicates. */
 export function helminthPathTier(uniqueName: string): number {
   if (uniqueName.includes('/Abilities/')) return 0;
   if (uniqueName.includes('/PowersuitAbilities/')) return 1;
@@ -20,7 +19,6 @@ export function compareHelminthAbilityPaths(
   return a.unique_name.localeCompare(b.unique_name);
 }
 
-/** Match stored helminth subsume by exact path or ability file basename. */
 export function resolveHelminthReplacementAbility<T extends { unique_name: string }>(
   storedUniqueName: string,
   candidates: readonly T[],
