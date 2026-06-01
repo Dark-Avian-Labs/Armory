@@ -23,6 +23,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { useApi } from '../../hooks/useApi';
 import { useBuildFavorites } from '../../hooks/useBuildFavorites';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
+import { useHelminthReplacement } from '../../hooks/useHelminthReplacement';
 import type { IncarnonData, IncarnonSelection } from '../../types/incarnon';
 import {
   EQUIPMENT_SLOT_CONFIGS,
@@ -361,6 +362,10 @@ export function ModBuilder() {
     dirtyRouteCapturedRef,
     prevRightPanelModeRef,
   } = useModBuilderState(routeKey, buildId, routeEqType);
+
+  const { canonicalReplacementUniqueName } = useHelminthReplacement(
+    equipmentType === 'warframe' ? helminthConfig : undefined,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -1695,7 +1700,13 @@ export function ModBuilder() {
         equipment_type: equipmentType,
         equipment_unique_name: selectedEquipment.unique_name,
         slots,
-        helminth: helminthConfig,
+        helminth: helminthConfig
+          ? {
+              ...helminthConfig,
+              replacement_ability_unique_name:
+                canonicalReplacementUniqueName ?? helminthConfig.replacement_ability_unique_name,
+            }
+          : undefined,
         incarnonEnabled: hasIncarnon ? incarnonEnabled : undefined,
         incarnonSelections: hasIncarnon ? incarnonSelections : undefined,
         arcaneSlots,
