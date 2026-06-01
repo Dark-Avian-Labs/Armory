@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { useApi } from '../../hooks/useApi';
+import { useHelminthReplacement } from '../../hooks/useHelminthReplacement';
 import type { Warframe, Ability, BuildConfig } from '../../types/warframe';
 import {
   getDamageTypeIconPath,
@@ -59,8 +60,7 @@ export function AbilityBar({
     });
   };
 
-  const { data: helminthData } = useApi<{ items: Ability[] }>('/api/helminth-abilities');
-  const helminthAbilities = helminthData?.items || [];
+  const { selectedReplacement } = useHelminthReplacement(helminthConfig);
 
   const abilityUniqueNames = useMemo(() => {
     try {
@@ -122,12 +122,6 @@ export function AbilityBar({
     return undefined;
   };
 
-  const selectedReplacement = helminthConfig
-    ? helminthAbilities.find(
-        (a) => a.unique_name === helminthConfig.replacement_ability_unique_name,
-      )
-    : null;
-
   const handleRemoveHelminth = () => {
     onHelminthChange(undefined);
   };
@@ -147,11 +141,7 @@ export function AbilityBar({
               : getAbilityIcon(ability);
           const initial = displayName.charAt(0).toUpperCase();
           const dbAb = getDbAbility(ability);
-          const energyCost = isReplaced
-            ? helminthAbilities.find(
-                (a) => a.unique_name === helminthConfig?.replacement_ability_unique_name,
-              )?.energy_cost
-            : dbAb?.energy_cost;
+          const energyCost = isReplaced ? selectedReplacement?.energy_cost : dbAb?.energy_cost;
 
           return (
             <GlassTooltip

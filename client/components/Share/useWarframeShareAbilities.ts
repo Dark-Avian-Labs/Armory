@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { useApi } from '../../hooks/useApi';
+import { useHelminthReplacement } from '../../hooks/useHelminthReplacement';
 import type { Ability, BuildConfig, Warframe } from '../../types/warframe';
 
 export interface ParsedShareAbility {
@@ -39,10 +40,10 @@ export function useWarframeShareAbilities(
       ? `/api/abilities?warframe=${encodeURIComponent(warframe.unique_name)}${abilityNamesParam}`
       : null;
 
-  const helminthUrl = warframe ? '/api/helminth-abilities' : null;
-
   const { data: warframeAbilities } = useApi<{ items: Ability[] }>(abilitiesUrl);
-  const { data: helminthData } = useApi<{ items: Ability[] }>(helminthUrl);
+  const { helminthAbilities, selectedReplacement } = useHelminthReplacement(
+    warframe ? helminthConfig : undefined,
+  );
 
   const ownAbilities = useMemo<ParsedShareAbility[]>(() => {
     if (!warframe?.abilities) {
@@ -74,13 +75,6 @@ export function useWarframeShareAbilities(
   }, [warframe?.abilities]);
 
   const dbAbilities = warframeAbilities?.items ?? [];
-  const helminthAbilities = helminthData?.items ?? [];
-
-  const selectedReplacement = helminthConfig
-    ? (helminthAbilities.find(
-        (a) => a.unique_name === helminthConfig.replacement_ability_unique_name,
-      ) ?? null)
-    : null;
 
   return {
     ownAbilities,
