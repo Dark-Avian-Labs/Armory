@@ -93,7 +93,21 @@ export function ArtifactSlotsEditorModal({
         const item = body.items?.find((row) => row.unique_name === uniqueName);
         if (!item) throw new Error('Equipment not found in catalog.');
         const parsed = parseArtifactSlotsJson(item.artifact_slots);
-        setRows(buildArtifactSlotEditorRows(equipmentType, parsed, item.name));
+        const wf = item as Warframe;
+        setRows(
+          buildArtifactSlotEditorRows(
+            equipmentType,
+            parsed,
+            item.name,
+            equipmentType === 'warframe'
+              ? {
+                  aura_polarity: wf.aura_polarity,
+                  exilus_polarity: wf.exilus_polarity,
+                  polarities: wf.polarities,
+                }
+              : undefined,
+          ),
+        );
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to load artifact slots.');
       } finally {

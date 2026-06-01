@@ -21,6 +21,7 @@ import {
   subscribeAdminImportSnapshot,
 } from '../import/adminImportJob.js';
 import { log } from '../logger.js';
+import { buildAbilitiesListQuery } from './abilitiesListQuery.js';
 import {
   WEAPON_CATEGORY_TO_TYPE,
   WEAPON_JUNK_PREFIXES,
@@ -322,24 +323,12 @@ catalogRouter.get('/abilities', (req: Request, res: Response) => {
         ? req.query.ability_names.split(',').filter(Boolean)
         : [];
 
-    let rows;
-    if (warframe || abilityNames.length > 0) {
-      const conditions: string[] = [];
-      const params: unknown[] = [];
-      if (warframe) {
-        conditions.push('warframe_unique_name = ?');
-        params.push(warframe);
-      }
-      if (abilityNames.length > 0) {
-        conditions.push(`unique_name IN (${abilityNames.map(() => '?').join(',')})`);
-        params.push(...abilityNames);
-      }
-      rows = db
-        .prepare(`SELECT * FROM abilities WHERE ${conditions.join(' AND ')} ORDER BY name`)
-        .all(...params);
-    } else {
-      rows = db.prepare('SELECT * FROM abilities ORDER BY name').all();
-    }
+    const filter = buildAbilitiesListQuery(warframe, abilityNames);
+    const rows = filter
+      ? db
+          .prepare(`SELECT * FROM abilities WHERE ${filter.whereSql} ORDER BY name`)
+          .all(...filter.params)
+      : db.prepare('SELECT * FROM abilities ORDER BY name').all();
     res.json({ items: rows });
   } catch (err) {
     sendInternalError(res, 'abilities.list', err);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   AP_DISABLED,
+  hasMeaningfulArtifactSlotOverrides,
   isArtifactSlotVisible,
   isWarframeSecondAuraSlotActive,
   normalizeWarframeArtifactSlotsForLoad,
@@ -9,6 +10,18 @@ import {
   warframeSecondAuraApFromStorage,
   warframeUsesExtendedArtifactLayout,
 } from './artifactSlotState.js';
+
+describe('hasMeaningfulArtifactSlotOverrides', () => {
+  it('returns false for empty or all-universal placeholder arrays', () => {
+    expect(hasMeaningfulArtifactSlotOverrides([])).toBe(false);
+    expect(hasMeaningfulArtifactSlotOverrides(Array(10).fill('AP_UNIVERSAL'))).toBe(false);
+  });
+
+  it('returns true when a real polarity or disabled slot is present', () => {
+    expect(hasMeaningfulArtifactSlotOverrides(['AP_DEFENSE', ...Array(9).fill('AP_UNIVERSAL')])).toBe(true);
+    expect(hasMeaningfulArtifactSlotOverrides([AP_DISABLED, 'AP_UNIVERSAL'])).toBe(true);
+  });
+});
 
 describe('artifactSlotState', () => {
   it('hides AP_DISABLED slots when artifact data is present', () => {
