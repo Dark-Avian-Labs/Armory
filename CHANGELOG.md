@@ -283,3 +283,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.62.3** `fix` [#331](https://github.com/Dark-Avian-Labs/Armory/pull/331): jade
 - **v1.62.4** `fix` [#332](https://github.com/Dark-Avian-Labs/Armory/pull/332): data migration
 - **v1.62.5** `fix` [#334](https://github.com/Dark-Avian-Labs/Armory/pull/334): data import
+- **v1.62.6** `fix` [#335](https://github.com/Dark-Avian-Labs/Armory/pull/335): helminth
