@@ -21,7 +21,7 @@ import {
   countWeaponsMissingFireBehaviors,
   syncWeaponFireBehaviorsFromWiki,
 } from '../scraping/weaponFireBehaviorsWiki.js';
-import { runWikiScrape } from '../scraping/wikiScraper.js';
+import { hasArchonShardDataInDb, runWikiScrape } from '../scraping/wikiScraper.js';
 import { populateWarframeMarketLinksTable } from '../warframeMarket/populateWarframeMarketLinks.js';
 import { syncHelminthFlagsFromWiki } from './helminthWiki.js';
 import { downloadImages } from './images.js';
@@ -373,23 +373,25 @@ async function runStartupPipelineInner(
     };
   }
 
+  const weaponsExportChanged = exportHashChanged(
+    'ExportWeapons',
+    currentExportHashes,
+    previousExportHashes,
+  );
   const onlyMissingStances = usesOnlyMissingMode('exaltedStanceMods', options);
+  const stancesNeedBackfill = countMissingExaltedStanceSeeds() > 0;
   const shouldSyncStancesFromOverframe = shouldRunStep(
     'exaltedStanceMods',
-    dataChanged || countMissingExaltedStanceSeeds() > 0,
+    isStepForced('exaltedStanceMods', options) && (weaponsExportChanged || stancesNeedBackfill),
     options,
   );
   const shouldRefreshStanceWikiImages = shouldRunStep(
     'exaltedStanceMods',
-    hasDbData() && !dataChanged && countMissingExaltedStanceSeeds() === 0,
+    weaponsExportChanged && !stancesNeedBackfill,
     options,
   );
 
-  if (
-    shouldSyncStancesFromOverframe &&
-    isStepForced('exaltedStanceMods', options) &&
-    (dataChanged || countMissingExaltedStanceSeeds() > 0)
-  ) {
+  if (shouldSyncStancesFromOverframe) {
     await prepareOverframeFetch();
     log('[Exalted Stances] Syncing exalted stance mods from Overframe...');
     try {
@@ -414,7 +416,7 @@ async function runStartupPipelineInner(
     }
   } else if (shouldRefreshStanceWikiImages) {
     log(
-      '[Exalted Stances] Export unchanged — refreshing Warframe Wiki infobox images for exalted stances...',
+      '[Exalted Stances] ExportWeapons changed — refreshing Warframe Wiki infobox images for exalted stances...',
     );
     try {
       const result = await syncExaltedStanceWikiImagesOnly((msg) => {
@@ -426,7 +428,7 @@ async function runStartupPipelineInner(
       summary.exaltedStanceMods = {
         outcome: 'ok',
         detail:
-          'Export unchanged; refreshed stance card art from wiki where infobox images are available.',
+          'ExportWeapons changed; refreshed stance card art from wiki where infobox images are available.',
         found: 0,
         insertedOrUpdated: 0,
         wikiImagesApplied: result.applied,
@@ -441,10 +443,10 @@ async function runStartupPipelineInner(
       err('[Exalted Stances] Wiki-only image refresh failed —', e);
     }
   } else {
-    log('[Exalted Stances] Skipped — stance data already present and export unchanged.');
+    log('[Exalted Stances] Skipped — ExportWeapons unchanged and stance rows are present.');
     summary.exaltedStanceMods = {
       outcome: 'skipped',
-      detail: 'No stance sync needed; export unchanged and stance rows are present.',
+      detail: 'ExportWeapons hash unchanged; no exalted stance sync needed.',
     };
   }
 
@@ -579,7 +581,8 @@ async function runStartupPipelineInner(
   }
 
   let helminthWikiHtml: string | null = null;
-  if (shouldRunStep('wiki', dataChanged, options)) {
+  const shouldRunWiki = shouldRunStep('wiki', dataChanged || !hasArchonShardDataInDb(), options);
+  if (shouldRunWiki) {
     log('[Wiki] Scraping warframe wiki for ability stats, shards, riven dispositions...');
     try {
       const wikiResult = await runWikiScrape(
@@ -605,7 +608,8 @@ async function runStartupPipelineInner(
       const wikiMerge = wikiResult.merge;
       log(
         `[Wiki] Done — ${wikiMerge.abilitiesUpdated} abilities, ${wikiMerge.passivesUpdated} passives, ` +
-          `${wikiMerge.augmentsUpdated} augments, ${wikiMerge.weaponsProjectileSpeedsUpdated} projectile speeds.`,
+          `${wikiMerge.augmentsUpdated} augments, ${wikiMerge.shardTypes} shard types, ` +
+          `${wikiMerge.shardBuffs} shard buffs, ${wikiMerge.weaponsProjectileSpeedsUpdated} projectile speeds.`,
       );
       summary.wiki = {
         outcome: 'ok',
@@ -636,14 +640,14 @@ async function runStartupPipelineInner(
       err('[Wiki] Scrape failed —', e);
     }
   } else {
-    log('[Wiki] Skipped — export hashes unchanged since last run.');
+    log('[Wiki] Skipped — export hashes unchanged and archon shard data already present.');
     summary.wiki = {
       outcome: 'skipped',
-      detail: 'Export hashes unchanged; skipped wiki enrichment.',
+      detail: 'Export hashes unchanged; wiki enrichment not needed.',
     };
   }
 
-  if (shouldRunStep('helminthWiki', dataChanged, options)) {
+  if (shouldRunStep('helminthWiki', dataChanged || !hasArchonShardDataInDb(), options)) {
     log('[Helminth] Syncing helminth-infusable ability flags from wiki...');
     try {
       const db = getDb();
@@ -705,11 +709,6 @@ async function runStartupPipelineInner(
     };
   }
 
-  const weaponsExportChanged = exportHashChanged(
-    'ExportWeapons',
-    currentExportHashes,
-    previousExportHashes,
-  );
   const shouldSyncIncarnon = shouldRunStep(
     'incarnonWiki',
     forceImport || !hasIncarnonDataInDb() || weaponsExportChanged,
