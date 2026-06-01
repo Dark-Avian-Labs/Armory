@@ -306,10 +306,7 @@ function processAbilities(data: Record<string, unknown[]>): number {
     ON CONFLICT(unique_name) DO UPDATE SET
       name = excluded.name,
       description = excluded.description,
-      warframe_unique_name = COALESCE(
-        excluded.warframe_unique_name,
-        abilities.warframe_unique_name
-      ),
+      -- Abilities are shared across base/prime; do not overwrite warframe_unique_name.
       -- Preserve Helminth eligibility when the same ability is imported
       -- again from a warframe ability list.
       is_helminth_extractable = MAX(

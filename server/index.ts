@@ -29,6 +29,7 @@ import {
   SHUTDOWN_TIMEOUT_MS,
 } from './config.js';
 import { closeAll, getSessionDb, getDb } from './db/connection.js';
+import { repairPlaceholderArtifactSlots } from './db/repairArtifactSlots.js';
 import { createAppSchema } from './db/schema.js';
 import { createSessionSchema } from './db/sessionSchema.js';
 import { createAppHelmet } from './http/helmetCsp.js';
@@ -47,6 +48,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 ensureDataDirs();
 createAppSchema();
+repairPlaceholderArtifactSlots();
 recoverImportLeaseOnStartup();
 
 const sessionDb = getSessionDb();

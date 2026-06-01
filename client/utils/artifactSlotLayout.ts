@@ -1,5 +1,6 @@
 import {
   AP_DISABLED,
+  hasMeaningfulArtifactSlotOverrides,
   isArtifactSlotDisabled,
   normalizeWarframeArtifactSlotsForLoad,
   warframeArtifactWriteIndex,
@@ -43,6 +44,45 @@ function slotEnabledFromAp(ap: string | undefined): boolean {
   return ap != null && !isArtifactSlotDisabled(ap);
 }
 
+export interface CatalogPolarityDefaults {
+  aura_polarity?: string | null;
+  exilus_polarity?: string | null;
+  polarities?: string | null;
+}
+
+function parseExportPolaritiesJson(raw?: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function buildWarframeArtifactSlotsFromExportDefaults(
+  defaults: CatalogPolarityDefaults,
+  generalSlots = 8,
+): string[] {
+  const legacyPols = parseExportPolaritiesJson(defaults.polarities);
+  const slots: string[] = Array.from(
+    { length: WARFRAME_COMPACT_ARTIFACT_SLOT_COUNT },
+    () => 'AP_UNIVERSAL',
+  );
+  for (let i = 0; i < generalSlots; i++) {
+    const artifactIndex = generalSlots - 1 - i;
+    const ap = legacyPols[i];
+    if (ap && isArtifactSlotPolarity(ap)) slots[artifactIndex] = ap;
+  }
+  if (defaults.aura_polarity && isArtifactSlotPolarity(defaults.aura_polarity)) {
+    slots[generalSlots] = defaults.aura_polarity;
+  }
+  if (defaults.exilus_polarity && isArtifactSlotPolarity(defaults.exilus_polarity)) {
+    slots[generalSlots + 1] = defaults.exilus_polarity;
+  }
+  return slots;
+}
+
 export function parseArtifactSlotsJson(raw: string | undefined | null): string[] {
   if (!raw) return [];
   try {
@@ -66,12 +106,24 @@ export function buildArtifactSlotEditorRows(
   equipmentType: EquipmentType,
   artifactSlots: string[],
   equipmentName?: string,
+  exportDefaults?: CatalogPolarityDefaults,
 ): ArtifactSlotEditorRow[] {
   const config = slotConfigForType(equipmentType);
+  let slotsForLayout = artifactSlots;
+  if (
+    equipmentType === 'warframe' &&
+    exportDefaults &&
+    !hasMeaningfulArtifactSlotOverrides(artifactSlots)
+  ) {
+    slotsForLayout = buildWarframeArtifactSlotsFromExportDefaults(
+      exportDefaults,
+      config.generalSlots,
+    );
+  }
   const storageSlots =
     equipmentType === 'warframe'
-      ? normalizeWarframeArtifactSlotsForLoad(artifactSlots, config.generalSlots)
-      : artifactSlots;
+      ? normalizeWarframeArtifactSlotsForLoad(slotsForLayout, config.generalSlots)
+      : slotsForLayout;
   const totalSlots = editorStorageLength(equipmentType, config);
   const specialSlotIndex = config.generalSlots;
   const secondAuraIndex = warframeSecondAuraArtifactIndex(config.generalSlots);
@@ -81,7 +133,7 @@ export function buildArtifactSlotEditorRows(
       : config.generalSlots + 1;
   const exilusReadIndex =
     equipmentType === 'warframe'
-      ? warframeExilusArtifactIndex(artifactSlots, config.generalSlots)
+      ? warframeExilusArtifactIndex(slotsForLayout, config.generalSlots)
       : exilusIndex;
   const rows: ArtifactSlotEditorRow[] = [];
   const padded = [...storageSlots];
@@ -98,7 +150,7 @@ export function buildArtifactSlotEditorRows(
     });
   }
   if (equipmentType === 'warframe') {
-    const ap = warframeSecondAuraApFromStorage(artifactSlots, config.generalSlots);
+    const ap = warframeSecondAuraApFromStorage(slotsForLayout, config.generalSlots);
     rows.push({
       id: 'aura-2',
       label: 'Aura 2',

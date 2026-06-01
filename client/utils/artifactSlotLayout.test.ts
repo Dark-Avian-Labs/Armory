@@ -11,6 +11,26 @@ describe('artifactSlotLayout', () => {
     expect(aura2?.enabled).toBe(false);
   });
 
+  it('shows export default polarities when artifact_slots are empty', () => {
+    const rows = buildArtifactSlotEditorRows('warframe', [], 'Ash', {
+      aura_polarity: 'AP_ANY',
+      exilus_polarity: 'AP_POWER',
+      polarities: JSON.stringify([
+        'AP_TACTIC',
+        'AP_UNIVERSAL',
+        'AP_UNIVERSAL',
+        'AP_UNIVERSAL',
+        'AP_UNIVERSAL',
+        'AP_UNIVERSAL',
+        'AP_UNIVERSAL',
+        'AP_UNIVERSAL',
+      ]),
+    });
+    expect(rows.find((r) => r.id === 'aura')?.polarity).toBe('AP_ANY');
+    expect(rows.find((r) => r.id === 'exilus')?.polarity).toBe('AP_POWER');
+    expect(rows.find((r) => r.id === 'general-0')?.polarity).toBe('AP_TACTIC');
+  });
+
   it('saves compact 10-slot arrays when Aura 2 is off', () => {
     const rows = buildArtifactSlotEditorRows('warframe', [], 'Ash');
     const saved = artifactSlotsFromEditorRows('warframe', rows);

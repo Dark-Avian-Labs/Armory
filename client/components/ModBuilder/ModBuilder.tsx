@@ -13,6 +13,7 @@ import {
   isArtifactSlotDisabled,
   isArtifactSlotVisible,
   isWarframeSecondAuraSlotActive,
+  hasMeaningfulArtifactSlotOverrides,
   normalizeWarframeArtifactSlotsForLoad,
   warframeExilusArtifactIndex,
 } from '../../../shared/artifactSlotState.js';
@@ -942,15 +943,15 @@ export function ModBuilder() {
       return (POLARITIES as Record<string, string>)[ap as PolarityKey] ? ap : undefined;
     };
 
-    const hasArtifactSlots = artifactSlots.length > 0;
+    const hasArtifactSlotOverrides = hasMeaningfulArtifactSlotOverrides(artifactSlotsRaw);
     const specialSlotIndex = config.generalSlots;
 
     if (
       config.hasAura &&
-      isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlots)
+      isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlotOverrides)
     ) {
       const warframe = selectedEquipment as Warframe;
-      const pol = hasArtifactSlots
+      const pol = hasArtifactSlotOverrides
         ? polarityFromAP(artifactSlots[specialSlotIndex])
         : warframe.aura_polarity || undefined;
       newSlots.push({ index: idx++, type: 'aura', polarity: pol });
@@ -964,21 +965,25 @@ export function ModBuilder() {
     }
     if (
       config.hasStance &&
-      isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlots)
+      isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlotOverrides)
     ) {
-      const pol = hasArtifactSlots ? polarityFromAP(artifactSlots[specialSlotIndex]) : undefined;
+      const pol = hasArtifactSlotOverrides
+        ? polarityFromAP(artifactSlots[specialSlotIndex])
+        : undefined;
       newSlots.push({ index: idx++, type: 'stance', polarity: pol });
     }
     if (
       config.hasPosture &&
-      isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlots)
+      isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlotOverrides)
     ) {
-      const pol = hasArtifactSlots ? polarityFromAP(artifactSlots[specialSlotIndex]) : undefined;
+      const pol = hasArtifactSlotOverrides
+        ? polarityFromAP(artifactSlots[specialSlotIndex])
+        : undefined;
       newSlots.push({ index: idx++, type: 'posture', polarity: pol });
     }
 
     const legacyGeneralPolarities: (string | undefined)[] = (() => {
-      if (hasArtifactSlots) return [];
+      if (hasArtifactSlotOverrides) return [];
       try {
         const wf = selectedEquipment as Warframe;
         const parsed: string[] = wf.polarities ? JSON.parse(wf.polarities) : [];
@@ -990,10 +995,10 @@ export function ModBuilder() {
 
     for (let i = 0; i < config.generalSlots; i++) {
       const artifactIndex = config.generalSlots - 1 - i;
-      if (hasArtifactSlots && !isArtifactSlotVisible(artifactSlots, artifactIndex, true)) {
+      if (hasArtifactSlotOverrides && !isArtifactSlotVisible(artifactSlots, artifactIndex, true)) {
         continue;
       }
-      const polarity = hasArtifactSlots
+      const polarity = hasArtifactSlotOverrides
         ? polarityFromAP(artifactSlots[artifactIndex])
         : legacyGeneralPolarities[i] || undefined;
       newSlots.push({
@@ -1012,10 +1017,10 @@ export function ModBuilder() {
       config.hasExilus &&
       !isSelectedCompanionWeapon &&
       !omitExilus &&
-      isArtifactSlotVisible(artifactSlots, exilusArtifactIndex, hasArtifactSlots)
+      isArtifactSlotVisible(artifactSlots, exilusArtifactIndex, hasArtifactSlotOverrides)
     ) {
       const warframe = selectedEquipment as Warframe;
-      const pol = hasArtifactSlots
+      const pol = hasArtifactSlotOverrides
         ? polarityFromAP(artifactSlots[exilusArtifactIndex])
         : warframe.exilus_polarity || undefined;
       newSlots.push({ index: idx++, type: 'exilus', polarity: pol });

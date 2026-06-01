@@ -17,6 +17,10 @@ export function isArtifactSlotDisabled(ap: string | undefined): boolean {
   return ap === AP_DISABLED;
 }
 
+export function hasMeaningfulArtifactSlotOverrides(artifactSlots: string[]): boolean {
+  return artifactSlots.some((ap) => ap === AP_DISABLED || (ap !== 'AP_UNIVERSAL' && ap.length > 0));
+}
+
 export function isArtifactSlotVisible(
   artifactSlots: string[],
   index: number,

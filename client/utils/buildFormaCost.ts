@@ -2,6 +2,7 @@ import {
   isArtifactSlotDisabled,
   isArtifactSlotVisible,
   isWarframeSecondAuraSlotActive,
+  hasMeaningfulArtifactSlotOverrides,
   normalizeWarframeArtifactSlotsForLoad,
   warframeExilusArtifactIndex,
 } from '../../shared/artifactSlotState.js';
@@ -46,11 +47,14 @@ function buildDefaultPolarities(
     return (POLARITIES as Record<string, string>)[ap as PolarityKey] ? ap : undefined;
   };
 
-  const hasArtifactSlots = artifactSlots.length > 0;
+  const hasArtifactSlotOverrides = hasMeaningfulArtifactSlotOverrides(artifactSlotsRaw);
   const specialSlotIndex = config.generalSlots;
 
-  if (config.hasAura && isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlots)) {
-    const polarity = hasArtifactSlots
+  if (
+    config.hasAura &&
+    isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlotOverrides)
+  ) {
+    const polarity = hasArtifactSlotOverrides
       ? polarityFromAP(artifactSlots[specialSlotIndex])
       : equipment.aura_polarity || undefined;
     defaults.push({ type: 'aura', polarity });
@@ -64,21 +68,25 @@ function buildDefaultPolarities(
   }
   if (
     config.hasStance &&
-    isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlots)
+    isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlotOverrides)
   ) {
-    const polarity = hasArtifactSlots ? polarityFromAP(artifactSlots[specialSlotIndex]) : undefined;
+    const polarity = hasArtifactSlotOverrides
+      ? polarityFromAP(artifactSlots[specialSlotIndex])
+      : undefined;
     defaults.push({ type: 'stance', polarity });
   }
   if (
     config.hasPosture &&
-    isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlots)
+    isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlotOverrides)
   ) {
-    const polarity = hasArtifactSlots ? polarityFromAP(artifactSlots[specialSlotIndex]) : undefined;
+    const polarity = hasArtifactSlotOverrides
+      ? polarityFromAP(artifactSlots[specialSlotIndex])
+      : undefined;
     defaults.push({ type: 'posture', polarity });
   }
 
   const legacyGeneralPolarities: (string | undefined)[] = (() => {
-    if (hasArtifactSlots) return [];
+    if (hasArtifactSlotOverrides) return [];
     try {
       const parsed = equipment.polarities ? JSON.parse(equipment.polarities) : [];
       return Array.isArray(parsed) ? parsed : [];
@@ -89,10 +97,10 @@ function buildDefaultPolarities(
 
   for (let i = 0; i < config.generalSlots; i += 1) {
     const artifactIndex = config.generalSlots - 1 - i;
-    if (hasArtifactSlots && !isArtifactSlotVisible(artifactSlots, artifactIndex, true)) {
+    if (hasArtifactSlotOverrides && !isArtifactSlotVisible(artifactSlots, artifactIndex, true)) {
       continue;
     }
-    const polarity = hasArtifactSlots
+    const polarity = hasArtifactSlotOverrides
       ? polarityFromAP(artifactSlots[artifactIndex])
       : legacyGeneralPolarities[i];
     defaults.push({ type: 'general', polarity });
@@ -107,9 +115,9 @@ function buildDefaultPolarities(
   if (
     config.hasExilus &&
     !skipExilus &&
-    isArtifactSlotVisible(artifactSlots, exilusArtifactIndex, hasArtifactSlots)
+    isArtifactSlotVisible(artifactSlots, exilusArtifactIndex, hasArtifactSlotOverrides)
   ) {
-    const polarity = hasArtifactSlots
+    const polarity = hasArtifactSlotOverrides
       ? polarityFromAP(artifactSlots[exilusArtifactIndex])
       : equipment.exilus_polarity || undefined;
     defaults.push({ type: 'exilus', polarity });
