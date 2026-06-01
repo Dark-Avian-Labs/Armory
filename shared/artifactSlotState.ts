@@ -39,17 +39,14 @@ export function warframeExilusArtifactIndex(artifactSlots: string[], generalSlot
   return warframeUsesExtendedArtifactLayout(artifactSlots) ? generalSlots + 2 : generalSlots + 1;
 }
 
-export function isWarframeSecondAuraConfigured(artifactSlots: string[], generalSlots = 8): boolean {
-  if (!warframeUsesExtendedArtifactLayout(artifactSlots)) return false;
-  const ap = artifactSlots[warframeSecondAuraArtifactIndex(generalSlots)];
-  if (ap == null || isArtifactSlotDisabled(ap) || ap === 'AP_UNIVERSAL') return false;
-  return true;
+export function warframeSecondAuraApFromStorage(artifactSlots: string[], generalSlots = 8): string {
+  if (!warframeUsesExtendedArtifactLayout(artifactSlots)) return AP_DISABLED;
+  return artifactSlots[warframeSecondAuraArtifactIndex(generalSlots)] ?? AP_DISABLED;
 }
 
 export function isWarframeSecondAuraSlotActive(artifactSlots: string[], generalSlots = 8): boolean {
   if (!warframeUsesExtendedArtifactLayout(artifactSlots)) return false;
-  const ap = artifactSlots[warframeSecondAuraArtifactIndex(generalSlots)];
-  return ap != null && !isArtifactSlotDisabled(ap);
+  return !isArtifactSlotDisabled(warframeSecondAuraApFromStorage(artifactSlots, generalSlots));
 }
 
 export function warframeArtifactWriteIndex(

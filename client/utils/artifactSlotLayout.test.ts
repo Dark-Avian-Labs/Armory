@@ -30,11 +30,18 @@ describe('artifactSlotLayout', () => {
     expect(saved[9]).toBe('AP_DEFENSE');
   });
 
-  it('round-trips Jade extended layout', () => {
+  it('loads Aura 2 on for 11-slot Jade data', () => {
     const slots = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_ANY', 'AP_DEFENSE', 'AP_UNIVERSAL'];
     const rows = buildArtifactSlotEditorRows('warframe', slots, 'Jade');
     const aura2 = rows.find((r) => r.id === 'aura-2');
     expect(aura2?.enabled).toBe(true);
+    expect(aura2?.polarity).toBe('AP_DEFENSE');
+    expect(rows.find((r) => r.id === 'exilus')?.artifactIndex).toBe(10);
+  });
+
+  it('round-trips Jade extended layout to 11 slots on save', () => {
+    const slots = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_ANY', 'AP_DEFENSE', 'AP_UNIVERSAL'];
+    const rows = buildArtifactSlotEditorRows('warframe', slots, 'Jade');
     const saved = artifactSlotsFromEditorRows('warframe', rows);
     expect(saved).toHaveLength(11);
     expect(saved[9]).toBe('AP_DEFENSE');
