@@ -54,15 +54,36 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function warframeNamesNeedingHelminthWikiScrape(
+  db: import('better-sqlite3').Database,
+): string[] {
+  const rows = db
+    .prepare(
+      `SELECT DISTINCT w.name AS name
+       FROM warframes w
+       WHERE w.name IS NOT NULL AND TRIM(w.name) <> ''
+         AND NOT EXISTS (
+           SELECT 1 FROM abilities a
+           WHERE a.warframe_unique_name = w.unique_name
+             AND a.is_helminth_extractable = 1
+         )
+       ORDER BY w.name`,
+    )
+    .all() as Array<{ name: string }>;
+  return rows.map((r) => r.name);
+}
+
 export async function collectHelminthAbilityNamesFromWarframeWikiPages(
   onProgress?: (msg: string) => void,
 ): Promise<Set<string>> {
   const db = getDb();
-  const warframes = db
-    .prepare(
-      `SELECT DISTINCT name FROM warframes WHERE name IS NOT NULL AND TRIM(name) <> '' ORDER BY name`,
-    )
-    .all() as Array<{ name: string }>;
+  const warframes = warframeNamesNeedingHelminthWikiScrape(db).map((name) => ({ name }));
+  if (warframes.length === 0) {
+    onProgress?.(
+      '[Helminth wiki] Skipped warframe pages — all warframes already have helminth data.',
+    );
+    return new Set<string>();
+  }
 
   const names = new Set<string>();
   for (let i = 0; i < warframes.length; i++) {
@@ -103,10 +124,8 @@ export function applyHelminthFlagsFromWikiNames(
   }
 
   const toUpdate = dedupeHelminthAbilityRows(matched).map((r) => r.unique_name);
-  const resetAll = db.prepare('UPDATE abilities SET is_helminth_extractable = 0');
   const stmt = db.prepare('UPDATE abilities SET is_helminth_extractable = 1 WHERE unique_name = ?');
   const runMany = db.transaction((ids: string[]) => {
-    resetAll.run();
     for (const id of ids) stmt.run(id);
   });
   runMany(toUpdate);

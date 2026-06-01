@@ -27,25 +27,68 @@ export function isArtifactSlotVisible(
   return !isArtifactSlotDisabled(artifactSlots[index]);
 }
 
-export function warframeUsesExtendedArtifactLayout(artifactSlots: string[]): boolean {
-  return artifactSlots.length >= 11;
-}
-
 export function warframeSecondAuraArtifactIndex(generalSlots = 8): number {
   return generalSlots + 1;
 }
 
 export function warframeExilusArtifactIndex(artifactSlots: string[], generalSlots = 8): number {
-  return warframeUsesExtendedArtifactLayout(artifactSlots) ? generalSlots + 2 : generalSlots + 1;
+  const normalized = normalizeWarframeArtifactSlotsForLoad(artifactSlots, generalSlots);
+  return normalized.length >= WARFRAME_EXTENDED_ARTIFACT_SLOT_COUNT
+    ? generalSlots + 2
+    : generalSlots + 1;
+}
+
+/**
+ * Fold mistaken 11-slot rows (Aura2 + Exilus both universal from an old save) into compact 10-slot
+ * layout. True dual-aura frames keep 11 when exilus at index 10 has a real polarity (e.g. AP_ANY).
+ */
+export function normalizeWarframeArtifactSlotsForLoad(
+  artifactSlots: string[],
+  generalSlots = 8,
+): string[] {
+  if (artifactSlots.length < WARFRAME_EXTENDED_ARTIFACT_SLOT_COUNT) {
+    return [...artifactSlots];
+  }
+
+  const secondAuraIndex = warframeSecondAuraArtifactIndex(generalSlots);
+  const exilusIndex = generalSlots + 2;
+  const ap9 = artifactSlots[secondAuraIndex];
+  const ap10 = artifactSlots[exilusIndex];
+
+  if (ap9 === AP_DISABLED) {
+    return [...artifactSlots];
+  }
+
+  if (ap9 !== 'AP_UNIVERSAL' && ap9 !== AP_DISABLED) {
+    return [...artifactSlots];
+  }
+
+  if (ap10 === 'AP_UNIVERSAL' || ap10 === AP_DISABLED) {
+    const exilusAp = ap10 === AP_DISABLED ? 'AP_UNIVERSAL' : ap10;
+    return [...artifactSlots.slice(0, secondAuraIndex), exilusAp];
+  }
+
+  return [...artifactSlots];
+}
+
+export function warframeUsesExtendedArtifactLayout(
+  artifactSlots: string[],
+  generalSlots = 8,
+): boolean {
+  return (
+    normalizeWarframeArtifactSlotsForLoad(artifactSlots, generalSlots).length >=
+    WARFRAME_EXTENDED_ARTIFACT_SLOT_COUNT
+  );
 }
 
 export function warframeSecondAuraApFromStorage(artifactSlots: string[], generalSlots = 8): string {
-  if (!warframeUsesExtendedArtifactLayout(artifactSlots)) return AP_DISABLED;
-  return artifactSlots[warframeSecondAuraArtifactIndex(generalSlots)] ?? AP_DISABLED;
+  const normalized = normalizeWarframeArtifactSlotsForLoad(artifactSlots, generalSlots);
+  if (!warframeUsesExtendedArtifactLayout(artifactSlots, generalSlots)) return AP_DISABLED;
+  return normalized[warframeSecondAuraArtifactIndex(generalSlots)] ?? AP_DISABLED;
 }
 
 export function isWarframeSecondAuraSlotActive(artifactSlots: string[], generalSlots = 8): boolean {
-  if (!warframeUsesExtendedArtifactLayout(artifactSlots)) return false;
+  if (!warframeUsesExtendedArtifactLayout(artifactSlots, generalSlots)) return false;
   return !isArtifactSlotDisabled(warframeSecondAuraApFromStorage(artifactSlots, generalSlots));
 }
 

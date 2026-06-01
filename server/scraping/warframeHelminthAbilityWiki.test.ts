@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyHelminthFlagsFromWikiNames,
   parseSubsumableAbilitiesFromWarframeAbilitiesHtml,
+  warframeNamesNeedingHelminthWikiScrape,
 } from './warframeHelminthAbilityWiki.js';
 
 describe('parseSubsumableAbilitiesFromWarframeAbilitiesHtml', () => {
@@ -23,6 +24,27 @@ describe('parseSubsumableAbilitiesFromWarframeAbilitiesHtml', () => {
     const names = parseSubsumableAbilitiesFromWarframeAbilitiesHtml(html);
     expect(names).toContain('elemental ward');
     expect(names).not.toContain('effigy');
+  });
+});
+
+describe('warframeNamesNeedingHelminthWikiScrape', () => {
+  it('omits warframes that already have a helminth-flagged ability', () => {
+    const db = new Database(':memory:');
+    db.exec(`
+      CREATE TABLE warframes (unique_name TEXT PRIMARY KEY, name TEXT);
+      CREATE TABLE abilities (
+        unique_name TEXT PRIMARY KEY,
+        name TEXT,
+        warframe_unique_name TEXT,
+        is_helminth_extractable INTEGER NOT NULL DEFAULT 0
+      );
+      INSERT INTO warframes VALUES ('/Lotus/Excalibur', 'Excalibur');
+      INSERT INTO warframes VALUES ('/Lotus/Ash', 'Ash');
+      INSERT INTO abilities VALUES (
+        '/Lotus/Excalibur/SlashDash', 'Slash Dash', '/Lotus/Excalibur', 1
+      );
+    `);
+    expect(warframeNamesNeedingHelminthWikiScrape(db)).toEqual(['Ash']);
   });
 });
 

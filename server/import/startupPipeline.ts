@@ -17,7 +17,10 @@ import { syncHiddenCompanionWeaponsFromOverframe } from '../scraping/hiddenCompa
 import { syncIncarnonFromWiki } from '../scraping/incarnonWiki.js';
 import { countItemsMissingOverframeData, scrapeIndex } from '../scraping/indexScraper.js';
 import { scrapeItems } from '../scraping/itemScraper.js';
-import { syncWeaponFireBehaviorsFromWiki } from '../scraping/weaponFireBehaviorsWiki.js';
+import {
+  countWeaponsMissingFireBehaviors,
+  syncWeaponFireBehaviorsFromWiki,
+} from '../scraping/weaponFireBehaviorsWiki.js';
 import { runWikiScrape } from '../scraping/wikiScraper.js';
 import { populateWarframeMarketLinksTable } from '../warframeMarket/populateWarframeMarketLinks.js';
 import { syncHelminthFlagsFromWiki } from './helminthWiki.js';
@@ -576,7 +579,7 @@ async function runStartupPipelineInner(
   }
 
   let helminthWikiHtml: string | null = null;
-  if (shouldRunStep('wiki', hasDbData(), options)) {
+  if (shouldRunStep('wiki', dataChanged, options)) {
     log('[Wiki] Scraping warframe wiki for ability stats, shards, riven dispositions...');
     try {
       const wikiResult = await runWikiScrape(
@@ -610,15 +613,22 @@ async function runStartupPipelineInner(
         merge: wikiMerge,
       };
 
-      log('[Wiki] Syncing weapon fire behaviors from wiki infoboxes...');
-      try {
-        const fireResult = await syncWeaponFireBehaviorsFromWiki(
-          (msg) => log(`[Wiki] ${msg}`),
-          true,
+      const missingFireBehaviors = countWeaponsMissingFireBehaviors();
+      if (missingFireBehaviors === 0) {
+        log('[Wiki] Fire behaviors — skipped (all weapons already have data).');
+      } else {
+        log(
+          `[Wiki] Syncing weapon fire behaviors from wiki infoboxes (${missingFireBehaviors} missing)...`,
         );
-        log(`[Wiki] Fire behaviors — ${fireResult.updated} weapon(s) updated.`);
-      } catch (fireErr) {
-        err('[Wiki] Weapon fire behavior sync failed —', fireErr);
+        try {
+          const fireResult = await syncWeaponFireBehaviorsFromWiki(
+            (msg) => log(`[Wiki] ${msg}`),
+            true,
+          );
+          log(`[Wiki] Fire behaviors — ${fireResult.updated} weapon(s) updated.`);
+        } catch (fireErr) {
+          err('[Wiki] Weapon fire behavior sync failed —', fireErr);
+        }
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -626,14 +636,14 @@ async function runStartupPipelineInner(
       err('[Wiki] Scrape failed —', e);
     }
   } else {
-    log('[Wiki] Skipped — no game data loaded yet.');
+    log('[Wiki] Skipped — export hashes unchanged since last run.');
     summary.wiki = {
       outcome: 'skipped',
-      detail: 'No game data in SQLite; skipped wiki enrichment.',
+      detail: 'Export hashes unchanged; skipped wiki enrichment.',
     };
   }
 
-  if (shouldRunStep('helminthWiki', hasDbData(), options)) {
+  if (shouldRunStep('helminthWiki', dataChanged, options)) {
     log('[Helminth] Syncing helminth-infusable ability flags from wiki...');
     try {
       const db = getDb();
@@ -688,10 +698,10 @@ async function runStartupPipelineInner(
       err('[Helminth] Sync failed —', e);
     }
   } else {
-    log('[Helminth] Skipped — no game data loaded yet.');
+    log('[Helminth] Skipped — export hashes unchanged since last run.');
     summary.helminthWiki = {
       outcome: 'skipped',
-      detail: 'No game data in SQLite; skipped helminth sync.',
+      detail: 'Export hashes unchanged; skipped helminth sync.',
     };
   }
 

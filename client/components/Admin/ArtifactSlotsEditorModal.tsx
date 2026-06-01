@@ -169,7 +169,10 @@ export function ArtifactSlotsEditorModal({
             Edit slots / polarity
           </h2>
           <p className="text-muted mt-1 text-sm">
-            {displayName} · {equipmentType} · {rows.length} slot(s)
+            {displayName} · {equipmentType} ·{' '}
+            {equipmentType === 'warframe'
+              ? `${rows.find((r) => r.id === 'aura-2')?.enabled ? 11 : 10} stored slot(s)`
+              : `${rows.length} slot(s)`}
           </p>
         </div>
 

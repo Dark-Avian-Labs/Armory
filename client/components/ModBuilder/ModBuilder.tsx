@@ -13,6 +13,7 @@ import {
   isArtifactSlotDisabled,
   isArtifactSlotVisible,
   isWarframeSecondAuraSlotActive,
+  normalizeWarframeArtifactSlotsForLoad,
   warframeExilusArtifactIndex,
 } from '../../../shared/artifactSlotState.js';
 import { buildEditPath, userBuildsPath } from '../../app/paths';
@@ -923,7 +924,7 @@ export function ModBuilder() {
     const newSlots: ModSlot[] = [];
     let idx = 0;
 
-    const artifactSlots: string[] = (() => {
+    const artifactSlotsRaw: string[] = (() => {
       try {
         const eq = selectedEquipment as Warframe & Weapon & Companion;
         return eq.artifact_slots ? JSON.parse(eq.artifact_slots) : [];
@@ -931,6 +932,10 @@ export function ModBuilder() {
         return [];
       }
     })();
+    const artifactSlots =
+      equipmentType === 'warframe'
+        ? normalizeWarframeArtifactSlotsForLoad(artifactSlotsRaw, config.generalSlots)
+        : artifactSlotsRaw;
 
     const polarityFromAP = (ap: string | undefined): string | undefined => {
       if (!ap || ap === 'AP_UNIVERSAL' || isArtifactSlotDisabled(ap)) return undefined;
@@ -952,7 +957,7 @@ export function ModBuilder() {
     }
     if (
       equipmentType === 'warframe' &&
-      isWarframeSecondAuraSlotActive(artifactSlots, config.generalSlots)
+      isWarframeSecondAuraSlotActive(artifactSlotsRaw, config.generalSlots)
     ) {
       const pol = polarityFromAP(artifactSlots[specialSlotIndex + 1]);
       newSlots.push({ index: idx++, type: 'aura', polarity: pol });
@@ -1001,7 +1006,7 @@ export function ModBuilder() {
     const omitExilus = weaponOmitsExilusSlot(selectedEquipment.name, equipmentType);
     const exilusArtifactIndex =
       equipmentType === 'warframe'
-        ? warframeExilusArtifactIndex(artifactSlots, config.generalSlots)
+        ? warframeExilusArtifactIndex(artifactSlotsRaw, config.generalSlots)
         : config.generalSlots + 1;
     if (
       config.hasExilus &&
