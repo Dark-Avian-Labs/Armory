@@ -4,8 +4,10 @@ import {
   AP_DISABLED,
   isArtifactSlotVisible,
   isWarframeSecondAuraSlotActive,
+  normalizeWarframeArtifactSlotsForLoad,
   warframeExilusArtifactIndex,
   warframeSecondAuraApFromStorage,
+  warframeUsesExtendedArtifactLayout,
 } from './artifactSlotState.js';
 
 describe('artifactSlotState', () => {
@@ -15,29 +17,38 @@ describe('artifactSlotState', () => {
     expect(isArtifactSlotVisible(slots, 1, true)).toBe(false);
   });
 
-  it('uses index 10 for exilus on 11-slot warframe layouts', () => {
-    const slots = Array.from({ length: 11 }, () => 'AP_UNIVERSAL');
+  it('uses index 10 for exilus on true 11-slot warframe layouts', () => {
+    const slots = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_ANY', 'AP_DEFENSE', 'AP_UNIVERSAL'];
     expect(warframeExilusArtifactIndex(slots)).toBe(10);
   });
 
   it('treats compact 10-slot layouts as no second aura', () => {
     const compact = Array.from({ length: 10 }, () => 'AP_UNIVERSAL');
+    expect(warframeUsesExtendedArtifactLayout(compact)).toBe(false);
     expect(warframeSecondAuraApFromStorage(compact)).toBe(AP_DISABLED);
     expect(isWarframeSecondAuraSlotActive(compact)).toBe(false);
     expect(warframeExilusArtifactIndex(compact)).toBe(9);
   });
 
-  it('loads 11-slot second aura from index 9 including AP_UNIVERSAL', () => {
-    const extended = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_ANY', 'AP_UNIVERSAL', 'AP_DEFENSE'];
-    expect(warframeSecondAuraApFromStorage(extended)).toBe('AP_UNIVERSAL');
-    expect(isWarframeSecondAuraSlotActive(extended)).toBe(true);
-
-    extended[9] = 'AP_DEFENSE';
+  it('loads real 11-slot second aura from index 9', () => {
+    const extended = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_ANY', 'AP_DEFENSE', 'AP_UNIVERSAL'];
+    expect(warframeUsesExtendedArtifactLayout(extended)).toBe(true);
     expect(warframeSecondAuraApFromStorage(extended)).toBe('AP_DEFENSE');
     expect(isWarframeSecondAuraSlotActive(extended)).toBe(true);
+  });
 
-    extended[9] = AP_DISABLED;
-    expect(warframeSecondAuraApFromStorage(extended)).toBe(AP_DISABLED);
-    expect(isWarframeSecondAuraSlotActive(extended)).toBe(false);
+  it('keeps Jade-like 11-slot rows when exilus at index 10 has a real polarity', () => {
+    const jadeLike = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_ANY', 'AP_UNIVERSAL', 'AP_ANY'];
+    expect(normalizeWarframeArtifactSlotsForLoad(jadeLike)).toHaveLength(11);
+    expect(isWarframeSecondAuraSlotActive(jadeLike)).toBe(true);
+  });
+
+  it('folds mistaken 11-slot padded rows into compact 10-slot layout', () => {
+    const ashMistaken = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_ANY', 'AP_UNIVERSAL', 'AP_UNIVERSAL'];
+    const normalized = normalizeWarframeArtifactSlotsForLoad(ashMistaken);
+    expect(normalized).toHaveLength(10);
+    expect(normalized[9]).toBe('AP_UNIVERSAL');
+    expect(warframeUsesExtendedArtifactLayout(ashMistaken)).toBe(false);
+    expect(isWarframeSecondAuraSlotActive(ashMistaken)).toBe(false);
   });
 });

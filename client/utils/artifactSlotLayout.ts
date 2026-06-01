@@ -1,6 +1,7 @@
 import {
   AP_DISABLED,
   isArtifactSlotDisabled,
+  normalizeWarframeArtifactSlotsForLoad,
   warframeArtifactWriteIndex,
   warframeSecondAuraApFromStorage,
   warframeExilusArtifactIndex,
@@ -67,6 +68,10 @@ export function buildArtifactSlotEditorRows(
   equipmentName?: string,
 ): ArtifactSlotEditorRow[] {
   const config = slotConfigForType(equipmentType);
+  const storageSlots =
+    equipmentType === 'warframe'
+      ? normalizeWarframeArtifactSlotsForLoad(artifactSlots, config.generalSlots)
+      : artifactSlots;
   const totalSlots = editorStorageLength(equipmentType, config);
   const specialSlotIndex = config.generalSlots;
   const secondAuraIndex = warframeSecondAuraArtifactIndex(config.generalSlots);
@@ -79,7 +84,7 @@ export function buildArtifactSlotEditorRows(
       ? warframeExilusArtifactIndex(artifactSlots, config.generalSlots)
       : exilusIndex;
   const rows: ArtifactSlotEditorRow[] = [];
-  const padded = [...artifactSlots];
+  const padded = [...storageSlots];
   while (padded.length < totalSlots) padded.push('AP_UNIVERSAL');
 
   if (config.hasAura) {

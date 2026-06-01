@@ -2,6 +2,7 @@ import {
   isArtifactSlotDisabled,
   isArtifactSlotVisible,
   isWarframeSecondAuraSlotActive,
+  normalizeWarframeArtifactSlotsForLoad,
   warframeExilusArtifactIndex,
 } from '../../shared/artifactSlotState.js';
 import {
@@ -28,13 +29,17 @@ function buildDefaultPolarities(
   const config = EQUIPMENT_SLOT_CONFIGS[equipmentType] || EQUIPMENT_SLOT_CONFIGS.warframe;
   const defaults: SlotPolarity[] = [];
 
-  const artifactSlots: string[] = (() => {
+  const artifactSlotsRaw: string[] = (() => {
     try {
       return equipment.artifact_slots ? JSON.parse(equipment.artifact_slots) : [];
     } catch {
       return [];
     }
   })();
+  const artifactSlots =
+    equipmentType === 'warframe'
+      ? normalizeWarframeArtifactSlotsForLoad(artifactSlotsRaw, config.generalSlots)
+      : artifactSlotsRaw;
 
   const polarityFromAP = (ap: string | undefined): string | undefined => {
     if (!ap || ap === 'AP_UNIVERSAL' || isArtifactSlotDisabled(ap)) return undefined;
@@ -52,7 +57,7 @@ function buildDefaultPolarities(
   }
   if (
     equipmentType === 'warframe' &&
-    isWarframeSecondAuraSlotActive(artifactSlots, config.generalSlots)
+    isWarframeSecondAuraSlotActive(artifactSlotsRaw, config.generalSlots)
   ) {
     const polarity = polarityFromAP(artifactSlots[specialSlotIndex + 1]);
     defaults.push({ type: 'aura', polarity });
@@ -96,7 +101,7 @@ function buildDefaultPolarities(
   const skipExilus = weaponOmitsExilusSlot(equipmentName, equipmentType);
   const exilusArtifactIndex =
     equipmentType === 'warframe'
-      ? warframeExilusArtifactIndex(artifactSlots, config.generalSlots)
+      ? warframeExilusArtifactIndex(artifactSlotsRaw, config.generalSlots)
       : config.generalSlots + 1;
 
   if (
