@@ -285,3 +285,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.62.5** `fix` [#334](https://github.com/Dark-Avian-Labs/Armory/pull/334): data import
 - **v1.62.6** `fix` [#335](https://github.com/Dark-Avian-Labs/Armory/pull/335): helminth
 - **v1.63.0** `feat` [#336](https://github.com/Dark-Avian-Labs/Armory/pull/336): split user and data db
+- **v1.63.1** `chore` [#339](https://github.com/Dark-Avian-Labs/Armory/pull/339): dependabot/npm_and_yarn/production dependencies be3ce4e6af
