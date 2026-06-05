@@ -43,7 +43,7 @@
     "lzma": "^2.3.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router-dom": "^7.16.0",
+    "react-router-dom": "^7.17.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -78,5 +78,5 @@
     "node": ">=25.0.0",
     "pnpm": ">=11.0.0"
   },
-  "packageManager": "pnpm@11.5.0"
+  "packageManager": "pnpm@11.5.1"
 }
