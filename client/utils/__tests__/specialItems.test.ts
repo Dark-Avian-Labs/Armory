@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  equipmentHasStanceSlot,
   getRequiredExaltedStanceName,
   getSpecialItemSelectionType,
   isTomeWeapon,
@@ -64,5 +65,13 @@ describe('exalted stance requirements', () => {
     expect(getRequiredExaltedStanceName('Exalted Blade')).toBe('Exalted Blade');
     expect(getRequiredExaltedStanceName('Valkyr Prime Talons')).toBe('Hysteria');
     expect(getRequiredExaltedStanceName('Artemis Bow')).toBeNull();
+  });
+
+  it('treats exalted melee weapons as stance-slot equipment', () => {
+    expect(equipmentHasStanceSlot('melee', 'Exalted Blade')).toBe(true);
+    expect(equipmentHasStanceSlot('melee', 'Exalted Umbra Blade')).toBe(true);
+    expect(equipmentHasStanceSlot('melee', 'Iron Staff Prime')).toBe(true);
+    expect(equipmentHasStanceSlot('primary', 'Artemis Bow')).toBe(false);
+    expect(equipmentHasStanceSlot('secondary', 'Dex Pixia')).toBe(false);
   });
 });

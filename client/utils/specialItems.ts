@@ -1,4 +1,4 @@
-import type { EquipmentType, Mod } from '../types/warframe';
+import { EQUIPMENT_SLOT_CONFIGS, type EquipmentType, type Mod } from '../types/warframe';
 
 export const ARMORY_STANCE_WIKI_IMAGE_PREFIX = '/ArmoryWiki/StanceMod/' as const;
 
@@ -131,6 +131,15 @@ export function getRequiredExaltedStanceName(equipmentName?: string | null): str
   if (!equipmentName) return null;
   const lookupName = normalizeLookupName(equipmentName);
   return REQUIRED_EXALTED_STANCES_BY_EQUIPMENT[lookupName] ?? null;
+}
+
+export function equipmentHasStanceSlot(
+  equipmentType: EquipmentType,
+  equipmentName?: string | null,
+): boolean {
+  if (getRequiredExaltedStanceName(equipmentName)) return true;
+  const config = EQUIPMENT_SLOT_CONFIGS[equipmentType as keyof typeof EQUIPMENT_SLOT_CONFIGS];
+  return config?.hasStance === true;
 }
 
 const EXALTED_STANCE_CARD_FALLBACK: Record<string, string> = {

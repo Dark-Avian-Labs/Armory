@@ -72,6 +72,7 @@ import {
 import { getEffectiveRivenDisposition } from '../../utils/riven';
 import {
   augmentExaltedStanceModForDisplay,
+  equipmentHasStanceSlot,
   getRequiredExaltedStanceName,
   matchesSpecialItemType,
   weaponOmitsExilusSlot,
@@ -969,7 +970,7 @@ export function ModBuilder() {
       newSlots.push({ index: idx++, type: 'aura', polarity: pol });
     }
     if (
-      config.hasStance &&
+      equipmentHasStanceSlot(equipmentType, selectedEquipment.name) &&
       isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlotOverrides)
     ) {
       const pol = hasArtifactSlotOverrides
@@ -1341,8 +1342,9 @@ export function ModBuilder() {
       calculateFormaCount(
         defaultPolarities,
         slots.map((s) => ({ polarity: s.polarity, type: s.type })),
+        { equipmentType, equipmentName: selectedEquipment?.name },
       ),
-    [defaultPolarities, slots],
+    [defaultPolarities, equipmentType, selectedEquipment?.name, slots],
   );
 
   const handlePolarityChange = useCallback((slotIndex: number, polarity: string | undefined) => {
@@ -2167,6 +2169,7 @@ export function ModBuilder() {
                 formaMode={formaMode}
                 onPolarityChange={handlePolarityChange}
                 equipmentType={equipmentType}
+                equipmentName={selectedEquipment.name}
                 readOnly={readOnly}
               />
             ) : (

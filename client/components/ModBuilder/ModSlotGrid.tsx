@@ -11,6 +11,7 @@ import {
   type SlotType,
 } from '../../types/warframe';
 import { polarityMatchForUi } from '../../utils/drain';
+import { canEditSlotPolarityInFormaMode, supportsUmbraForma } from '../../utils/formaPolarityRules';
 import { isRivenMod } from '../../utils/riven';
 import { isSlotTypeName } from '../../utils/slotIcons';
 import { countEquippedUmbraSetMods, isUmbraSelfScalingSetMod } from '../../utils/umbraSet';
@@ -39,10 +40,14 @@ const POLARITY_CYCLE_NO_UMBRA: (string | undefined)[] = POLARITY_CYCLE_FULL.filt
 function getPolarityCycle(
   slotType: SlotType,
   equipmentType: EquipmentType,
+  equipmentName?: string | null,
 ): (string | undefined)[] {
-  if (equipmentType !== 'warframe') return POLARITY_CYCLE_NO_UMBRA;
-  if (slotType === 'aura' || slotType === 'exilus') return POLARITY_CYCLE_NO_UMBRA;
-  return POLARITY_CYCLE_FULL;
+  if (!canEditSlotPolarityInFormaMode(slotType)) return [undefined];
+  if (slotType === 'stance') return POLARITY_CYCLE_NO_UMBRA;
+  if (slotType === 'general' && supportsUmbraForma(equipmentType, equipmentName)) {
+    return POLARITY_CYCLE_FULL;
+  }
+  return POLARITY_CYCLE_NO_UMBRA;
 }
 
 const POLARITY_LABELS: Record<string, string> = {
@@ -105,6 +110,7 @@ interface ModSlotGridProps {
   formaMode?: boolean;
   onPolarityChange?: (slotIndex: number, polarity: string | undefined) => void;
   equipmentType?: EquipmentType;
+  equipmentName?: string | null;
   readOnly?: boolean;
 }
 
@@ -121,6 +127,7 @@ export function ModSlotGrid({
   formaMode = false,
   onPolarityChange,
   equipmentType = 'warframe',
+  equipmentName,
   readOnly = false,
 }: ModSlotGridProps) {
   const specialSlots = slots.filter(
@@ -163,8 +170,8 @@ export function ModSlotGrid({
     slotType: SlotType,
     reverse = false,
   ) => {
-    if (!formaMode || !onPolarityChange) return;
-    const cycle = getPolarityCycle(slotType, equipmentType);
+    if (!formaMode || !onPolarityChange || !canEditSlotPolarityInFormaMode(slotType)) return;
+    const cycle = getPolarityCycle(slotType, equipmentType, equipmentName);
     const currentIdx = cycle.indexOf(currentPolarity);
     const len = cycle.length;
     const nextIdx = reverse ? (currentIdx - 1 + len) % len : (currentIdx + 1) % len;
@@ -446,6 +453,7 @@ function SlotCell({
             : '';
 
   const canDrag = !!slot.mod && !formaMode && !readOnly;
+  const canEditPolarity = formaMode && canEditSlotPolarityInFormaMode(slot.type);
 
   const handleSlotDragStart = (e: React.DragEvent) => {
     if (!slot.mod || formaMode) return;
@@ -631,7 +639,7 @@ function SlotCell({
               <PolarityIcon polarity={slot.polarity} mod={slot.mod} size={12} />
             </div>
           )}
-          {formaMode && (
+          {canEditPolarity && (
             <div className="border-warning/60 bg-warning/15 hover:bg-warning/25 absolute inset-0 z-20 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-[background-color,border-color] duration-200">
               {slot.polarity ? (
                 <PolarityIcon polarity={slot.polarity} size={20} />
@@ -660,7 +668,7 @@ function SlotCell({
             collapsed
           />
 
-          {formaMode ? (
+          {canEditPolarity ? (
             <>
               <div className="border-warning/50 bg-warning/10 hover:bg-warning/20 absolute inset-0 z-20 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-[background-color,border-color] duration-200">
                 {slot.polarity ? (
@@ -688,7 +696,7 @@ function SlotCell({
                   type={slotIconName}
                   variant="watermark"
                   size={28}
-                  opacity={0.5}
+                  opacity={formaMode ? 0.3 : 0.5}
                   className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
                 />
               ) : null}

@@ -135,11 +135,9 @@ export function CapacityBar({
                   width="w-72"
                   content={
                     <>
-                      <div className="text-foreground text-xs font-semibold">
-                        Stance / Aura Forma
-                      </div>
+                      <div className="text-foreground text-xs font-semibold">Stance Forma</div>
                       <div className="text-muted mt-0.5 text-[10px]">
-                        Used for universal capacity-slot polarity.
+                        Used for universal polarity on the stance slot.
                       </div>
                     </>
                   }
