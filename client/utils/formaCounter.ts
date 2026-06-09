@@ -1,5 +1,11 @@
-import { AP_ANY, AP_UMBRA, REGULAR_POLARITIES, type SlotType } from '../types/warframe';
-import { isCapacitySlot } from './drain';
+import {
+  AP_ANY,
+  AP_UMBRA,
+  REGULAR_POLARITIES,
+  type EquipmentType,
+  type SlotType,
+} from '../types/warframe';
+import { supportsUmbraForma } from './formaPolarityRules';
 
 export interface FormaCount {
   regular: number;
@@ -14,6 +20,11 @@ export interface SlotPolarity {
   type: SlotType;
 }
 
+export interface FormaCountOptions {
+  equipmentType?: EquipmentType;
+  equipmentName?: string | null;
+}
+
 function countMultiset(polarities: (string | undefined)[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const p of polarities) {
@@ -24,9 +35,49 @@ function countMultiset(polarities: (string | undefined)[]): Map<string, number> 
   return counts;
 }
 
-export function calculateFormaCount(defaults: SlotPolarity[], desired: SlotPolarity[]): FormaCount {
-  const defaultPolarities = defaults.map((s) => s.polarity);
-  const desiredPolarities = desired.map((s) => s.polarity);
+function polarityForFormaCount(
+  slot: SlotPolarity,
+  equipmentType: EquipmentType | undefined,
+  equipmentName: string | null | undefined,
+): string | undefined {
+  if (!slot.polarity) return undefined;
+  if (
+    slot.polarity === AP_UMBRA &&
+    (slot.type !== 'general' || !equipmentType || !supportsUmbraForma(equipmentType, equipmentName))
+  ) {
+    return undefined;
+  }
+  return slot.polarity;
+}
+
+function stanceSlotFormaCost(
+  defaultPolarity: string | undefined,
+  desiredPolarity: string | undefined,
+): Pick<FormaCount, 'regular' | 'stance'> {
+  if (defaultPolarity === desiredPolarity) {
+    return { regular: 0, stance: 0 };
+  }
+  if (!desiredPolarity) {
+    return { regular: 0, stance: 0 };
+  }
+  if (desiredPolarity === AP_ANY) {
+    return { regular: 0, stance: 1 };
+  }
+  return { regular: 1, stance: 0 };
+}
+
+function calculateNormalSlotFormaCount(
+  defaults: SlotPolarity[],
+  desired: SlotPolarity[],
+  equipmentType: EquipmentType | undefined,
+  equipmentName: string | null | undefined,
+): Pick<FormaCount, 'regular' | 'universal' | 'umbra'> {
+  const defaultPolarities = defaults.map((slot) =>
+    polarityForFormaCount(slot, equipmentType, equipmentName),
+  );
+  const desiredPolarities = desired.map((slot) =>
+    polarityForFormaCount(slot, equipmentType, equipmentName),
+  );
 
   const defaultCounts = countMultiset(defaultPolarities);
   const desiredCounts = countMultiset(desiredPolarities);
@@ -62,35 +113,69 @@ export function calculateFormaCount(defaults: SlotPolarity[], desired: SlotPolar
     (desiredCounts.get(AP_ANY) || 0) - (defaultCounts.get(AP_ANY) || 0),
   );
 
-  let defaultUniversalCapacity = 0;
-  for (const s of defaults) {
-    if (s.polarity === AP_ANY && isCapacitySlot(s.type)) {
-      defaultUniversalCapacity++;
-    }
-  }
-
-  let desiredUniversalCapacity = 0;
-  for (const s of desired) {
-    if (s.polarity === AP_ANY && isCapacitySlot(s.type)) {
-      desiredUniversalCapacity++;
-    }
-  }
-
-  const newStance = Math.max(0, desiredUniversalCapacity - defaultUniversalCapacity);
-  const newUniversal = Math.max(0, totalNewUniversal - newStance);
-
   const excessClears = Math.max(
     0,
     unmatchedDefaults - unmatchedRegular - totalNewUniversal - unmatchedUmbra,
   );
 
-  const regular = unmatchedRegular + excessClears;
+  return {
+    regular: unmatchedRegular + excessClears,
+    universal: totalNewUniversal,
+    umbra: unmatchedUmbra,
+  };
+}
+
+export function calculateFormaCount(
+  defaults: SlotPolarity[],
+  desired: SlotPolarity[],
+  options: FormaCountOptions = {},
+): FormaCount {
+  const equipmentType = options.equipmentType;
+  const equipmentName = options.equipmentName;
+  let regular = 0;
+  let universal = 0;
+  let umbra = 0;
+  let stance = 0;
+
+  const normalDefaults: SlotPolarity[] = [];
+  const normalDesired: SlotPolarity[] = [];
+
+  const slotCount = Math.max(defaults.length, desired.length);
+  for (let i = 0; i < slotCount; i += 1) {
+    const defaultSlot = defaults[i];
+    const desiredSlot = desired[i];
+    if (!defaultSlot || !desiredSlot) continue;
+
+    if (defaultSlot.type === 'posture') {
+      continue;
+    }
+
+    if (defaultSlot.type === 'stance') {
+      const slotCost = stanceSlotFormaCost(defaultSlot.polarity, desiredSlot.polarity);
+      regular += slotCost.regular;
+      stance += slotCost.stance;
+      continue;
+    }
+
+    normalDefaults.push(defaultSlot);
+    normalDesired.push(desiredSlot);
+  }
+
+  const normalCost = calculateNormalSlotFormaCount(
+    normalDefaults,
+    normalDesired,
+    equipmentType,
+    equipmentName,
+  );
+  regular += normalCost.regular;
+  universal += normalCost.universal;
+  umbra += normalCost.umbra;
 
   return {
     regular,
-    universal: newUniversal,
-    umbra: unmatchedUmbra,
-    stance: newStance,
-    total: regular + newUniversal + unmatchedUmbra + newStance,
+    universal,
+    umbra,
+    stance,
+    total: regular + universal + umbra + stance,
   };
 }

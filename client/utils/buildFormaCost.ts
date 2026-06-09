@@ -15,7 +15,7 @@ import {
 } from '../types/warframe';
 import { calculateFormaCount, type FormaCount, type SlotPolarity } from './formaCounter';
 import type { EquipmentPolaritySource } from './loadEquipmentLookup';
-import { weaponOmitsExilusSlot } from './specialItems';
+import { equipmentHasStanceSlot, weaponOmitsExilusSlot } from './specialItems';
 
 function getPolarizedSlotCount(build: StoredBuild): number {
   const slots = Array.isArray(build.slots) ? build.slots : [];
@@ -67,7 +67,7 @@ function buildDefaultPolarities(
     defaults.push({ type: 'aura', polarity });
   }
   if (
-    config.hasStance &&
+    equipmentHasStanceSlot(equipmentType, equipmentName) &&
     isArtifactSlotVisible(artifactSlots, specialSlotIndex, hasArtifactSlotOverrides)
   ) {
     const polarity = hasArtifactSlotOverrides
@@ -148,5 +148,8 @@ export function getUsedFormaCost(
     polarity: slot.polarity,
   }));
 
-  return calculateFormaCount(defaults, desired);
+  return calculateFormaCount(defaults, desired, {
+    equipmentType: build.equipment_type,
+    equipmentName: build.equipment_name,
+  });
 }
