@@ -288,3 +288,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.63.1** `chore` [#339](https://github.com/Dark-Avian-Labs/Armory/pull/339): dependabot/npm_and_yarn/production dependencies be3ce4e6af
 - **v1.63.2** `chore` [#340](https://github.com/Dark-Avian-Labs/Armory/pull/340): update dependencies
 - **v1.63.3** `security` [#341](https://github.com/Dark-Avian-Labs/Armory/pull/341): fix tar vuln
+- **v1.63.4** `fix` [#343](https://github.com/Dark-Avian-Labs/Armory/pull/343): forma calculation
