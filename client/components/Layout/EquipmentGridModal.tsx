@@ -5,6 +5,7 @@ import {
   CATEGORY_API,
   EQUIPMENT_PICKER_GRID_CLASS,
   EQUIPMENT_PICKER_TILE_BUTTON_CLASS,
+  EQUIPMENT_PICKER_TILE_INTERACTIVE_CLASS,
   EQUIPMENT_PICKER_TILE_SIZE_CLASS,
   HIDDEN_EMPTY_TABS,
   loadEquipmentItemsForTab,
@@ -143,7 +144,7 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
                       normalizeEquipmentName(item.name),
                     )
                   }
-                  className={`group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative overflow-hidden rounded-lg border p-0 text-center transition-[color,background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 ${EQUIPMENT_PICKER_TILE_BUTTON_CLASS}`}
+                  className={`${EQUIPMENT_PICKER_TILE_INTERACTIVE_CLASS} ${EQUIPMENT_PICKER_TILE_BUTTON_CLASS}`}
                   aria-label={`Select ${normalizeEquipmentName(item.name)}`}
                 >
                   <div

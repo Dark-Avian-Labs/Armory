@@ -12,6 +12,7 @@ import {
   loadEquipmentItemsForTab,
   EQUIPMENT_PICKER_GRID_CLASS,
   EQUIPMENT_PICKER_TILE_BUTTON_CLASS,
+  EQUIPMENT_PICKER_TILE_INTERACTIVE_CLASS,
   EQUIPMENT_PICKER_TILE_SIZE_CLASS,
   TAB_LABELS,
   TAB_ORDER,
@@ -196,7 +197,7 @@ export function BuildsCatalogPage() {
                     key={item.unique_name}
                     type="button"
                     onClick={() => handleSelect(item)}
-                    className={`group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative overflow-hidden rounded-lg border p-0 text-center transition-[color,background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 ${EQUIPMENT_PICKER_TILE_BUTTON_CLASS}`}
+                    className={`${EQUIPMENT_PICKER_TILE_INTERACTIVE_CLASS} ${EQUIPMENT_PICKER_TILE_BUTTON_CLASS}`}
                     aria-label={`View builds for ${normalizeEquipmentName(item.name)}`}
                   >
                     <div
