@@ -55,6 +55,8 @@ export const TAB_ORDER: EquipmentPickerTab[] = (() => {
 
 export const EQUIPMENT_PICKER_TILE_SIZE_CLASS = 'h-[9.5rem] w-[9.5rem]';
 export const EQUIPMENT_PICKER_TILE_BUTTON_CLASS = 'w-[9.5rem] shrink-0';
+export const EQUIPMENT_PICKER_TILE_INTERACTIVE_CLASS =
+  'group border-glass-border bg-glass/40 hover:border-glass-border-hover hover:bg-glass-hover relative overflow-hidden rounded-lg border p-0 text-center transition-[color,background-color,border-color,box-shadow] duration-200 hover:shadow-panel';
 export const EQUIPMENT_PICKER_GRID_CLASS = 'equipment-picker-grid grid justify-items-start gap-3';
 
 export const TAB_LABELS: Record<EquipmentPickerTab, string> = {
