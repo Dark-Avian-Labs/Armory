@@ -1411,6 +1411,17 @@ html.ui-clear .user-menu-select-trigger {
 }
 
 .mod-card-foil--holo {
+  -webkit-mask-image: var(--foil-fade-mask), var(--foil-mask-image);
+  mask-image: var(--foil-fade-mask), var(--foil-mask-image);
+  -webkit-mask-position: var(--foil-mask-position), var(--foil-mask-position);
+  mask-position: var(--foil-mask-position), var(--foil-mask-position);
+  -webkit-mask-size: var(--foil-mask-size), var(--foil-mask-size);
+  mask-size: var(--foil-mask-size), var(--foil-mask-size);
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-repeat: no-repeat, no-repeat;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+
   --foil-strength: 1;
   --foil-mid: color-mix(
     in oklch,

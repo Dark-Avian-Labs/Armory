@@ -13,6 +13,7 @@ import {
   DAMAGE_COLORS,
   getArtClipHeight,
   getArtFadeMask,
+  getArtFadeMaskForImage,
   getRarityBorderColor,
   getModAsset,
 } from './cardLayout';
@@ -95,8 +96,14 @@ export function CardPreview({
   const effectiveContentY = collapsed ? L.contentAreaY : autoContentY;
   const artClipHeight = collapsed ? L.collapsedArtHeight : getArtClipHeight(L, effectiveContentY);
   const artFadeMask = collapsed ? undefined : getArtFadeMask(s);
+  const artImageFadeMask = collapsed
+    ? undefined
+    : getArtFadeMaskForImage(s, L.artHeight, artClipHeight);
   const artClipMaskStyle = artFadeMask
     ? { maskImage: artFadeMask, WebkitMaskImage: artFadeMask }
+    : undefined;
+  const artImageMaskStyle = artImageFadeMask
+    ? { maskImage: artImageFadeMask, WebkitMaskImage: artImageFadeMask }
     : undefined;
 
   const renderTextWithDamageIcons = (text: string, iconSize: number): React.ReactNode => {
@@ -206,6 +213,7 @@ export function CardPreview({
                 height: L.artHeight * s,
                 filter: collapsed ? 'grayscale(0.8) brightness(0.4)' : 'none',
                 objectPosition: collapsed ? 'center top' : 'center',
+                ...artImageMaskStyle,
               }}
               draggable={false}
             />
@@ -218,6 +226,7 @@ export function CardPreview({
                   width: L.artWidth * s,
                   height: L.artHeight * s,
                   objectPosition: 'center',
+                  ...artImageMaskStyle,
                 }}
                 draggable={false}
               />
