@@ -100,13 +100,14 @@ function isNextSectionBoundary(node: cheerio.Cheerio<Element>): boolean {
 
 function forEachSiblingAfterHeading(
   heading: cheerio.Cheerio<Element>,
-  visit: (node: cheerio.Cheerio<Element>) => boolean | void,
+  visit: (node: cheerio.Cheerio<Element>) => boolean | undefined,
 ): void {
   for (const start of sectionStartNodes(heading)) {
     let node = start.next();
     while (node.length > 0) {
       if (isNextSectionBoundary(node)) return;
-      if (visit(node) === true) return;
+      const shouldStop = visit(node);
+      if (shouldStop === true) return;
       node = node.next();
     }
   }
