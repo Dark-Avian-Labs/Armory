@@ -466,7 +466,7 @@ function CollapsedHoverExpand({
             '--tilt-x': `${(tilt.px * 100).toFixed(1)}%`,
             '--tilt-y': `${(tilt.py * 100).toFixed(1)}%`,
             '--strip-fade': stripFade.toFixed(3),
-            ...(previewProps.modArtOverlay ? {} : getCardFoilStyle(previewProps.rarity, layout)),
+            ...(foilClass ? getCardFoilStyle(previewProps.rarity, layout) : {}),
           } as React.CSSProperties
         }
       >

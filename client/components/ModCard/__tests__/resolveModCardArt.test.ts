@@ -18,8 +18,10 @@ describe('resolveModCardArt', () => {
     });
   });
 
-  it('skips the tilt flare layer for atragraph holo cards', () => {
-    expect(getModCardFoilClass('/images/ArmoryWiki/Atragraph/AnimalInstinct/Overlay.png')).toBe('');
+  it('uses the holo foil layer for atragraph cards', () => {
+    expect(getModCardFoilClass('/images/ArmoryWiki/Atragraph/AnimalInstinct/Overlay.png')).toBe(
+      'mod-card-foil mod-card-foil--holo',
+    );
     expect(getModCardFoilClass(undefined)).toBe('mod-card-foil');
   });
 
