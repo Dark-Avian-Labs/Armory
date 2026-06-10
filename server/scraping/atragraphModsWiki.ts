@@ -85,13 +85,46 @@ function findHeadingByText($: cheerio.CheerioAPI, text: string): cheerio.Cheerio
   return headlineMatch as cheerio.Cheerio<Element>;
 }
 
-function nextWikitableAfter($: cheerio.CheerioAPI, heading: cheerio.Cheerio<Element>) {
-  let node = heading.next();
-  while (node.length > 0) {
-    if (node.is('table.wikitable')) return node;
-    const nested = node.find('table.wikitable').first();
-    if (nested.length > 0) return nested;
-    node = node.next();
+function sectionStartNodes(heading: cheerio.Cheerio<Element>): cheerio.Cheerio<Element>[] {
+  const nodes: cheerio.Cheerio<Element>[] = [heading];
+  const parent = heading.parent();
+  if (parent.length > 0 && (parent.is('.mw-heading') || parent.is('div'))) {
+    nodes.push(parent);
+  }
+  return nodes;
+}
+
+function isNextSectionBoundary(node: cheerio.Cheerio<Element>): boolean {
+  return node.is('h2, h3') || node.is('.mw-heading');
+}
+
+function forEachSiblingAfterHeading(
+  heading: cheerio.Cheerio<Element>,
+  visit: (node: cheerio.Cheerio<Element>) => boolean,
+): void {
+  for (const start of sectionStartNodes(heading)) {
+    let node = start.next();
+    while (node.length > 0) {
+      if (isNextSectionBoundary(node)) return;
+      if (visit(node)) return;
+      node = node.next();
+    }
+  }
+}
+
+function nextWikitableAfter(
+  _$: cheerio.CheerioAPI,
+  heading: cheerio.Cheerio<Element>,
+): cheerio.Cheerio<Element> | null {
+  for (const start of sectionStartNodes(heading)) {
+    let node = start.next();
+    while (node.length > 0) {
+      if (isNextSectionBoundary(node)) break;
+      if (node.is('table.wikitable')) return node;
+      const nested = node.find('table.wikitable').first();
+      if (nested.length > 0) return nested;
+      node = node.next();
+    }
   }
   return null;
 }
@@ -101,8 +134,7 @@ function parseChecklistCompatibleMods($: cheerio.CheerioAPI): Map<string, string
   const heading = findHeadingByText($, 'Atragraph Mods Checklist');
   if (heading.length === 0) return bySetKey;
 
-  let node = heading.next();
-  while (node.length > 0 && !node.is('h2')) {
+  forEachSiblingAfterHeading(heading, (node) => {
     const topItems = node.is('ul, ol') ? node.children('li') : node.find('> ul > li, > ol > li');
     topItems.each((_: number, topLi: AnyNode) => {
       const $topLi = $(topLi);
@@ -126,8 +158,8 @@ function parseChecklistCompatibleMods($: cheerio.CheerioAPI): Map<string, string
         bySetKey.set(setKey, [...names]);
       }
     });
-    node = node.next();
-  }
+    return false;
+  });
 
   return bySetKey;
 }
@@ -143,14 +175,30 @@ export function parseAtragraphModsWikiHtml(html: string): AtragraphModSet[] {
 
   const sets: AtragraphModSet[] = [];
   table.find('tr').each((_: number, row: AnyNode) => {
-    const cells = $(row).find('td');
-    if (cells.length < 3) return;
+    const $row = $(row);
+    const nameCell = $row.find('th').first();
+    const dataCells = $row.find('td');
 
-    const displayName = $(cells[0]).text().replace(/\s+/g, ' ').trim();
+    let displayName: string | null = null;
+    let overlayCell: cheerio.Cheerio<Element> | null = null;
+    let cardCell: cheerio.Cheerio<Element> | null = null;
+
+    if (nameCell.length > 0 && dataCells.length >= 2) {
+      displayName = nameCell.text().replace(/\s+/g, ' ').trim();
+      overlayCell = $(dataCells.get(0)!);
+      cardCell = $(dataCells.get(1)!);
+    } else if (dataCells.length >= 3) {
+      displayName = $(dataCells.get(0)!).text().replace(/\s+/g, ' ').trim();
+      overlayCell = $(dataCells.get(1)!);
+      cardCell = $(dataCells.get(2)!);
+    } else {
+      return;
+    }
+
     if (!displayName || /^mod name$/i.test(displayName)) return;
 
-    const overlayHref = extractWikiFileHref($(cells[1]));
-    const cardHref = extractWikiFileHref($(cells[2]));
+    const overlayHref = extractWikiFileHref(overlayCell);
+    const cardHref = extractWikiFileHref(cardCell);
     const overlayFileName = overlayHref ? normalizeWikiFileName(overlayHref) : null;
     const cardFileName = cardHref ? normalizeWikiFileName(cardHref) : null;
     if (!overlayFileName || !cardFileName) return;
