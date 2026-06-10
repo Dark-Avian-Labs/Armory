@@ -1,3 +1,4 @@
+import { ensureCodexModularWeaponsPopulated } from '../codexModularWeapons.js';
 import { ensureImportRunsSchema } from '../import/importRuns.js';
 import { backfillArchonBuffArmoryKeys, backfillHelminthArmoryKeys } from './catalogKeys.js';
 import { ensureCatalogKeyColumns } from './catalogMigrations.js';
@@ -189,6 +190,13 @@ const CATALOG_SCHEMA_SQL = `
       PRIMARY KEY (canonical_key, worksheet_category)
     );
 
+    CREATE TABLE IF NOT EXISTS codex_modular_weapons (
+      unique_name TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1
+    );
+
     CREATE INDEX IF NOT EXISTS idx_mods_type ON mods(type);
     CREATE INDEX IF NOT EXISTS idx_mods_rarity ON mods(rarity);
     CREATE INDEX IF NOT EXISTS idx_mods_compat ON mods(compat_name);
@@ -196,6 +204,7 @@ const CATALOG_SCHEMA_SQL = `
     CREATE INDEX IF NOT EXISTS idx_weapons_slot ON weapons(slot);
     CREATE INDEX IF NOT EXISTS idx_abilities_warframe ON abilities(warframe_unique_name);
     CREATE INDEX IF NOT EXISTS idx_warframe_market_links_category ON warframe_market_links(worksheet_category);
+    CREATE INDEX IF NOT EXISTS idx_codex_modular_weapons_order ON codex_modular_weapons(display_order);
   `;
 
 export function createCatalogSchema(): void {
@@ -205,10 +214,14 @@ export function createCatalogSchema(): void {
   const archonKeys = backfillArchonBuffArmoryKeys(db);
   const helminthKeys = backfillHelminthArmoryKeys(db);
   ensureImportRunsSchema(db);
+  const codexModularCount = ensureCodexModularWeaponsPopulated(db);
   if (archonKeys > 0 || helminthKeys > 0) {
     console.log(
       `[DB] Catalog armory keys backfilled: ${archonKeys} archon buff(s), ${helminthKeys} helminth ability(s).`,
     );
+  }
+  if (codexModularCount > 0) {
+    console.log(`[DB] Codex modular weapons catalog: ${codexModularCount} active row(s).`);
   }
   console.log('[DB] Catalog schema created/verified');
 }

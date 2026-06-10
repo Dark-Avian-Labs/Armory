@@ -8,6 +8,7 @@ import {
   UNRELEASED_ARCANE_UNIQUE_NAMES,
 } from '../arcaneCatalog.js';
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
+import { syncCodexModularWeaponsTable } from '../codexModularWeapons.js';
 import { EXPORTS_DIR } from '../config.js';
 import { getCatalogDb } from './connection.js';
 
@@ -67,6 +68,13 @@ export function processExports(options?: { skipPreserve?: boolean }): {
   if (!skipPreserve) {
     restoreImagePaths(savedImagePaths);
     restoreScrapedData(savedScrapedData);
+  }
+
+  if (counts.weapons > 0) {
+    const modular = syncCodexModularWeaponsTable(getCatalogDb());
+    console.log(
+      `[DB] Codex modular weapons catalog synced: ${modular.upserted} trackable component(s).`,
+    );
   }
 
   return counts;
