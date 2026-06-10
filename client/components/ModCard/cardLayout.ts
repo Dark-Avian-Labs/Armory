@@ -145,29 +145,55 @@ export function getArtClipHeight(
   return Math.min(layout.artHeight, Math.max(0, contentAreaY - layout.artOffsetY + 30));
 }
 
+export function getModCardHoloFoilClipStyle(
+  layout: CardLayout = DEFAULT_LAYOUT,
+  artClipHeight: number = getArtClipHeight(layout),
+): Record<string, string> {
+  const s = layout.scale;
+  const fadeMask = getArtFadeMask(s);
+  return {
+    position: 'absolute',
+    left: `${layout.artOffsetX * s}px`,
+    top: `${(layout.cardOffsetY + layout.artOffsetY) * s}px`,
+    width: `${layout.artWidth * s}px`,
+    height: `${artClipHeight * s}px`,
+    overflow: 'hidden',
+    maskImage: fadeMask,
+    WebkitMaskImage: fadeMask,
+    pointerEvents: 'none',
+    zIndex: '2',
+  };
+}
+
+export function getModCardHoloFoilInnerStyle(
+  overlayPath: string,
+  rarity: Rarity,
+  layout: CardLayout = DEFAULT_LAYOUT,
+  artClipHeight: number = getArtClipHeight(layout),
+): Record<string, string> {
+  const s = layout.scale;
+  const xPx = layout.artOffsetX * s;
+  const yPx = (layout.cardOffsetY + layout.artOffsetY) * s;
+  const wPx = layout.artWidth * s;
+  const hPx = artClipHeight * s;
+  return {
+    '--foil-color': getRarityFoilColor(rarity),
+    '--foil-mask-image': `url('${overlayPath}')`,
+    '--foil-mask-position': `${xPx.toFixed(1)}px ${yPx.toFixed(1)}px`,
+    '--foil-mask-size': `${wPx.toFixed(1)}px ${hPx.toFixed(1)}px`,
+    position: 'absolute',
+    left: `${-layout.artOffsetX * s}px`,
+    top: `${-(layout.cardOffsetY + layout.artOffsetY) * s}px`,
+    width: `${layout.cardWidth * s}px`,
+    height: `${layout.cardHeight * s}px`,
+  };
+}
+
 export function getCardFoilStyle(
   rarity: Rarity,
   layout: CardLayout = DEFAULT_LAYOUT,
-  options?: { overlayPath?: string; artClipHeight?: number },
 ): Record<string, string> {
   const s = layout.scale;
-  const overlayPath = options?.overlayPath?.trim();
-
-  if (overlayPath) {
-    const artClipHeight = options?.artClipHeight ?? layout.artHeight;
-    const xPx = layout.artOffsetX * s;
-    const yPx = (layout.cardOffsetY + layout.artOffsetY) * s;
-    const wPx = layout.artWidth * s;
-    const hPx = artClipHeight * s;
-    return {
-      '--foil-color': getRarityFoilColor(rarity),
-      '--foil-fade-mask': getArtFadeMask(s),
-      '--foil-mask-image': `url('${overlayPath}')`,
-      '--foil-mask-position': `${xPx.toFixed(1)}px ${yPx.toFixed(1)}px`,
-      '--foil-mask-size': `${wPx.toFixed(1)}px ${hPx.toFixed(1)}px`,
-    };
-  }
-
   const xPx = ((layout.cardWidth - layout.bgWidth) / 2 + layout.bgOffsetX) * s;
   const yPx = (layout.cardOffsetY + layout.bgOffsetY) * s;
   const wPx = layout.bgWidth * s;

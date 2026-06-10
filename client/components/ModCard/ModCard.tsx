@@ -15,7 +15,11 @@ import {
   getArtClipHeight,
   getCardFoilStyle,
   getModCardFoilClass,
+  getModCardHoloFoilClipStyle,
+  getModCardHoloFoilInnerStyle,
   resolveModCardArt,
+  type CardLayout,
+  type Rarity,
 } from './cardLayout';
 import { CardPreview } from './CardPreview';
 
@@ -465,15 +469,21 @@ function CollapsedHoverExpand({
             '--tilt-x': `${(tilt.px * 100).toFixed(1)}%`,
             '--tilt-y': `${(tilt.py * 100).toFixed(1)}%`,
             '--strip-fade': stripFade.toFixed(3),
-            ...getCardFoilStyle(previewProps.rarity, layout, {
-              overlayPath: previewProps.modArtOverlay,
-              artClipHeight: getArtClipHeight(layout),
-            }),
+            ...(previewProps.modArtOverlay ? {} : getCardFoilStyle(previewProps.rarity, layout)),
           } as React.CSSProperties
         }
       >
         <CardPreview layout={layout} {...previewProps} />
-        <div className={getModCardFoilClass(previewProps.modArtOverlay)} aria-hidden />
+        {previewProps.modArtOverlay ? (
+          <ModCardHoloFoil
+            overlayPath={previewProps.modArtOverlay}
+            rarity={previewProps.rarity}
+            layout={layout}
+            artClipHeight={getArtClipHeight(layout)}
+          />
+        ) : (
+          <div className={getModCardFoilClass()} aria-hidden />
+        )}
       </div>
     </div>,
     document.body,
@@ -536,6 +546,38 @@ function SetRankDots({
           />
         );
       })}
+    </div>
+  );
+}
+
+export function ModCardHoloFoil({
+  overlayPath,
+  rarity,
+  layout,
+  artClipHeight,
+}: {
+  overlayPath: string;
+  rarity: Rarity;
+  layout: CardLayout;
+  artClipHeight: number;
+}) {
+  return (
+    <div
+      className="mod-card-foil-clip"
+      style={getModCardHoloFoilClipStyle(layout, artClipHeight) as React.CSSProperties}
+    >
+      <div
+        className={getModCardFoilClass(overlayPath)}
+        style={
+          getModCardHoloFoilInnerStyle(
+            overlayPath,
+            rarity,
+            layout,
+            artClipHeight,
+          ) as React.CSSProperties
+        }
+        aria-hidden
+      />
     </div>
   );
 }

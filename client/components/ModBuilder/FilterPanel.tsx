@@ -14,12 +14,11 @@ import {
 import { countEquippedUmbraSetModsFromModList } from '../../utils/umbraSet';
 import {
   ModCard,
+  ModCardHoloFoil,
   CardPreview,
   DEFAULT_LAYOUT,
   dbRarityToCardRarity,
   getArtClipHeight,
-  getCardFoilStyle,
-  getModCardFoilClass,
   resolveModCardArt,
 } from '../ModCard';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -521,20 +520,15 @@ const ModPickerCard = memo(function ModPickerCard({
   const layout = { ...DEFAULT_LAYOUT, scale };
   const rarity = dbRarityToCardRarity(mod.rarity, mod.name || mod.unique_name);
   const cardArt = resolveModCardArt(mod, atragraphModsEnabled);
-  const foilStyle =
-    expanded && cardArt.holoFoil && cardArt.modArtOverlay
-      ? getCardFoilStyle(rarity, layout, {
-          overlayPath: cardArt.modArtOverlay,
-          artClipHeight: getArtClipHeight(layout),
-        })
-      : undefined;
+  const holoOverlay =
+    expanded && cardArt.holoFoil && cardArt.modArtOverlay ? cardArt.modArtOverlay : undefined;
 
   return (
     <div
       onClick={() => onPick(mod, locked)}
       className={`${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
-      <div className={expanded ? 'relative' : undefined} style={foilStyle}>
+      <div className={expanded ? 'relative' : undefined}>
         <ModCard
           mod={mod}
           rank={mod.fusion_limit ?? 0}
@@ -544,8 +538,13 @@ const ModPickerCard = memo(function ModPickerCard({
           umbraSetEquippedCount={umbraSetEquippedCount}
           collapsed={!expanded}
         />
-        {expanded && cardArt.holoFoil && cardArt.modArtOverlay ? (
-          <div className={getModCardFoilClass(cardArt.modArtOverlay)} aria-hidden />
+        {holoOverlay ? (
+          <ModCardHoloFoil
+            overlayPath={holoOverlay}
+            rarity={rarity}
+            layout={layout}
+            artClipHeight={getArtClipHeight(layout)}
+          />
         ) : null}
       </div>
     </div>
