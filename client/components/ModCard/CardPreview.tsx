@@ -245,6 +245,9 @@ export function CardPreview({
                       '--foil-mask-image': `url('${modArtOverlay}')`,
                       '--foil-mask-position': '0 0',
                       '--foil-mask-size': '100% 100%',
+                      '--foil-fade-mask-image': artImageFadeMask ?? 'linear-gradient(black, black)',
+                      '--foil-fade-mask-position': '0 0',
+                      '--foil-fade-mask-size': '100% 100%',
                     } as React.CSSProperties
                   }
                   aria-hidden
