@@ -12,6 +12,7 @@ export {
   getRarityFoilColor,
   getArtClipHeight,
   getArtFadeMask,
+  getArtFadeMaskForImage,
   getCardFoilStyle,
   getModCardFoilClass,
   hasModHoloFoil,

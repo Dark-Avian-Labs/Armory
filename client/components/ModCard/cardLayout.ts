@@ -123,6 +123,21 @@ export function getArtFadeMask(scale: number): string {
   return `linear-gradient(to bottom, black calc(100% - ${ART_FADE_PX * scale}px), transparent 100%)`;
 }
 
+/** Fade mask for full-height art images inside a shorter clip container. */
+export function getArtFadeMaskForImage(
+  scale: number,
+  artHeight: number,
+  artClipHeight: number,
+): string {
+  const fadePx = ART_FADE_PX * scale;
+  if (artClipHeight >= artHeight) {
+    return getArtFadeMask(scale);
+  }
+  const fadeStartPercent = (Math.max(0, artClipHeight - fadePx) / artHeight) * 100;
+  const clipPercent = (artClipHeight / artHeight) * 100;
+  return `linear-gradient(to bottom, black ${fadeStartPercent.toFixed(2)}%, transparent ${clipPercent.toFixed(2)}%)`;
+}
+
 export function getArtClipHeight(
   layout: CardLayout,
   contentAreaY: number = layout.contentAreaY,
@@ -146,6 +161,7 @@ export function getCardFoilStyle(
     const hPx = artClipHeight * s;
     return {
       '--foil-color': getRarityFoilColor(rarity),
+      '--foil-fade-mask': getArtFadeMask(s),
       '--foil-mask-image': `url('${overlayPath}')`,
       '--foil-mask-position': `${xPx.toFixed(1)}px ${yPx.toFixed(1)}px`,
       '--foil-mask-size': `${wPx.toFixed(1)}px ${hPx.toFixed(1)}px`,
