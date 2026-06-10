@@ -1399,14 +1399,18 @@ html.ui-clear .user-menu-select-trigger {
       var(--foil-spot-warm) 28%,
       transparent 60%
     );
-  mask-image: var(--foil-mask-image, none);
-  mask-position: var(--foil-mask-position, 0 0);
-  mask-size: var(--foil-mask-size, 100% 100%);
-  mask-repeat: no-repeat;
-  -webkit-mask-image: var(--foil-mask-image, none);
-  -webkit-mask-position: var(--foil-mask-position, 0 0);
-  -webkit-mask-size: var(--foil-mask-size, 100% 100%);
-  -webkit-mask-repeat: no-repeat;
+  mask-image:
+    var(--foil-mask-image, none), var(--foil-fade-mask-image, linear-gradient(black, black));
+  mask-position: var(--foil-mask-position, 0 0), var(--foil-fade-mask-position, 0 0);
+  mask-size: var(--foil-mask-size, 100% 100%), var(--foil-fade-mask-size, 100% 100%);
+  mask-repeat: no-repeat, no-repeat;
+  mask-composite: intersect;
+  -webkit-mask-image:
+    var(--foil-mask-image, none), var(--foil-fade-mask-image, linear-gradient(black, black));
+  -webkit-mask-position: var(--foil-mask-position, 0 0), var(--foil-fade-mask-position, 0 0);
+  -webkit-mask-size: var(--foil-mask-size, 100% 100%), var(--foil-fade-mask-size, 100% 100%);
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  -webkit-mask-composite: source-in;
   mix-blend-mode: color-dodge;
 }
 
