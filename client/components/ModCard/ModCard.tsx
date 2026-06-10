@@ -12,6 +12,7 @@ import {
   DEFAULT_LAYOUT,
   dbRarityToCardRarity,
   dbPolarityToIconName,
+  getArtClipHeight,
   getCardFoilStyle,
   getModCardFoilClass,
   resolveModCardArt,
@@ -449,8 +450,6 @@ function CollapsedHoverExpand({
     0,
     1 - Math.max(Math.abs(tilt.rx), Math.abs(tilt.ry)) / (CARD_HOVER_TILT_MAX_DEG / 2),
   );
-  const foilClass = getModCardFoilClass(previewProps.modArtOverlay);
-
   return createPortal(
     <div
       className="mod-selector-expand pointer-events-none fixed z-[9999]"
@@ -466,12 +465,15 @@ function CollapsedHoverExpand({
             '--tilt-x': `${(tilt.px * 100).toFixed(1)}%`,
             '--tilt-y': `${(tilt.py * 100).toFixed(1)}%`,
             '--strip-fade': stripFade.toFixed(3),
-            ...(foilClass ? getCardFoilStyle(previewProps.rarity, layout) : {}),
+            ...getCardFoilStyle(previewProps.rarity, layout, {
+              overlayPath: previewProps.modArtOverlay,
+              artClipHeight: getArtClipHeight(layout),
+            }),
           } as React.CSSProperties
         }
       >
         <CardPreview layout={layout} {...previewProps} />
-        {foilClass ? <div className={foilClass} aria-hidden /> : null}
+        <div className={getModCardFoilClass(previewProps.modArtOverlay)} aria-hidden />
       </div>
     </div>,
     document.body,
