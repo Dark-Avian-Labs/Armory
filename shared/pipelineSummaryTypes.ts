@@ -36,6 +36,12 @@ export interface StartupPipelineSummary {
     insertedOrUpdated?: number;
     wikiImagesApplied?: number;
   };
+  atragraphMods: StepSummaryBase & {
+    setsFound?: number;
+    modsUpdated?: number;
+    imagesDownloaded?: number;
+    attempted?: number;
+  };
   images: StepSummaryBase & {
     total?: number;
     downloaded?: number;

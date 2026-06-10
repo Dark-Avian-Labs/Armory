@@ -95,6 +95,17 @@ export function printStartupPipelineSummary(s: StartupPipelineSummary): void {
     ...(es.error ? [`Error: ${es.error}`] : []),
   ]);
 
+  const ag = s.atragraphMods;
+  row('Atragraph Mods', ag.outcome, [
+    ag.detail,
+    ...(ag.setsFound !== undefined
+      ? [
+          `Sets: ${ag.setsFound}, mods updated: ${ag.modsUpdated ?? 0}, images downloaded: ${ag.imagesDownloaded ?? 0}.`,
+        ]
+      : []),
+    ...(ag.error ? [`Error: ${ag.error}`] : []),
+  ]);
+
   const im = s.images;
   const imLines: string[] = [im.detail];
   if (im.total !== undefined) {

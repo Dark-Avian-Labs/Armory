@@ -26,6 +26,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { buildClerkProfileAppearance } from '../../lib/clerkAppearance';
 import { API_UNAUTHORIZED_EVENT } from '../../utils/api';
 import { CompareBar } from '../Compare/CompareBar';
+import { AtragraphModsToggle } from '../ui/AtragraphModsToggle';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { Menu } from '../ui/Menu';
@@ -323,6 +324,7 @@ export function Layout() {
                         </button>
                         <div className="user-menu-divider" role="separator" />
                         <UiStyleSelector />
+                        <AtragraphModsToggle />
                         {siblingAppLinks.map((app) => (
                           <a
                             key={app.id}
@@ -368,6 +370,7 @@ export function Layout() {
                         </Link>
                         <div className="user-menu-divider" role="separator" />
                         <UiStyleSelector />
+                        <AtragraphModsToggle />
                       </>
                     )}
                   </div>

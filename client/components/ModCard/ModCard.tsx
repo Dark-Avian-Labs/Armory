@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useTheme } from '../../context/ThemeContext';
 import type { Mod, SlotType } from '../../types/warframe';
 import { calculateEffectiveDrain, polarityMatchForUi } from '../../utils/drain';
 import { getModCardDisplayTexts } from '../../utils/modDisplayText';
@@ -12,6 +13,8 @@ import {
   dbRarityToCardRarity,
   dbPolarityToIconName,
   getCardFoilStyle,
+  getModCardFoilClass,
+  resolveModCardArt,
 } from './cardLayout';
 import { CardPreview } from './CardPreview';
 
@@ -22,6 +25,7 @@ export type ModPreviewDisplay = {
   rarity: ReturnType<typeof dbRarityToCardRarity>;
   polarity: ReturnType<typeof dbPolarityToIconName>;
   modArt: string;
+  modArtOverlay?: string;
   modName: string;
   modType: string;
   modDescription: string;
@@ -45,6 +49,7 @@ export function getModPreviewDisplay(
     slotPolarity?: string;
     umbraSetEquippedCount?: number;
     scale?: number;
+    atragraphModsEnabled?: boolean;
   },
 ): ModPreviewDisplay {
   const rank = options?.rank ?? 0;
@@ -67,7 +72,8 @@ export function getModPreviewDisplay(
       ? 'Riven'
       : dbRarityToCardRarity(mod.rarity, mod.name || mod.unique_name);
   const polarity = dbPolarityToIconName(mod.polarity);
-  const modArt = mod.image_path ? `/images${mod.image_path}` : '';
+  const atragraphModsEnabled = options?.atragraphModsEnabled ?? true;
+  const { modArt, modArtOverlay } = resolveModCardArt(mod, atragraphModsEnabled);
   const maxSetRank = mod.set_num_in_set ?? 0;
   const {
     mainDescription: description,
@@ -98,6 +104,7 @@ export function getModPreviewDisplay(
     rarity,
     polarity,
     modArt,
+    modArtOverlay: modArtOverlay || undefined,
     modName: mod.name,
     modType,
     modDescription: description,
@@ -160,12 +167,14 @@ export function ModCard({
 }: ModCardProps) {
   const [hovered, setHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const { atragraphModsEnabled } = useTheme();
 
   const {
     layout,
     rarity,
     polarity,
     modArt,
+    modArtOverlay,
     modName,
     modType,
     modDescription: description,
@@ -185,6 +194,7 @@ export function ModCard({
     slotPolarity,
     umbraSetEquippedCount,
     scale,
+    atragraphModsEnabled,
   });
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -227,6 +237,7 @@ export function ModCard({
         rarity={rarity}
         polarity={polarity}
         modArt={modArt}
+        modArtOverlay={modArtOverlay}
         modName={modName}
         modType={modType}
         modDescription={description}
@@ -453,12 +464,14 @@ function CollapsedHoverExpand({
             '--tilt-x': `${(tilt.px * 100).toFixed(1)}%`,
             '--tilt-y': `${(tilt.py * 100).toFixed(1)}%`,
             '--strip-fade': stripFade.toFixed(3),
-            ...getCardFoilStyle(previewProps.rarity, layout),
+            ...getCardFoilStyle(previewProps.rarity, layout, {
+              overlayPath: previewProps.modArtOverlay,
+            }),
           } as React.CSSProperties
         }
       >
         <CardPreview layout={layout} {...previewProps} />
-        <div className="mod-card-foil" aria-hidden />
+        <div className={getModCardFoilClass(previewProps.modArtOverlay)} aria-hidden />
       </div>
     </div>,
     document.body,

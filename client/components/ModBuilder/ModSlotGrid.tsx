@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 
+import { useTheme } from '../../context/ThemeContext';
 import {
   AP_ANY,
   AP_UMBRA,
@@ -22,6 +23,8 @@ import {
   DEFAULT_LAYOUT,
   dbRarityToCardRarity,
   getCardFoilStyle,
+  getModCardFoilClass,
+  resolveModCardArt,
 } from '../ModCard';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { SlotTypeIcon } from '../ui/SlotTypeIcon';
@@ -420,6 +423,7 @@ function SlotCell({
   label,
   readOnly = false,
 }: SlotCellProps) {
+  const { atragraphModsEnabled } = useTheme();
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
@@ -435,10 +439,19 @@ function SlotCell({
       ? 'Riven'
       : dbRarityToCardRarity(slot.mod.rarity, slot.mod.name || slot.mod.unique_name)
     : 'Empty';
-  const slotFoilStyle = getCardFoilStyle(slotModRarity, {
-    ...DEFAULT_LAYOUT,
-    scale: SLOT_SCALE,
-  });
+  const slotCardArt = slot.mod
+    ? resolveModCardArt(slot.mod, atragraphModsEnabled)
+    : { modArt: '', modArtOverlay: undefined, holoFoil: false };
+  const slotFoilStyle = getCardFoilStyle(
+    slotModRarity,
+    {
+      ...DEFAULT_LAYOUT,
+      scale: SLOT_SCALE,
+    },
+    slotCardArt.holoFoil && slotCardArt.modArtOverlay
+      ? { overlayPath: slotCardArt.modArtOverlay }
+      : undefined,
+  );
 
   const polarityLabel = slot.polarity ? POLARITY_LABELS[slot.polarity] || slot.polarity : 'None';
   const slotIconName =
@@ -555,7 +568,12 @@ function SlotCell({
                   collapsed={false}
                   scale={SLOT_SCALE}
                 />
-                <div className="mod-card-foil" aria-hidden />
+                <div
+                  className={getModCardFoilClass(
+                    slotCardArt.holoFoil ? slotCardArt.modArtOverlay : undefined,
+                  )}
+                  aria-hidden
+                />
                 <div
                   className={`absolute left-0 flex w-full items-center justify-center${readOnly ? ' pointer-events-none' : ''}`}
                   style={{

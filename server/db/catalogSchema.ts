@@ -128,6 +128,8 @@ const CATALOG_SCHEMA_SQL = `
       description TEXT,
       upgrade_entries TEXT,
       image_path TEXT,
+      atragraph_card_path TEXT,
+      foil_overlay_path TEXT,
       codex_secret INTEGER DEFAULT 0,
       exclude_from_codex INTEGER DEFAULT 0
     );
