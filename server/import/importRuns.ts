@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import type Database from 'better-sqlite3';
 
+import { normalizeStartupPipelineSummary } from '../../shared/pipelineSummary.js';
 import { getCatalogDb } from '../db/connection.js';
 import type { StartupPipelineSummary } from './pipelineSummary.js';
 
@@ -119,7 +120,7 @@ export function parseImportRunSteps(stepsJson: string | null): ImportRunSteps {
     const parsed = JSON.parse(stepsJson) as Partial<ImportRunSteps>;
     return {
       lines: Array.isArray(parsed.lines) ? parsed.lines : [],
-      summary: parsed.summary ?? null,
+      summary: normalizeStartupPipelineSummary(parsed.summary),
     };
   } catch {
     return { lines: [], summary: null };
