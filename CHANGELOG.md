@@ -294,3 +294,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.64.0** `feat` [#349](https://github.com/Dark-Avian-Labs/Armory/pull/349): atragraph mods
 - **v1.64.1** `fix` [#350](https://github.com/Dark-Avian-Labs/Armory/pull/350): admin panel
 - **v1.64.2** `fix` [#352](https://github.com/Dark-Avian-Labs/Armory/pull/352): styling
+- **v1.64.3** `fix` [#353](https://github.com/Dark-Avian-Labs/Armory/pull/353): mod styling
