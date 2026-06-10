@@ -100,14 +100,13 @@ function isNextSectionBoundary(node: cheerio.Cheerio<Element>): boolean {
 
 function forEachSiblingAfterHeading(
   heading: cheerio.Cheerio<Element>,
-  visit: (node: cheerio.Cheerio<Element>) => boolean | undefined,
+  visit: (node: cheerio.Cheerio<Element>) => boolean,
 ): void {
   for (const start of sectionStartNodes(heading)) {
     let node = start.next();
     while (node.length > 0) {
       if (isNextSectionBoundary(node)) return;
-      const shouldStop = visit(node);
-      if (shouldStop === true) return;
+      if (visit(node)) return;
       node = node.next();
     }
   }
@@ -159,6 +158,7 @@ function parseChecklistCompatibleMods($: cheerio.CheerioAPI): Map<string, string
         bySetKey.set(setKey, [...names]);
       }
     });
+    return false;
   });
 
   return bySetKey;
