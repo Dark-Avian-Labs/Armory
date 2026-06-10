@@ -235,23 +235,29 @@ export function CardPreview({
                   draggable={false}
                 />
                 <div
-                  className={`${getModCardFoilClass(modArtOverlay)} mod-card-art-foil`}
-                  style={
-                    {
-                      zIndex: 2,
-                      width: L.artWidth * s,
-                      height: L.artHeight * s,
-                      '--foil-color': getRarityFoilColor(rarity),
-                      '--foil-mask-image': `url('${modArtOverlay}')`,
-                      '--foil-mask-position': '0 0',
-                      '--foil-mask-size': '100% 100%',
-                      '--foil-fade-mask-image': artImageFadeMask ?? 'linear-gradient(black, black)',
-                      '--foil-fade-mask-position': '0 0',
-                      '--foil-fade-mask-size': '100% 100%',
-                    } as React.CSSProperties
-                  }
+                  className="absolute inset-0"
+                  style={{
+                    zIndex: 2,
+                    width: L.artWidth * s,
+                    height: L.artHeight * s,
+                    ...artImageMaskStyle,
+                  }}
                   aria-hidden
-                />
+                >
+                  <div
+                    className={`${getModCardFoilClass(modArtOverlay)} mod-card-art-foil`}
+                    style={
+                      {
+                        width: L.artWidth * s,
+                        height: L.artHeight * s,
+                        '--foil-color': getRarityFoilColor(rarity),
+                        '--foil-mask-image': `url('${modArtOverlay}')`,
+                        '--foil-mask-position': '0 0',
+                        '--foil-mask-size': '100% 100%',
+                      } as React.CSSProperties
+                    }
+                  />
+                </div>
               </>
             )}
           </div>
