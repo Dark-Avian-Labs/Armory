@@ -114,13 +114,21 @@ export function hasModHoloFoil(foilOverlayPath?: string): boolean {
 }
 
 export function getModCardFoilClass(foilOverlayPath?: string): string {
-  return hasModHoloFoil(foilOverlayPath) ? 'mod-card-foil mod-card-foil--holo' : 'mod-card-foil';
+  // Atragraph holo uses the wiki overlay on card art; skip the tilt flare layer (it washes out with holo).
+  if (hasModHoloFoil(foilOverlayPath)) return '';
+  return 'mod-card-foil';
 }
 
 export const ART_FADE_PX = 10;
 
-export function getArtFadeMask(scale: number): string {
-  return `linear-gradient(to bottom, black calc(100% - ${ART_FADE_PX * scale}px), transparent 100%)`;
+export function getArtFadeMask(scale: number, artHeight?: number, artClipHeight?: number): string {
+  const fadePx = ART_FADE_PX * scale;
+  if (!artHeight || !artClipHeight || artClipHeight >= artHeight) {
+    return `linear-gradient(to bottom, black calc(100% - ${fadePx}px), transparent 100%)`;
+  }
+  const fadeStartPercent = (Math.max(0, artClipHeight - fadePx) / artHeight) * 100;
+  const clipPercent = (artClipHeight / artHeight) * 100;
+  return `linear-gradient(to bottom, black ${fadeStartPercent.toFixed(2)}%, transparent ${clipPercent.toFixed(2)}%)`;
 }
 
 export function getArtClipHeight(

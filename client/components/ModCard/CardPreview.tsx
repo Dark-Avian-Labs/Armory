@@ -94,7 +94,7 @@ export function CardPreview({
 
   const effectiveContentY = collapsed ? L.contentAreaY : autoContentY;
   const artClipHeight = collapsed ? L.collapsedArtHeight : getArtClipHeight(L, effectiveContentY);
-  const artFadeMask = collapsed ? undefined : getArtFadeMask(s);
+  const artFadeMask = collapsed ? undefined : getArtFadeMask(s, L.artHeight, artClipHeight);
   const artImageMaskStyle = artFadeMask
     ? { maskImage: artFadeMask, WebkitMaskImage: artFadeMask }
     : undefined;

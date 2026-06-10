@@ -443,7 +443,10 @@ function SlotCell({
     ? resolveModCardArt(slot.mod, atragraphModsEnabled)
     : { modArt: '', modArtOverlay: undefined, holoFoil: false };
   const slotLayout = { ...DEFAULT_LAYOUT, scale: SLOT_SCALE };
-  const slotFoilStyle = getCardFoilStyle(slotModRarity, slotLayout);
+  const slotFoilStyle =
+    slotCardArt.holoFoil && slotCardArt.modArtOverlay
+      ? undefined
+      : getCardFoilStyle(slotModRarity, slotLayout);
 
   const polarityLabel = slot.polarity ? POLARITY_LABELS[slot.polarity] || slot.polarity : 'None';
   const slotIconName =
@@ -544,7 +547,7 @@ function SlotCell({
                 style={
                   {
                     width: SLOT_W,
-                    ...slotFoilStyle,
+                    ...(slotFoilStyle ?? {}),
                   } as React.CSSProperties
                 }
                 onMouseMove={(event) => applyCardTiltFromMouse(event.currentTarget, event)}
@@ -560,12 +563,16 @@ function SlotCell({
                   collapsed={false}
                   scale={SLOT_SCALE}
                 />
-                <div
-                  className={getModCardFoilClass(
-                    slotCardArt.holoFoil ? slotCardArt.modArtOverlay : undefined,
-                  )}
-                  aria-hidden
-                />
+                {getModCardFoilClass(
+                  slotCardArt.holoFoil ? slotCardArt.modArtOverlay : undefined,
+                ) ? (
+                  <div
+                    className={getModCardFoilClass(
+                      slotCardArt.holoFoil ? slotCardArt.modArtOverlay : undefined,
+                    )}
+                    aria-hidden
+                  />
+                ) : null}
                 <div
                   className={`absolute left-0 flex w-full items-center justify-center${readOnly ? ' pointer-events-none' : ''}`}
                   style={{
