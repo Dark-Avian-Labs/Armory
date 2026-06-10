@@ -449,6 +449,7 @@ function CollapsedHoverExpand({
     0,
     1 - Math.max(Math.abs(tilt.rx), Math.abs(tilt.ry)) / (CARD_HOVER_TILT_MAX_DEG / 2),
   );
+  const foilClass = getModCardFoilClass(previewProps.modArtOverlay);
 
   return createPortal(
     <div
@@ -465,12 +466,12 @@ function CollapsedHoverExpand({
             '--tilt-x': `${(tilt.px * 100).toFixed(1)}%`,
             '--tilt-y': `${(tilt.py * 100).toFixed(1)}%`,
             '--strip-fade': stripFade.toFixed(3),
-            ...getCardFoilStyle(previewProps.rarity, layout),
+            ...(previewProps.modArtOverlay ? {} : getCardFoilStyle(previewProps.rarity, layout)),
           } as React.CSSProperties
         }
       >
         <CardPreview layout={layout} {...previewProps} />
-        <div className={getModCardFoilClass(previewProps.modArtOverlay)} aria-hidden />
+        {foilClass ? <div className={foilClass} aria-hidden /> : null}
       </div>
     </div>,
     document.body,
