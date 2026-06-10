@@ -133,8 +133,25 @@ export function getArtClipHeight(
 export function getCardFoilStyle(
   rarity: Rarity,
   layout: CardLayout = DEFAULT_LAYOUT,
+  options?: { overlayPath?: string; artClipHeight?: number },
 ): Record<string, string> {
   const s = layout.scale;
+  const overlayPath = options?.overlayPath?.trim();
+
+  if (overlayPath) {
+    const artClipHeight = options?.artClipHeight ?? layout.artHeight;
+    const xPx = layout.artOffsetX * s;
+    const yPx = (layout.cardOffsetY + layout.artOffsetY) * s;
+    const wPx = layout.artWidth * s;
+    const hPx = artClipHeight * s;
+    return {
+      '--foil-color': getRarityFoilColor(rarity),
+      '--foil-mask-image': `url('${overlayPath}')`,
+      '--foil-mask-position': `${xPx.toFixed(1)}px ${yPx.toFixed(1)}px`,
+      '--foil-mask-size': `${wPx.toFixed(1)}px ${hPx.toFixed(1)}px`,
+    };
+  }
+
   const xPx = ((layout.cardWidth - layout.bgWidth) / 2 + layout.bgOffsetX) * s;
   const yPx = (layout.cardOffsetY + layout.bgOffsetY) * s;
   const wPx = layout.bgWidth * s;

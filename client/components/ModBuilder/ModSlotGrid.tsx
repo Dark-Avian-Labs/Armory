@@ -22,6 +22,7 @@ import {
   CARD_HOVER_TILT_MAX_DEG,
   DEFAULT_LAYOUT,
   dbRarityToCardRarity,
+  getArtClipHeight,
   getCardFoilStyle,
   getModCardFoilClass,
   resolveModCardArt,
@@ -443,7 +444,16 @@ function SlotCell({
     ? resolveModCardArt(slot.mod, atragraphModsEnabled)
     : { modArt: '', modArtOverlay: undefined, holoFoil: false };
   const slotLayout = { ...DEFAULT_LAYOUT, scale: SLOT_SCALE };
-  const slotFoilStyle = getCardFoilStyle(slotModRarity, slotLayout);
+  const slotFoilStyle = getCardFoilStyle(
+    slotModRarity,
+    slotLayout,
+    slotCardArt.holoFoil && slotCardArt.modArtOverlay
+      ? {
+          overlayPath: slotCardArt.modArtOverlay,
+          artClipHeight: getArtClipHeight(slotLayout),
+        }
+      : undefined,
+  );
 
   const polarityLabel = slot.polarity ? POLARITY_LABELS[slot.polarity] || slot.polarity : 'None';
   const slotIconName =
@@ -560,16 +570,12 @@ function SlotCell({
                   collapsed={false}
                   scale={SLOT_SCALE}
                 />
-                {getModCardFoilClass(
-                  slotCardArt.holoFoil ? slotCardArt.modArtOverlay : undefined,
-                ) ? (
-                  <div
-                    className={getModCardFoilClass(
-                      slotCardArt.holoFoil ? slotCardArt.modArtOverlay : undefined,
-                    )}
-                    aria-hidden
-                  />
-                ) : null}
+                <div
+                  className={getModCardFoilClass(
+                    slotCardArt.holoFoil ? slotCardArt.modArtOverlay : undefined,
+                  )}
+                  aria-hidden
+                />
                 <div
                   className={`absolute left-0 flex w-full items-center justify-center${readOnly ? ' pointer-events-none' : ''}`}
                   style={{
