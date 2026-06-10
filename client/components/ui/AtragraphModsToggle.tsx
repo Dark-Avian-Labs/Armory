@@ -5,23 +5,26 @@ export function AtragraphModsToggle() {
   const { atragraphModsEnabled, toggleAtragraphMods } = useTheme();
 
   return (
-    <div
-      className="user-menu-appearance"
+    <button
+      type="button"
+      className="user-menu-item flex items-center justify-between gap-2 text-left"
+      role="menuitemcheckbox"
+      aria-checked={atragraphModsEnabled}
       onMouseDown={(event) => event.stopPropagation()}
-      onClick={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        toggleAtragraphMods();
+      }}
     >
-      <button
-        type="button"
-        className="user-menu-toggle-row"
-        role="menuitemcheckbox"
-        aria-checked={atragraphModsEnabled}
-        onClick={toggleAtragraphMods}
-      >
-        <span className="user-menu-appearance-label mb-0">Atragraph Mods</span>
-        <span className="user-menu-toggle-indicator" aria-hidden="true">
-          {atragraphModsEnabled ? <MaterialSymbol name="check" style={{ fontSize: 18 }} /> : null}
-        </span>
-      </button>
-    </div>
+      <span>Atragraph mods</span>
+      {atragraphModsEnabled ? (
+        <MaterialSymbol
+          name="check"
+          className="text-accent shrink-0"
+          style={{ fontSize: 18 }}
+          aria-hidden
+        />
+      ) : null}
+    </button>
   );
 }

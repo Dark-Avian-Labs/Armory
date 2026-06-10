@@ -127,7 +127,9 @@ export function Layout() {
   useEffect(() => {
     const container = menuRef.current;
     if (!container) return;
-    const items = container.querySelectorAll<HTMLElement>('[role="menuitem"]');
+    const items = container.querySelectorAll<HTMLElement>(
+      '[role="menuitem"], [role="menuitemcheckbox"]',
+    );
     if (userMenuOpen && items.length > 0) {
       items[0].focus();
     }
@@ -140,7 +142,11 @@ export function Layout() {
   const handleUserMenuKeyDown = useCallback(
     (event: ReactKeyboardEvent) => {
       if (!userMenuOpen || !menuRef.current) return;
-      const items = Array.from(menuRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+      const items = Array.from(
+        menuRef.current.querySelectorAll<HTMLElement>(
+          '[role="menuitem"], [role="menuitemcheckbox"]',
+        ),
+      );
       if (items.length === 0) return;
       const activeIndex = items.findIndex((item) => item === document.activeElement);
       const first = items[0];
