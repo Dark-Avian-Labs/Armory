@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PIPELINE_STEPS, type PipelineStepKey } from '../../../shared/pipelineSteps';
+import {
+  normalizeStartupPipelineSummary,
+  resolvePipelineStepSummary,
+  type PipelineSummaryStepKey,
+} from '../../../shared/pipelineSummary';
 import type {
   StartupPipelineSummary,
   StepSummaryBase,
@@ -15,8 +20,6 @@ interface ImportLogLine {
   level: 'info' | 'error';
   message: string;
 }
-
-type ImportSummaryStepKey = Exclude<keyof StartupPipelineSummary, 'durationMs' | 'blockingIssues'>;
 
 interface RunImportOptions {
   forceImport?: boolean;
@@ -42,7 +45,7 @@ function formatImportSummaryLines(
   s: StartupPipelineSummary,
 ): Array<{ title: string; outcome: string; detail: string }> {
   return PIPELINE_STEPS.map(({ key, label }) => {
-    const step = s[key as ImportSummaryStepKey] as StepSummaryBase;
+    const step = resolvePipelineStepSummary(s, key as PipelineSummaryStepKey);
     return {
       title: label,
       outcome: step.outcome,
@@ -292,12 +295,12 @@ function DataImportAdmin() {
   };
 
   const stepOutcomes = useMemo(() => {
-    const summary = snapshot?.summary;
+    const summary = normalizeStartupPipelineSummary(snapshot?.summary ?? null);
     if (!summary) return new Map<PipelineStepKey, StepSummaryBase>();
     return new Map(
       PIPELINE_STEPS.map(({ key }) => [
         key,
-        summary[key as ImportSummaryStepKey] as StepSummaryBase,
+        resolvePipelineStepSummary(summary, key as PipelineSummaryStepKey),
       ]),
     );
   }, [snapshot?.summary]);
@@ -582,11 +585,17 @@ function DataImportAdmin() {
           <h2 className="text-foreground mb-2 text-lg font-semibold">
             Last Run Summary
             <span className="text-muted ml-2 text-xs font-normal">
-              ({(snapshot.summary.durationMs / 1000).toFixed(1)}s)
+              (
+              {(
+                (normalizeStartupPipelineSummary(snapshot.summary)?.durationMs ?? 0) / 1000
+              ).toFixed(1)}
+              s)
             </span>
           </h2>
           <ul className="list-none space-y-0 text-xs">
-            {formatImportSummaryLines(snapshot.summary).map((row) => (
+            {formatImportSummaryLines(
+              normalizeStartupPipelineSummary(snapshot.summary) ?? snapshot.summary,
+            ).map((row) => (
               <li
                 key={row.title}
                 className="border-border/60 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 border-b border-dashed py-2 last:border-0 sm:grid-cols-[minmax(10rem,14rem)_5.75rem_minmax(0,1fr)] sm:items-start sm:gap-y-1"

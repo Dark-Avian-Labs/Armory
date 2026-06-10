@@ -1,3 +1,4 @@
+import { normalizeStartupPipelineSummary } from '../../shared/pipelineSummary.js';
 import type { StartupPipelineSummary, SummaryOutcome } from '../../shared/pipelineSummaryTypes.js';
 
 export type { StartupPipelineSummary, SummaryOutcome };
@@ -25,7 +26,8 @@ function outcomeLabel(o: SummaryOutcome): string {
   }
 }
 
-export function printStartupPipelineSummary(s: StartupPipelineSummary): void {
+export function printStartupPipelineSummary(summary: StartupPipelineSummary): void {
+  const s = normalizeStartupPipelineSummary(summary) ?? summary;
   console.log(`\n${DIV}`);
   console.log(' Run summary — what ran and what changed');
   console.log(`${DIV}`);
