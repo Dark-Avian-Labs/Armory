@@ -226,6 +226,7 @@ export function CardPreview({
                   alt=""
                   className="mod-card-art-overlay absolute inset-0 object-cover"
                   style={{
+                    zIndex: 1,
                     width: L.artWidth * s,
                     height: L.artHeight * s,
                     objectPosition: 'center',
@@ -244,7 +245,6 @@ export function CardPreview({
                       '--foil-mask-image': `url('${modArtOverlay}')`,
                       '--foil-mask-position': '0 0',
                       '--foil-mask-size': '100% 100%',
-                      ...artImageMaskStyle,
                     } as React.CSSProperties
                   }
                   aria-hidden
