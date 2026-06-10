@@ -1356,6 +1356,8 @@ html.ui-clear .user-menu-select-trigger {
 .mod-card-art-overlay {
   mix-blend-mode: screen;
   pointer-events: none;
+  -webkit-mask-image: var(--mod-art-fade-mask, none);
+  mask-image: var(--mod-art-fade-mask, none);
 }
 
 .mod-card-foil {
@@ -1424,6 +1426,12 @@ html.ui-clear .user-menu-select-trigger {
       calc(82% * (0.6 + 0.4 * var(--strip-fade, 1)) * var(--foil-strength)),
     transparent
   );
+  --foil-flare: color-mix(
+    in oklch,
+    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 6%, white)
+      calc(94% * (0.5 + 0.5 * var(--strip-fade, 1)) * var(--foil-strength)),
+    transparent
+  );
   --foil-spot-hot: color-mix(
     in oklch,
     color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 18%, white) 62%,
@@ -1436,6 +1444,24 @@ html.ui-clear .user-menu-select-trigger {
   --foil-rainbow-d: color-mix(in oklch, var(--foil-color) 30%, oklch(86% 0.18 28));
 
   background-image:
+    linear-gradient(
+      calc(104deg + var(--tilt-rotate-y, 0deg) * -2.8 + var(--tilt-rotate-x, 0deg) * 1.4),
+      var(--foil-edge) 0%,
+      var(--foil-edge) 36%,
+      var(--foil-mid) 45%,
+      var(--foil-flare) 49%,
+      var(--foil-peak) 50%,
+      var(--foil-flare) 51%,
+      var(--foil-mid) 55%,
+      var(--foil-edge) 64%,
+      var(--foil-edge) 100%
+    ),
+    radial-gradient(
+      ellipse 90% 80% at var(--tilt-x, 50%) var(--tilt-y, 50%),
+      var(--foil-spot-hot) 0%,
+      var(--foil-spot-warm) 34%,
+      transparent 68%
+    ),
     conic-gradient(
       from calc(165deg + var(--tilt-rotate-y, 0deg) * 3.2 + var(--tilt-rotate-x, 0deg) * 1.6) at
         var(--tilt-x, 50%) var(--tilt-y, 50%),
@@ -1448,22 +1474,6 @@ html.ui-clear .user-menu-select-trigger {
       var(--foil-rainbow-d) 252deg,
       var(--foil-mid) 300deg,
       transparent 360deg
-    ),
-    linear-gradient(
-      calc(108deg + var(--tilt-rotate-y, 0deg) * -2.4 + var(--tilt-rotate-x, 0deg) * 1.2),
-      var(--foil-edge) 0%,
-      var(--foil-edge) 26%,
-      var(--foil-mid) 42%,
-      var(--foil-peak) 50%,
-      var(--foil-mid) 58%,
-      var(--foil-edge) 74%,
-      var(--foil-edge) 100%
-    ),
-    radial-gradient(
-      ellipse 90% 80% at var(--tilt-x, 50%) var(--tilt-y, 50%),
-      var(--foil-spot-hot) 0%,
-      var(--foil-spot-warm) 34%,
-      transparent 68%
     );
   opacity: 0.96;
   filter: hue-rotate(calc(var(--tilt-rotate-y, 0deg) * 1.1))

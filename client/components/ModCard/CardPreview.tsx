@@ -11,6 +11,8 @@ import {
   type Rarity,
   DEFAULT_LAYOUT,
   DAMAGE_COLORS,
+  getArtClipHeight,
+  getArtFadeMask,
   getRarityBorderColor,
   getModAsset,
 } from './cardLayout';
@@ -91,6 +93,8 @@ export function CardPreview({
   }, [L.descOffsetY, L.nameFontSize, L.descFontSize, s, collapsed]);
 
   const effectiveContentY = collapsed ? L.contentAreaY : autoContentY;
+  const artClipHeight = collapsed ? L.collapsedArtHeight : getArtClipHeight(L, effectiveContentY);
+  const artFadeMask = collapsed ? undefined : getArtFadeMask(s);
 
   const renderTextWithDamageIcons = (text: string, iconSize: number): React.ReactNode => {
     return text.split('\n').map((line, lineIndex) => (
@@ -185,16 +189,12 @@ export function CardPreview({
               left: L.artOffsetX * s,
               top: L.artOffsetY * s,
               width: L.artWidth * s,
-              height: collapsed
-                ? L.collapsedArtHeight * s
-                : Math.min(L.artHeight, Math.max(0, effectiveContentY - L.artOffsetY + 30)) * s,
+              height: artClipHeight * s,
               outline: showOutlines && !collapsed ? '1px dashed rgba(0,200,255,0.4)' : 'none',
-              maskImage: collapsed
-                ? 'none'
-                : `linear-gradient(to bottom, black calc(100% - ${10 * s}px), transparent 100%)`,
-              WebkitMaskImage: collapsed
-                ? 'none'
-                : `linear-gradient(to bottom, black calc(100% - ${10 * s}px), transparent 100%)`,
+              isolation: collapsed ? undefined : 'isolate',
+              ['--mod-art-fade-mask' as string]: artFadeMask,
+              maskImage: artFadeMask ?? 'none',
+              WebkitMaskImage: artFadeMask ?? 'none',
             }}
           >
             <img

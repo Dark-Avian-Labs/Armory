@@ -22,6 +22,7 @@ import {
   CARD_HOVER_TILT_MAX_DEG,
   DEFAULT_LAYOUT,
   dbRarityToCardRarity,
+  getArtClipHeight,
   getCardFoilStyle,
   getModCardFoilClass,
   resolveModCardArt,
@@ -442,14 +443,15 @@ function SlotCell({
   const slotCardArt = slot.mod
     ? resolveModCardArt(slot.mod, atragraphModsEnabled)
     : { modArt: '', modArtOverlay: undefined, holoFoil: false };
+  const slotLayout = { ...DEFAULT_LAYOUT, scale: SLOT_SCALE };
   const slotFoilStyle = getCardFoilStyle(
     slotModRarity,
-    {
-      ...DEFAULT_LAYOUT,
-      scale: SLOT_SCALE,
-    },
+    slotLayout,
     slotCardArt.holoFoil && slotCardArt.modArtOverlay
-      ? { overlayPath: slotCardArt.modArtOverlay }
+      ? {
+          overlayPath: slotCardArt.modArtOverlay,
+          artClipHeight: getArtClipHeight(slotLayout),
+        }
       : undefined,
   );
 
