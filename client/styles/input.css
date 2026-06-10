@@ -1411,49 +1411,24 @@ html.ui-clear .user-menu-select-trigger {
 }
 
 .mod-card-foil--holo {
-  --foil-strength: 1;
-  --foil-mid: color-mix(
-    in oklch,
-    var(--foil-color, oklch(78% 0.12 75))
-      calc(54% * (0.55 + 0.45 * var(--strip-fade, 1)) * var(--foil-strength)),
-    transparent
-  );
   --foil-peak: color-mix(
     in oklch,
     color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 12%, white)
-      calc(82% * (0.6 + 0.4 * var(--strip-fade, 1)) * var(--foil-strength)),
-    transparent
-  );
-  --foil-flare: color-mix(
-    in oklch,
-    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 6%, white)
-      calc(94% * (0.5 + 0.5 * var(--strip-fade, 1)) * var(--foil-strength)),
+      calc(58% * (0.6 + 0.4 * var(--strip-fade, 1))),
     transparent
   );
   --foil-spot-hot: color-mix(
     in oklch,
-    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 18%, white) 62%,
+    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 18%, white) 48%,
     transparent
   );
-  --foil-spot-warm: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 28%, transparent);
+  --foil-spot-warm: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 22%, transparent);
   --foil-rainbow-a: color-mix(in oklch, var(--foil-color) 42%, oklch(84% 0.24 318));
   --foil-rainbow-b: color-mix(in oklch, var(--foil-color) 36%, oklch(90% 0.22 92));
   --foil-rainbow-c: color-mix(in oklch, var(--foil-color) 34%, oklch(80% 0.2 208));
   --foil-rainbow-d: color-mix(in oklch, var(--foil-color) 30%, oklch(86% 0.18 28));
 
   background-image:
-    linear-gradient(
-      calc(104deg + var(--tilt-rotate-y, 0deg) * -2.8 + var(--tilt-rotate-x, 0deg) * 1.4),
-      var(--foil-edge) 0%,
-      var(--foil-edge) 36%,
-      var(--foil-mid) 45%,
-      var(--foil-flare) 49%,
-      var(--foil-peak) 50%,
-      var(--foil-flare) 51%,
-      var(--foil-mid) 55%,
-      var(--foil-edge) 64%,
-      var(--foil-edge) 100%
-    ),
     radial-gradient(
       ellipse 90% 80% at var(--tilt-x, 50%) var(--tilt-y, 50%),
       var(--foil-spot-hot) 0%,
@@ -1473,9 +1448,9 @@ html.ui-clear .user-menu-select-trigger {
       var(--foil-mid) 300deg,
       transparent 360deg
     );
-  opacity: 0.96;
+  opacity: 0.88;
   filter: hue-rotate(calc(var(--tilt-rotate-y, 0deg) * 1.1))
-    saturate(calc(1.25 + var(--strip-fade, 1) * 0.35)) contrast(1.08);
+    saturate(calc(1.1 + var(--strip-fade, 1) * 0.2)) contrast(1.04);
 }
 
 html:not(.dark) .mod-card-foil {

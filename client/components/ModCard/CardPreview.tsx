@@ -94,8 +94,8 @@ export function CardPreview({
 
   const effectiveContentY = collapsed ? L.contentAreaY : autoContentY;
   const artClipHeight = collapsed ? L.collapsedArtHeight : getArtClipHeight(L, effectiveContentY);
-  const artFadeMask = collapsed ? undefined : getArtFadeMask(s, L.artHeight, artClipHeight);
-  const artImageMaskStyle = artFadeMask
+  const artFadeMask = collapsed ? undefined : getArtFadeMask(s);
+  const artClipMaskStyle = artFadeMask
     ? { maskImage: artFadeMask, WebkitMaskImage: artFadeMask }
     : undefined;
 
@@ -194,6 +194,7 @@ export function CardPreview({
               width: L.artWidth * s,
               height: artClipHeight * s,
               outline: showOutlines && !collapsed ? '1px dashed rgba(0,200,255,0.4)' : 'none',
+              ...artClipMaskStyle,
             }}
           >
             <img
@@ -205,7 +206,6 @@ export function CardPreview({
                 height: L.artHeight * s,
                 filter: collapsed ? 'grayscale(0.8) brightness(0.4)' : 'none',
                 objectPosition: collapsed ? 'center top' : 'center',
-                ...artImageMaskStyle,
               }}
               draggable={false}
             />
@@ -218,7 +218,6 @@ export function CardPreview({
                   width: L.artWidth * s,
                   height: L.artHeight * s,
                   objectPosition: 'center',
-                  ...artImageMaskStyle,
                 }}
                 draggable={false}
               />
