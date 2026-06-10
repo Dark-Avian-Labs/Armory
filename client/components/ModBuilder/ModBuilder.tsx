@@ -61,7 +61,7 @@ import {
 import { parseIncarnonData, weaponHasIncarnon } from '../../utils/incarnonStats';
 import { catalogKeyForMod, hydrateSlotsWithModCatalog } from '../../utils/modCatalogHydration';
 import { isModLockedOut, isPostureMod } from '../../utils/modFiltering';
-import { isWeaponExilusMod } from '../../utils/modMetadata';
+import { canPlaceModInSlot, findEmptySlotForMod } from '../../utils/modPlacement';
 import {
   createRivenMod,
   getRivenStatsForType,
@@ -1113,29 +1113,7 @@ export function ModBuilder() {
     autoInstallStanceMod,
   ]);
 
-  const canPlaceModInSlot = (mod: Mod, slotType: ModSlot['type']): boolean => {
-    const modType = (mod.type || '').toUpperCase();
-    if (slotType === 'aura' && modType !== 'AURA') return false;
-    if (slotType === 'stance' && (modType !== 'STANCE' || isPostureMod(mod))) {
-      return false;
-    }
-    if (
-      slotType === 'stance' &&
-      selectedRequiredExaltedStanceName &&
-      mod.name.trim().toLowerCase() !== selectedRequiredExaltedStanceName.toLowerCase()
-    ) {
-      return false;
-    }
-    if (slotType === 'posture' && (modType !== 'STANCE' || !isPostureMod(mod))) {
-      return false;
-    }
-    if (slotType === 'exilus' && !isWeaponExilusMod(mod)) return false;
-    if (slotType === 'general') {
-      if (modType === 'AURA' || modType === 'STANCE') return false;
-      if (isWeaponExilusMod(mod)) return false;
-    }
-    return true;
-  };
+  const placementOptions = { requiredExaltedStanceName: selectedRequiredExaltedStanceName };
 
   const [searchResetKey, setSearchResetKey] = useState(0);
   const openRivenEditorForSlotRef = useRef<number | null>(null);
@@ -1166,7 +1144,9 @@ export function ModBuilder() {
         if (!targetSlot) return prev;
 
         if (isRivenPlaceholder && targetSlot.type !== 'general') return prev;
-        if (!isRivenPlaceholder && !canPlaceModInSlot(mod, targetSlot.type)) return prev;
+        if (!isRivenPlaceholder && !canPlaceModInSlot(mod, targetSlot.type, placementOptions)) {
+          return prev;
+        }
 
         if (isRivenPlaceholder) {
           if (targetSlot.mod && isRivenMod(targetSlot.mod)) {
@@ -1217,7 +1197,7 @@ export function ModBuilder() {
       }
       setSearchResetKey((k) => k + 1);
     },
-    [getDefaultRivenConfig, readOnly],
+    [getDefaultRivenConfig, placementOptions, readOnly],
   );
 
   const handleSetRankChange = useCallback(
@@ -1241,61 +1221,65 @@ export function ModBuilder() {
     [readOnly],
   );
 
-  const handleModSwap = useCallback((sourceIndex: number, targetIndex: number) => {
-    if (sourceIndex === targetIndex) return;
+  const handleModSwap = useCallback(
+    (sourceIndex: number, targetIndex: number) => {
+      if (sourceIndex === targetIndex) return;
 
-    setSlots((prev) => {
-      const source = prev.find((s) => s.index === sourceIndex);
-      const target = prev.find((s) => s.index === targetIndex);
-      if (!source || !target || !source.mod) return prev;
+      setSlots((prev) => {
+        const source = prev.find((s) => s.index === sourceIndex);
+        const target = prev.find((s) => s.index === targetIndex);
+        if (!source || !target || !source.mod) return prev;
 
-      const sourceMod = source.mod;
-      const sourceRank = source.rank;
-      const sourceSetRank = source.setRank;
-      const sourceRivenConfig = source.riven_config;
-      const sourceRivenArt = source.riven_art_path;
-      const targetMod = target.mod;
-      const targetRank = target.rank;
-      const targetSetRank = target.setRank;
-      const targetRivenConfig = target.riven_config;
-      const targetRivenArt = target.riven_art_path;
+        const sourceMod = source.mod;
+        const sourceRank = source.rank;
+        const sourceSetRank = source.setRank;
+        const sourceRivenConfig = source.riven_config;
+        const sourceRivenArt = source.riven_art_path;
+        const targetMod = target.mod;
+        const targetRank = target.rank;
+        const targetSetRank = target.setRank;
+        const targetRivenConfig = target.riven_config;
+        const targetRivenArt = target.riven_art_path;
 
-      if (!canPlaceModInSlot(sourceMod, target.type)) return prev;
+        if (!canPlaceModInSlot(sourceMod, target.type, placementOptions)) return prev;
 
-      if (targetMod && !canPlaceModInSlot(targetMod, source.type)) return prev;
+        if (targetMod && !canPlaceModInSlot(targetMod, source.type, placementOptions)) return prev;
 
-      const otherMods = prev
-        .filter((s) => s.mod && s.index !== sourceIndex && s.index !== targetIndex)
-        .map((s) => s.mod!);
+        const otherMods = prev
+          .filter((s) => s.mod && s.index !== sourceIndex && s.index !== targetIndex)
+          .map((s) => s.mod!);
 
-      if (isModLockedOut(sourceMod, [...otherMods, ...(targetMod ? [targetMod] : [])])) return prev;
+        if (isModLockedOut(sourceMod, [...otherMods, ...(targetMod ? [targetMod] : [])]))
+          return prev;
 
-      if (targetMod && isModLockedOut(targetMod, [...otherMods, sourceMod])) return prev;
+        if (targetMod && isModLockedOut(targetMod, [...otherMods, sourceMod])) return prev;
 
-      const swapped = prev.map((s) => {
-        if (s.index === targetIndex)
-          return {
-            ...s,
-            mod: sourceMod,
-            rank: sourceRank,
-            setRank: sourceSetRank,
-            riven_config: sourceRivenConfig,
-            riven_art_path: sourceRivenArt,
-          };
-        if (s.index === sourceIndex)
-          return {
-            ...s,
-            mod: targetMod,
-            rank: targetRank,
-            setRank: targetSetRank,
-            riven_config: targetRivenConfig,
-            riven_art_path: targetRivenArt,
-          };
-        return s;
+        const swapped = prev.map((s) => {
+          if (s.index === targetIndex)
+            return {
+              ...s,
+              mod: sourceMod,
+              rank: sourceRank,
+              setRank: sourceSetRank,
+              riven_config: sourceRivenConfig,
+              riven_art_path: sourceRivenArt,
+            };
+          if (s.index === sourceIndex)
+            return {
+              ...s,
+              mod: targetMod,
+              rank: targetRank,
+              setRank: targetSetRank,
+              riven_config: targetRivenConfig,
+              riven_art_path: targetRivenArt,
+            };
+          return s;
+        });
+        return applySetPieceDelta(prev, swapped);
       });
-      return applySetPieceDelta(prev, swapped);
-    });
-  }, []);
+    },
+    [placementOptions],
+  );
 
   const handleModRemove = useCallback(
     (slotIndex: number) => {
@@ -2264,28 +2248,11 @@ export function ModBuilder() {
                           }
                         }}
                         onModSelect={(mod) => {
-                          const modType = (mod.type || '').toUpperCase();
-                          const isRivenPlaceholder = mod.unique_name === RIVEN_PLACEHOLDER_UNIQUE;
-                          const exilusMod = isWeaponExilusMod(mod);
-                          let emptySlot;
-
-                          if (activeSlotType) {
-                            const targetType = isRivenPlaceholder ? 'general' : activeSlotType;
-                            if (exilusMod && targetType === 'general') {
-                              emptySlot = slots.find((s) => !s.mod && s.type === 'exilus');
-                            } else {
-                              emptySlot = slots.find((s) => !s.mod && s.type === targetType);
-                            }
-                          } else if (modType === 'AURA') {
-                            emptySlot = slots.find((s) => !s.mod && s.type === 'aura');
-                          } else if (modType === 'STANCE') {
-                            const stanceSlotType = isPostureMod(mod) ? 'posture' : 'stance';
-                            emptySlot = slots.find((s) => !s.mod && s.type === stanceSlotType);
-                          } else if (exilusMod) {
-                            emptySlot = slots.find((s) => !s.mod && s.type === 'exilus');
-                          } else {
-                            emptySlot = slots.find((s) => !s.mod && s.type === 'general');
-                          }
+                          const emptySlot = findEmptySlotForMod(slots, mod, {
+                            ...placementOptions,
+                            activeSlotType: activeSlotType,
+                            isRivenPlaceholder: mod.unique_name === RIVEN_PLACEHOLDER_UNIQUE,
+                          });
 
                           if (emptySlot) {
                             handleModDrop(emptySlot.index, mod);
