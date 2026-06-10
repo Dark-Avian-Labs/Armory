@@ -1356,8 +1356,6 @@ html.ui-clear .user-menu-select-trigger {
 .mod-card-art-overlay {
   mix-blend-mode: screen;
   pointer-events: none;
-  -webkit-mask-image: var(--mod-art-fade-mask, none);
-  mask-image: var(--mod-art-fade-mask, none);
 }
 
 .mod-card-foil {
