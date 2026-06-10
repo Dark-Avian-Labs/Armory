@@ -988,43 +988,6 @@ html.ui-clear:not(.dark) {
     color: var(--color-muted);
   }
 
-  .user-menu-appearance-label.mb-0 {
-    margin-bottom: 0;
-  }
-
-  .user-menu-toggle-row {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    border: 1px solid var(--color-glass-border);
-    border-radius: 10px;
-    padding: 8px 10px;
-    background: var(--color-glass-hover);
-    color: var(--color-foreground);
-    cursor: pointer;
-    transition:
-      border-color 0.15s ease,
-      background-color 0.15s ease;
-  }
-
-  .user-menu-toggle-row:hover,
-  .user-menu-toggle-row:focus-visible {
-    border-color: var(--color-glass-border-hover);
-    background: var(--color-glass-active);
-    outline: none;
-  }
-
-  .user-menu-toggle-indicator {
-    display: inline-flex;
-    width: 18px;
-    height: 18px;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-accent);
-  }
-
   .user-menu-select-trigger {
     width: 100%;
     border: 1px solid var(--color-glass-border);
