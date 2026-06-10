@@ -290,3 +290,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.63.3** `security` [#341](https://github.com/Dark-Avian-Labs/Armory/pull/341): fix tar vuln
 - **v1.63.4** `fix` [#343](https://github.com/Dark-Avian-Labs/Armory/pull/343): forma calculation
 - **v1.63.5** `fix` [#344](https://github.com/Dark-Avian-Labs/Armory/pull/344): border hover
+- **v1.63.6** `chore` [#347](https://github.com/Dark-Avian-Labs/Armory/pull/347): some style changes
