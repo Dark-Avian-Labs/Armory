@@ -17,7 +17,6 @@ import {
   CardPreview,
   DEFAULT_LAYOUT,
   dbRarityToCardRarity,
-  getArtClipHeight,
   getCardFoilStyle,
   getModCardFoilClass,
   resolveModCardArt,
@@ -523,10 +522,7 @@ const ModPickerCard = memo(function ModPickerCard({
   const cardArt = resolveModCardArt(mod, atragraphModsEnabled);
   const foilStyle =
     expanded && cardArt.holoFoil && cardArt.modArtOverlay
-      ? getCardFoilStyle(rarity, layout, {
-          overlayPath: cardArt.modArtOverlay,
-          artClipHeight: getArtClipHeight(layout),
-        })
+      ? getCardFoilStyle(rarity, layout)
       : undefined;
 
   return (

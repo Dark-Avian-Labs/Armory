@@ -95,6 +95,9 @@ export function CardPreview({
   const effectiveContentY = collapsed ? L.contentAreaY : autoContentY;
   const artClipHeight = collapsed ? L.collapsedArtHeight : getArtClipHeight(L, effectiveContentY);
   const artFadeMask = collapsed ? undefined : getArtFadeMask(s);
+  const artImageMaskStyle = artFadeMask
+    ? { maskImage: artFadeMask, WebkitMaskImage: artFadeMask }
+    : undefined;
 
   const renderTextWithDamageIcons = (text: string, iconSize: number): React.ReactNode => {
     return text.split('\n').map((line, lineIndex) => (
@@ -191,10 +194,6 @@ export function CardPreview({
               width: L.artWidth * s,
               height: artClipHeight * s,
               outline: showOutlines && !collapsed ? '1px dashed rgba(0,200,255,0.4)' : 'none',
-              isolation: collapsed ? undefined : 'isolate',
-              ['--mod-art-fade-mask' as string]: artFadeMask,
-              maskImage: artFadeMask ?? 'none',
-              WebkitMaskImage: artFadeMask ?? 'none',
             }}
           >
             <img
@@ -206,6 +205,7 @@ export function CardPreview({
                 height: L.artHeight * s,
                 filter: collapsed ? 'grayscale(0.8) brightness(0.4)' : 'none',
                 objectPosition: collapsed ? 'center top' : 'center',
+                ...artImageMaskStyle,
               }}
               draggable={false}
             />
@@ -218,6 +218,7 @@ export function CardPreview({
                   width: L.artWidth * s,
                   height: L.artHeight * s,
                   objectPosition: 'center',
+                  ...artImageMaskStyle,
                 }}
                 draggable={false}
               />
