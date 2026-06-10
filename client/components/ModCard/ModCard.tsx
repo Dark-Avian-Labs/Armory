@@ -12,6 +12,7 @@ import {
   DEFAULT_LAYOUT,
   dbRarityToCardRarity,
   dbPolarityToIconName,
+  getArtClipHeight,
   getCardFoilStyle,
   getModCardFoilClass,
   resolveModCardArt,
@@ -260,6 +261,7 @@ export function ModCard({
           rarity={rarity}
           polarity={polarity}
           modArt={modArt}
+          modArtOverlay={modArtOverlay}
           modName={modName}
           modType={modType}
           modDescription={description}
@@ -466,6 +468,7 @@ function CollapsedHoverExpand({
             '--strip-fade': stripFade.toFixed(3),
             ...getCardFoilStyle(previewProps.rarity, layout, {
               overlayPath: previewProps.modArtOverlay,
+              artClipHeight: getArtClipHeight(layout),
             }),
           } as React.CSSProperties
         }

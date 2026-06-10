@@ -10,6 +10,8 @@ export {
   DAMAGE_COLORS,
   getRarityBorderColor,
   getRarityFoilColor,
+  getArtClipHeight,
+  getArtFadeMask,
   getCardFoilStyle,
   getModCardFoilClass,
   hasModHoloFoil,

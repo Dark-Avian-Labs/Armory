@@ -117,19 +117,33 @@ export function getModCardFoilClass(foilOverlayPath?: string): string {
   return hasModHoloFoil(foilOverlayPath) ? 'mod-card-foil mod-card-foil--holo' : 'mod-card-foil';
 }
 
+export const ART_FADE_PX = 10;
+
+export function getArtFadeMask(scale: number): string {
+  return `linear-gradient(to bottom, black calc(100% - ${ART_FADE_PX * scale}px), transparent 100%)`;
+}
+
+export function getArtClipHeight(
+  layout: CardLayout,
+  contentAreaY: number = layout.contentAreaY,
+): number {
+  return Math.min(layout.artHeight, Math.max(0, contentAreaY - layout.artOffsetY + 30));
+}
+
 export function getCardFoilStyle(
   rarity: Rarity,
   layout: CardLayout = DEFAULT_LAYOUT,
-  options?: { overlayPath?: string },
+  options?: { overlayPath?: string; artClipHeight?: number },
 ): Record<string, string> {
   const s = layout.scale;
   const overlayPath = options?.overlayPath?.trim();
+  const artClipHeight = options?.artClipHeight ?? layout.artHeight;
 
   if (overlayPath) {
     const xPx = layout.artOffsetX * s;
     const yPx = (layout.cardOffsetY + layout.artOffsetY) * s;
     const wPx = layout.artWidth * s;
-    const hPx = layout.artHeight * s;
+    const hPx = artClipHeight * s;
     return {
       '--foil-color': getRarityFoilColor(rarity),
       '--foil-mask-image': `url('${overlayPath}')`,

@@ -1,5 +1,6 @@
 import { memo, useState, useMemo, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 
+import { useTheme } from '../../context/ThemeContext';
 import { useApi } from '../../hooks/useApi';
 import type { Mod, ModRarity, EquipmentType } from '../../types/warframe';
 import { getModTypesForEquipment, NO_MOD_TYPES_FOR_EQUIPMENT } from '../../utils/equipmentModTypes';
@@ -11,7 +12,16 @@ import {
   getRequiredExaltedStanceName,
 } from '../../utils/specialItems';
 import { countEquippedUmbraSetModsFromModList } from '../../utils/umbraSet';
-import { ModCard, CardPreview, DEFAULT_LAYOUT } from '../ModCard';
+import {
+  ModCard,
+  CardPreview,
+  DEFAULT_LAYOUT,
+  dbRarityToCardRarity,
+  getArtClipHeight,
+  getCardFoilStyle,
+  getModCardFoilClass,
+  resolveModCardArt,
+} from '../ModCard';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface FilterPanelProps {
@@ -507,20 +517,37 @@ const ModPickerCard = memo(function ModPickerCard({
   umbraSetEquippedCount: number;
   onPick: (mod: Mod, locked: boolean) => void;
 }) {
+  const { atragraphModsEnabled } = useTheme();
+  const layout = { ...DEFAULT_LAYOUT, scale };
+  const rarity = dbRarityToCardRarity(mod.rarity, mod.name || mod.unique_name);
+  const cardArt = resolveModCardArt(mod, atragraphModsEnabled);
+  const foilStyle =
+    expanded && cardArt.holoFoil && cardArt.modArtOverlay
+      ? getCardFoilStyle(rarity, layout, {
+          overlayPath: cardArt.modArtOverlay,
+          artClipHeight: getArtClipHeight(layout),
+        })
+      : undefined;
+
   return (
     <div
       onClick={() => onPick(mod, locked)}
       className={`${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
-      <ModCard
-        mod={mod}
-        rank={mod.fusion_limit ?? 0}
-        draggable={!locked}
-        lockedOut={locked}
-        scale={scale}
-        umbraSetEquippedCount={umbraSetEquippedCount}
-        collapsed={!expanded}
-      />
+      <div className={expanded ? 'relative' : undefined} style={foilStyle}>
+        <ModCard
+          mod={mod}
+          rank={mod.fusion_limit ?? 0}
+          draggable={!locked}
+          lockedOut={locked}
+          scale={scale}
+          umbraSetEquippedCount={umbraSetEquippedCount}
+          collapsed={!expanded}
+        />
+        {expanded && cardArt.holoFoil && cardArt.modArtOverlay ? (
+          <div className={getModCardFoilClass(cardArt.modArtOverlay)} aria-hidden />
+        ) : null}
+      </div>
     </div>
   );
 });
