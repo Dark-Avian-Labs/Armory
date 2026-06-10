@@ -1,6 +1,5 @@
 import { memo, useState, useMemo, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 
-import { useTheme } from '../../context/ThemeContext';
 import { useApi } from '../../hooks/useApi';
 import type { Mod, ModRarity, EquipmentType } from '../../types/warframe';
 import { getModTypesForEquipment, NO_MOD_TYPES_FOR_EQUIPMENT } from '../../utils/equipmentModTypes';
@@ -12,15 +11,7 @@ import {
   getRequiredExaltedStanceName,
 } from '../../utils/specialItems';
 import { countEquippedUmbraSetModsFromModList } from '../../utils/umbraSet';
-import {
-  ModCard,
-  ModCardHoloFoil,
-  CardPreview,
-  DEFAULT_LAYOUT,
-  dbRarityToCardRarity,
-  getArtClipHeight,
-  resolveModCardArt,
-} from '../ModCard';
+import { ModCard, CardPreview, DEFAULT_LAYOUT } from '../ModCard';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface FilterPanelProps {
@@ -516,13 +507,6 @@ const ModPickerCard = memo(function ModPickerCard({
   umbraSetEquippedCount: number;
   onPick: (mod: Mod, locked: boolean) => void;
 }) {
-  const { atragraphModsEnabled } = useTheme();
-  const layout = { ...DEFAULT_LAYOUT, scale };
-  const rarity = dbRarityToCardRarity(mod.rarity, mod.name || mod.unique_name);
-  const cardArt = resolveModCardArt(mod, atragraphModsEnabled);
-  const holoOverlay =
-    expanded && cardArt.holoFoil && cardArt.modArtOverlay ? cardArt.modArtOverlay : undefined;
-
   return (
     <div
       onClick={() => onPick(mod, locked)}
@@ -538,14 +522,6 @@ const ModPickerCard = memo(function ModPickerCard({
           umbraSetEquippedCount={umbraSetEquippedCount}
           collapsed={!expanded}
         />
-        {holoOverlay ? (
-          <ModCardHoloFoil
-            overlayPath={holoOverlay}
-            rarity={rarity}
-            layout={layout}
-            artClipHeight={getArtClipHeight(layout)}
-          />
-        ) : null}
       </div>
     </div>
   );

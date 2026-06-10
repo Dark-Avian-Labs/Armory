@@ -1410,16 +1410,14 @@ html.ui-clear .user-menu-select-trigger {
   mix-blend-mode: color-dodge;
 }
 
-.mod-card-foil-clip {
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.mod-card-foil-clip > .mod-card-foil--holo {
+.mod-card-art-foil {
+  position: absolute;
+  top: 0;
+  left: 0;
   inset: auto;
   right: auto;
   bottom: auto;
+  pointer-events: none;
 }
 
 .mod-card-foil--holo {

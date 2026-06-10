@@ -12,14 +12,9 @@ import {
   DEFAULT_LAYOUT,
   dbRarityToCardRarity,
   dbPolarityToIconName,
-  getArtClipHeight,
   getCardFoilStyle,
   getModCardFoilClass,
-  getModCardHoloFoilClipStyle,
-  getModCardHoloFoilInnerStyle,
   resolveModCardArt,
-  type CardLayout,
-  type Rarity,
 } from './cardLayout';
 import { CardPreview } from './CardPreview';
 
@@ -474,16 +469,7 @@ function CollapsedHoverExpand({
         }
       >
         <CardPreview layout={layout} {...previewProps} />
-        {previewProps.modArtOverlay ? (
-          <ModCardHoloFoil
-            overlayPath={previewProps.modArtOverlay}
-            rarity={previewProps.rarity}
-            layout={layout}
-            artClipHeight={getArtClipHeight(layout)}
-          />
-        ) : (
-          <div className={getModCardFoilClass()} aria-hidden />
-        )}
+        {!previewProps.modArtOverlay ? <div className={getModCardFoilClass()} aria-hidden /> : null}
       </div>
     </div>,
     document.body,
@@ -546,38 +532,6 @@ function SetRankDots({
           />
         );
       })}
-    </div>
-  );
-}
-
-export function ModCardHoloFoil({
-  overlayPath,
-  rarity,
-  layout,
-  artClipHeight,
-}: {
-  overlayPath: string;
-  rarity: Rarity;
-  layout: CardLayout;
-  artClipHeight: number;
-}) {
-  return (
-    <div
-      className="mod-card-foil-clip"
-      style={getModCardHoloFoilClipStyle(layout, artClipHeight) as React.CSSProperties}
-    >
-      <div
-        className={getModCardFoilClass(overlayPath)}
-        style={
-          getModCardHoloFoilInnerStyle(
-            overlayPath,
-            rarity,
-            layout,
-            artClipHeight,
-          ) as React.CSSProperties
-        }
-        aria-hidden
-      />
     </div>
   );
 }

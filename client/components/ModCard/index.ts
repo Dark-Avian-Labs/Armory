@@ -1,4 +1,4 @@
-export { ModCard, ModCardHoloFoil } from './ModCard';
+export { ModCard } from './ModCard';
 export { CardPreview } from './CardPreview';
 export { ArcaneCardPreview } from './ArcaneCardPreview';
 export {
@@ -15,8 +15,6 @@ export {
   getArtFadeMaskForImage,
   getCardFoilStyle,
   getModCardFoilClass,
-  getModCardHoloFoilClipStyle,
-  getModCardHoloFoilInnerStyle,
   hasModHoloFoil,
   modImageUrl,
   resolveModCardArt,
