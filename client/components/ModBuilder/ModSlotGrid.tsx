@@ -18,12 +18,10 @@ import { isSlotTypeName } from '../../utils/slotIcons';
 import { countEquippedUmbraSetMods, isUmbraSelfScalingSetMod } from '../../utils/umbraSet';
 import {
   ModCard,
-  ModCardHoloFoil,
   CardPreview,
   CARD_HOVER_TILT_MAX_DEG,
   DEFAULT_LAYOUT,
   dbRarityToCardRarity,
-  getArtClipHeight,
   getCardFoilStyle,
   getModCardFoilClass,
   resolveModCardArt,
@@ -563,16 +561,7 @@ function SlotCell({
                   collapsed={false}
                   scale={SLOT_SCALE}
                 />
-                {slotHoloFoil && slotCardArt.modArtOverlay ? (
-                  <ModCardHoloFoil
-                    overlayPath={slotCardArt.modArtOverlay}
-                    rarity={slotModRarity}
-                    layout={slotLayout}
-                    artClipHeight={getArtClipHeight(slotLayout)}
-                  />
-                ) : (
-                  <div className={getModCardFoilClass()} aria-hidden />
-                )}
+                {!slotHoloFoil ? <div className={getModCardFoilClass()} aria-hidden /> : null}
                 <div
                   className={`absolute left-0 flex w-full items-center justify-center${readOnly ? ' pointer-events-none' : ''}`}
                   style={{

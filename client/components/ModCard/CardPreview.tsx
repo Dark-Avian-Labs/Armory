@@ -14,7 +14,9 @@ import {
   getArtClipHeight,
   getArtFadeMask,
   getArtFadeMaskForImage,
+  getModCardFoilClass,
   getRarityBorderColor,
+  getRarityFoilColor,
   getModAsset,
 } from './cardLayout';
 
@@ -218,18 +220,36 @@ export function CardPreview({
               draggable={false}
             />
             {modArtOverlay && !collapsed && (
-              <img
-                src={modArtOverlay}
-                alt=""
-                className="mod-card-art-overlay absolute inset-0 object-cover"
-                style={{
-                  width: L.artWidth * s,
-                  height: L.artHeight * s,
-                  objectPosition: 'center',
-                  ...artImageMaskStyle,
-                }}
-                draggable={false}
-              />
+              <>
+                <img
+                  src={modArtOverlay}
+                  alt=""
+                  className="mod-card-art-overlay absolute inset-0 object-cover"
+                  style={{
+                    width: L.artWidth * s,
+                    height: L.artHeight * s,
+                    objectPosition: 'center',
+                    ...artImageMaskStyle,
+                  }}
+                  draggable={false}
+                />
+                <div
+                  className={`${getModCardFoilClass(modArtOverlay)} mod-card-art-foil`}
+                  style={
+                    {
+                      zIndex: 2,
+                      width: L.artWidth * s,
+                      height: L.artHeight * s,
+                      '--foil-color': getRarityFoilColor(rarity),
+                      '--foil-mask-image': `url('${modArtOverlay}')`,
+                      '--foil-mask-position': '0 0',
+                      '--foil-mask-size': '100% 100%',
+                      ...artImageMaskStyle,
+                    } as React.CSSProperties
+                  }
+                  aria-hidden
+                />
+              </>
             )}
           </div>
         )}
