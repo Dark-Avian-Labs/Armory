@@ -298,3 +298,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.64.4** `fix` [#354](https://github.com/Dark-Avian-Labs/Armory/pull/354): exilus mods
 - **v1.64.5** `fix` [#355](https://github.com/Dark-Avian-Labs/Armory/pull/355): atragraph mask
 - **v1.64.6** `fix` [#356](https://github.com/Dark-Avian-Labs/Armory/pull/356): atragraph foil
+- **v1.64.7** `fix` [#357](https://github.com/Dark-Avian-Labs/Armory/pull/357): fade and atragraph holofoil
