@@ -85,6 +85,8 @@ export interface Mod {
   subtype?: string;
   description?: string;
   image_path?: string;
+  atragraph_card_path?: string;
+  foil_overlay_path?: string;
   mod_set?: string;
   set_num_in_set?: number;
   set_stats?: string;

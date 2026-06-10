@@ -21,6 +21,12 @@ export const PIPELINE_STEPS = [
       'Exalted stance mods: Overframe only when forced; otherwise wiki stance images when exports are unchanged.',
   },
   {
+    key: 'atragraphMods',
+    label: 'Atragraph Mods',
+    description:
+      'Atragraph foil mod art from wiki when ExportUpgrades changes; force step to refresh manually.',
+  },
+  {
     key: 'images',
     label: 'Images',
     description: 'Download new or changed item images.',

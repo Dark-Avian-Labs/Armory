@@ -16,6 +16,19 @@ export function ensureCatalogKeyColumns(db: Database.Database): void {
     db.exec('ALTER TABLE abilities ADD COLUMN armory_helminth_key TEXT');
   }
 
+  if (!hasColumn(db, 'mods', 'foil_overlay_path')) {
+    db.exec('ALTER TABLE mods ADD COLUMN foil_overlay_path TEXT');
+  }
+
+  if (
+    hasColumn(db, 'mods', 'atagraph_card_path') &&
+    !hasColumn(db, 'mods', 'atragraph_card_path')
+  ) {
+    db.exec('ALTER TABLE mods RENAME COLUMN atagraph_card_path TO atragraph_card_path');
+  } else if (!hasColumn(db, 'mods', 'atragraph_card_path')) {
+    db.exec('ALTER TABLE mods ADD COLUMN atragraph_card_path TEXT');
+  }
+
   db.exec(
     'CREATE UNIQUE INDEX IF NOT EXISTS idx_archon_shard_buffs_armory_key ON archon_shard_buffs(armory_key)',
   );

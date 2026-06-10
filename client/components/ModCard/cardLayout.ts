@@ -73,11 +73,71 @@ export function getRarityFoilColor(rarity: Rarity): string {
   }
 }
 
+export function modImageUrl(imagePath?: string): string {
+  const path = imagePath?.trim();
+  return path ? `/images${path}` : '';
+}
+
+export function resolveModCardArt(
+  mod: {
+    image_path?: string;
+    atragraph_card_path?: string;
+    foil_overlay_path?: string;
+  },
+  atragraphModsEnabled: boolean,
+): {
+  modArt: string;
+  modArtOverlay?: string;
+  holoFoil: boolean;
+} {
+  const defaultArt = modImageUrl(mod.image_path);
+  const atragraphCard = modImageUrl(mod.atragraph_card_path);
+  const overlay = modImageUrl(mod.foil_overlay_path);
+
+  if (atragraphModsEnabled && atragraphCard && overlay) {
+    return {
+      modArt: atragraphCard,
+      modArtOverlay: overlay,
+      holoFoil: true,
+    };
+  }
+
+  return {
+    modArt: defaultArt,
+    modArtOverlay: undefined,
+    holoFoil: false,
+  };
+}
+
+export function hasModHoloFoil(foilOverlayPath?: string): boolean {
+  return !!foilOverlayPath?.trim();
+}
+
+export function getModCardFoilClass(foilOverlayPath?: string): string {
+  return hasModHoloFoil(foilOverlayPath) ? 'mod-card-foil mod-card-foil--holo' : 'mod-card-foil';
+}
+
 export function getCardFoilStyle(
   rarity: Rarity,
   layout: CardLayout = DEFAULT_LAYOUT,
+  options?: { overlayPath?: string },
 ): Record<string, string> {
   const s = layout.scale;
+  const overlayPath = options?.overlayPath?.trim();
+
+  if (overlayPath) {
+    const xPx = layout.artOffsetX * s;
+    const yPx = (layout.cardOffsetY + layout.artOffsetY) * s;
+    const wPx = layout.artWidth * s;
+    const hPx = layout.artHeight * s;
+    return {
+      '--foil-color': getRarityFoilColor(rarity),
+      '--foil-mask-image': `url('${overlayPath}')`,
+      '--foil-mask-position': `${xPx.toFixed(1)}px ${yPx.toFixed(1)}px`,
+      '--foil-mask-size': `${wPx.toFixed(1)}px ${hPx.toFixed(1)}px`,
+    };
+  }
+
   const xPx = ((layout.cardWidth - layout.bgWidth) / 2 + layout.bgOffsetX) * s;
   const yPx = (layout.cardOffsetY + layout.bgOffsetY) * s;
   const wPx = layout.bgWidth * s;

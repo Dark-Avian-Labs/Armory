@@ -8,6 +8,10 @@ import { processExports, backfillModDescriptions } from '../db/queries.js';
 import { resetCatalogData } from '../db/resetCatalogData.js';
 import { createAppSchema } from '../db/schema.js';
 import { ensureOverframeFetchReady } from '../http/fetchOverframe.js';
+import {
+  countModsMissingAtragraphImages,
+  syncAtragraphModsFromWiki,
+} from '../scraping/atragraphModsWiki.js';
 import { mergeScrapedData } from '../scraping/dataMerger.js';
 import {
   countMissingExaltedStanceSeeds,
@@ -109,6 +113,15 @@ function exportHashChanged(
   return (previous[category] || '') !== (current[category] || '');
 }
 
+function upgradesExportChanged(
+  current: Record<string, string>,
+  previous: Record<string, string> | null,
+): boolean {
+  const upgradesKey = Object.keys(current).find((key) => key.startsWith('ExportUpgrades'));
+  if (!upgradesKey) return false;
+  return exportHashChanged(upgradesKey, current, previous);
+}
+
 function hasIncarnonDataInDb(): boolean {
   try {
     const db = getCatalogDb();
@@ -140,6 +153,7 @@ function emptySummary(start: number): StartupPipelineSummary {
     officialExports: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     sqliteFromExports: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     exaltedStanceMods: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
+    atragraphMods: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     images: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     hiddenCompanionWeapons: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     overframe: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
@@ -464,6 +478,54 @@ async function runStartupPipelineInner(
     summary.exaltedStanceMods = {
       outcome: 'skipped',
       detail: 'ExportWeapons hash unchanged; no exalted stance sync needed.',
+    };
+  }
+
+  const upgradesChanged = upgradesExportChanged(currentExportHashes, previousExportHashes);
+  const atragraphNeedBackfill = countModsMissingAtragraphImages() > 0;
+  const onlyMissingAtragraph = usesOnlyMissingMode('atragraphMods', options) && !upgradesChanged;
+  const shouldSyncAtragraphMods = shouldRunStep(
+    'atragraphMods',
+    upgradesChanged || atragraphNeedBackfill,
+    options,
+  );
+
+  if (shouldSyncAtragraphMods) {
+    const reason = upgradesChanged
+      ? 'ExportUpgrades changed — syncing Atragraph mod art from wiki.'
+      : 'Atragraph image paths missing — backfilling from wiki.';
+    log(`[Atragraph Mods] ${reason}`);
+    try {
+      const result = await syncAtragraphModsFromWiki({
+        onlyMissing: onlyMissingAtragraph,
+        onProgress: (msg) => log(msg),
+      });
+      log(
+        `[Atragraph Mods] Done — ${result.setsFound} set(s), ${result.modsUpdated} mod row(s) updated, ` +
+          `${result.imagesDownloaded} image(s) downloaded.`,
+      );
+      summary.atragraphMods = {
+        outcome: 'ok',
+        detail: reason,
+        setsFound: result.setsFound,
+        modsUpdated: result.modsUpdated,
+        imagesDownloaded: result.imagesDownloaded,
+        attempted: result.attempted,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      summary.atragraphMods = {
+        outcome: 'failed',
+        detail: 'Atragraph wiki sync failed.',
+        error: msg,
+      };
+      err('[Atragraph Mods] Sync failed —', e);
+    }
+  } else {
+    log('[Atragraph Mods] Skipped — ExportUpgrades unchanged and atragraph paths are present.');
+    summary.atragraphMods = {
+      outcome: 'skipped',
+      detail: 'ExportUpgrades hash unchanged; no Atragraph wiki sync needed.',
     };
   }
 

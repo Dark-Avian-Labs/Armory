@@ -10,6 +10,7 @@ import {
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { syncCodexModularWeaponsTable } from '../codexModularWeapons.js';
 import { EXPORTS_DIR } from '../config.js';
+import { restoreModAtragraphPaths, saveModAtragraphPaths } from '../scraping/atragraphModsWiki.js';
 import { getCatalogDb } from './connection.js';
 
 export function processExports(options?: { skipPreserve?: boolean }): {
@@ -33,6 +34,7 @@ export function processExports(options?: { skipPreserve?: boolean }): {
 
   const skipPreserve = options?.skipPreserve === true;
   const savedImagePaths = skipPreserve ? new Map<string, string>() : saveImagePaths();
+  const savedAtragraphPaths = skipPreserve ? new Map() : saveModAtragraphPaths();
   const savedScrapedData = skipPreserve
     ? { warframes: [], weapons: [], companions: [], abilities: [], mods: [] }
     : saveScrapedData();
@@ -67,6 +69,7 @@ export function processExports(options?: { skipPreserve?: boolean }): {
 
   if (!skipPreserve) {
     restoreImagePaths(savedImagePaths);
+    restoreModAtragraphPaths(savedAtragraphPaths);
     restoreScrapedData(savedScrapedData);
   }
 

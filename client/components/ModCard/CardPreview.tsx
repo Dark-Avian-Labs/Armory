@@ -20,6 +20,7 @@ export interface CardPreviewProps {
   rarity: Rarity;
   polarity: string;
   modArt: string;
+  modArtOverlay?: string;
   modName: string;
   modType: string;
   modDescription: string;
@@ -44,6 +45,7 @@ export function CardPreview({
   rarity,
   polarity,
   modArt,
+  modArtOverlay,
   modName,
   modType,
   modDescription,
@@ -207,6 +209,19 @@ export function CardPreview({
               }}
               draggable={false}
             />
+            {modArtOverlay && !collapsed && (
+              <img
+                src={modArtOverlay}
+                alt=""
+                className="mod-card-art-overlay absolute inset-0 object-cover"
+                style={{
+                  width: L.artWidth * s,
+                  height: L.artHeight * s,
+                  objectPosition: 'center',
+                }}
+                draggable={false}
+              />
+            )}
           </div>
         )}
 

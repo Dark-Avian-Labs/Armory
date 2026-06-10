@@ -38,6 +38,11 @@ export function mergeModWithCatalog(stored: Mod, catalog?: Mod): Mod {
     polarity: preferCatalogOptional(stored.polarity, catalog.polarity),
     rarity: preferCatalogOptional(stored.rarity, catalog.rarity),
     image_path: mergeModImagePath(stored, catalog),
+    atragraph_card_path: preferCatalogOptional(
+      stored.atragraph_card_path,
+      catalog.atragraph_card_path,
+    ),
+    foil_overlay_path: preferCatalogOptional(stored.foil_overlay_path, catalog.foil_overlay_path),
     compat_name: preferCatalogOptional(stored.compat_name, catalog.compat_name),
     type: preferCatalogOptional(stored.type, catalog.type),
     is_utility: stored.is_utility ?? catalog.is_utility,
