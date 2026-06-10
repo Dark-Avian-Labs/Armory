@@ -301,3 +301,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.64.7** `fix` [#357](https://github.com/Dark-Avian-Labs/Armory/pull/357): fade and atragraph holofoil
 - **v1.64.8** `fix` [#358](https://github.com/Dark-Avian-Labs/Armory/pull/358): holofoil
 - **v1.64.9** `fix` [#359](https://github.com/Dark-Avian-Labs/Armory/pull/359): holofoil
+- **v1.64.10** `fix` [#360](https://github.com/Dark-Avian-Labs/Armory/pull/360): holofoil
