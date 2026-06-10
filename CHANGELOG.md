@@ -291,3 +291,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.63.4** `fix` [#343](https://github.com/Dark-Avian-Labs/Armory/pull/343): forma calculation
 - **v1.63.5** `fix` [#344](https://github.com/Dark-Avian-Labs/Armory/pull/344): border hover
 - **v1.63.6** `chore` [#347](https://github.com/Dark-Avian-Labs/Armory/pull/347): some style changes
+- **v1.64.0** `feat` [#349](https://github.com/Dark-Avian-Labs/Armory/pull/349): atragraph mods
