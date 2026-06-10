@@ -13,59 +13,30 @@ type WeaponSourceRow = {
   unique_name: string | null;
 };
 
-function isModularMainComponent(row: WeaponSourceRow): boolean {
-  const name = row.name?.trim() ?? '';
-  if (!name) return false;
-  if (/\bprism\b/i.test(name)) return true;
-  if (/\bscaffold\b/i.test(name)) return false;
-
-  const uniqueName = row.unique_name?.toLowerCase() ?? '';
-  if (!uniqueName) return false;
-  if (uniqueName.includes('/prism/')) return true;
-  if (uniqueName.includes('/scaffold/')) return false;
-  if (uniqueName.includes('/barrel/')) return true;
-  if (
-    uniqueName.includes('/tip/') ||
-    uniqueName.includes('/tips/') ||
-    uniqueName.includes('/strike/')
-  ) {
-    return true;
-  }
-
-  const removablePartMarkers = [
-    '/handle/',
-    '/handles/',
-    '/grip/',
-    '/brace/',
-    '/link/',
-    '/balance/',
-    '/loader/',
-    '/clip/',
-    '/core/',
-  ];
-  for (const marker of removablePartMarkers) {
-    if (uniqueName.includes(marker)) {
-      return false;
-    }
-  }
-  return false;
-}
-
 function loadModularWeaponNames(armoryDb: Database.Database): Set<string> {
-  const modularRows = armoryDb
+  const hasCatalogTable = armoryDb
     .prepare(
-      "SELECT name, unique_name FROM weapons WHERE product_category IN ('ModularPrimary', 'ModularSecondary', 'Amps') AND name IS NOT NULL AND slot IS NOT NULL AND TRIM(slot) <> ''",
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'codex_modular_weapons'`,
     )
-    .all() as WeaponSourceRow[];
-  const names = new Set<string>();
-  for (const row of modularRows) {
-    if (!isModularMainComponent(row)) continue;
-    const name = row.name?.trim() ?? '';
-    if (name) {
-      names.add(name);
+    .get() as { name: string } | undefined;
+
+  if (hasCatalogTable) {
+    const rows = armoryDb
+      .prepare(
+        `SELECT name FROM codex_modular_weapons
+         WHERE active = 1 AND name IS NOT NULL AND TRIM(name) <> ''
+         ORDER BY display_order`,
+      )
+      .all() as { name: string | null }[];
+    const names = new Set(
+      rows.map((row) => row.name?.trim() ?? '').filter((name) => name.length > 0),
+    );
+    if (names.size > 0) {
+      return names;
     }
   }
-  return names;
+
+  return new Set();
 }
 
 function isCompanionModularMainComponent(row: WeaponSourceRow): boolean {
