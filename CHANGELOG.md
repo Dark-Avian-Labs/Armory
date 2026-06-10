@@ -296,3 +296,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.64.2** `fix` [#352](https://github.com/Dark-Avian-Labs/Armory/pull/352): styling
 - **v1.64.3** `fix` [#353](https://github.com/Dark-Avian-Labs/Armory/pull/353): mod styling
 - **v1.64.4** `fix` [#354](https://github.com/Dark-Avian-Labs/Armory/pull/354): exilus mods
+- **v1.64.5** `fix` [#355](https://github.com/Dark-Avian-Labs/Armory/pull/355): atragraph mask
