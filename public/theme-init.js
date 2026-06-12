@@ -51,7 +51,7 @@
       return value;
     }
     function isValidUiStyle(value) {
-      return value === 'prism' || value === 'shadow' || value === 'clear';
+      return value === 'prism' || value === 'shadow' || value === 'clear' || value === 'liquid';
     }
 
     var ui = normalizeUiStyle(readCookie('dal.ui.style').trim());
@@ -66,7 +66,7 @@
       }
     }
     if (!isValidUiStyle(ui)) ui = 'prism';
-    root.classList.remove('ui-prism', 'ui-shadow', 'ui-clear');
+    root.classList.remove('ui-prism', 'ui-shadow', 'ui-clear', 'ui-liquid');
     root.classList.add('ui-' + ui);
   } catch {}
 })();
