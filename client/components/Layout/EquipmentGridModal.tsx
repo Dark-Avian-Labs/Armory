@@ -41,20 +41,26 @@ export function EquipmentGridModal({ onSelect, onClose }: EquipmentGridModalProp
       return;
     }
 
+    let alive = true;
     setLoading(true);
     setError(null);
     void (async () => {
       try {
         const list = await loadEquipmentItemsForTab(activeTab);
+        if (!alive) return;
         setItems(list);
         setError(null);
       } catch (err: unknown) {
+        if (!alive) return;
         const message = err instanceof Error ? err.message : 'Failed to load equipment data.';
         setError(message);
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
+    return () => {
+      alive = false;
+    };
   }, [activeTab]);
 
   const query = search.trim().toLowerCase();

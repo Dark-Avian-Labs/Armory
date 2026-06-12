@@ -7,7 +7,28 @@ export type EquipmentPolaritySource = EquipmentLookupRow & {
   exilus_polarity?: string;
 };
 
-export async function loadEquipmentLookup(): Promise<Record<string, EquipmentPolaritySource>> {
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+let cachedLookupPromise: Promise<Record<string, EquipmentPolaritySource>> | null = null;
+let cachedAt = 0;
+
+export function loadEquipmentLookup(): Promise<Record<string, EquipmentPolaritySource>> {
+  const now = Date.now();
+  if (cachedLookupPromise && now - cachedAt < CACHE_TTL_MS) {
+    return cachedLookupPromise;
+  }
+  cachedAt = now;
+  const promise = fetchEquipmentLookup().then((lookup) => {
+    if (cachedLookupPromise === promise && Object.keys(lookup).length === 0) {
+      cachedLookupPromise = null;
+    }
+    return lookup;
+  });
+  cachedLookupPromise = promise;
+  return promise;
+}
+
+async function fetchEquipmentLookup(): Promise<Record<string, EquipmentPolaritySource>> {
   const { apiFetch } = await import('./api');
 
   const endpoints = [

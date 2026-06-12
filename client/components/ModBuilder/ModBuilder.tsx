@@ -23,6 +23,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { useApi } from '../../hooks/useApi';
 import { useBuildFavorites } from '../../hooks/useBuildFavorites';
 import { useBuildStorage } from '../../hooks/useBuildStorage';
+import { useModCatalog } from '../../hooks/useModCatalog';
 import type { IncarnonData, IncarnonSelection } from '../../types/incarnon';
 import {
   EQUIPMENT_SLOT_CONFIGS,
@@ -402,16 +403,14 @@ export function ModBuilder() {
 
   const { data: shardData } = useApi<{ shards: ShardType[] }>('/api/archon-shards');
   const shardTypes = shardData?.shards || [];
-  const { data: stanceData, loading: stanceListLoading } = useApi<{ items: Mod[] }>(
-    '/api/mods?types=STANCE',
-  );
+  const { data: stanceData, loading: stanceListLoading } = useModCatalog('/api/mods?types=STANCE');
 
   const modCatalogTypes = getModTypesForEquipment(equipmentType);
   const modCatalogUrl =
     modCatalogTypes !== NO_MOD_TYPES_FOR_EQUIPMENT
       ? `/api/mods?types=${encodeURIComponent(modCatalogTypes)}`
       : null;
-  const { data: modCatalogData } = useApi<{ items: Mod[] }>(modCatalogUrl);
+  const { data: modCatalogData } = useModCatalog(modCatalogUrl);
 
   const modCatalogByUnique = useMemo(() => {
     const items = modCatalogData?.items;
@@ -791,10 +790,13 @@ export function ModBuilder() {
     setEquipmentLoadError,
   ]);
 
+  const slotsSyncedBuildIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!loaded || !buildId || !isOwnBuild) return;
+    if (slotsSyncedBuildIdRef.current === buildId) return;
     const stored = getBuild(buildId);
     if (stored?.slots?.length) {
+      slotsSyncedBuildIdRef.current = buildId;
       setSlots(stored.slots);
     }
   }, [loaded, buildId, getBuild, isOwnBuild]);
@@ -907,8 +909,10 @@ export function ModBuilder() {
     [equipmentType, selectedEquipment?.name],
   );
 
+  const slotsInitKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!selectedEquipment) {
+      slotsInitKeyRef.current = null;
       setDefaultPolarities([]);
       if (!buildId) {
         setSlots([]);
@@ -1034,15 +1038,22 @@ export function ModBuilder() {
 
     setDefaultPolarities(newSlots.map((s) => ({ polarity: s.polarity, type: s.type })));
     if (!shouldInitializeSlots) {
+      slotsInitKeyRef.current = null;
       return;
     }
+
+    const initKey = `${equipmentType}:${selectedEquipment.unique_name}`;
+    if (slotsInitKeyRef.current === initKey) {
+      return;
+    }
+    slotsInitKeyRef.current = initKey;
 
     setSlots(newSlots);
     setHelminthConfig(undefined);
     setIncarnonEnabled(false);
     setIncarnonSelections(undefined);
     setActiveIncarnonTier(null);
-  }, [selectedEquipment, equipmentType, buildId, slots.length]);
+  }, [selectedEquipment, equipmentType, buildId]);
 
   useEffect(() => {
     if (buildId || equipmentType !== 'melee' || !selectedEquipment?.unique_name) {
@@ -1520,6 +1531,27 @@ export function ModBuilder() {
   const [saveToast, setSaveToast] = useState<{ tone: 'success' | 'error'; message: string } | null>(
     null,
   );
+  const saveToastTimerRef = useRef<number | null>(null);
+  const showSaveToast = useCallback((tone: 'success' | 'error', message: string): void => {
+    if (saveToastTimerRef.current !== null) {
+      window.clearTimeout(saveToastTimerRef.current);
+    }
+    setSaveToast({ tone, message });
+    saveToastTimerRef.current = window.setTimeout(
+      () => {
+        saveToastTimerRef.current = null;
+        setSaveToast(null);
+      },
+      tone === 'success' ? TOAST_DURATION_SUCCESS_MS : TOAST_DURATION_ERROR_MS,
+    );
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (saveToastTimerRef.current !== null) {
+        window.clearTimeout(saveToastTimerRef.current);
+      }
+    };
+  }, []);
 
   const openSaveModal = () => {
     if (!selectedEquipment) return;
@@ -1540,8 +1572,7 @@ export function ModBuilder() {
       ? 'Failed to add build to favorites'
       : 'Failed to remove build from favorites';
     console.error(message);
-    setSaveToast({ tone: 'error', message });
-    setTimeout(() => setSaveToast(null), TOAST_DURATION_ERROR_MS);
+    showSaveToast('error', message);
   };
 
   const readOnlyActionButtonClass =
@@ -1678,8 +1709,7 @@ export function ModBuilder() {
             allowNavigationBypassRef.current = false;
           }
         });
-        setSaveToast({ tone: 'success', message: 'Build saved successfully' });
-        setTimeout(() => setSaveToast(null), TOAST_DURATION_SUCCESS_MS);
+        showSaveToast('success', 'Build saved successfully');
         return;
       }
 
@@ -1736,13 +1766,11 @@ export function ModBuilder() {
         }),
       );
 
-      setSaveToast({ tone: 'success', message: 'Build saved successfully' });
-      setTimeout(() => setSaveToast(null), TOAST_DURATION_SUCCESS_MS);
+      showSaveToast('success', 'Build saved successfully');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save build';
       setSaveError(message);
-      setSaveToast({ tone: 'error', message });
-      setTimeout(() => setSaveToast(null), TOAST_DURATION_ERROR_MS);
+      showSaveToast('error', message);
     }
   };
 

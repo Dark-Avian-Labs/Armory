@@ -4,9 +4,10 @@ import type { StoredBuild, BuildConfig, BuildVisibility } from '../types/warfram
 import { apiFetch, UnauthorizedError, readApiErrorMessage } from '../utils/api';
 import { normalizeRivenConfigMembership } from '../utils/riven';
 
-export function useBuildStorage() {
+export function useBuildStorage(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   const [builds, setBuilds] = useState<StoredBuild[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
 
   const refresh = useCallback(async (): Promise<StoredBuild[]> => {
     try {
@@ -70,8 +71,9 @@ export function useBuildStorage() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     void refresh();
-  }, [refresh]);
+  }, [refresh, enabled]);
 
   const saveBuild = useCallback(
     async (

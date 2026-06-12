@@ -83,6 +83,7 @@ export function ArtifactSlotsEditorModal({
       return;
     }
 
+    let alive = true;
     void (async () => {
       setLoading(true);
       setError(null);
@@ -92,6 +93,7 @@ export function ArtifactSlotsEditorModal({
         if (!res.ok) throw new Error('Failed to load equipment catalog.');
         const item = body.items?.find((row) => row.unique_name === uniqueName);
         if (!item) throw new Error('Equipment not found in catalog.');
+        if (!alive) return;
         const parsed = parseArtifactSlotsJson(item.artifact_slots);
         const wf = item as Warframe;
         setRows(
@@ -109,11 +111,15 @@ export function ArtifactSlotsEditorModal({
           ),
         );
       } catch (err: unknown) {
+        if (!alive) return;
         setError(err instanceof Error ? err.message : 'Failed to load artifact slots.');
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
+    return () => {
+      alive = false;
+    };
   }, [equipmentType, uniqueName]);
 
   const polarityLabel = useCallback((polarity: string) => {

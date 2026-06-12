@@ -11,6 +11,7 @@ import {
 } from '../../utils/buildCatalogCategory';
 import { calculateWeaponDps } from '../../utils/damageCalc';
 import { linkifyPlainText } from '../../utils/linkifyText';
+import { loadEquipmentLookup } from '../../utils/loadEquipmentLookup';
 import { parseStoredBuildFromApi } from '../../utils/parseStoredBuildFromApi';
 import { calculateWarframeStats } from '../../utils/warframeCalc';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -49,42 +50,11 @@ export function LoadoutDetailPage() {
 
   useEffect(() => {
     let alive = true;
-    async function loadEquipment() {
-      const endpoints = [
-        '/api/warframes',
-        '/api/companions',
-        '/api/weapons?type=LongGuns',
-        '/api/weapons?type=Pistols',
-        '/api/weapons?type=Melee',
-        '/api/weapons?type=SpaceGuns',
-        '/api/weapons?type=SpaceMelee',
-        '/api/weapons?type=SentinelWeapons',
-        '/api/weapons?type=SpecialItems',
-      ];
-      const responses = await Promise.all(
-        endpoints.map(async (url) => {
-          try {
-            const response = await apiFetch(url);
-            if (!response.ok) return [] as Record<string, unknown>[];
-            const body = (await response.json()) as { items?: Record<string, unknown>[] };
-            return Array.isArray(body.items) ? body.items : [];
-          } catch {
-            return [] as Record<string, unknown>[];
-          }
-        }),
-      );
+    void loadEquipmentLookup().then((nextLookup) => {
       if (!alive) return;
-      const next: LookupRecord = {};
-      for (const items of responses) {
-        for (const item of items) {
-          const un = item.unique_name;
-          if (typeof un !== 'string' || un.length === 0) continue;
-          if (!next[un]) next[un] = item;
-        }
-      }
-      setEquipmentLookup(next);
-    }
-    void loadEquipment();
+      setEquipmentLookup(nextLookup as LookupRecord);
+      return undefined;
+    });
     return () => {
       alive = false;
     };

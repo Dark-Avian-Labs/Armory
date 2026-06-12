@@ -1,4 +1,5 @@
 import type { PipelineStepKey } from '../../shared/pipelineSteps.js';
+import { bustCatalogResponseCache } from '../cache/catalogResponseCache.js';
 import { bustModListCache } from '../cache/modListCache.js';
 import {
   createImportRun,
@@ -51,6 +52,8 @@ let state: AdminImportSnapshot = {
 
 let hydratedFromDb = false;
 
+let activeJobPromise: Promise<void> | null = null;
+
 function hydrateAdminImportFromDb(): void {
   if (hydratedFromDb) return;
   hydratedFromDb = true;
@@ -91,11 +94,27 @@ function pushLine(level: 'info' | 'error', message: string): void {
   if (state.lines.length > MAX_LINES) {
     state.lines.splice(0, state.lines.length - MAX_LINES);
   }
-  persistCurrentSteps();
+  schedulePersistCurrentSteps();
   notify();
 }
 
+const PERSIST_THROTTLE_MS = 1000;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+function schedulePersistCurrentSteps(): void {
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    persistCurrentSteps();
+  }, PERSIST_THROTTLE_MS);
+  persistTimer.unref?.();
+}
+
 function persistCurrentSteps(): void {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
   if (state.runId < 1) return;
   persistImportRunSteps(state.runId, {
     lines: state.lines,
@@ -128,7 +147,20 @@ export function getAdminImportSnapshot(): AdminImportSnapshot {
   };
 }
 
-export function resetAdminImportLock(): AdminImportSnapshot {
+export interface AdminImportResetResult {
+  cleared: boolean;
+  reason?: string;
+  snapshot: AdminImportSnapshot;
+}
+
+export function resetAdminImportLock(): AdminImportResetResult {
+  if (activeJobPromise !== null) {
+    return {
+      cleared: false,
+      reason: 'An import job is still running in this process; wait for it to finish.',
+      snapshot: getAdminImportSnapshot(),
+    };
+  }
   forceReleaseImportLease();
   state.running = false;
   if (state.runId > 0 && !state.finishedAt) {
@@ -142,7 +174,7 @@ export function resetAdminImportLock(): AdminImportSnapshot {
     persistCurrentSteps();
   }
   notify();
-  return getAdminImportSnapshot();
+  return { cleared: true, snapshot: getAdminImportSnapshot() };
 }
 
 export function subscribeAdminImportSnapshot(listener: SnapshotListener): () => void {
@@ -153,7 +185,7 @@ export function subscribeAdminImportSnapshot(listener: SnapshotListener): () => 
 }
 
 export function isAdminImportRunning(): boolean {
-  return state.running || isImportLeaseHeld();
+  return activeJobPromise !== null || state.running || isImportLeaseHeld();
 }
 
 export function waitForAdminImportIdle(timeoutMs: number): Promise<boolean> {
@@ -170,8 +202,8 @@ export function waitForAdminImportIdle(timeoutMs: number): Promise<boolean> {
       resolve(ok);
     };
     const timer = setTimeout(() => finish(false), timeoutMs);
-    const unsubscribe = subscribeAdminImportSnapshot((snapshot) => {
-      if (!snapshot.running) {
+    const unsubscribe = subscribeAdminImportSnapshot(() => {
+      if (!isAdminImportRunning()) {
         finish(true);
       }
     });
@@ -216,7 +248,7 @@ export function startAdminImportJob(
   updateImportRun(run.id, { status: 'running' });
   pushLine('info', `[AdminImport] Run #${state.runId} queued by user ${masked}.`);
 
-  void (async () => {
+  activeJobPromise = (async () => {
     const lockToken = tryAcquireImportLease(run.id);
     if (!lockToken) {
       const message = 'An import job is already running.';
@@ -229,6 +261,7 @@ export function startAdminImportJob(
         error_text: message,
       });
       persistCurrentSteps();
+      activeJobPromise = null;
       notify();
       return;
     }
@@ -269,6 +302,8 @@ export function startAdminImportJob(
       state.finishedAt = nowIso();
       persistCurrentSteps();
       bustModListCache();
+      bustCatalogResponseCache();
+      activeJobPromise = null;
       notify();
     }
   })();
