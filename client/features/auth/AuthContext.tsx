@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -42,17 +43,24 @@ function toAuthErrorDetail(error: unknown): AuthErrorDetail {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { isSignedIn, isLoaded } = useClerkAuth();
   const [auth, setAuth] = useState<AuthState>(DEFAULT_AUTH_STATE);
+  const refreshGenerationRef = useRef(0);
 
   const refresh = useCallback(async () => {
     if (!isLoaded) return;
+    const generation = ++refreshGenerationRef.current;
+    const applyAuth = (next: AuthState): void => {
+      if (refreshGenerationRef.current === generation) {
+        setAuth(next);
+      }
+    };
     if (!isSignedIn) {
-      setAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
+      applyAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
       return;
     }
     try {
       const response = await apiFetch('/api/auth/me');
       if (!response.ok) {
-        setAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
+        applyAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
         return;
       }
       const body = (await response.json()) as {
@@ -61,16 +69,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isArmoryAdmin?: boolean;
       };
       if (!body.authenticated || !body.userId) {
-        setAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
+        applyAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
         return;
       }
-      setAuth({
+      applyAuth({
         status: 'ok',
         userId: body.userId,
         isArmoryAdmin: body.isArmoryAdmin === true,
       });
     } catch (error) {
-      setAuth({
+      applyAuth({
         status: 'error',
         userId: null,
         isArmoryAdmin: false,

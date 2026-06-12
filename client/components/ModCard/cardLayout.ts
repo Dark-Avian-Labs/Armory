@@ -123,7 +123,6 @@ export function getArtFadeMask(scale: number): string {
   return `linear-gradient(to bottom, black calc(100% - ${ART_FADE_PX * scale}px), transparent 100%)`;
 }
 
-/** Fade mask for full-height art images inside a shorter clip container. */
 export function getArtFadeMaskForImage(
   scale: number,
   artHeight: number,

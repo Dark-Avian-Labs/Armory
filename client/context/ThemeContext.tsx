@@ -44,6 +44,14 @@ const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
+function safeReadStorage(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 function parseThemeCookie(): ThemeMode | null {
   const raw = document.cookie
     .split(';')
@@ -73,9 +81,9 @@ function resolveInitialMode(): ThemeMode {
   if (typeof window === 'undefined') return 'dark';
   const fromCookie = parseThemeCookie();
   if (fromCookie) return fromCookie;
-  const shared = window.localStorage.getItem(SHARED_THEME_STORAGE_KEY);
+  const shared = safeReadStorage(SHARED_THEME_STORAGE_KEY);
   if (shared === 'light' || shared === 'dark') return shared;
-  const armoryStored = window.localStorage.getItem(THEME_STORAGE_KEY);
+  const armoryStored = safeReadStorage(THEME_STORAGE_KEY);
   if (armoryStored === 'light' || armoryStored === 'dark') return armoryStored;
   return 'dark';
 }
@@ -84,7 +92,7 @@ function resolveInitialUiStyle(): UiStyle {
   if (typeof window === 'undefined') return 'prism';
   const fromCookie = parseUiStyleCookie();
   if (fromCookie) return fromCookie;
-  const stored = window.localStorage.getItem(UI_STYLE_STORAGE_KEY);
+  const stored = safeReadStorage(UI_STYLE_STORAGE_KEY);
   if (stored === 'solid') return 'clear';
   if (stored === 'prism' || stored === 'shadow' || stored === 'clear') return stored;
   return 'prism';
@@ -92,7 +100,7 @@ function resolveInitialUiStyle(): UiStyle {
 
 function resolveInitialAtragraphModsEnabled(): boolean {
   if (typeof window === 'undefined') return true;
-  const stored = window.localStorage.getItem(ATRAGRAPH_MODS_STORAGE_KEY);
+  const stored = safeReadStorage(ATRAGRAPH_MODS_STORAGE_KEY);
   if (stored === 'false') return false;
   if (stored === 'true') return true;
   return true;

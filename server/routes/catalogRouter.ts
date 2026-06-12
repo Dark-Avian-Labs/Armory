@@ -11,6 +11,7 @@ import {
 } from '../arcaneCompat.js';
 import { getClerkUserId } from '../auth/clerkUser.js';
 import { requireArmoryAdmin } from '../auth/middleware.js';
+import { sendCachedCatalogJson } from '../cache/catalogResponseCache.js';
 import { getCachedModList } from '../cache/modListCache.js';
 import { getCatalogDb } from '../db/connection.js';
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
@@ -41,11 +42,13 @@ catalogRouter.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', app: 'Armory' });
 });
 
-catalogRouter.get('/warframes', (_req: Request, res: Response) => {
+catalogRouter.get('/warframes', (req: Request, res: Response) => {
   try {
-    const db = getCatalogDb();
-    const rows = db.prepare('SELECT * FROM warframes ORDER BY name').all();
-    res.json({ items: rows });
+    sendCachedCatalogJson(req, res, 'warframes', () => {
+      const db = getCatalogDb();
+      const rows = db.prepare('SELECT * FROM warframes ORDER BY name').all();
+      return { items: rows };
+    });
   } catch (err) {
     sendInternalError(res, 'warframes.list', err);
   }
@@ -53,21 +56,24 @@ catalogRouter.get('/warframes', (_req: Request, res: Response) => {
 
 catalogRouter.get('/weapons', (req: Request, res: Response) => {
   try {
-    const db = getCatalogDb();
     const type = typeof req.query.type === 'string' ? req.query.type : undefined;
+    sendCachedCatalogJson(req, res, `weapons:${type ?? ''}`, () => {
+      const db = getCatalogDb();
+      let rows;
+      if (type) {
+        rows = db
+          .prepare('SELECT * FROM weapons WHERE product_category = ? ORDER BY name')
+          .all(type);
+      } else {
+        rows = db.prepare('SELECT * FROM weapons ORDER BY name').all();
+      }
 
-    let rows;
-    if (type) {
-      rows = db.prepare('SELECT * FROM weapons WHERE product_category = ? ORDER BY name').all(type);
-    } else {
-      rows = db.prepare('SELECT * FROM weapons ORDER BY name').all();
-    }
+      const filtered = (rows as Array<{ unique_name: string }>).filter(
+        (r) => !WEAPON_JUNK_PREFIXES.some((p) => r.unique_name.startsWith(p)),
+      );
 
-    const filtered = (rows as Array<{ unique_name: string }>).filter(
-      (r) => !WEAPON_JUNK_PREFIXES.some((p) => r.unique_name.startsWith(p)),
-    );
-
-    res.json({ items: filtered });
+      return { items: filtered };
+    });
   } catch (err) {
     sendInternalError(res, 'weapons.list', err);
   }
@@ -116,11 +122,13 @@ catalogRouter.get('/incarnon', (req: Request, res: Response) => {
   }
 });
 
-catalogRouter.get('/companions', (_req: Request, res: Response) => {
+catalogRouter.get('/companions', (req: Request, res: Response) => {
   try {
-    const db = getCatalogDb();
-    const rows = db.prepare('SELECT * FROM companions ORDER BY name').all();
-    res.json({ items: rows });
+    sendCachedCatalogJson(req, res, 'companions', () => {
+      const db = getCatalogDb();
+      const rows = db.prepare('SELECT * FROM companions ORDER BY name').all();
+      return { items: rows };
+    });
   } catch (err) {
     sendInternalError(res, 'companions.list', err);
   }
@@ -284,31 +292,33 @@ catalogRouter.get('/mods/:uniqueName', (req: Request, res: Response) => {
 
 catalogRouter.get('/arcanes', (req: Request, res: Response) => {
   try {
-    const db = getCatalogDb();
     const equipmentType =
       typeof req.query.equipment_type === 'string' ? req.query.equipment_type : undefined;
-    const rows = db
-      .prepare(`SELECT * FROM arcanes WHERE ${ARCANE_PUBLIC_LIST_SQL} ORDER BY name`)
-      .all(...bindArcanePublicListParams()) as Array<Record<string, unknown>>;
+    sendCachedCatalogJson(req, res, `arcanes:${equipmentType ?? ''}`, () => {
+      const db = getCatalogDb();
+      const rows = db
+        .prepare(`SELECT * FROM arcanes WHERE ${ARCANE_PUBLIC_LIST_SQL} ORDER BY name`)
+        .all(...bindArcanePublicListParams()) as Array<Record<string, unknown>>;
 
-    const normalized: Array<Record<string, unknown> & { compat_tags: ArcaneCompatTag[] }> =
-      rows.map((row) => ({
-        ...row,
-        compat_tags: classifyArcaneCompatTags(row.unique_name, row.name),
-      }));
+      const normalized: Array<Record<string, unknown> & { compat_tags: ArcaneCompatTag[] }> =
+        rows.map((row) => ({
+          ...row,
+          compat_tags: classifyArcaneCompatTags(row.unique_name, row.name),
+        }));
 
-    const allowedTags = getAllowedArcaneTags(equipmentType);
-    const items =
-      allowedTags === null
-        ? normalized
-        : normalized.filter((row) => {
-            if (allowedTags.has('warframe') && isOperatorOnlyArcane(row.unique_name, row.name)) {
-              return false;
-            }
-            return row.compat_tags.some((tag) => allowedTags.has(tag));
-          });
+      const allowedTags = getAllowedArcaneTags(equipmentType);
+      const items =
+        allowedTags === null
+          ? normalized
+          : normalized.filter((row) => {
+              if (allowedTags.has('warframe') && isOperatorOnlyArcane(row.unique_name, row.name)) {
+                return false;
+              }
+              return row.compat_tags.some((tag) => allowedTags.has(tag));
+            });
 
-    res.json({ items });
+      return { items };
+    });
   } catch (err) {
     sendInternalError(res, 'arcanes.list', err);
   }
@@ -316,32 +326,37 @@ catalogRouter.get('/arcanes', (req: Request, res: Response) => {
 
 catalogRouter.get('/abilities', (req: Request, res: Response) => {
   try {
-    const db = getCatalogDb();
     const warframe = typeof req.query.warframe === 'string' ? req.query.warframe : undefined;
     const abilityNames =
       typeof req.query.ability_names === 'string'
         ? req.query.ability_names.split(',').filter(Boolean)
         : [];
 
-    const filter = buildAbilitiesListQuery(warframe, abilityNames);
-    const rows = filter
-      ? db
-          .prepare(`SELECT * FROM abilities WHERE ${filter.whereSql} ORDER BY name`)
-          .all(...filter.params)
-      : db.prepare('SELECT * FROM abilities ORDER BY name').all();
-    res.json({ items: rows });
+    const cacheKey = `abilities:${warframe ?? ''}:${abilityNames.join(',')}`;
+    sendCachedCatalogJson(req, res, cacheKey, () => {
+      const db = getCatalogDb();
+      const filter = buildAbilitiesListQuery(warframe, abilityNames);
+      const rows = filter
+        ? db
+            .prepare(`SELECT * FROM abilities WHERE ${filter.whereSql} ORDER BY name`)
+            .all(...filter.params)
+        : db.prepare('SELECT * FROM abilities ORDER BY name').all();
+      return { items: rows };
+    });
   } catch (err) {
     sendInternalError(res, 'abilities.list', err);
   }
 });
 
-catalogRouter.get('/helminth-abilities', (_req: Request, res: Response) => {
+catalogRouter.get('/helminth-abilities', (req: Request, res: Response) => {
   try {
-    const db = getCatalogDb();
-    const rows = db
-      .prepare('SELECT * FROM abilities WHERE is_helminth_extractable = 1 ORDER BY name')
-      .all() as Array<Record<string, unknown> & { unique_name: string; name?: string }>;
-    res.json({ items: dedupeHelminthAbilityRows(rows) });
+    sendCachedCatalogJson(req, res, 'helminth-abilities', () => {
+      const db = getCatalogDb();
+      const rows = db
+        .prepare('SELECT * FROM abilities WHERE is_helminth_extractable = 1 ORDER BY name')
+        .all() as Array<Record<string, unknown> & { unique_name: string; name?: string }>;
+      return { items: dedupeHelminthAbilityRows(rows) };
+    });
   } catch (err) {
     sendInternalError(res, 'helminthAbilities.list', err);
   }
@@ -467,7 +482,15 @@ catalogRouter.get('/admin/import/state', requireArmoryAdmin, (_req: Request, res
 
 catalogRouter.post('/admin/import/reset', requireArmoryAdmin, (_req: Request, res: Response) => {
   try {
-    res.json({ ok: true, snapshot: resetAdminImportLock() });
+    const result = resetAdminImportLock();
+    if (!result.cleared) {
+      res.status(409).json({
+        error: result.reason ?? 'Import job is still running.',
+        snapshot: result.snapshot,
+      });
+      return;
+    }
+    res.json({ ok: true, snapshot: result.snapshot });
   } catch (err) {
     sendInternalError(res, 'admin.import.reset', err);
   }

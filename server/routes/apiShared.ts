@@ -58,37 +58,32 @@ export function fetchPublicLoadoutsForUser(
     updated_at: string;
   }>;
   if (loadoutRows.length === 0) return [];
-  const result: Array<{
-    id: string;
-    name: string;
-    owner_user_id: string;
-    owner_username: string | null;
-    visibility: string;
-    updated_at: string;
-    builds: Array<{ build_id: string; slot_type: string }>;
-  }> = [];
-  for (const row of loadoutRows) {
-    const links = db
-      .prepare(
-        `SELECT lb.build_id, lb.slot_type FROM loadout_builds lb
-         INNER JOIN builds b ON b.id = lb.build_id
-         WHERE lb.loadout_id = ? AND b.visibility = 'public'`,
-      )
-      .all(row.id) as Array<{ build_id: number; slot_type: string }>;
-    result.push({
-      id: String(row.id),
-      name: row.name,
-      owner_user_id: row.clerk_user_id,
-      owner_username: getOwnerDisplayName(row.clerk_user_id, ownerNames),
-      visibility: row.visibility ?? 'private',
-      updated_at: row.updated_at,
-      builds: links.map((l) => ({
-        build_id: String(l.build_id),
-        slot_type: l.slot_type,
-      })),
-    });
+
+  const loadoutIds = loadoutRows.map((row) => row.id);
+  const placeholders = loadoutIds.map(() => '?').join(',');
+  const linkRows = db
+    .prepare(
+      `SELECT lb.loadout_id, lb.build_id, lb.slot_type FROM loadout_builds lb
+       INNER JOIN builds b ON b.id = lb.build_id
+       WHERE lb.loadout_id IN (${placeholders}) AND b.visibility = 'public'`,
+    )
+    .all(...loadoutIds) as Array<{ loadout_id: number; build_id: number; slot_type: string }>;
+  const linksByLoadout = new Map<number, Array<{ build_id: string; slot_type: string }>>();
+  for (const link of linkRows) {
+    const bucket = linksByLoadout.get(link.loadout_id) ?? [];
+    bucket.push({ build_id: String(link.build_id), slot_type: link.slot_type });
+    linksByLoadout.set(link.loadout_id, bucket);
   }
-  return result;
+
+  return loadoutRows.map((row) => ({
+    id: String(row.id),
+    name: row.name,
+    owner_user_id: row.clerk_user_id,
+    owner_username: getOwnerDisplayName(row.clerk_user_id, ownerNames),
+    visibility: row.visibility ?? 'private',
+    updated_at: row.updated_at,
+    builds: linksByLoadout.get(row.id) ?? [],
+  }));
 }
 
 export const MOD_JUNK_SEGMENTS = ['/Beginner/', '/Intermediate/', '/Nemesis/'];

@@ -100,6 +100,24 @@ export function getOwnerDisplayName(
   return null;
 }
 
+const CLERK_SYNC_COOLDOWN_MS = 5 * 60 * 1000;
+const CLERK_SYNC_COOLDOWN_MAX_ENTRIES = 2000;
+const clerkSyncCooldown = new Map<string, number>();
+
+function pruneClerkSyncCooldown(now: number): void {
+  if (clerkSyncCooldown.size <= CLERK_SYNC_COOLDOWN_MAX_ENTRIES) return;
+  for (const [id, retryAt] of clerkSyncCooldown) {
+    if (retryAt <= now) {
+      clerkSyncCooldown.delete(id);
+    }
+  }
+  while (clerkSyncCooldown.size > CLERK_SYNC_COOLDOWN_MAX_ENTRIES) {
+    const oldest = clerkSyncCooldown.keys().next().value;
+    if (oldest === undefined) break;
+    clerkSyncCooldown.delete(oldest);
+  }
+}
+
 export async function resolveOwnerUsernames(
   clerkUserIds: string[],
 ): Promise<Map<string, string | null>> {
@@ -109,14 +127,22 @@ export async function resolveOwnerUsernames(
   );
   if (missing.length === 0) return map;
 
+  const now = Date.now();
+  const toSync = missing.filter((id) => (clerkSyncCooldown.get(id) ?? 0) <= now);
+  if (toSync.length === 0) return map;
+
   await Promise.all(
-    missing.map(async (clerkUserId) => {
+    toSync.map(async (clerkUserId) => {
       const username = await syncArmoryUserFromClerk(clerkUserId);
       if (username) {
         map.set(clerkUserId, username);
+        clerkSyncCooldown.delete(clerkUserId);
+      } else {
+        clerkSyncCooldown.set(clerkUserId, now + CLERK_SYNC_COOLDOWN_MS);
       }
     }),
   );
+  pruneClerkSyncCooldown(now);
 
   return map;
 }

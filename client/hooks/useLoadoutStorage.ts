@@ -36,9 +36,10 @@ function mapVisibility(raw: unknown): BuildVisibility {
   return 'private';
 }
 
-export function useLoadoutStorage() {
+export function useLoadoutStorage(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   const [loadouts, setLoadouts] = useState<Loadout[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [loadoutError, setLoadoutError] = useState<string | null>(null);
 
   const refresh = useCallback(async (): Promise<Loadout[]> => {
@@ -83,8 +84,9 @@ export function useLoadoutStorage() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     void refresh();
-  }, [refresh]);
+  }, [refresh, enabled]);
 
   const createLoadout = useCallback(
     async (name: string): Promise<Loadout> => {

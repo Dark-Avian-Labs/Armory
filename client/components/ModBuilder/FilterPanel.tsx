@@ -1,6 +1,6 @@
 import { memo, useState, useMemo, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 
-import { useApi } from '../../hooks/useApi';
+import { useModCatalog } from '../../hooks/useModCatalog';
 import type { Mod, ModRarity, EquipmentType } from '../../types/warframe';
 import { getModTypesForEquipment, NO_MOD_TYPES_FOR_EQUIPMENT } from '../../utils/equipmentModTypes';
 import { filterCompatibleMods, isModLockedOut, isPostureMod } from '../../utils/modFiltering';
@@ -184,7 +184,7 @@ export function FilterPanel({
   }, [active, measure]);
 
   const modTypes = getModTypesForEquipment(equipmentType);
-  const { data, loading } = useApi<{ items: Mod[] }>(
+  const { data, loading } = useModCatalog(
     modTypes !== NO_MOD_TYPES_FOR_EQUIPMENT
       ? `/api/mods?types=${encodeURIComponent(modTypes)}`
       : null,
@@ -253,6 +253,7 @@ export function FilterPanel({
   }, [allMods, equipmentType, equipment, equippedMods, targetSlotType, rarity, search]);
 
   const displayMods = showLockedOut ? [...compatible, ...lockedOut] : compatible;
+  const lockedOutSet = useMemo(() => new Set(lockedOut), [lockedOut]);
   const umbraSetEquippedCount = useMemo(
     () => countEquippedUmbraSetModsFromModList(equippedMods),
     [equippedMods],
@@ -471,7 +472,7 @@ export function FilterPanel({
                 </div>
               )}
               {displayMods.map((mod) => {
-                const locked = lockedOut.includes(mod);
+                const locked = lockedOutSet.has(mod);
                 return (
                   <ModPickerCard
                     key={mod.unique_name}

@@ -319,13 +319,17 @@ buildsRouter.get('/builds/:id/loadouts', async (req: Request, res: Response) => 
       return;
     }
 
-    const buildExists = db.prepare('SELECT 1 FROM builds WHERE id = ?').get(id);
-    if (!buildExists) {
+    const uid = getClerkUserId(req);
+    const buildRow = db.prepare(`SELECT ${BUILD_SELECT_LIST} FROM builds WHERE id = ?`).get(id) as
+      | BuildRow
+      | undefined;
+    const authState = getClerkAuthState(req);
+    const readContext = buildReadAccessContext(req, uid, authState.isArmoryAdmin);
+    if (!buildRow || !canReadBuild(buildRow, readContext)) {
       res.status(404).json({ error: 'Build not found' });
       return;
     }
 
-    const uid = getClerkUserId(req);
     const rows = db
       .prepare(
         `SELECT l.id, l.name, l.clerk_user_id, l.visibility
@@ -437,6 +441,12 @@ buildsRouter.post('/builds', (req: Request, res: Response) => {
       return;
     }
 
+    const sanitizedName = name.trim();
+    if (sanitizedName.length === 0 || sanitizedName.length > MAX_NAME_LENGTH) {
+      res.status(400).json({ error: 'Invalid name' });
+      return;
+    }
+
     if (!modConfigResult.success) {
       res.status(400).json({ error: 'Invalid mod_config' });
       return;
@@ -449,7 +459,7 @@ buildsRouter.post('/builds', (req: Request, res: Response) => {
       )
       .run(
         clerkUserId,
-        name,
+        sanitizedName,
         equipment_type,
         equipment_unique_name,
         JSON.stringify(modConfigResult.data),
@@ -482,6 +492,11 @@ buildsRouter.put('/builds/:id', (req: Request, res: Response) => {
     const modConfigResult = ModConfigSchema.safeParse(mod_config);
     if (typeof name !== 'string') {
       res.status(400).json({ error: 'Invalid build payload' });
+      return;
+    }
+    const sanitizedName = name.trim();
+    if (sanitizedName.length === 0 || sanitizedName.length > MAX_NAME_LENGTH) {
+      res.status(400).json({ error: 'Invalid name' });
       return;
     }
     if (!modConfigResult.success) {
@@ -520,7 +535,10 @@ buildsRouter.put('/builds/:id', (req: Request, res: Response) => {
       : undefined;
 
     let sql = 'UPDATE builds SET name = ?, mod_config = ?';
-    const params: Array<string | number | null> = [name, JSON.stringify(modConfigResult.data)];
+    const params: Array<string | number | null> = [
+      sanitizedName,
+      JSON.stringify(modConfigResult.data),
+    ];
     if (hasVisibility) {
       sql += ', visibility = ?, share_token = ?';
       params.push(visibility, shareToken);

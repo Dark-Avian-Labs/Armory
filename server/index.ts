@@ -2,6 +2,7 @@ import { createRequire } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { csrfSync } from 'csrf-sync';
 import express from 'express';
@@ -64,6 +65,7 @@ if (NODE_ENV === 'production' && SECURE_COOKIES && !TRUST_PROXY) {
 
 app.use(createAppHelmet());
 app.use(requestIdMiddleware);
+app.use(compression());
 
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const rateLimitDefaults = {
@@ -348,5 +350,19 @@ function shutdown(): void {
 
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+
+process.on('unhandledRejection', (reason) => {
+  log('error', 'Unhandled promise rejection; shutting down', {
+    err: reason instanceof Error ? (reason.stack ?? reason.message) : String(reason),
+  });
+  shutdown();
+});
+
+process.on('uncaughtException', (err) => {
+  log('error', 'Uncaught exception; shutting down', {
+    err: err.stack ?? err.message,
+  });
+  shutdown();
+});
 
 export default app;

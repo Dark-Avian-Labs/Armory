@@ -64,12 +64,13 @@ export function BuildOverview({
 }: BuildOverviewProps = {}) {
   const slug = ownerUserSlug?.trim() ?? ownerUserId?.trim() ?? '';
   const viewingUserBuilds = !favoritesMode && slug.length > 0;
+  const ownDataEnabled = !favoritesMode && !viewingUserBuilds;
   const {
     builds: ownBuilds,
     loading: ownLoading,
     deleteBuild,
     refresh: refreshBuilds,
-  } = useBuildStorage();
+  } = useBuildStorage({ enabled: ownDataEnabled });
   const [favoriteBuilds, setFavoriteBuilds] = useState<StoredBuild[]>([]);
   const [favoriteBuildsLoading, setFavoriteBuildsLoading] = useState(favoritesMode);
   const [userBuilds, setUserBuilds] = useState<StoredBuild[]>([]);
@@ -91,7 +92,7 @@ export function BuildOverview({
     unlinkBuild,
     updateLoadout,
     publishLoadout,
-  } = useLoadoutStorage();
+  } = useLoadoutStorage({ enabled: ownDataEnabled });
   const navigate = useNavigate();
 
   useEffect(() => {
