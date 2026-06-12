@@ -307,3 +307,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.64.13** `fix` [#363](https://github.com/Dark-Avian-Labs/Armory/pull/363): holofoil
 - **v1.64.14** `fix` [#364](https://github.com/Dark-Avian-Labs/Armory/pull/364): holofoil
 - **v1.65.0** `feat` [#368](https://github.com/Dark-Avian-Labs/Armory/pull/368): fable5 audit
+- **v1.66.0** `feat` [#369](https://github.com/Dark-Avian-Labs/Armory/pull/369): liquid glass theme
