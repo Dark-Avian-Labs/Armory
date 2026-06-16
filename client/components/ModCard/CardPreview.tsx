@@ -69,6 +69,7 @@ export function CardPreview({
 }: CardPreviewProps) {
   const L = layoutProp ?? DEFAULT_LAYOUT;
   const s = L.scale;
+  const holoFoil = !!(modArtOverlay && !collapsed);
   const h = collapsed ? L.collapsedHeight : L.cardHeight;
   const isEmptyCard = rarity === 'Empty';
   const slotRarity =
@@ -105,6 +106,10 @@ export function CardPreview({
   const artImageMaskStyle = artImageFadeMask
     ? { maskImage: artImageFadeMask, WebkitMaskImage: artImageFadeMask }
     : undefined;
+  const holoArtLayerStyle = {
+    objectPosition: 'center' as const,
+    ...artImageMaskStyle,
+  };
 
   const renderTextWithDamageIcons = (text: string, iconSize: number): React.ReactNode => {
     return text.split('\n').map((line, lineIndex) => (
@@ -193,7 +198,7 @@ export function CardPreview({
 
         {modArt && (
           <div
-            className={`absolute overflow-hidden ${modArtOverlay && !collapsed ? 'mod-card-art-window' : ''}`}
+            className={`absolute overflow-hidden ${holoFoil ? 'mod-card-art-window' : ''}`}
             style={{
               zIndex: 1,
               left: L.artOffsetX * s,
@@ -204,21 +209,21 @@ export function CardPreview({
               ...artClipMaskStyle,
             }}
           >
-            <img
-              src={modArt}
-              alt="art"
-              className="object-cover"
-              style={{
-                width: L.artWidth * s,
-                height: L.artHeight * s,
-                filter: collapsed ? 'grayscale(0.8) brightness(0.4)' : 'none',
-                objectPosition: collapsed ? 'center top' : 'center',
-                ...artImageMaskStyle,
-              }}
-              draggable={false}
-            />
-            {modArtOverlay && !collapsed && (
-              <>
+            {holoFoil ? (
+              <div
+                className="mod-card-holo-art-stack relative"
+                style={{
+                  width: L.artWidth * s,
+                  height: L.artHeight * s,
+                }}
+              >
+                <img
+                  src={modArt}
+                  alt="art"
+                  className="mod-card-holo-art-layer absolute inset-0 object-cover"
+                  style={holoArtLayerStyle}
+                  draggable={false}
+                />
                 <div className="mod-card-holo-stack mod-card-holo-stack--base" aria-hidden>
                   <div className="mod-card-holo-shine" />
                   <div className="mod-card-holo-glare" />
@@ -226,14 +231,8 @@ export function CardPreview({
                 <img
                   src={modArtOverlay}
                   alt=""
-                  className="mod-card-art-overlay absolute inset-0 object-cover"
-                  style={{
-                    zIndex: 1,
-                    width: L.artWidth * s,
-                    height: L.artHeight * s,
-                    objectPosition: 'center',
-                    ...artImageMaskStyle,
-                  }}
+                  className="mod-card-holo-art-layer mod-card-art-overlay absolute inset-0 object-cover"
+                  style={holoArtLayerStyle}
                   draggable={false}
                 />
                 <div
@@ -248,7 +247,21 @@ export function CardPreview({
                   <div className="mod-card-holo-shine mod-card-holo-masked" />
                   <div className="mod-card-holo-glare mod-card-holo-masked" />
                 </div>
-              </>
+              </div>
+            ) : (
+              <img
+                src={modArt}
+                alt="art"
+                className="object-cover"
+                style={{
+                  width: L.artWidth * s,
+                  height: L.artHeight * s,
+                  filter: collapsed ? 'grayscale(0.8) brightness(0.4)' : 'none',
+                  objectPosition: collapsed ? 'center top' : 'center',
+                  ...artImageMaskStyle,
+                }}
+                draggable={false}
+              />
             )}
           </div>
         )}
