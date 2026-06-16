@@ -310,3 +310,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.66.0** `feat` [#369](https://github.com/Dark-Avian-Labs/Armory/pull/369): liquid glass theme
 - **v1.66.1** `chore` [#370](https://github.com/Dark-Avian-Labs/Armory/pull/370): update dependencies
 - **v1.66.2** `chore` [#372](https://github.com/Dark-Avian-Labs/Armory/pull/372): theme fixes
+- **v1.66.3** `fix` [#373](https://github.com/Dark-Avian-Labs/Armory/pull/373): themes
