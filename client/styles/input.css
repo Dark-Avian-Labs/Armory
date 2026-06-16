@@ -226,6 +226,8 @@ html.ui-clear:not(.dark) {
   }
 
   #root {
+    position: relative;
+    z-index: 10;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -1804,7 +1806,8 @@ html.ui-liquid .glass-tooltip-surface {
 }
 
 html.bg-hybrid-active .glass-shell,
-html.bg-hybrid-active .glass-surface,
+html.bg-hybrid-active
+  .glass-surface:not(.user-menu):not(.select-dropdown-menu):not(.account-dropdown),
 html.bg-hybrid-active .glass-tooltip-surface,
 html.bg-hybrid-active .glass-panel,
 html.bg-hybrid-active .glass-light {
@@ -1823,6 +1826,25 @@ html.bg-hybrid-active.ui-liquid .glass-light::before {
 html.bg-hybrid-active thead th {
   -webkit-backdrop-filter: blur(var(--bg-hybrid-header-blur)) saturate(1.1);
   backdrop-filter: blur(var(--bg-hybrid-header-blur)) saturate(1.1);
+}
+
+html.bg-hybrid-active .user-menu,
+html.bg-hybrid-active .select-dropdown-menu,
+html.bg-hybrid-active .account-dropdown {
+  -webkit-backdrop-filter: blur(12px) saturate(1.2) !important;
+  backdrop-filter: blur(12px) saturate(1.2) !important;
+}
+
+html.dark.bg-hybrid-active .user-menu,
+html.dark.bg-hybrid-active .select-dropdown-menu,
+html.dark.bg-hybrid-active .account-dropdown {
+  background: oklch(0% 0 0 / 0.78);
+}
+
+html:not(.dark).bg-hybrid-active .user-menu,
+html:not(.dark).bg-hybrid-active .select-dropdown-menu,
+html:not(.dark).bg-hybrid-active .account-dropdown {
+  background: oklch(100% 0 0 / 0.9);
 }
 
 @media (prefers-reduced-motion: reduce) {
