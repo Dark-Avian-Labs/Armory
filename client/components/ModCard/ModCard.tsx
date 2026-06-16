@@ -471,12 +471,12 @@ function CollapsedHoverExpand({
             '--tilt-y': `${(tilt.py * 100).toFixed(1)}%`,
             '--strip-fade': stripFade.toFixed(3),
             ...getAtragraphHoloCssVars(tilt.px, tilt.py),
-            ...(previewProps.modArtOverlay ? {} : getCardFoilStyle(previewProps.rarity, layout)),
+            ...getCardFoilStyle(previewProps.rarity, layout),
           } as React.CSSProperties
         }
       >
         <CardPreview layout={layout} {...previewProps} />
-        {!previewProps.modArtOverlay ? <div className={getModCardFoilClass()} aria-hidden /> : null}
+        <div className={getModCardFoilClass()} aria-hidden />
       </div>
     </div>,
     document.body,
