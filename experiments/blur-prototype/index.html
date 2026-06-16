@@ -1,0 +1,1109 @@
+<!doctype html>
+<html lang="en" class="dark ui-shadow">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pre-blur background prototype</title>
+    <link rel="stylesheet" href="./themes.css" />
+    <style>
+      :root {
+        --font-sans: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+        --font-mono: 'Cascadia Mono', ui-monospace, monospace;
+        --bg-blur-radius: 12px;
+        --header-blur-radius: 3px;
+        --modal-blur-radius: 10px;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        font-family: var(--font-sans);
+        color: var(--color-foreground);
+        background:
+          radial-gradient(circle at 10% 10%, var(--color-bg-glow), transparent 40%),
+          radial-gradient(circle at 85% 15%, var(--color-bg-glow), transparent 45%),
+          linear-gradient(to bottom, var(--color-bg-start) 0%, var(--color-bg-end) 100%);
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body.modal-open .app-shell {
+        filter: blur(4px);
+        transition: filter 0.2s ease;
+      }
+
+      .bg-art {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 0;
+        pointer-events: none;
+        user-select: none;
+      }
+
+      .bg-art canvas {
+        display: block;
+      }
+
+      .app-shell {
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .demo-header {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--color-glass-border);
+        background: color-mix(in oklab, var(--color-glass) 82%, transparent);
+        box-shadow: var(--shadow-panel);
+      }
+
+      .demo-header.panel-preblur {
+        padding: 0;
+        background: transparent;
+      }
+
+      .demo-header .glass-content {
+        padding: 16px 24px;
+      }
+
+      .demo-header.header-live-blur {
+        -webkit-backdrop-filter: blur(var(--header-blur-radius)) saturate(1.1);
+        backdrop-filter: blur(var(--header-blur-radius)) saturate(1.1);
+      }
+
+      .demo-header h1 {
+        margin: 0 0 4px;
+        font-size: 1.125rem;
+        font-weight: 650;
+      }
+
+      .demo-header p {
+        margin: 0;
+        color: var(--color-muted);
+        font-size: 0.875rem;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 20px;
+        align-items: end;
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--color-glass-divider);
+      }
+
+      .control {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 140px;
+      }
+
+      .control label {
+        font-size: 12px;
+        color: var(--color-muted);
+      }
+
+      .control select,
+      .control input[type='range'] {
+        width: 100%;
+      }
+
+      .control-toggle {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        min-width: auto;
+      }
+
+      .control-toggle label {
+        font-size: 13px;
+        color: var(--color-foreground);
+      }
+
+      main {
+        flex: 1;
+        padding: 24px;
+        max-width: 1200px;
+        width: 100%;
+        margin: 0 auto;
+      }
+
+      .section-title {
+        margin: 0 0 12px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--color-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .glass-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+      }
+
+      .glass-surface,
+      .table-container,
+      .demo-header.panel-preblur,
+      .glass-modal.panel-preblur {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+      }
+
+      .glass-surface {
+        border-radius: var(--radius-ui);
+        background: var(--color-glass);
+        border: 1px solid var(--color-glass-border);
+        box-shadow:
+          var(--shadow-panel),
+          inset 0 1px 0 oklch(100% 0 0 / 0.06),
+          inset 0 -1px 0 oklch(0% 0 0 / 0.4);
+        min-height: 120px;
+      }
+
+      .glass-surface.panel-preblur,
+      .table-container.panel-preblur,
+      .glass-modal.panel-preblur,
+      .demo-header.panel-preblur {
+        background: transparent;
+        box-shadow: var(--shadow-panel);
+      }
+
+      .glass-surface.panel-live-blur,
+      .table-container.panel-live-blur {
+        -webkit-backdrop-filter: blur(12px) saturate(1.1);
+        backdrop-filter: blur(12px) saturate(1.1);
+      }
+
+      .blur-slice {
+        position: absolute;
+        z-index: 1;
+        display: none;
+        pointer-events: none;
+      }
+
+      .panel-preblur .blur-slice {
+        display: block;
+      }
+
+      .panel-occluder {
+        display: none;
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        border-radius: inherit;
+        background: var(--color-panel-occluder);
+      }
+
+      .panel-preblur .panel-occluder {
+        display: block;
+      }
+
+      .glass-tint {
+        display: none;
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        border-radius: inherit;
+      }
+
+      .panel-preblur .glass-tint {
+        display: block;
+      }
+
+      .glass-surface .glass-tint {
+        background: var(--color-glass-overlay);
+        box-shadow:
+          inset 0 1px 0 oklch(100% 0 0 / 0.06),
+          inset 0 -1px 0 oklch(0% 0 0 / 0.4);
+      }
+
+      .table-container .glass-tint {
+        background: var(--color-glass-overlay);
+      }
+
+      .demo-header.panel-preblur .glass-tint {
+        background: var(--color-glass-overlay-header);
+      }
+
+      .glass-modal.panel-preblur .glass-tint {
+        background: var(--color-glass-overlay-modal);
+      }
+
+      .glass-content {
+        position: relative;
+        z-index: 3;
+      }
+
+      .glass-surface .glass-content {
+        padding: 20px;
+      }
+
+      .glass-surface h3 {
+        margin: 0 0 8px;
+        font-size: 1rem;
+      }
+
+      .glass-surface p {
+        margin: 0;
+        color: var(--color-muted);
+        font-size: 0.875rem;
+        line-height: 1.45;
+      }
+
+      .table-container {
+        border-radius: var(--radius-ui);
+        background: var(--color-glass);
+        border: 1px solid var(--color-glass-border);
+        box-shadow: var(--shadow-panel);
+        margin-bottom: 32px;
+      }
+
+      .table-scroll {
+        max-height: 420px;
+        overflow: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 24px 16px;
+        text-align: left;
+      }
+
+      thead {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
+
+      thead th {
+        background: color-mix(in oklab, var(--color-glass-hover) 50%, transparent);
+        color: var(--color-muted);
+        font-weight: 600;
+        border-bottom: 1px solid var(--color-glass-border);
+      }
+
+      .table-container.panel-preblur thead th {
+        background: oklch(0% 0 0 / 0.35);
+      }
+
+      thead th.header-live-blur {
+        -webkit-backdrop-filter: blur(var(--header-blur-radius)) saturate(1.1);
+        backdrop-filter: blur(var(--header-blur-radius)) saturate(1.1);
+      }
+
+      tbody tr {
+        border-bottom: 1px solid var(--color-glass-divider);
+      }
+
+      tbody tr:hover {
+        background: oklch(100% 0 0 / 0.03);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 32px;
+      }
+
+      .btn {
+        appearance: none;
+        border: 1px solid var(--color-glass-border);
+        background: color-mix(in oklab, var(--color-glass) 90%, transparent);
+        color: var(--color-foreground);
+        border-radius: 9999px;
+        padding: 10px 18px;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .btn:hover {
+        background: var(--color-glass-hover);
+      }
+
+      .btn-accent {
+        background: color-mix(in oklab, var(--color-accent) 24%, var(--color-glass));
+        border-color: color-mix(in oklab, var(--color-accent) 40%, var(--color-glass-border));
+      }
+
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: oklch(0% 0 0 / 0.55);
+      }
+
+      .modal-overlay.open {
+        display: flex;
+      }
+
+      .modal-overlay.overlay-live-blur {
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+      }
+
+      .glass-modal {
+        width: min(520px, 100%);
+        border-radius: var(--radius-ui-lg);
+        background: color-mix(in oklab, var(--color-glass) 75%, transparent);
+        border: 1px solid var(--color-glass-border);
+        box-shadow: var(--shadow-panel);
+        padding: 24px;
+      }
+
+      .glass-modal.panel-preblur {
+        padding: 0;
+      }
+
+      .glass-modal .glass-content {
+        padding: 24px;
+      }
+
+      .glass-modal.modal-live-blur:not(.panel-preblur) {
+        background: var(--color-glass-overlay-modal);
+        -webkit-backdrop-filter: blur(var(--modal-blur-radius)) saturate(1.1);
+        backdrop-filter: blur(var(--modal-blur-radius)) saturate(1.1);
+      }
+
+      .glass-modal.modal-live-blur.panel-preblur .glass-tint {
+        -webkit-backdrop-filter: blur(var(--modal-blur-radius)) saturate(1.1);
+        backdrop-filter: blur(var(--modal-blur-radius)) saturate(1.1);
+      }
+
+      .glass-modal h2 {
+        margin: 0 0 8px;
+      }
+
+      .glass-modal p {
+        margin: 0 0 20px;
+        color: var(--color-muted);
+        line-height: 1.5;
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      .mode-badge {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        background: color-mix(in oklab, var(--color-accent) 20%, transparent);
+        border: 1px solid color-mix(in oklab, var(--color-accent) 35%, transparent);
+        color: var(--color-foreground);
+        vertical-align: middle;
+      }
+
+      .footnote {
+        margin: 0 0 24px;
+        padding: 14px 16px;
+        border-radius: var(--radius-ui);
+        border: 1px dashed var(--color-glass-border);
+        color: var(--color-muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <svg aria-hidden="true" width="0" height="0" style="position: absolute">
+      <defs>
+        <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+          <feTurbulence type="fractalNoise" baseFrequency="0.01 0.01" numOctaves="1" seed="5" result="turbulence" />
+          <feComponentTransfer in="turbulence" result="mapped">
+            <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5" />
+            <feFuncG type="gamma" amplitude="0" exponent="1" offset="0" />
+            <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5" />
+          </feComponentTransfer>
+          <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap" />
+          <feSpecularLighting
+            in="softMap"
+            surfaceScale="5"
+            specularConstant="1"
+            specularExponent="100"
+            lighting-color="white"
+            result="specLight"
+          >
+            <fePointLight x="-200" y="-200" z="300" />
+          </feSpecularLighting>
+          <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage" />
+          <feDisplacementMap in="SourceGraphic" in2="softMap" scale="100" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
+    </svg>
+
+    <div class="bg-art" aria-hidden="true">
+      <canvas id="bg-canvas"></canvas>
+    </div>
+
+    <div class="app-shell">
+      <header class="demo-header header-live-blur">
+        <h1>
+          Pre-blur background prototype
+          <span class="mode-badge" id="mode-badge">hybrid · shadow · dark</span>
+        </h1>
+        <p>
+          Scroll the table and open the modal. Toggle controls to compare old live blur vs pre-blurred background +
+          light header blur.
+        </p>
+        <div class="controls">
+          <div class="control">
+            <label for="color-mode">Color mode</label>
+            <select id="color-mode">
+              <option value="dark" selected>Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+          <div class="control">
+            <label for="ui-style">UI style</label>
+            <select id="ui-style">
+              <option value="prism">Prism</option>
+              <option value="shadow" selected>Shadow</option>
+              <option value="clear">Clear</option>
+              <option value="liquid">Liquid</option>
+            </select>
+          </div>
+          <div class="control">
+            <label for="render-mode">Render mode</label>
+            <select id="render-mode">
+              <option value="hybrid" selected>Hybrid (pre-blur + header blur)</option>
+              <option value="preblur-only">Pre-blur only (panels tint)</option>
+              <option value="legacy">Legacy (live panel blur)</option>
+            </select>
+          </div>
+          <div class="control">
+            <label for="bg-blur">Background blur (<span id="bg-blur-value">12</span>px)</label>
+            <input id="bg-blur" type="range" min="0" max="24" step="1" value="12" />
+          </div>
+          <div class="control">
+            <label for="header-blur">Header blur (<span id="header-blur-value">3</span>px)</label>
+            <input id="header-blur" type="range" min="0" max="8" step="1" value="3" />
+          </div>
+          <div class="control control-toggle">
+            <input id="animate-bg" type="checkbox" checked />
+            <label for="animate-bg">Animate scan</label>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <p class="footnote">
+          Run with a local server so ASCII assets load:
+          <code>npx serve .</code>
+          from
+          <code>experiments/blur-prototype</code>. Hybrid mode keeps the page background sharp and clips a pre-blurred
+          viewport slice inside each glass panel. A small live blur remains on sticky headers / page header / modal
+          overlay.
+        </p>
+
+        <h2 class="section-title">Glass panels</h2>
+        <div class="glass-grid" id="glass-grid">
+          <article class="glass-surface">
+            <h3>Panel A</h3>
+            <p>Blurred slice + opaque overlay on top. Sharp art is masked out under this panel.</p>
+          </article>
+          <article class="glass-surface">
+            <h3>Panel B</h3>
+            <p>Look for banding in dark gradients here. Legacy mode should show harsher horizontal steps.</p>
+          </article>
+          <article class="glass-surface">
+            <h3>Panel C</h3>
+            <p>The ASCII scan animation should remain visible through the frosted tint.</p>
+          </article>
+        </div>
+
+        <h2 class="section-title">Actions</h2>
+        <div class="actions">
+          <button class="btn btn-accent" type="button" id="open-modal">Open modal</button>
+          <button class="btn" type="button" id="scroll-table">Jump to row 80</button>
+        </div>
+
+        <h2 class="section-title">Scrollable table</h2>
+        <div class="table-container" id="table-container">
+          <div class="table-scroll" id="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th class="header-live-blur">#</th>
+                  <th class="header-live-blur">Name</th>
+                  <th class="header-live-blur">Status</th>
+                  <th class="header-live-blur">Notes</th>
+                </tr>
+              </thead>
+              <tbody id="table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div class="modal-overlay overlay-live-blur" id="modal-overlay" hidden>
+      <div class="glass-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <h2 id="modal-title">Example modal</h2>
+        <p>
+          The page shell blurs with <code>filter: blur(4px)</code> while this is open (same as the app). In hybrid mode
+          the modal uses a pre-blurred slice plus live <code>backdrop-filter</code> on the surface.
+        </p>
+        <div class="modal-actions">
+          <button class="btn" type="button" id="close-modal">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const SCAN_BAND_HALF = 0.01;
+      const SCAN_BAND_FEATHER = 0.006;
+      const PERIOD_SEC = 22;
+      const ANGLE_DEG = 135;
+
+      function smoothstep(edge0, edge1, x) {
+        const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0 || 1e-9)));
+        return t * t * (3 - 2 * t);
+      }
+
+      function cssLinearGradientT(col, row, cols, rows, angleDeg) {
+        const rad = (angleDeg * Math.PI) / 180;
+        const gx = Math.sin(rad);
+        const gy = -Math.cos(rad);
+        const nx = cols <= 1 ? 0.5 : col / (cols - 1);
+        const ny = rows <= 1 ? 0.5 : row / (rows - 1);
+        let pmin = Infinity;
+        let pmax = -Infinity;
+        for (const x of [0, 1]) {
+          for (const y of [0, 1]) {
+            const pc = x * gx + y * gy;
+            pmin = Math.min(pmin, pc);
+            pmax = Math.max(pmax, pc);
+          }
+        }
+        const p = nx * gx + ny * gy;
+        const span = pmax - pmin || 1;
+        return (p - pmin) / span;
+      }
+
+      function altBlend(t, phase, half = SCAN_BAND_HALF, feather = SCAN_BAND_FEATHER) {
+        const d = Math.abs(t - phase);
+        return 1 - smoothstep(half, half + feather, d);
+      }
+
+      function normalizeAsciiPair(baseRows, altRows) {
+        const rows = Math.max(baseRows.length, altRows.length);
+        const cols = Math.max(0, ...baseRows.map((r) => r.length), ...altRows.map((r) => r.length));
+        const base = Array.from({ length: rows }, (_, i) => (baseRows[i] ?? '').padEnd(cols, ' '));
+        const alt = Array.from({ length: rows }, (_, i) => (altRows[i] ?? '').padEnd(cols, ' '));
+        return { base, alt, rows, cols };
+      }
+
+      function drawAsciiFrame(ctx, base, alt, cols, rows, cellW, cellH, w, h, phase, fgA, fgB) {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = fgA;
+        for (let r = 0; r < rows; r++) {
+          const y = r * cellH;
+          const rowBase = base[r] ?? '';
+          for (let c = 0; c < cols; c++) {
+            ctx.fillText(rowBase[c] ?? ' ', c * cellW, y);
+          }
+        }
+        for (let r = 0; r < rows; r++) {
+          const y = r * cellH;
+          const rowBase = base[r] ?? '';
+          const rowAlt = alt[r] ?? '';
+          for (let c = 0; c < cols; c++) {
+            const t = cssLinearGradientT(c, r, cols, rows, ANGLE_DEG);
+            const blend = altBlend(t, phase);
+            if (blend <= 0.001) continue;
+            const bc = rowBase[c] ?? ' ';
+            const ac = rowAlt[c] ?? ' ';
+            if (ac === bc) continue;
+            ctx.globalAlpha = blend;
+            ctx.fillStyle = fgB;
+            ctx.fillText(ac, c * cellW, y);
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      function drawBodyGradient(ctx, width, height) {
+        const start = getComputedStyle(document.documentElement).getPropertyValue('--color-bg-start').trim();
+        const end = getComputedStyle(document.documentElement).getPropertyValue('--color-bg-end').trim();
+
+        const base = ctx.createLinearGradient(0, 0, 0, height);
+        base.addColorStop(0, start || '#05060d');
+        base.addColorStop(0.35, start || '#05060d');
+        base.addColorStop(0.72, end || '#11131d');
+        base.addColorStop(1, end || '#11131d');
+        ctx.fillStyle = base;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function applyGradientDither(ctx, width, height, amount = 3) {
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const noise = (Math.random() - 0.5) * amount;
+          data[i] = Math.max(0, Math.min(255, data[i] + noise));
+          data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise));
+          data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise));
+        }
+        ctx.putImageData(imageData, 0, 0);
+      }
+
+      function populateTable() {
+        const tbody = document.getElementById('table-body');
+        tbody.replaceChildren();
+        for (let i = 1; i <= 100; i++) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${i}</td>
+            <td>Item ${String(i).padStart(3, '0')}</td>
+            <td>${i % 3 === 0 ? 'Owned' : i % 3 === 1 ? 'Missing' : 'Wishlist'}</td>
+            <td>Empty row for scroll testing — background stays fixed while rows move.</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+
+      let renderMode = 'hybrid';
+      let uiStyle = 'shadow';
+      let colorMode = 'dark';
+      let repaint = () => {};
+      let rebuildGradientLayer = () => {};
+
+      function updateThemeBadge() {
+        document.getElementById('mode-badge').textContent = `${renderMode} · ${uiStyle} · ${colorMode}`;
+      }
+
+      function applyTheme() {
+        const html = document.documentElement;
+        html.classList.toggle('dark', colorMode === 'dark');
+        html.classList.remove('ui-shadow', 'ui-clear', 'ui-liquid');
+        if (uiStyle === 'shadow') {
+          html.classList.add('ui-shadow');
+        } else if (uiStyle === 'clear') {
+          html.classList.add('ui-clear');
+        } else if (uiStyle === 'liquid') {
+          html.classList.add('ui-liquid');
+        }
+        updateThemeBadge();
+        rebuildGradientLayer();
+        applyRenderMode(renderMode);
+      }
+
+      function setupBlurSlices() {
+        const panelSelector = '.demo-header, .glass-surface, .table-container, .glass-modal';
+        document.querySelectorAll(panelSelector).forEach((panel) => {
+          if (panel.querySelector('.blur-slice')) {
+            return;
+          }
+
+          const occluder = document.createElement('div');
+          occluder.className = 'panel-occluder';
+          occluder.setAttribute('aria-hidden', 'true');
+
+          const slice = document.createElement('canvas');
+          slice.className = 'blur-slice';
+          slice.setAttribute('aria-hidden', 'true');
+
+          const tint = document.createElement('div');
+          tint.className = 'glass-tint';
+
+          const content = document.createElement('div');
+          content.className = 'glass-content';
+          while (panel.firstChild) {
+            content.appendChild(panel.firstChild);
+          }
+
+          panel.append(occluder, slice, tint, content);
+        });
+      }
+
+      function applyRenderMode(mode) {
+        renderMode = mode;
+        const panels = document.querySelectorAll('.demo-header, .glass-surface, .table-container');
+        const modal = document.querySelector('.glass-modal');
+        const theadCells = document.querySelectorAll('thead th');
+        const overlay = document.getElementById('modal-overlay');
+        const isClear = document.documentElement.classList.contains('ui-clear');
+        const isLiquid = document.documentElement.classList.contains('ui-liquid');
+
+        const usePanelSlices = (mode === 'hybrid' || mode === 'preblur-only') && !isClear;
+        const panelLiveBlur = mode === 'legacy' && !isClear;
+        const headerLiveBlur = !isClear && !isLiquid && (mode === 'legacy' || mode === 'hybrid');
+        const overlayLiveBlur = !isClear && (mode === 'legacy' || mode === 'hybrid');
+        const modalLiveBlur = !isClear && (mode === 'legacy' || mode === 'hybrid');
+
+        panels.forEach((el) => {
+          el.classList.toggle('panel-preblur', usePanelSlices);
+          el.classList.toggle('panel-live-blur', panelLiveBlur);
+        });
+        modal?.classList.toggle('panel-preblur', usePanelSlices && !modalLiveBlur);
+        theadCells.forEach((el) => el.classList.toggle('header-live-blur', headerLiveBlur));
+        overlay.classList.toggle('overlay-live-blur', overlayLiveBlur);
+        modal?.classList.toggle('modal-live-blur', modalLiveBlur);
+        document.querySelector('.demo-header')?.classList.toggle('header-live-blur', headerLiveBlur);
+        updateThemeBadge();
+        repaint();
+      }
+
+      async function loadAsciiAssets() {
+        try {
+          const [baseRaw, altRaw] = await Promise.all([
+            fetch('./assets/background.txt').then((r) => r.text()),
+            fetch('./assets/background2.txt').then((r) => r.text()),
+          ]);
+          const split = (raw) => raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+          return normalizeAsciiPair(split(baseRaw), split(altRaw));
+        } catch {
+          const fallbackBase = [
+            '                                                                                      ▄',
+            '                                                                                    ,█░▌',
+            '                                                                          ╓▄▄,  ,▄███▐██',
+            '                                                           ▀▌▀███▄▄▄▄Æ███████▄M▀███▄▀█▐█',
+            '                                                              ▀███▄▄██████▀█▌Æ▀█████████⌐',
+            '                                                   ╓▄█▀        ,█▀█▀▌/██`▀████████▀▐▐█U▐▐██',
+            '                                             ███████▄         ^ ▄███▀▄████W███@▐▒██▐█▄█████████µ',
+            '                                          ██████████████████▄║,▐█▌`╟─     "▒▀████▀▒┘`',
+            '                                          ▐██████████████████,╙▒▒               -',
+          ];
+          const fallbackAlt = [
+            '                                                                                      g',
+            '                                                                                    ,$*L',
+            '                                                                          =ww,  ,g$$PZ&$',
+            '                                                           Jy5$$&ggwyK4$$&4&&(MR$$$c*$j&',
+            '                                                              J&$&mA$$$$$&NwtAM$$$$$$$&$',
+            '                                                   ;gBC        ,$\\$]&"$$`Y&$$&$A$$Pj]$r]]$N',
+            '                                             A$$$$$$r         ^ Z$$&Q]$&Q@jB&$W$]$@1QwgW$$$$$$$w',
+            '                                          $$$$$$$$$$$$$@U],j$Q T      "\\7&$N$Mk*`',
+            '                                          ▐██████████████████,╙▒▒               -',
+          ];
+          return normalizeAsciiPair(fallbackBase, fallbackAlt);
+        }
+      }
+
+      async function main() {
+        populateTable();
+        setupBlurSlices();
+
+        const canvas = document.getElementById('bg-canvas');
+        const renderModeSelect = document.getElementById('render-mode');
+        const colorModeSelect = document.getElementById('color-mode');
+        const uiStyleSelect = document.getElementById('ui-style');
+        const bgBlurInput = document.getElementById('bg-blur');
+        const headerBlurInput = document.getElementById('header-blur');
+        const bgBlurValue = document.getElementById('bg-blur-value');
+        const headerBlurValue = document.getElementById('header-blur-value');
+        const animateCheckbox = document.getElementById('animate-bg');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const openModalBtn = document.getElementById('open-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const scrollTableBtn = document.getElementById('scroll-table');
+        const tableScroll = document.getElementById('table-scroll');
+
+        const ascii = await loadAsciiAssets();
+        const compositeCanvas = document.createElement('canvas');
+        const gradientLayer = document.createElement('canvas');
+        const blurCanvas = document.createElement('canvas');
+        const compositeCtx = compositeCanvas.getContext('2d');
+        const blurCtx = blurCanvas.getContext('2d');
+        const displayCtx = canvas.getContext('2d');
+        const blurSliceCanvases = [...document.querySelectorAll('.blur-slice')];
+        const blurSlicePanels = blurSliceCanvases
+          .map((slice) => slice.closest('.demo-header, .glass-surface, .table-container, .glass-modal'))
+          .filter(Boolean);
+        const dpiScale = Math.max(1, Math.ceil(window.devicePixelRatio || 1));
+        const fontSize = 11;
+        const lineHeight = 13;
+        let viewportW = 0;
+        let viewportH = 0;
+        let asciiCellW = 7;
+        let asciiDrawW = 0;
+        let asciiDrawH = 0;
+        let asciiOffsetX = 0;
+        let asciiOffsetY = 0;
+        let bgBlurPx = Number(bgBlurInput.value);
+        let headerBlurPx = Number(headerBlurInput.value);
+        let animate = animateCheckbox.checked;
+        let raf = 0;
+        const t0 = performance.now();
+
+        function rebuildGradientLayerImpl() {
+          const gradientCtx = gradientLayer.getContext('2d');
+          if (!gradientCtx) {
+            return;
+          }
+          gradientLayer.width = Math.floor(viewportW * dpiScale);
+          gradientLayer.height = Math.floor(viewportH * dpiScale);
+          gradientCtx.setTransform(dpiScale, 0, 0, dpiScale, 0, 0);
+          gradientCtx.imageSmoothingEnabled = true;
+          drawBodyGradient(gradientCtx, viewportW, viewportH);
+          applyGradientDither(gradientCtx, gradientLayer.width, gradientLayer.height);
+        }
+
+        function drawAsciiOnto(ctx, phase, fgA, fgB) {
+          ctx.save();
+          ctx.translate(asciiOffsetX, asciiOffsetY);
+          drawAsciiFrame(
+            ctx,
+            ascii.base,
+            ascii.alt,
+            ascii.cols,
+            ascii.rows,
+            asciiCellW,
+            lineHeight,
+            asciiDrawW,
+            asciiDrawH,
+            phase,
+            fgA,
+            fgB,
+          );
+          ctx.restore();
+        }
+
+        function readAsciiColors() {
+          const opacity =
+            Number(getComputedStyle(document.documentElement).getPropertyValue('--ascii-opacity')) || 0.035;
+          const isDark = document.documentElement.classList.contains('dark');
+          const base = isDark ? [230, 235, 245] : [28, 32, 42];
+          return {
+            fgA: `rgba(${base[0]}, ${base[1]}, ${base[2]}, ${opacity})`,
+            fgB: `rgba(255, 255, 255, ${Math.min(opacity * 3.2, isDark ? 0.12 : 0.18)})`,
+          };
+        }
+
+        rebuildGradientLayer = rebuildGradientLayerImpl;
+
+        function positionBlurSlices() {
+          for (let i = 0; i < blurSliceCanvases.length; i++) {
+            const slice = blurSliceCanvases[i];
+            const panel = blurSlicePanels[i];
+            if (!slice || !panel) {
+              continue;
+            }
+            const rect = panel.getBoundingClientRect();
+            slice.style.left = `${-rect.left}px`;
+            slice.style.top = `${-rect.top}px`;
+          }
+        }
+
+        rebuildGradientLayer = rebuildGradientLayerImpl;
+
+        function layout() {
+          viewportW = window.innerWidth;
+          viewportH = window.innerHeight;
+          compositeCanvas.width = Math.floor(viewportW * dpiScale);
+          compositeCanvas.height = Math.floor(viewportH * dpiScale);
+          blurCanvas.width = compositeCanvas.width;
+          blurCanvas.height = compositeCanvas.height;
+          compositeCtx.setTransform(dpiScale, 0, 0, dpiScale, 0, 0);
+          blurCtx.setTransform(dpiScale, 0, 0, dpiScale, 0, 0);
+
+          compositeCtx.imageSmoothingEnabled = false;
+          compositeCtx.font = `${fontSize}px "Cascadia Mono", ui-monospace, monospace`;
+          compositeCtx.textBaseline = 'top';
+          asciiCellW = Math.max(1, Math.round(compositeCtx.measureText('M').width));
+          asciiDrawW = ascii.cols * asciiCellW;
+          asciiDrawH = ascii.rows * lineHeight;
+          asciiOffsetX = (viewportW - asciiDrawW) / 2;
+          asciiOffsetY = (viewportH - asciiDrawH) / 2;
+
+          canvas.width = Math.floor(asciiDrawW * dpiScale);
+          canvas.height = Math.floor(asciiDrawH * dpiScale);
+          canvas.style.width = `${asciiDrawW}px`;
+          canvas.style.height = `${asciiDrawH}px`;
+          displayCtx.setTransform(dpiScale, 0, 0, dpiScale, 0, 0);
+          displayCtx.imageSmoothingEnabled = false;
+          displayCtx.font = `${fontSize}px "Cascadia Mono", ui-monospace, monospace`;
+          displayCtx.textBaseline = 'top';
+
+          rebuildGradientLayer();
+
+          for (let i = 0; i < blurSliceCanvases.length; i++) {
+            const slice = blurSliceCanvases[i];
+            if (!slice) {
+              continue;
+            }
+            slice.width = compositeCanvas.width;
+            slice.height = compositeCanvas.height;
+            slice.style.width = `${viewportW}px`;
+            slice.style.height = `${viewportH}px`;
+          }
+        }
+
+        function paint(now) {
+          const phase = ((now - t0) % (PERIOD_SEC * 1000)) / (PERIOD_SEC * 1000);
+          const { fgA, fgB } = readAsciiColors();
+          const isClear = document.documentElement.classList.contains('ui-clear');
+          const usePanelSlices = (renderMode === 'hybrid' || renderMode === 'preblur-only') && !isClear;
+          const useCompositeBlur = usePanelSlices && bgBlurPx > 0;
+
+          displayCtx.clearRect(0, 0, asciiDrawW, asciiDrawH);
+          drawAsciiFrame(
+            displayCtx,
+            ascii.base,
+            ascii.alt,
+            ascii.cols,
+            ascii.rows,
+            asciiCellW,
+            lineHeight,
+            asciiDrawW,
+            asciiDrawH,
+            phase,
+            fgA,
+            fgB,
+          );
+
+          compositeCtx.clearRect(0, 0, viewportW, viewportH);
+          if (useCompositeBlur) {
+            compositeCtx.drawImage(gradientLayer, 0, 0, viewportW, viewportH);
+          }
+          drawAsciiOnto(compositeCtx, phase, fgA, fgB);
+
+          if (useCompositeBlur) {
+            positionBlurSlices();
+            blurCtx.clearRect(0, 0, viewportW, viewportH);
+            blurCtx.filter = `blur(${bgBlurPx}px) saturate(1.2)`;
+            blurCtx.drawImage(compositeCanvas, 0, 0, viewportW, viewportH);
+            blurCtx.filter = 'none';
+
+            for (const slice of blurSliceCanvases) {
+              const sliceCtx = slice.getContext('2d');
+              if (!sliceCtx) {
+                continue;
+              }
+              sliceCtx.setTransform(dpiScale, 0, 0, dpiScale, 0, 0);
+              sliceCtx.clearRect(0, 0, viewportW, viewportH);
+              sliceCtx.drawImage(blurCanvas, 0, 0, viewportW, viewportH);
+            }
+          }
+        }
+
+        repaint = () => paint(performance.now());
+
+        function tick(now) {
+          paint(now);
+          if (animate) {
+            raf = requestAnimationFrame(tick);
+          }
+        }
+
+        function syncCssVars() {
+          document.documentElement.style.setProperty('--bg-blur-radius', `${bgBlurPx}px`);
+          document.documentElement.style.setProperty('--header-blur-radius', `${headerBlurPx}px`);
+          bgBlurValue.textContent = String(bgBlurPx);
+          headerBlurValue.textContent = String(headerBlurPx);
+        }
+
+        renderModeSelect.addEventListener('change', () => {
+          applyRenderMode(renderModeSelect.value);
+        });
+        colorModeSelect.addEventListener('change', () => {
+          colorMode = colorModeSelect.value;
+          applyTheme();
+        });
+        uiStyleSelect.addEventListener('change', () => {
+          uiStyle = uiStyleSelect.value;
+          applyTheme();
+        });
+        bgBlurInput.addEventListener('input', () => {
+          bgBlurPx = Number(bgBlurInput.value);
+          syncCssVars();
+          repaint();
+        });
+        headerBlurInput.addEventListener('input', () => {
+          headerBlurPx = Number(headerBlurInput.value);
+          syncCssVars();
+        });
+        animateCheckbox.addEventListener('change', () => {
+          animate = animateCheckbox.checked;
+          cancelAnimationFrame(raf);
+          if (animate) {
+            raf = requestAnimationFrame(tick);
+          } else {
+            paint(performance.now());
+          }
+        });
+
+        openModalBtn.addEventListener('click', () => {
+          document.body.classList.add('modal-open');
+          modalOverlay.hidden = false;
+          modalOverlay.classList.add('open');
+        });
+        closeModalBtn.addEventListener('click', () => {
+          document.body.classList.remove('modal-open');
+          modalOverlay.classList.remove('open');
+          modalOverlay.hidden = true;
+        });
+        modalOverlay.addEventListener('click', (event) => {
+          if (event.target === modalOverlay) {
+            closeModalBtn.click();
+          }
+        });
+        scrollTableBtn.addEventListener('click', () => {
+          const row = document.querySelector('#table-body tr:nth-child(80)');
+          row?.scrollIntoView({ block: 'center' });
+        });
+
+        window.addEventListener('resize', () => {
+          layout();
+          repaint();
+        });
+
+        window.addEventListener('scroll', () => repaint(), { passive: true });
+        tableScroll.addEventListener('scroll', () => repaint(), { passive: true });
+
+        layout();
+        syncCssVars();
+        applyTheme();
+        raf = requestAnimationFrame(tick);
+      }
+
+      main();
+    </script>
+  </body>
+</html>

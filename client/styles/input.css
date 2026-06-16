@@ -102,6 +102,8 @@
   --radius-ui: 16px;
   --radius-ui-lg: 20px;
   --radius-ui-sm: 14px;
+  --bg-blur-radius: 12px;
+  --bg-hybrid-header-blur: 4px;
 }
 
 html:not(.dark) {
@@ -1779,6 +1781,50 @@ html.ui-liquid .glass-tooltip-surface {
     inset 0 1px 0 oklch(100% 0 0 / 0.12);
 }
 
+.bg-blur-slice-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.bg-blur-slice {
+  position: fixed;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bg-blur-slice canvas {
+  position: absolute;
+  display: block;
+}
+
+.bg-blur-slice--liquid canvas {
+  filter: url(#glass-distortion);
+}
+
+html.bg-hybrid-active .glass-shell,
+html.bg-hybrid-active .glass-surface,
+html.bg-hybrid-active .glass-tooltip-surface,
+html.bg-hybrid-active .glass-panel,
+html.bg-hybrid-active .glass-light {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html.bg-hybrid-active.ui-liquid .glass-shell::before,
+html.bg-hybrid-active.ui-liquid .glass-surface::before,
+html.bg-hybrid-active.ui-liquid .glass-tooltip-surface::before,
+html.bg-hybrid-active.ui-liquid .glass-panel::before,
+html.bg-hybrid-active.ui-liquid .glass-light::before {
+  display: none;
+}
+
+html.bg-hybrid-active thead th {
+  -webkit-backdrop-filter: blur(var(--bg-hybrid-header-blur)) saturate(1.1);
+  backdrop-filter: blur(var(--bg-hybrid-header-blur)) saturate(1.1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html.ui-liquid .glass-shell::before,
   html.ui-liquid .glass-surface::before,
@@ -1786,6 +1832,10 @@ html.ui-liquid .glass-tooltip-surface {
   html.ui-liquid .glass-tooltip-surface::before,
   html.ui-liquid .glass-panel::before,
   html.ui-liquid .glass-light::before {
+    filter: none;
+  }
+
+  .bg-blur-slice--liquid canvas {
     filter: none;
   }
 }
