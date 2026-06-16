@@ -26,6 +26,11 @@ import {
   getModCardFoilClass,
   resolveModCardArt,
 } from '../ModCard';
+import {
+  ATRAGRAPH_HOLO_IDLE_POINTER,
+  applyAtragraphHoloCssVars,
+  applyIdleAtragraphHoloCssVars,
+} from '../ModCard/atragraphHolo';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { SlotTypeIcon } from '../ui/SlotTypeIcon';
 
@@ -86,14 +91,16 @@ function applyCardTiltFromMouse(target: HTMLElement, event: React.MouseEvent<HTM
   target.style.setProperty('--tilt-x', `${(px * 100).toFixed(1)}%`);
   target.style.setProperty('--tilt-y', `${(py * 100).toFixed(1)}%`);
   target.style.setProperty('--strip-fade', computeStripFade(rotateX, rotateY).toFixed(3));
+  applyAtragraphHoloCssVars(target, px, py);
 }
 
 function resetCardTilt(target: HTMLElement): void {
   target.style.setProperty('--tilt-rotate-x', '0deg');
   target.style.setProperty('--tilt-rotate-y', '0deg');
-  target.style.setProperty('--tilt-x', '50%');
-  target.style.setProperty('--tilt-y', '50%');
+  target.style.setProperty('--tilt-x', `${(ATRAGRAPH_HOLO_IDLE_POINTER.px * 100).toFixed(1)}%`);
+  target.style.setProperty('--tilt-y', `${(ATRAGRAPH_HOLO_IDLE_POINTER.py * 100).toFixed(1)}%`);
   target.style.setProperty('--strip-fade', '1');
+  applyIdleAtragraphHoloCssVars(target);
 }
 
 const SLOT_SCALE = 0.75;

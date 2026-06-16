@@ -26,4 +26,9 @@ export {
   dbPolarityToIconName,
   isArchonMod,
 } from './cardLayout';
+export {
+  getAtragraphHoloCssVars,
+  getIdleAtragraphHoloCssVars,
+  ATRAGRAPH_HOLO_IDLE_POINTER,
+} from './atragraphHolo';
 export type { CardLayout, ArcaneCardLayout, ArcaneRarity, Rarity, SlotIcon } from './cardLayout';

@@ -14,9 +14,7 @@ import {
   getArtClipHeight,
   getArtFadeMask,
   getArtFadeMaskForImage,
-  getModCardFoilClass,
   getRarityBorderColor,
-  getRarityFoilColor,
   getModAsset,
 } from './cardLayout';
 
@@ -195,7 +193,7 @@ export function CardPreview({
 
         {modArt && (
           <div
-            className="absolute overflow-hidden"
+            className={`absolute overflow-hidden ${modArtOverlay && !collapsed ? 'mod-card-art-window' : ''}`}
             style={{
               zIndex: 1,
               left: L.artOffsetX * s,
@@ -221,6 +219,10 @@ export function CardPreview({
             />
             {modArtOverlay && !collapsed && (
               <>
+                <div className="mod-card-holo-stack mod-card-holo-stack--base" aria-hidden>
+                  <div className="mod-card-holo-shine" />
+                  <div className="mod-card-holo-glare" />
+                </div>
                 <img
                   src={modArtOverlay}
                   alt=""
@@ -235,28 +237,16 @@ export function CardPreview({
                   draggable={false}
                 />
                 <div
-                  className="absolute inset-0"
-                  style={{
-                    zIndex: 2,
-                    width: L.artWidth * s,
-                    height: L.artHeight * s,
-                    ...artImageMaskStyle,
-                  }}
+                  className="mod-card-holo-stack mod-card-holo-stack--overlay"
                   aria-hidden
+                  style={
+                    {
+                      '--foil-mask-image': `url('${modArtOverlay}')`,
+                    } as React.CSSProperties
+                  }
                 >
-                  <div
-                    className={`${getModCardFoilClass(modArtOverlay)} mod-card-art-foil`}
-                    style={
-                      {
-                        width: L.artWidth * s,
-                        height: L.artHeight * s,
-                        '--foil-color': getRarityFoilColor(rarity),
-                        '--foil-mask-image': `url('${modArtOverlay}')`,
-                        '--foil-mask-position': '0 0',
-                        '--foil-mask-size': '100% 100%',
-                      } as React.CSSProperties
-                    }
-                  />
+                  <div className="mod-card-holo-shine mod-card-holo-masked" />
+                  <div className="mod-card-holo-glare mod-card-holo-masked" />
                 </div>
               </>
             )}

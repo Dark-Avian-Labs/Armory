@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getModCardFoilClass, resolveModCardArt } from '../cardLayout';
+import { getModCardFoilClass, hasModHoloFoil, resolveModCardArt } from '../cardLayout';
 
 describe('resolveModCardArt', () => {
   const mod = {
@@ -18,11 +18,10 @@ describe('resolveModCardArt', () => {
     });
   });
 
-  it('uses the holo foil layer for atragraph cards', () => {
-    expect(getModCardFoilClass('/images/ArmoryWiki/Atragraph/AnimalInstinct/Overlay.png')).toBe(
-      'mod-card-foil mod-card-foil--holo',
-    );
-    expect(getModCardFoilClass(undefined)).toBe('mod-card-foil');
+  it('detects atragraph holo foil overlays', () => {
+    expect(hasModHoloFoil('/images/ArmoryWiki/Atragraph/AnimalInstinct/Overlay.png')).toBe(true);
+    expect(hasModHoloFoil(undefined)).toBe(false);
+    expect(getModCardFoilClass('/images/ArmoryWiki/Atragraph/AnimalInstinct/Overlay.png')).toBe('mod-card-foil');
   });
 
   it('falls back to default art when atragraph mods are disabled', () => {

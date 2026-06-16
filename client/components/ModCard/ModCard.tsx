@@ -7,6 +7,7 @@ import { calculateEffectiveDrain, polarityMatchForUi } from '../../utils/drain';
 import { getModCardDisplayTexts } from '../../utils/modDisplayText';
 import { isPostureMod } from '../../utils/modFiltering';
 import { isRivenMod } from '../../utils/riven';
+import { ATRAGRAPH_HOLO_IDLE_POINTER, getAtragraphHoloCssVars } from './atragraphHolo';
 import {
   CARD_HOVER_TILT_MAX_DEG,
   DEFAULT_LAYOUT,
@@ -381,8 +382,8 @@ function CollapsedHoverExpand({
   const [tilt, setTilt] = useState<{ rx: number; ry: number; px: number; py: number }>({
     rx: 0,
     ry: 0,
-    px: 0.5,
-    py: 0.5,
+    px: ATRAGRAPH_HOLO_IDLE_POINTER.px,
+    py: ATRAGRAPH_HOLO_IDLE_POINTER.py,
   });
 
   useEffect(() => {
@@ -431,7 +432,12 @@ function CollapsedHoverExpand({
     };
 
     const onLeave = (): void => {
-      setTilt({ rx: 0, ry: 0, px: 0.5, py: 0.5 });
+      setTilt({
+        rx: 0,
+        ry: 0,
+        px: ATRAGRAPH_HOLO_IDLE_POINTER.px,
+        py: ATRAGRAPH_HOLO_IDLE_POINTER.py,
+      });
     };
 
     node.addEventListener('mousemove', onMove);
@@ -464,6 +470,7 @@ function CollapsedHoverExpand({
             '--tilt-x': `${(tilt.px * 100).toFixed(1)}%`,
             '--tilt-y': `${(tilt.py * 100).toFixed(1)}%`,
             '--strip-fade': stripFade.toFixed(3),
+            ...getAtragraphHoloCssVars(tilt.px, tilt.py),
             ...(previewProps.modArtOverlay ? {} : getCardFoilStyle(previewProps.rarity, layout)),
           } as React.CSSProperties
         }
