@@ -1447,6 +1447,19 @@ html.ui-clear .user-menu-select-trigger {
   --holo-filter-contrast: 2.3;
 }
 
+/* Idle defaults above are for static cards; tilt wrappers drive live pointer vars */
+.mod-slot-expanded .mod-card-art-window,
+.mod-selector-tilt .mod-card-art-window {
+  --holo-opacity: unset;
+  --holo-bg-y: unset;
+  --holo-pointer-x: unset;
+  --holo-pointer-y: unset;
+  --holo-pointer-from-center: unset;
+  --holo-base-bg-y: unset;
+  --holo-base-pointer-x: unset;
+  --holo-base-pointer-y: unset;
+}
+
 .mod-card-holo-stack {
   position: absolute;
   inset: 0;

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 
-import { useTheme } from '../../context/ThemeContext';
 import {
   AP_ANY,
   AP_UMBRA,
@@ -24,7 +23,6 @@ import {
   dbRarityToCardRarity,
   getCardFoilStyle,
   getModCardFoilClass,
-  resolveModCardArt,
 } from '../ModCard';
 import {
   ATRAGRAPH_HOLO_IDLE_POINTER,
@@ -430,7 +428,6 @@ function SlotCell({
   label,
   readOnly = false,
 }: SlotCellProps) {
-  const { atragraphModsEnabled } = useTheme();
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const slotRef = useRef<HTMLDivElement>(null);
@@ -446,12 +443,8 @@ function SlotCell({
       ? 'Riven'
       : dbRarityToCardRarity(slot.mod.rarity, slot.mod.name || slot.mod.unique_name)
     : 'Empty';
-  const slotCardArt = slot.mod
-    ? resolveModCardArt(slot.mod, atragraphModsEnabled)
-    : { modArt: '', modArtOverlay: undefined, holoFoil: false };
   const slotLayout = { ...DEFAULT_LAYOUT, scale: SLOT_SCALE };
-  const slotHoloFoil = !!(slotCardArt.holoFoil && slotCardArt.modArtOverlay);
-  const slotFoilStyle = slotHoloFoil ? undefined : getCardFoilStyle(slotModRarity, slotLayout);
+  const slotFoilStyle = getCardFoilStyle(slotModRarity, slotLayout);
 
   const polarityLabel = slot.polarity ? POLARITY_LABELS[slot.polarity] || slot.polarity : 'None';
   const slotIconName =
@@ -568,7 +561,7 @@ function SlotCell({
                   collapsed={false}
                   scale={SLOT_SCALE}
                 />
-                {!slotHoloFoil ? <div className={getModCardFoilClass()} aria-hidden /> : null}
+                <div className={getModCardFoilClass()} aria-hidden />
                 <div
                   className={`absolute left-0 flex w-full items-center justify-center${readOnly ? ' pointer-events-none' : ''}`}
                   style={{
