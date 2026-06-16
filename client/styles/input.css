@@ -1371,6 +1371,14 @@ html.ui-clear .user-menu-select-trigger {
   --holo-base-pointer-y: 30%;
 }
 
+.mod-card-holo-art-stack {
+  pointer-events: none;
+}
+
+.mod-card-holo-art-layer {
+  pointer-events: none;
+}
+
 .mod-card-art-overlay {
   mix-blend-mode: screen;
   pointer-events: none;
