@@ -113,8 +113,8 @@ export function hasModHoloFoil(foilOverlayPath?: string): boolean {
   return !!foilOverlayPath?.trim();
 }
 
-export function getModCardFoilClass(foilOverlayPath?: string): string {
-  return hasModHoloFoil(foilOverlayPath) ? 'mod-card-foil mod-card-foil--holo' : 'mod-card-foil';
+export function getModCardFoilClass(_foilOverlayPath?: string): string {
+  return 'mod-card-foil';
 }
 
 export const ART_FADE_PX = 10;

@@ -1168,6 +1168,16 @@ html:not(.dark) .archon-shard-filled-bg--tau {
 .mod-slot-card .mod-slot-expanded {
   --tilt-rotate-x: 0deg;
   --tilt-rotate-y: 0deg;
+  --tilt-x: 40%;
+  --tilt-y: 35%;
+  --holo-opacity: 1;
+  --holo-bg-y: 38%;
+  --holo-pointer-x: 40%;
+  --holo-pointer-y: 35%;
+  --holo-pointer-from-center: 0.22;
+  --holo-base-bg-y: 31%;
+  --holo-base-pointer-x: 46%;
+  --holo-base-pointer-y: 30%;
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1351,6 +1361,14 @@ html.ui-clear .user-menu-select-trigger {
   position: relative;
   transform-style: preserve-3d;
   transition: transform 0.12s ease-out;
+  --holo-opacity: 1;
+  --holo-bg-y: 38%;
+  --holo-pointer-x: 40%;
+  --holo-pointer-y: 35%;
+  --holo-pointer-from-center: 0.22;
+  --holo-base-bg-y: 31%;
+  --holo-base-pointer-x: 46%;
+  --holo-base-pointer-y: 30%;
 }
 
 .mod-card-art-overlay {
@@ -1410,6 +1428,167 @@ html.ui-clear .user-menu-select-trigger {
   mix-blend-mode: color-dodge;
 }
 
+.mod-card-art-window {
+  isolation: isolate;
+  --holo-opacity: 1;
+  --holo-bg-y: 38%;
+  --holo-pointer-x: 40%;
+  --holo-pointer-y: 35%;
+  --holo-pointer-from-center: 0.22;
+  --holo-base-bg-y: 31%;
+  --holo-base-pointer-x: 46%;
+  --holo-base-pointer-y: 30%;
+  --holo-space: 5%;
+  --holo-angle: -22deg;
+  --holo-imgsize: 300% 400%;
+  --holo-strength: 1;
+  --holo-glare-strength: 0.5;
+  --holo-filter-bright: 1;
+  --holo-filter-contrast: 2.3;
+}
+
+.mod-card-holo-stack {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mod-card-holo-stack > * {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: translateZ(0.5px);
+}
+
+.mod-card-holo-stack--base {
+  z-index: 1;
+  --holo-strength: 0.5;
+  --holo-glare-strength: 0.25;
+  --holo-angle: 18deg;
+  --holo-imgsize: 270% 350%;
+  --holo-filter-bright: 0.84;
+  --holo-filter-contrast: 1.75;
+  --holo-hue-shift: 38deg;
+}
+
+.mod-card-holo-stack--base .mod-card-holo-shine {
+  mix-blend-mode: screen;
+  filter: brightness(
+      calc(
+        (var(--holo-pointer-from-center) * 0.26 * var(--holo-filter-bright)) +
+          (0.68 * var(--holo-filter-bright))
+      )
+    )
+    contrast(calc(var(--holo-filter-contrast) * var(--holo-filter-bright))) saturate(0.98)
+    hue-rotate(var(--holo-hue-shift, 0deg));
+}
+
+.mod-card-holo-stack--base .mod-card-holo-shine::after {
+  opacity: 0.48;
+  mix-blend-mode: screen;
+}
+
+.mod-card-holo-stack--overlay {
+  z-index: 2;
+}
+
+.mod-card-holo-masked,
+.mod-card-holo-masked::before,
+.mod-card-holo-masked::after {
+  -webkit-mask-image: var(--foil-mask-image, none);
+  mask-image: var(--foil-mask-image, none);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.mod-card-holo-shine {
+  opacity: calc(var(--holo-opacity, 1) * var(--holo-strength, 1));
+  mix-blend-mode: color-dodge;
+  filter: brightness(
+      calc(
+        (var(--holo-pointer-from-center, 0) * 0.3 * var(--holo-filter-bright, 1)) +
+          (0.62 * var(--holo-filter-bright, 1))
+      )
+    )
+    contrast(calc(var(--holo-filter-contrast, 2.3) * var(--holo-filter-bright, 1))) saturate(0.92)
+    hue-rotate(var(--holo-hue-shift, 0deg));
+  background-image: repeating-linear-gradient(
+    var(--holo-angle, -22deg),
+    hsla(283, 49%, 60%, 0.75) calc(var(--holo-space, 5%) * 1),
+    hsla(2, 74%, 59%, 0.75) calc(var(--holo-space, 5%) * 2),
+    hsla(53, 67%, 53%, 0.75) calc(var(--holo-space, 5%) * 3),
+    hsla(93, 56%, 52%, 0.75) calc(var(--holo-space, 5%) * 4),
+    hsla(176, 38%, 50%, 0.75) calc(var(--holo-space, 5%) * 5),
+    hsla(228, 100%, 77%, 0.75) calc(var(--holo-space, 5%) * 6),
+    hsla(283, 49%, 61%, 0.75) calc(var(--holo-space, 5%) * 7)
+  );
+  background-blend-mode: color-dodge;
+  background-size: var(--holo-imgsize, 300% 400%);
+  background-position: 0% var(--holo-bg-y, 50%);
+  will-change: opacity, background-position, filter;
+}
+
+.mod-card-holo-stack--base .mod-card-holo-shine {
+  background-position: 0% var(--holo-base-bg-y, var(--holo-bg-y, 50%));
+}
+
+.mod-card-holo-shine::after {
+  content: '';
+  opacity: 0.75;
+  background-image: radial-gradient(
+    farthest-corner ellipse at calc((var(--holo-pointer-x, 50%) * 0.5) + 25%)
+      calc((var(--holo-pointer-y, 50%) * 0.5) + 25%),
+    hsl(0, 0%, 100%) 0%,
+    hsla(0, 0%, 100%, 0.42) 32%,
+    transparent 68%
+  );
+  background-position: center center;
+  background-size: 500% 620%;
+  filter: brightness(calc((var(--holo-pointer-from-center, 0) * 0.12) + 0.88)) contrast(0.95)
+    saturate(1.05);
+  mix-blend-mode: soft-light;
+}
+
+.mod-card-holo-stack--base .mod-card-holo-shine::after {
+  background-image: radial-gradient(
+    farthest-corner ellipse at calc((var(--holo-base-pointer-x, 50%) * 0.5) + 25%)
+      calc((var(--holo-base-pointer-y, 50%) * 0.5) + 25%),
+    hsl(0, 0%, 100%) 0%,
+    hsla(0, 0%, 100%, 0.42) 32%,
+    transparent 68%
+  );
+}
+
+.mod-card-holo-glare {
+  z-index: 3;
+  opacity: calc(var(--holo-opacity, 1) * var(--holo-glare-strength, 0.5));
+  mix-blend-mode: screen;
+  background-image: radial-gradient(
+    farthest-corner circle at var(--holo-pointer-x, 50%) var(--holo-pointer-y, 50%),
+    hsla(0, 0%, 100%, 0.85) 0%,
+    hsla(0, 0%, 100%, 0.35) 28%,
+    transparent 58%
+  );
+  will-change: opacity, background-image;
+}
+
+.mod-card-holo-stack--base .mod-card-holo-glare {
+  background-image: radial-gradient(
+    farthest-corner circle at var(--holo-base-pointer-x, 50%) var(--holo-base-pointer-y, 50%),
+    hsla(0, 0%, 100%, 0.85) 0%,
+    hsla(0, 0%, 100%, 0.35) 28%,
+    transparent 58%
+  );
+}
+
+html:not(.dark) .mod-card-holo-stack--overlay .mod-card-holo-shine {
+  mix-blend-mode: screen;
+}
+
 .mod-card-art-foil {
   position: absolute;
   top: 0;
@@ -1418,74 +1597,6 @@ html.ui-clear .user-menu-select-trigger {
   right: auto;
   bottom: auto;
   pointer-events: none;
-}
-
-.mod-card-foil--holo {
-  --foil-strength: 1;
-  --foil-mid: color-mix(
-    in oklch,
-    var(--foil-color, oklch(78% 0.12 75))
-      calc(54% * (0.55 + 0.45 * var(--strip-fade, 1)) * var(--foil-strength)),
-    transparent
-  );
-  --foil-peak: color-mix(
-    in oklch,
-    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 12%, white)
-      calc(82% * (0.6 + 0.4 * var(--strip-fade, 1)) * var(--foil-strength)),
-    transparent
-  );
-  --foil-flare: color-mix(
-    in oklch,
-    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 6%, white)
-      calc(94% * (0.5 + 0.5 * var(--strip-fade, 1)) * var(--foil-strength)),
-    transparent
-  );
-  --foil-spot-hot: color-mix(
-    in oklch,
-    color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 18%, white) 62%,
-    transparent
-  );
-  --foil-spot-warm: color-mix(in oklch, var(--foil-color, oklch(78% 0.12 75)) 28%, transparent);
-  --foil-rainbow-a: color-mix(in oklch, var(--foil-color) 42%, oklch(84% 0.24 318));
-  --foil-rainbow-b: color-mix(in oklch, var(--foil-color) 36%, oklch(90% 0.22 92));
-  --foil-rainbow-c: color-mix(in oklch, var(--foil-color) 34%, oklch(80% 0.2 208));
-  --foil-rainbow-d: color-mix(in oklch, var(--foil-color) 30%, oklch(86% 0.18 28));
-
-  background-image:
-    linear-gradient(
-      calc(104deg + var(--tilt-rotate-y, 0deg) * -2.8 + var(--tilt-rotate-x, 0deg) * 1.4),
-      var(--foil-edge) 0%,
-      var(--foil-edge) 36%,
-      var(--foil-mid) 45%,
-      var(--foil-flare) 49%,
-      var(--foil-peak) 50%,
-      var(--foil-flare) 51%,
-      var(--foil-mid) 55%,
-      var(--foil-edge) 64%,
-      var(--foil-edge) 100%
-    ),
-    radial-gradient(
-      ellipse 90% 80% at var(--tilt-x, 50%) var(--tilt-y, 50%),
-      var(--foil-spot-hot) 0%,
-      var(--foil-spot-warm) 34%,
-      transparent 68%
-    ),
-    conic-gradient(
-      from calc(165deg + var(--tilt-rotate-y, 0deg) * 3.2 + var(--tilt-rotate-x, 0deg) * 1.6) at
-        var(--tilt-x, 50%) var(--tilt-y, 50%),
-      transparent 0deg,
-      var(--foil-rainbow-a) 36deg,
-      var(--foil-peak) 72deg,
-      var(--foil-rainbow-b) 118deg,
-      transparent 154deg,
-      var(--foil-rainbow-c) 206deg,
-      var(--foil-rainbow-d) 252deg,
-      var(--foil-mid) 300deg,
-      transparent 360deg
-    );
-  opacity: 0.96;
-  filter: hue-rotate(calc(var(--tilt-rotate-y, 0deg) * 1.1))
-    saturate(calc(1.25 + var(--strip-fade, 1) * 0.35)) contrast(1.08);
 }
 
 html:not(.dark) .mod-card-foil {
