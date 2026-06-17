@@ -234,7 +234,6 @@ export function CardPreview({
                   overlaySrc={modArtOverlay}
                   width={L.artWidth * s}
                   height={L.artHeight * s}
-                  style={artImageMaskStyle}
                 />
                 <img
                   src={modArtOverlay}

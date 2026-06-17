@@ -1373,6 +1373,7 @@ html.ui-clear .user-menu-select-trigger {
 
 .mod-card-holo-art-stack {
   pointer-events: none;
+  transform-style: preserve-3d;
 }
 
 .mod-card-holo-art-layer {
@@ -1382,13 +1383,15 @@ html.ui-clear .user-menu-select-trigger {
 .mod-card-holo-sparkle {
   z-index: 2;
   pointer-events: none;
-  mix-blend-mode: screen;
+  mix-blend-mode: plus-lighter;
+  transform: translateZ(1px);
 }
 
 .mod-card-art-overlay {
   z-index: 3;
   mix-blend-mode: screen;
   pointer-events: none;
+  transform: translateZ(2px);
 }
 
 .mod-card-foil {
