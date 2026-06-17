@@ -225,16 +225,17 @@ export function CardPreview({
                   style={holoArtLayerStyle}
                   draggable={false}
                 />
-                <AtragraphHoloCanvas
-                  src={modArt}
-                  width={L.artWidth * s}
-                  height={L.artHeight * s}
-                  style={holoArtLayerStyle}
-                />
                 <div className="mod-card-holo-stack mod-card-holo-stack--base" aria-hidden>
                   <div className="mod-card-holo-shine" />
                   <div className="mod-card-holo-glare" />
                 </div>
+                <AtragraphHoloCanvas
+                  src={modArt}
+                  overlaySrc={modArtOverlay}
+                  width={L.artWidth * s}
+                  height={L.artHeight * s}
+                  style={artImageMaskStyle}
+                />
                 <img
                   src={modArtOverlay}
                   alt=""

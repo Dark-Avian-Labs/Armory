@@ -161,6 +161,15 @@ float backgroundOnlyMask(vec2 uv, sampler2D baseTex) {
   float warm = c.r - min(c.g, c.b);
   return smoothstep(0.04, 0.14, cool - warm * 0.65);
 }
+
+float overlayCreatureMask(vec2 uv, sampler2D overlayTex) {
+  vec3 rgb = texture(overlayTex, uv).rgb;
+  return smoothstep(0.045, 0.18, max(rgb.r, max(rgb.g, rgb.b)));
+}
+
+float sparkleRegionMask(vec2 uv, sampler2D baseTex, sampler2D overlayTex) {
+  return backgroundOnlyMask(uv, baseTex) * (1.0 - overlayCreatureMask(uv, overlayTex));
+}
 `;
 
 const PERSIST_FRAGMENT_SHADER = `#version 300 es
@@ -168,6 +177,7 @@ ${GLITTER_GLSL}
 
 uniform sampler2D uPrevPersist;
 uniform sampler2D uTexture;
+uniform sampler2D uOverlay;
 uniform vec2 uTilt;
 uniform vec2 uTiltVelocity;
 uniform float uViewAspect;
@@ -179,7 +189,7 @@ out vec4 outColor;
 void main() {
   vec2 uv = coverUv(vUv, uTexAspect, uViewAspect);
   vec4 prev = texture(uPrevPersist, vUv);
-  float bgMask = backgroundOnlyMask(uv, uTexture);
+  float bgMask = sparkleRegionMask(uv, uTexture, uOverlay);
 
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
     outColor = vec4(0.0);
@@ -212,6 +222,7 @@ const SPARKLE_FRAGMENT_SHADER = `#version 300 es
 ${GLITTER_GLSL}
 
 uniform sampler2D uTexture;
+uniform sampler2D uOverlay;
 uniform sampler2D uPersist;
 uniform vec2 uTilt;
 uniform float uViewAspect;
@@ -228,7 +239,7 @@ void main() {
     return;
   }
 
-  float bgMask = backgroundOnlyMask(uv, uTexture);
+  float bgMask = sparkleRegionMask(uv, uTexture, uOverlay);
   vec4 idle = holoGlitterBase(uv) * bgMask;
   vec4 persist = texture(uPersist, vUv) * bgMask;
   vec4 glitter = vec4(
@@ -263,6 +274,7 @@ export class AtragraphHoloRenderer {
   private readonly persistQuad: WebGLVertexArrayObject;
   private persistTargets: PersistTargets | null = null;
   private texture: WebGLTexture | null = null;
+  private overlayTexture: WebGLTexture | null = null;
   private texAspect = 1;
   private viewAspect = 1;
   private pixelWidth = 1;
@@ -288,6 +300,7 @@ export class AtragraphHoloRenderer {
     this.persistProgram = this.createProgram(VERTEX_SHADER, PERSIST_FRAGMENT_SHADER);
     this.uniforms = {
       texture: gl.getUniformLocation(this.program, 'uTexture'),
+      overlay: gl.getUniformLocation(this.program, 'uOverlay'),
       persist: gl.getUniformLocation(this.program, 'uPersist'),
       tilt: gl.getUniformLocation(this.program, 'uTilt'),
       viewAspect: gl.getUniformLocation(this.program, 'uViewAspect'),
@@ -296,6 +309,7 @@ export class AtragraphHoloRenderer {
     this.persistUniforms = {
       prevPersist: gl.getUniformLocation(this.persistProgram, 'uPrevPersist'),
       texture: gl.getUniformLocation(this.persistProgram, 'uTexture'),
+      overlay: gl.getUniformLocation(this.persistProgram, 'uOverlay'),
       tilt: gl.getUniformLocation(this.persistProgram, 'uTilt'),
       tiltVelocity: gl.getUniformLocation(this.persistProgram, 'uTiltVelocity'),
       viewAspect: gl.getUniformLocation(this.persistProgram, 'uViewAspect'),
@@ -305,23 +319,32 @@ export class AtragraphHoloRenderer {
     this.persistQuad = this.createQuad(this.persistProgram);
   }
 
-  async loadTexture(url: string): Promise<void> {
-    const image = await loadImage(url);
-    this.texAspect = image.width / image.height;
+  async loadTextures(baseUrl: string, overlayUrl: string): Promise<void> {
+    const [baseImage, overlayImage] = await Promise.all([
+      loadImage(baseUrl),
+      loadImage(overlayUrl),
+    ]);
+    this.texAspect = baseImage.width / baseImage.height;
     const gl = this.gl;
-    const texture = gl.createTexture();
-    if (!texture) {
-      throw new Error('Failed to create WebGL texture.');
-    }
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+    const uploadTexture = (image: HTMLImageElement): WebGLTexture => {
+      const texture = gl.createTexture();
+      if (!texture) {
+        throw new Error('Failed to create WebGL texture.');
+      }
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      return texture;
+    };
+
+    this.texture = uploadTexture(baseImage);
+    this.overlayTexture = uploadTexture(overlayImage);
     gl.bindTexture(gl.TEXTURE_2D, null);
-    this.texture = texture;
   }
 
   setSize(width: number, height: number): void {
@@ -347,7 +370,7 @@ export class AtragraphHoloRenderer {
   }
 
   renderFrame(): void {
-    if (!this.texture || !this.persistTargets) return;
+    if (!this.texture || !this.overlayTexture || !this.persistTargets) return;
 
     this.tilt.x += (this.targetTilt.x - this.tilt.x) * 0.08;
     this.tilt.y += (this.targetTilt.y - this.tilt.y) * 0.08;
@@ -370,6 +393,9 @@ export class AtragraphHoloRenderer {
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.uniform1i(this.persistUniforms.texture, 1);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, this.overlayTexture);
+    gl.uniform1i(this.persistUniforms.overlay, 2);
     gl.uniform2f(this.persistUniforms.tilt, this.tilt.x, this.tilt.y);
     gl.uniform2f(this.persistUniforms.tiltVelocity, this.tiltVelocity.x, this.tiltVelocity.y);
     gl.uniform1f(this.persistUniforms.viewAspect, this.viewAspect || 1);
@@ -389,8 +415,11 @@ export class AtragraphHoloRenderer {
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.uniform1i(this.uniforms.texture, 0);
     gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.overlayTexture);
+    gl.uniform1i(this.uniforms.overlay, 1);
+    gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, this.persistTargets.read.texture);
-    gl.uniform1i(this.uniforms.persist, 1);
+    gl.uniform1i(this.uniforms.persist, 2);
     gl.uniform2f(this.uniforms.tilt, this.tilt.x, this.tilt.y);
     gl.uniform1f(this.uniforms.viewAspect, this.viewAspect || 1);
     gl.uniform1f(this.uniforms.texAspect, this.texAspect);
@@ -409,6 +438,10 @@ export class AtragraphHoloRenderer {
     if (this.texture) {
       gl.deleteTexture(this.texture);
       this.texture = null;
+    }
+    if (this.overlayTexture) {
+      gl.deleteTexture(this.overlayTexture);
+      this.overlayTexture = null;
     }
     gl.deleteProgram(this.program);
     gl.deleteProgram(this.persistProgram);

@@ -1380,12 +1380,13 @@ html.ui-clear .user-menu-select-trigger {
 }
 
 .mod-card-holo-sparkle {
-  z-index: 0;
+  z-index: 2;
   pointer-events: none;
   mix-blend-mode: screen;
 }
 
 .mod-card-art-overlay {
+  z-index: 3;
   mix-blend-mode: screen;
   pointer-events: none;
 }
@@ -1515,7 +1516,7 @@ html.ui-clear .user-menu-select-trigger {
 }
 
 .mod-card-holo-stack--overlay {
-  z-index: 2;
+  z-index: 4;
 }
 
 .mod-card-holo-masked,
