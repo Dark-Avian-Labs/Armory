@@ -311,3 +311,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.66.1** `chore` [#370](https://github.com/Dark-Avian-Labs/Armory/pull/370): update dependencies
 - **v1.66.2** `chore` [#372](https://github.com/Dark-Avian-Labs/Armory/pull/372): theme fixes
 - **v1.66.3** `fix` [#373](https://github.com/Dark-Avian-Labs/Armory/pull/373): themes
+- **v1.66.4** `chore` [#381](https://github.com/Dark-Avian-Labs/Armory/pull/381): update dependencies
