@@ -163,12 +163,16 @@ float backgroundOnlyMask(vec2 uv, sampler2D baseTex) {
 }
 
 float overlayCreatureMask(vec2 uv, sampler2D overlayTex) {
-  vec3 rgb = texture(overlayTex, uv).rgb;
-  return smoothstep(0.045, 0.18, max(rgb.r, max(rgb.g, rgb.b)));
+  vec4 overlay = texture(overlayTex, uv);
+  float byAlpha = smoothstep(0.05, 0.2, overlay.a);
+  float luma = max(overlay.r, max(overlay.g, overlay.b));
+  float byLuma = smoothstep(0.3, 0.5, luma);
+  float opaqueSheet = step(0.9, overlay.a);
+  return clamp(max(byAlpha * (1.0 - opaqueSheet), byLuma * opaqueSheet), 0.0, 1.0);
 }
 
-float sparkleRegionMask(vec2 uv, sampler2D baseTex, sampler2D overlayTex) {
-  return backgroundOnlyMask(uv, baseTex) * (1.0 - overlayCreatureMask(uv, overlayTex));
+float sparkleRegionMask(vec2 uv, sampler2D overlayTex) {
+  return 1.0 - overlayCreatureMask(uv, overlayTex);
 }
 `;
 
@@ -189,7 +193,7 @@ out vec4 outColor;
 void main() {
   vec2 uv = coverUv(vUv, uTexAspect, uViewAspect);
   vec4 prev = texture(uPrevPersist, vUv);
-  float bgMask = sparkleRegionMask(uv, uTexture, uOverlay);
+  float bgMask = sparkleRegionMask(uv, uOverlay);
 
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
     outColor = vec4(0.0);
@@ -239,15 +243,20 @@ void main() {
     return;
   }
 
-  float bgMask = sparkleRegionMask(uv, uTexture, uOverlay);
+  float bgMask = sparkleRegionMask(uv, uOverlay);
   vec4 idle = holoGlitterBase(uv) * bgMask;
   vec4 persist = texture(uPersist, vUv) * bgMask;
   vec4 glitter = vec4(
     idle.rgb + persist.rgb,
     clamp(idle.a + persist.a, 0.0, 1.0)
   );
+  float glitterAmt = glitter.a;
+  vec3 pureSparkle = glitter.rgb / max(glitterAmt, 0.001);
 
-  outColor = vec4(glitter.rgb, glitter.a);
+  outColor = vec4(
+    max(glitter.rgb, pureSparkle * glitterAmt * 0.85),
+    clamp(glitterAmt * 1.2, 0.0, 1.0)
+  );
 }
 `;
 
