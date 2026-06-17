@@ -6,6 +6,7 @@ import {
 } from '../../utils/damageTypeTokens';
 import { isSlotTypeName } from '../../utils/slotIcons';
 import { SlotTypeIcon } from '../ui/SlotTypeIcon';
+import { AtragraphHoloCanvas } from './AtragraphHoloCanvas';
 import {
   type CardLayout,
   type Rarity,
@@ -223,6 +224,12 @@ export function CardPreview({
                   className="mod-card-holo-art-layer absolute inset-0 object-cover"
                   style={holoArtLayerStyle}
                   draggable={false}
+                />
+                <AtragraphHoloCanvas
+                  src={modArt}
+                  width={L.artWidth * s}
+                  height={L.artHeight * s}
+                  style={holoArtLayerStyle}
                 />
                 <div className="mod-card-holo-stack mod-card-holo-stack--base" aria-hidden>
                   <div className="mod-card-holo-shine" />
