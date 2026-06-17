@@ -7,12 +7,19 @@ const TILT_ROOT_SELECTOR = '.mod-slot-expanded, .mod-selector-tilt, .mod-card-ar
 
 export interface AtragraphHoloCanvasProps {
   src: string;
+  overlaySrc: string;
   width: number;
   height: number;
   style?: React.CSSProperties;
 }
 
-export function AtragraphHoloCanvas({ src, width, height, style }: AtragraphHoloCanvasProps) {
+export function AtragraphHoloCanvas({
+  src,
+  overlaySrc,
+  width,
+  height,
+  style,
+}: AtragraphHoloCanvasProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [useFallback, setUseFallback] = useState(() => !isAtragraphHoloGlitterSupported());
@@ -57,7 +64,7 @@ export function AtragraphHoloCanvas({ src, width, height, style }: AtragraphHolo
     renderer.setSize(width, height);
 
     void renderer
-      .loadTexture(src)
+      .loadTextures(src, overlaySrc)
       .then(() => {
         if (disposed) return;
         updateSize();
@@ -87,7 +94,7 @@ export function AtragraphHoloCanvas({ src, width, height, style }: AtragraphHolo
       intersectionObserver.disconnect();
       renderer?.dispose();
     };
-  }, [src, useFallback, width, height]);
+  }, [src, overlaySrc, useFallback, width, height]);
 
   if (useFallback) {
     return null;
