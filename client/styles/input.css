@@ -1379,6 +1379,12 @@ html.ui-clear .user-menu-select-trigger {
   pointer-events: none;
 }
 
+.mod-card-holo-sparkle {
+  z-index: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
 .mod-card-art-overlay {
   mix-blend-mode: screen;
   pointer-events: none;

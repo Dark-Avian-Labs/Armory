@@ -51,3 +51,32 @@ export function applyAtragraphHoloCssVars(target: HTMLElement, px: number, py: n
 export function applyIdleAtragraphHoloCssVars(target: HTMLElement): void {
   applyAtragraphHoloCssVars(target, ATRAGRAPH_HOLO_IDLE_POINTER.px, ATRAGRAPH_HOLO_IDLE_POINTER.py);
 }
+
+export function pointerToAtragraphHoloTilt(px: number, py: number): { x: number; y: number } {
+  return {
+    x: (px - 0.5) * 2,
+    y: (py - 0.5) * -2,
+  };
+}
+
+export function readAtragraphHoloPointerFromElement(element: HTMLElement): {
+  px: number;
+  py: number;
+} {
+  const style = getComputedStyle(element);
+  const pxRaw = style.getPropertyValue('--holo-pointer-x').trim();
+  const pyRaw = style.getPropertyValue('--holo-pointer-y').trim();
+  const px = pxRaw.endsWith('%') ? parseFloat(pxRaw) / 100 : parseFloat(pxRaw);
+  const py = pyRaw.endsWith('%') ? parseFloat(pyRaw) / 100 : parseFloat(pyRaw);
+
+  if (Number.isFinite(px) && Number.isFinite(py)) {
+    return { px: clamp(px, 0, 1), py: clamp(py, 0, 1) };
+  }
+
+  return { ...ATRAGRAPH_HOLO_IDLE_POINTER };
+}
+
+export function readAtragraphHoloTiltFromElement(element: HTMLElement): { x: number; y: number } {
+  const { px, py } = readAtragraphHoloPointerFromElement(element);
+  return pointerToAtragraphHoloTilt(px, py);
+}
