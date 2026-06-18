@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
-import { clampTooltipLeft } from '../utils/clampTooltipLeft';
+import { clampTooltipLeft, TOOLTIP_VIEWPORT_EDGE_PADDING } from '../utils/clampTooltipLeft';
 
 interface GlassTooltipProps {
   children: ReactNode;
@@ -87,6 +87,7 @@ export function GlassTooltip({ children, content, width = 'w-56', disabled }: Gl
             style={{
               left: pos.left,
               top: pos.top,
+              maxWidth: `calc(100vw - ${TOOLTIP_VIEWPORT_EDGE_PADDING * 2}px)`,
               transform: pos.centered
                 ? 'translate(-50%, calc(-100% - 0.25rem))'
                 : 'translateY(calc(-100% - 0.25rem))',
