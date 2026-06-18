@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
-import { clampTooltipLeft } from '../utils/clampTooltipLeft';
+import { clampTooltipLeft, TOOLTIP_VIEWPORT_EDGE_PADDING } from '../utils/clampTooltipLeft';
 
 interface GlassTooltipProps {
   children: ReactNode;
@@ -10,12 +10,22 @@ interface GlassTooltipProps {
   disabled?: boolean;
 }
 
+interface TooltipPos {
+  left: number;
+  top: number;
+  centered: boolean;
+}
+
 const WINDOW_REPOSITION_LISTENERS: AddEventListenerOptions = { capture: true, passive: true };
+
+function sameTooltipPos(a: TooltipPos | null, b: TooltipPos): boolean {
+  return a !== null && a.left === b.left && a.top === b.top && a.centered === b.centered;
+}
 
 export function GlassTooltip({ children, content, width = 'w-56', disabled }: GlassTooltipProps) {
   const triggerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number; centered: boolean } | null>(null);
+  const [pos, setPos] = useState<TooltipPos | null>(null);
   const [hovered, setHovered] = useState(false);
 
   const updatePosition = useCallback(() => {
@@ -24,37 +34,33 @@ export function GlassTooltip({ children, content, width = 'w-56', disabled }: Gl
 
     const rect = trigger.getBoundingClientRect();
     const anchorCenterX = rect.left + rect.width / 2;
-    const tooltipWidth = tooltipRef.current?.offsetWidth ?? 0;
+    const tooltipWidth = tooltipRef.current?.getBoundingClientRect().width ?? 0;
 
     if (tooltipWidth > 0) {
-      const next = {
+      const next: TooltipPos = {
         left: clampTooltipLeft(anchorCenterX, tooltipWidth),
         top: rect.top,
         centered: false,
       };
-      setPos((prev) =>
-        prev && prev.left === next.left && prev.top === next.top && prev.centered === next.centered
-          ? prev
-          : next,
-      );
+      setPos((prev) => (sameTooltipPos(prev, next) ? prev : next));
       return;
     }
 
-    const next = { left: anchorCenterX, top: rect.top, centered: true };
-    setPos((prev) =>
-      prev && prev.left === next.left && prev.top === next.top && prev.centered === next.centered
-        ? prev
-        : next,
-    );
+    const next: TooltipPos = { left: anchorCenterX, top: rect.top, centered: true };
+    setPos((prev) => (sameTooltipPos(prev, next) ? prev : next));
   }, []);
 
-  useEffect(() => {
-    if (!hovered || !triggerRef.current || disabled) {
+  useLayoutEffect(() => {
+    if (!hovered || disabled) {
       setPos(null);
-      return () => undefined;
+      return;
     }
-
     updatePosition();
+  }, [hovered, disabled, pos, content, width, updatePosition]);
+
+  useEffect(() => {
+    if (!hovered || disabled) return () => undefined;
+
     window.addEventListener('resize', updatePosition, { passive: true });
     window.addEventListener('scroll', updatePosition, WINDOW_REPOSITION_LISTENERS);
 
@@ -63,11 +69,6 @@ export function GlassTooltip({ children, content, width = 'w-56', disabled }: Gl
       window.removeEventListener('scroll', updatePosition, WINDOW_REPOSITION_LISTENERS);
     };
   }, [hovered, disabled, updatePosition]);
-
-  useLayoutEffect(() => {
-    if (!hovered) return;
-    updatePosition();
-  }, [hovered, content, width, updatePosition]);
 
   return (
     <div
@@ -82,14 +83,17 @@ export function GlassTooltip({ children, content, width = 'w-56', disabled }: Gl
         createPortal(
           <div
             ref={tooltipRef}
-            className="pointer-events-none fixed z-[9999]"
+            className={`glass-tooltip-surface pointer-events-none fixed z-[9999] mb-1 ${width} rounded-lg p-2`}
             style={{
               left: pos.left,
               top: pos.top,
-              transform: pos.centered ? 'translate(-50%, -100%)' : 'translate(0, -100%)',
+              maxWidth: `calc(100vw - ${TOOLTIP_VIEWPORT_EDGE_PADDING * 2}px)`,
+              transform: pos.centered
+                ? 'translate(-50%, calc(-100% - 0.25rem))'
+                : 'translateY(calc(-100% - 0.25rem))',
             }}
           >
-            <div className={`glass-tooltip-surface mb-1 ${width} rounded-lg p-2`}>{content}</div>
+            {content}
           </div>,
           document.body,
         )}
