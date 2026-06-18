@@ -1,6 +1,7 @@
 import { parseArchonShardKey } from '../../../shared/archonShardRegistry.js';
 import { isShardSlotV2 } from '../../../shared/buildReference.js';
 import { shardSlotTauforged } from '../../utils/buildConfigPersist';
+import { renderDamageTypeWords } from '../../utils/renderDamageTypeWords';
 import { formatShardBuffDescription } from '../../utils/shardBuffFormat';
 import { GlassTooltip } from '../GlassTooltip';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
@@ -99,7 +100,11 @@ export function ArchonShardSlots({
                   content={
                     <>
                       <div className="text-foreground text-xs font-semibold">{shardLabel}</div>
-                      {buffText && <div className="text-muted mt-0.5 text-[10px]">{buffText}</div>}
+                      {buffText && (
+                        <div className="text-muted mt-0.5 text-[10px]">
+                          {renderDamageTypeWords(buffText)}
+                        </div>
+                      )}
                     </>
                   }
                 >
