@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { clampTooltipLeft } from '../clampTooltipLeft';
 
 describe('clampTooltipLeft', () => {

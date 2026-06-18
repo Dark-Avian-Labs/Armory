@@ -1,12 +1,6 @@
-import {
-  useState,
-  useRef,
-  useEffect,
-  useLayoutEffect,
-  useCallback,
-  type ReactNode,
-} from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+
 import { clampTooltipLeft } from '../utils/clampTooltipLeft';
 
 interface GlassTooltipProps {
@@ -39,10 +33,7 @@ export function GlassTooltip({ children, content, width = 'w-56', disabled }: Gl
         centered: false,
       };
       setPos((prev) =>
-        prev &&
-        prev.left === next.left &&
-        prev.top === next.top &&
-        prev.centered === next.centered
+        prev && prev.left === next.left && prev.top === next.top && prev.centered === next.centered
           ? prev
           : next,
       );
