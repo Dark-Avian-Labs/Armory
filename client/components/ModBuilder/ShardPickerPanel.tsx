@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { renderDamageTypeWords } from '../../utils/renderDamageTypeWords';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import type { ShardType, ShardSlotConfig } from './ArchonShardSlots';
 
@@ -116,7 +117,7 @@ export function ShardPickerPanel({
                   }}
                   className="border-glass-border text-muted hover:border-glass-border-hover hover:bg-glass-hover hover:text-foreground flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-[color,background-color,border-color] duration-200"
                 >
-                  <span>{buff.description}</span>
+                  <span>{renderDamageTypeWords(buff.description)}</span>
                   <span className="text-accent text-xs">{formattedValue}</span>
                 </button>
               );

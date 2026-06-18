@@ -22,6 +22,7 @@ import { calculateBuildDamage, formatDamage } from '../../utils/damage';
 import { calculateWeaponDps } from '../../utils/damageCalc';
 import { getElementColor } from '../../utils/elements';
 import type { FormaCount } from '../../utils/formaCounter';
+import { renderDamageTypeWords } from '../../utils/renderDamageTypeWords';
 import { formatShardBuffDescription } from '../../utils/shardBuffFormat';
 import { calculateWarframeStats } from '../../utils/warframeCalc';
 import type { ArcaneSlot } from '../ModBuilder/ArcaneSlots';
@@ -545,7 +546,9 @@ function ShareShardColumn({
               ) : null}
             </div>
             {line?.buff ? (
-              <div className="text-[9px] leading-snug text-[#a8b8e0]">{line.buff}</div>
+              <div className="text-[9px] leading-snug text-[#a8b8e0]">
+                {renderDamageTypeWords(line.buff)}
+              </div>
             ) : null}
           </div>
         );
