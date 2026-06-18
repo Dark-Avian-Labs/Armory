@@ -21,8 +21,8 @@ importers:
         specifier: ^6.10.0
         version: 6.10.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@dotenvx/dotenvx':
-        specifier: ^1.72.0
-        version: 1.72.0
+        specifier: ^1.73.1
+        version: 1.73.1
       '@fontsource-variable/cascadia-mono':
         specifier: ^5.2.2
         version: 5.2.2
@@ -247,8 +247,8 @@ packages:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
 
-  '@dotenvx/dotenvx@1.72.0':
-    resolution: {integrity: sha512-rNaVGv1VvLma/E3pXyEAWjWoNif0Pc5Vo4gm6028pnw0n6+t2o3LpNlJ1oIaWEUeq7IOjUNYmG0o4XdNTV7wyQ==}
+  '@dotenvx/dotenvx@1.73.1':
+    resolution: {integrity: sha512-AWf8edAsSpINqJbtaZsaiV3PO+vw5pS4wJFl6ahYNdnp3gfFYeMxRCdsA9042bKP4UPCs8yr5FikSFlvkmFVag==}
     hasBin: true
 
   '@ecies/ciphers@0.2.6':
@@ -3296,7 +3296,7 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@dotenvx/dotenvx@1.72.0':
+  '@dotenvx/dotenvx@1.73.1':
     dependencies:
       commander: 11.1.0
       conf: 10.2.0
