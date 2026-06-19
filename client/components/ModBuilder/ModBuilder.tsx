@@ -1960,7 +1960,6 @@ export function ModBuilder() {
               headerActions={
                 <div className="flex flex-col items-end gap-2">
                   {equipmentType === 'warframe' &&
-                  selectedEquipment &&
                   isSiriusOrionUniqueName(selectedEquipment.unique_name) ? (
                     <SiriusOrionFormToggle
                       activeUniqueName={selectedEquipment.unique_name}
