@@ -1,4 +1,8 @@
 import {
+  isPlayableWarframeCatalogItem,
+  prepareSiriusOrionWarframePickerItems,
+} from '../../../shared/siriusOrionRegistry.js';
+import {
   EQUIPMENT_TYPE_LABELS,
   EQUIPMENT_TYPE_ORDER,
   type EquipmentType,
@@ -118,10 +122,8 @@ export async function loadEquipmentItemsForTab(
   }
 
   if (activeTab === 'warframe') {
-    list = list.filter((i) => {
-      const cat = i.product_category;
-      return !cat || cat === 'Suits';
-    });
+    list = list.filter((item) => isPlayableWarframeCatalogItem(item));
+    list = prepareSiriusOrionWarframePickerItems(list);
   } else if (activeTab === 'secondary') {
     list = list.filter((i) => i.slot === 0 || i.selection_type === 'secondary');
   } else if (activeTab === 'companion_weapon') {

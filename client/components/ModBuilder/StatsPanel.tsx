@@ -14,6 +14,7 @@ import type { ShardSlotConfig, ShardType } from './ArchonShardSlots';
 interface StatsPanelProps {
   equipment: Warframe | Weapon;
   type: EquipmentType;
+  displayName?: string;
   abilities?: ReactNode;
   slots?: ModSlot[];
   shardSlots?: ShardSlotConfig[];
@@ -28,6 +29,7 @@ interface StatsPanelProps {
 export function StatsPanel({
   equipment,
   type,
+  displayName,
   abilities,
   slots,
   shardSlots,
@@ -50,6 +52,7 @@ export function StatsPanel({
       {type === 'warframe' ? (
         <WarframeStats
           warframe={equipment as Warframe}
+          displayName={displayName}
           abilities={abilities}
           slots={slots}
           shardSlots={shardSlots}
@@ -71,12 +74,14 @@ export function StatsPanel({
 
 function WarframeStats({
   warframe,
+  displayName,
   abilities,
   slots,
   shardSlots,
   shardTypes,
 }: {
   warframe: Warframe;
+  displayName?: string;
   abilities?: ReactNode;
   slots?: ModSlot[];
   shardSlots?: ShardSlotConfig[];
@@ -210,7 +215,9 @@ function WarframeStats({
           }}
         />
       )}
-      <div className="text-foreground text-center text-sm font-semibold">{warframe.name}</div>
+      <div className="text-foreground text-center text-sm font-semibold">
+        {displayName ?? warframe.name}
+      </div>
       <div className="text-muted text-center text-xs">
         MR <span className="font-mono tabular-nums">{warframe.mastery_req}</span>
       </div>

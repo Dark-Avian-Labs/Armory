@@ -1,3 +1,4 @@
+import { formatSiriusOrionBuildDisplayName } from '../../shared/siriusOrionRegistry.js';
 import { normalizeEquipmentName } from './specialItems';
 
 export function isLotusUniqueName(value: string): boolean {
@@ -12,6 +13,10 @@ export function resolveEquipmentDisplayName(
     catalogName?: string | null;
   },
 ): string {
+  const siriusOrionLabel = formatSiriusOrionBuildDisplayName(uniqueName);
+  if (siriusOrionLabel) {
+    return siriusOrionLabel;
+  }
   if (options.queryName?.trim()) {
     return normalizeEquipmentName(options.queryName.trim());
   }
