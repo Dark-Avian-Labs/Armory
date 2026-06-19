@@ -15,6 +15,7 @@ import {
   parseArtifactSlotsJson,
   type ArtifactSlotEditorRow,
 } from '../../utils/artifactSlotLayout';
+import { bustEquipmentLookupCache } from '../../utils/loadEquipmentLookup';
 import { CATEGORY_API, type EquipmentPickerTab } from '../BuildsCatalog/buildsCatalogUtils';
 import { Modal } from '../ui/Modal';
 
@@ -167,6 +168,7 @@ export function ArtifactSlotsEditorModal({
       });
       const body = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) throw new Error(body?.error ?? 'Failed to save artifact slots.');
+      bustEquipmentLookupCache();
       onSaved?.();
       onClose();
     } catch (err: unknown) {

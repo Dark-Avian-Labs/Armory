@@ -28,7 +28,7 @@ export function useApi<T>(url: string | null): ApiState<T> {
     setLoading(true);
     setError(null);
 
-    apiFetch(url, { signal: controller.signal })
+    apiFetch(url, { signal: controller.signal, cache: 'no-store' })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();

@@ -19,10 +19,9 @@ import {
 } from '../../../shared/artifactSlotState.js';
 import {
   formatSiriusOrionWarframeHeading,
-  isSiriusOrionUniqueName,
   siriusOrionEquipmentSaveName,
 } from '../../../shared/siriusOrionRegistry.js';
-import { buildEditPath, buildNewPath, userBuildsPath } from '../../app/paths';
+import { buildEditPath, userBuildsPath } from '../../app/paths';
 import { useCompare } from '../../context/CompareContext';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useApi } from '../../hooks/useApi';
@@ -98,7 +97,6 @@ import { ElementOutput } from './ElementOutput';
 import { useModBuilderState } from './hooks/useModBuilderState';
 import { IncarnonUpgradePanel } from './IncarnonUpgradePanel';
 import { ModSlotGrid } from './ModSlotGrid';
-import { SiriusOrionFormToggle } from './SiriusOrionFormToggle';
 import { StatsPanel } from './StatsPanel';
 import { ValenceBonusPanel, DEFAULT_VALENCE_BONUS } from './ValenceBonusPanel';
 
@@ -405,7 +403,13 @@ export function ModBuilder() {
   }, [rightPanelMode]);
 
   const apiUrl = getEquipmentListUrl(equipmentType);
-  const { data: equipmentData } = useApi<{ items: Equipment[] }>(apiUrl);
+  const { data: equipmentData, refetch: refetchEquipmentData } = useApi<{ items: Equipment[] }>(
+    apiUrl,
+  );
+
+  useEffect(() => {
+    refetchEquipmentData();
+  }, [routeKey, refetchEquipmentData]);
 
   const { data: shardData } = useApi<{ shards: ShardType[] }>('/api/archon-shards');
   const shardTypes = shardData?.shards || [];
@@ -582,32 +586,8 @@ export function ModBuilder() {
     [equipmentType],
   );
 
-  const handleSiriusOrionFormSwitch = useCallback(
-    (targetUniqueName: string) => {
-      if (
-        !selectedEquipment ||
-        selectedEquipment.unique_name === targetUniqueName ||
-        !isSiriusOrionUniqueName(targetUniqueName)
-      ) {
-        return;
-      }
-
-      if (isDirty) {
-        const confirmed = window.confirm(
-          'Switch between Sirius and Orion? Unsaved changes to this build will be lost.',
-        );
-        if (!confirmed) return;
-      }
-
-      allowNavigationBypassRef.current = true;
-      navigate(buildNewPath('warframe', targetUniqueName));
-    },
-    [isDirty, navigate, selectedEquipment],
-  );
-
   const warframeDisplayName = useMemo(() => {
     if (!selectedEquipment || equipmentType !== 'warframe') return undefined;
-    if (!isSiriusOrionUniqueName(selectedEquipment.unique_name)) return undefined;
     return formatSiriusOrionWarframeHeading(selectedEquipment as Warframe);
   }, [equipmentType, selectedEquipment]);
 
@@ -762,6 +742,12 @@ export function ModBuilder() {
     };
   }, [buildId, routeEqType, equipmentId, getBuild, loaded]);
 
+  const slotsInitKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    slotsInitKeyRef.current = null;
+  }, [routeKey]);
+
   useEffect(() => {
     if (!equipmentData?.items?.length) return undefined;
     let alive = true;
@@ -777,15 +763,28 @@ export function ModBuilder() {
       }
     }
 
+    function applyCatalogSelection(item: Equipment): void {
+      const artifactSlotsChanged =
+        loaded &&
+        selectedEquipment?.unique_name === item.unique_name &&
+        selectedEquipment?.artifact_slots !== item.artifact_slots;
+      if (!loaded || selectedEquipment?.unique_name !== item.unique_name || artifactSlotsChanged) {
+        if (artifactSlotsChanged && !buildId) {
+          slotsInitKeyRef.current = null;
+        }
+        setSelectedEquipment(item);
+        setLoaded(true);
+        setEquipmentLoadError(null);
+      }
+    }
+
     if (buildId && !loaded) {
       const targetUniqueName =
         targetEquipmentUniqueName ?? (isOwnBuild ? getBuild(buildId)?.equipment_unique_name : null);
       if (targetUniqueName) {
         const item = equipmentData.items.find((i) => i.unique_name === targetUniqueName);
         if (item) {
-          setSelectedEquipment(item);
-          setLoaded(true);
-          setEquipmentLoadError(null);
+          applyCatalogSelection(item);
         } else {
           void setSpecialItemSelection(targetUniqueName).catch((error) => {
             const message =
@@ -794,14 +793,12 @@ export function ModBuilder() {
           });
         }
       }
-    } else if (equipmentId && !loaded) {
+    } else if (equipmentId) {
       const decodedId = decodeURIComponent(equipmentId);
       const item = equipmentData.items.find((i) => i.unique_name === decodedId);
       if (item) {
-        setSelectedEquipment(item);
-        setLoaded(true);
-        setEquipmentLoadError(null);
-      } else {
+        applyCatalogSelection(item);
+      } else if (!loaded) {
         void setSpecialItemSelection(decodedId).catch((error) => {
           const message =
             error instanceof Error ? error.message : 'Failed to load special equipment.';
@@ -944,7 +941,6 @@ export function ModBuilder() {
     [equipmentType, selectedEquipment?.name],
   );
 
-  const slotsInitKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!selectedEquipment) {
       slotsInitKeyRef.current = null;
@@ -1077,7 +1073,7 @@ export function ModBuilder() {
       return;
     }
 
-    const initKey = `${equipmentType}:${selectedEquipment.unique_name}`;
+    const initKey = `${equipmentType}:${selectedEquipment.unique_name}:${selectedEquipment.artifact_slots ?? ''}`;
     if (slotsInitKeyRef.current === initKey) {
       return;
     }
@@ -1958,37 +1954,27 @@ export function ModBuilder() {
               incarnonData={incarnonData}
               incarnonSelections={incarnonSelections}
               headerActions={
-                <div className="flex flex-col items-end gap-2">
-                  {equipmentType === 'warframe' &&
-                  isSiriusOrionUniqueName(selectedEquipment.unique_name) ? (
-                    <SiriusOrionFormToggle
-                      activeUniqueName={selectedEquipment.unique_name}
-                      disabled={readOnly}
-                      onSelectForm={handleSiriusOrionFormSwitch}
-                    />
-                  ) : null}
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
-                      onClick={() => setShowShareModal(true)}
-                      title="Share build image"
-                      aria-label="Share build image"
-                    >
-                      <MaterialSymbol name="share" style={{ fontSize: 22 }} />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
-                      onClick={() => {
-                        void openBuildPip();
-                      }}
-                      title="Open build in Picture-in-Picture"
-                      aria-label="Open build in Picture-in-Picture"
-                    >
-                      <MaterialSymbol name="picture_in_picture" style={{ fontSize: 22 }} />
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
+                    onClick={() => setShowShareModal(true)}
+                    title="Share build image"
+                    aria-label="Share build image"
+                  >
+                    <MaterialSymbol name="share" style={{ fontSize: 22 }} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
+                    onClick={() => {
+                      void openBuildPip();
+                    }}
+                    title="Open build in Picture-in-Picture"
+                    aria-label="Open build in Picture-in-Picture"
+                  >
+                    <MaterialSymbol name="picture_in_picture" style={{ fontSize: 22 }} />
+                  </button>
                 </div>
               }
               abilities={

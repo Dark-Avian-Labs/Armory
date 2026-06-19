@@ -198,6 +198,7 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
   const response = await fetch(url, {
     ...init,
     credentials: init?.credentials ?? 'include',
+    cache: init?.cache ?? 'no-store',
     headers,
     body: requestBody,
   });
@@ -228,6 +229,7 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
   const retryResponse = await fetch(url, {
     ...init,
     credentials: init?.credentials ?? 'include',
+    cache: init?.cache ?? 'no-store',
     headers: retryHeaders,
     body: retryBody,
   });
