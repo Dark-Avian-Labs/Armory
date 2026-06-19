@@ -11,7 +11,7 @@ import {
 } from '../arcaneCompat.js';
 import { getClerkUserId } from '../auth/clerkUser.js';
 import { requireArmoryAdmin } from '../auth/middleware.js';
-import { sendCachedCatalogJson } from '../cache/catalogResponseCache.js';
+import { bustCatalogResponseCache, sendCachedCatalogJson } from '../cache/catalogResponseCache.js';
 import { getCachedModList } from '../cache/modListCache.js';
 import { getCatalogDb } from '../db/connection.js';
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
@@ -465,6 +465,7 @@ catalogRouter.patch(
         return;
       }
 
+      bustCatalogResponseCache();
       res.json({ ok: true, unique_name: uniqueName, artifact_slots: body.artifact_slots });
     } catch (err) {
       sendInternalError(res, 'admin.catalog.artifactSlots', err);

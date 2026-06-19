@@ -17,7 +17,12 @@ import {
   normalizeWarframeArtifactSlotsForLoad,
   warframeExilusArtifactIndex,
 } from '../../../shared/artifactSlotState.js';
-import { buildEditPath, userBuildsPath } from '../../app/paths';
+import {
+  formatSiriusOrionWarframeHeading,
+  isSiriusOrionUniqueName,
+  siriusOrionEquipmentSaveName,
+} from '../../../shared/siriusOrionRegistry.js';
+import { buildEditPath, buildNewPath, userBuildsPath } from '../../app/paths';
 import { useCompare } from '../../context/CompareContext';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useApi } from '../../hooks/useApi';
@@ -93,6 +98,7 @@ import { ElementOutput } from './ElementOutput';
 import { useModBuilderState } from './hooks/useModBuilderState';
 import { IncarnonUpgradePanel } from './IncarnonUpgradePanel';
 import { ModSlotGrid } from './ModSlotGrid';
+import { SiriusOrionFormToggle } from './SiriusOrionFormToggle';
 import { StatsPanel } from './StatsPanel';
 import { ValenceBonusPanel, DEFAULT_VALENCE_BONUS } from './ValenceBonusPanel';
 
@@ -575,6 +581,35 @@ export function ModBuilder() {
     },
     [equipmentType],
   );
+
+  const handleSiriusOrionFormSwitch = useCallback(
+    (targetUniqueName: string) => {
+      if (
+        !selectedEquipment ||
+        selectedEquipment.unique_name === targetUniqueName ||
+        !isSiriusOrionUniqueName(targetUniqueName)
+      ) {
+        return;
+      }
+
+      if (isDirty) {
+        const confirmed = window.confirm(
+          'Switch between Sirius and Orion? Unsaved changes to this build will be lost.',
+        );
+        if (!confirmed) return;
+      }
+
+      allowNavigationBypassRef.current = true;
+      navigate(buildNewPath('warframe', targetUniqueName));
+    },
+    [isDirty, navigate, selectedEquipment],
+  );
+
+  const warframeDisplayName = useMemo(() => {
+    if (!selectedEquipment || equipmentType !== 'warframe') return undefined;
+    if (!isSiriusOrionUniqueName(selectedEquipment.unique_name)) return undefined;
+    return formatSiriusOrionWarframeHeading(selectedEquipment as Warframe);
+  }, [equipmentType, selectedEquipment]);
 
   useEffect(() => {
     if (loaded) return undefined;
@@ -1736,7 +1771,7 @@ export function ModBuilder() {
 
       const saved = await storageSave(
         config,
-        selectedEquipment.name,
+        siriusOrionEquipmentSaveName(selectedEquipment),
         imagePath,
         buildIsPublic ? 'public' : 'private',
         buildDescription,
@@ -1892,7 +1927,7 @@ export function ModBuilder() {
     return (
       <CompactBuildOverview
         buildName={buildName}
-        equipmentName={selectedEquipment.name}
+        equipmentName={warframeDisplayName ?? selectedEquipment.name}
         equipmentType={equipmentType}
         slots={hydratedSlots}
         arcaneSlots={arcaneSlots}
@@ -1914,6 +1949,7 @@ export function ModBuilder() {
             <StatsPanel
               equipment={selectedEquipment as Warframe | Weapon}
               type={equipmentType}
+              displayName={warframeDisplayName}
               slots={hydratedSlots}
               shardSlots={equipmentType === 'warframe' ? shardSlots : undefined}
               shardTypes={equipmentType === 'warframe' ? shardTypes : undefined}
@@ -1922,27 +1958,38 @@ export function ModBuilder() {
               incarnonData={incarnonData}
               incarnonSelections={incarnonSelections}
               headerActions={
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
-                    onClick={() => setShowShareModal(true)}
-                    title="Share build image"
-                    aria-label="Share build image"
-                  >
-                    <MaterialSymbol name="share" style={{ fontSize: 22 }} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
-                    onClick={() => {
-                      void openBuildPip();
-                    }}
-                    title="Open build in Picture-in-Picture"
-                    aria-label="Open build in Picture-in-Picture"
-                  >
-                    <MaterialSymbol name="picture_in_picture" style={{ fontSize: 22 }} />
-                  </button>
+                <div className="flex flex-col items-end gap-2">
+                  {equipmentType === 'warframe' &&
+                  selectedEquipment &&
+                  isSiriusOrionUniqueName(selectedEquipment.unique_name) ? (
+                    <SiriusOrionFormToggle
+                      activeUniqueName={selectedEquipment.unique_name}
+                      disabled={readOnly}
+                      onSelectForm={handleSiriusOrionFormSwitch}
+                    />
+                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
+                      onClick={() => setShowShareModal(true)}
+                      title="Share build image"
+                      aria-label="Share build image"
+                    >
+                      <MaterialSymbol name="share" style={{ fontSize: 22 }} />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0"
+                      onClick={() => {
+                        void openBuildPip();
+                      }}
+                      title="Open build in Picture-in-Picture"
+                      aria-label="Open build in Picture-in-Picture"
+                    >
+                      <MaterialSymbol name="picture_in_picture" style={{ fontSize: 22 }} />
+                    </button>
+                  </div>
                 </div>
               }
               abilities={

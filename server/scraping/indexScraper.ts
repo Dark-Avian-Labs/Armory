@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 
+import { resolveSiriusOrionUniqueNameFromScrapeName } from '../../shared/siriusOrionRegistry.js';
 import { getCatalogDb } from '../db/connection.js';
 import { fetchOverframeHtml } from '../http/fetchOverframe.js';
 import { FETCH_TIMEOUT_MS, isAbortError } from '../http/fetchWithTimeout.js';
@@ -100,7 +101,8 @@ function matchToDb(entries: OverframeIndexEntry[], onlyMissing = false): Overfra
 
   const matched: OverframeIndexEntry[] = [];
   for (const entry of entries) {
-    const uniqueName = nameMap.get(entry.name.toLowerCase());
+    const aliasUniqueName = resolveSiriusOrionUniqueNameFromScrapeName(entry.name);
+    const uniqueName = aliasUniqueName ?? nameMap.get(entry.name.toLowerCase()) ?? null;
     if (uniqueName) {
       if (hasDataSet && hasDataSet.has(uniqueName)) continue;
       matched.push({ ...entry, dbUniqueName: uniqueName });

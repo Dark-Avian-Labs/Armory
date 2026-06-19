@@ -1,3 +1,4 @@
+import { siriusOrionEquipmentSaveName } from '../../shared/siriusOrionRegistry.js';
 import type { StoredBuild } from '../types/warframe';
 
 type CatalogRow = {
@@ -22,9 +23,13 @@ export function enrichBuildFromCatalog(
   return {
     ...build,
     equipment_name:
-      build.equipment_name && build.equipment_name !== build.equipment_unique_name
+      siriusOrionEquipmentSaveName({
+        unique_name: build.equipment_unique_name,
+        name: rec.name ?? build.equipment_name,
+      }) ||
+      (build.equipment_name && build.equipment_name !== build.equipment_unique_name
         ? build.equipment_name
-        : (rec.name ?? build.equipment_name ?? build.equipment_unique_name),
+        : (rec.name ?? build.equipment_name ?? build.equipment_unique_name)),
     equipment_image: build.equipment_image ?? imageFromCatalog,
   };
 }
