@@ -12,6 +12,11 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 let cachedLookupPromise: Promise<Record<string, EquipmentPolaritySource>> | null = null;
 let cachedAt = 0;
 
+export function bustEquipmentLookupCache(): void {
+  cachedLookupPromise = null;
+  cachedAt = 0;
+}
+
 export function loadEquipmentLookup(): Promise<Record<string, EquipmentPolaritySource>> {
   const now = Date.now();
   if (cachedLookupPromise && now - cachedAt < CACHE_TTL_MS) {
