@@ -315,3 +315,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.66.5** `fix` [#383](https://github.com/Dark-Avian-Labs/Armory/pull/383): holofoil
 - **v1.67.0** `feat` [#390](https://github.com/Dark-Avian-Labs/Armory/pull/390): implemented orion and sirius
 - **v1.67.1** `fix` [#391](https://github.com/Dark-Avian-Labs/Armory/pull/391): database cache
+- **v1.67.2** `fix` [#392](https://github.com/Dark-Avian-Labs/Armory/pull/392): rank stats
