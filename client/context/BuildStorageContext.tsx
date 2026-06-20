@@ -1,0 +1,287 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+
+import { useAuth } from '../features/auth/AuthContext';
+import type { BuildConfig, BuildVisibility, StoredBuild } from '../types/warframe';
+import { apiFetch, UnauthorizedError, readApiErrorMessage } from '../utils/api';
+import { normalizeRivenConfigMembership } from '../utils/riven';
+
+function mapBuildRows(rows: Array<Record<string, unknown>>): StoredBuild[] {
+  return rows
+    .map((row) => {
+      const modConfig =
+        row.mod_config && typeof row.mod_config === 'object'
+          ? (row.mod_config as Partial<StoredBuild>)
+          : {};
+      return {
+        ...(modConfig as BuildConfig),
+        id: String(row.id ?? modConfig.id ?? ''),
+        name: typeof row.name === 'string' ? row.name : (modConfig.name ?? 'Untitled Build'),
+        equipment_type:
+          (typeof row.equipment_type === 'string'
+            ? row.equipment_type
+            : modConfig.equipment_type) ?? 'warframe',
+        equipment_unique_name:
+          (typeof row.equipment_unique_name === 'string'
+            ? row.equipment_unique_name
+            : modConfig.equipment_unique_name) ?? '',
+        equipment_name: modConfig.equipment_name ?? modConfig.equipment_unique_name ?? '',
+        equipment_image:
+          typeof modConfig.equipment_image === 'string' ? modConfig.equipment_image : undefined,
+        created_at: String(row.created_at ?? new Date().toISOString()),
+        updated_at: String(row.updated_at ?? new Date().toISOString()),
+        visibility: ((): BuildVisibility | undefined => {
+          const v = row.visibility;
+          if (v === 'public' || v === 'private' || v === 'unlisted') return v;
+          return 'private';
+        })(),
+        description: typeof row.description === 'string' ? row.description : undefined,
+      } as StoredBuild;
+    })
+    .filter((build) => build.id.length > 0);
+}
+
+interface BuildStorageContextValue {
+  builds: StoredBuild[];
+  loading: boolean;
+  saveBuild: (
+    config: BuildConfig,
+    equipmentName: string,
+    equipmentImage?: string,
+    visibility?: BuildVisibility,
+    description?: string,
+  ) => Promise<StoredBuild>;
+  deleteBuild: (id: string) => Promise<void>;
+  getBuild: (id: string) => StoredBuild | undefined;
+  refresh: () => Promise<StoredBuild[]>;
+  copyBuildFromId: (sourceId: string, name: string) => Promise<string>;
+}
+
+const BuildStorageContext = createContext<BuildStorageContextValue | null>(null);
+
+export function BuildStorageProvider({ children }: { children: ReactNode }) {
+  const { auth } = useAuth();
+  const [builds, setBuilds] = useState<StoredBuild[]>([]);
+  const [loading, setLoading] = useState(false);
+  const refreshGenerationRef = useRef(0);
+  const buildsRef = useRef(builds);
+  buildsRef.current = builds;
+
+  const refresh = useCallback(async (): Promise<StoredBuild[]> => {
+    const generation = ++refreshGenerationRef.current;
+    if (buildsRef.current.length === 0) {
+      setLoading(true);
+    }
+    try {
+      const response = await apiFetch('/api/builds');
+      if (!response.ok) {
+        if (generation === refreshGenerationRef.current) {
+          setBuilds([]);
+        }
+        return [];
+      }
+      const body = (await response.json()) as {
+        builds?: Array<Record<string, unknown>>;
+      };
+      const rows = Array.isArray(body.builds) ? body.builds : [];
+      const mapped = mapBuildRows(rows);
+      if (generation === refreshGenerationRef.current) {
+        setBuilds(mapped);
+      }
+      return mapped;
+    } catch (error) {
+      if (error instanceof UnauthorizedError) {
+        console.error('Failed to refresh builds (unauthorized)', {
+          url: error.url,
+          status: error.response.status,
+        });
+      } else {
+        console.error('Failed to refresh builds', error);
+      }
+      if (generation === refreshGenerationRef.current) {
+        setBuilds([]);
+      }
+      return [];
+    } finally {
+      if (generation === refreshGenerationRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (auth.status !== 'ok') {
+      refreshGenerationRef.current += 1;
+      setBuilds([]);
+      setLoading(false);
+      return;
+    }
+    void refresh();
+  }, [auth.status, auth.userId, refresh]);
+
+  useEffect(() => {
+    if (auth.status !== 'ok') return undefined;
+    const onVisibility = (): void => {
+      if (document.visibilityState === 'visible') {
+        void refresh();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [auth.status, refresh]);
+
+  const saveBuild = useCallback(
+    async (
+      config: BuildConfig,
+      equipmentName: string,
+      equipmentImage?: string,
+      visibility?: BuildVisibility,
+      description?: string,
+    ): Promise<StoredBuild> => {
+      const normalizedSlots = config.slots.map((slot) =>
+        slot.riven_config
+          ? {
+              ...slot,
+              riven_config: normalizeRivenConfigMembership(slot.riven_config),
+            }
+          : slot,
+      );
+      const configWithMeta = {
+        ...config,
+        slots: normalizedSlots,
+        equipment_name: equipmentName,
+        equipment_image: equipmentImage,
+      };
+      const isUpdate = Boolean(config.id);
+      const endpoint = isUpdate ? `/api/builds/${config.id}` : '/api/builds';
+      const method = isUpdate ? 'PUT' : 'POST';
+      const vis: BuildVisibility = visibility ?? (config as StoredBuild).visibility ?? 'private';
+      const response = await apiFetch(endpoint, {
+        method,
+        body: JSON.stringify(
+          isUpdate
+            ? {
+                name: configWithMeta.name,
+                mod_config: configWithMeta,
+                visibility: vis,
+                description: description ?? '',
+              }
+            : {
+                name: configWithMeta.name,
+                equipment_type: configWithMeta.equipment_type,
+                equipment_unique_name: configWithMeta.equipment_unique_name,
+                mod_config: configWithMeta,
+                visibility: vis,
+                description: description ?? '',
+              },
+        ),
+      });
+      if (!response.ok) {
+        const message = await readApiErrorMessage(response, 'Failed to save build');
+        throw new Error(message);
+      }
+      let savedId = config.id;
+      let body: { id?: string | number } | null = null;
+      try {
+        body = (await response.json()) as { id?: string | number };
+      } catch {
+        body = null;
+      }
+      if (!isUpdate && body) {
+        savedId = body.id !== undefined ? String(body.id) : undefined;
+      }
+      const refreshedBuilds = await refresh();
+      const saved = refreshedBuilds.find((build) => build.id === savedId);
+      if (saved) {
+        return saved;
+      }
+      if (!savedId) {
+        throw new Error(
+          'Save succeeded but no build id returned from server; cannot construct StoredBuild',
+        );
+      }
+      return {
+        ...configWithMeta,
+        id: savedId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        description: description ?? (config as StoredBuild).description,
+      } as StoredBuild;
+    },
+    [refresh],
+  );
+
+  const deleteBuild = useCallback(
+    async (id: string) => {
+      const response = await apiFetch(`/api/builds/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const message = await readApiErrorMessage(response, 'Failed to delete build');
+        throw new Error(message);
+      }
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const getBuild = useCallback(
+    (id: string): StoredBuild | undefined => {
+      return builds.find((build) => build.id === id);
+    },
+    [builds],
+  );
+
+  const copyBuildFromId = useCallback(
+    async (sourceId: string, name: string): Promise<string> => {
+      const response = await apiFetch(`/api/builds/${sourceId}/copy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!response.ok) {
+        const message = await readApiErrorMessage(response, 'Failed to copy build');
+        throw new Error(message);
+      }
+      const body = (await response.json()) as { id?: number | string };
+      const newId = body.id !== undefined ? String(body.id) : '';
+      if (!newId) {
+        throw new Error('Copy succeeded but no id returned');
+      }
+      await refresh();
+      return newId;
+    },
+    [refresh],
+  );
+
+  const value = useMemo<BuildStorageContextValue>(
+    () => ({
+      builds,
+      loading,
+      saveBuild,
+      deleteBuild,
+      getBuild,
+      refresh,
+      copyBuildFromId,
+    }),
+    [builds, loading, saveBuild, deleteBuild, getBuild, refresh, copyBuildFromId],
+  );
+
+  return <BuildStorageContext.Provider value={value}>{children}</BuildStorageContext.Provider>;
+}
+
+export function useBuildStorageContext(): BuildStorageContextValue {
+  const ctx = useContext(BuildStorageContext);
+  if (!ctx) {
+    throw new Error('useBuildStorage must be used within BuildStorageProvider');
+  }
+  return ctx;
+}
