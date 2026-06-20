@@ -15,6 +15,12 @@ export const PIPELINE_STEPS = [
     description: 'Rebuild game tables when export hashes change.',
   },
   {
+    key: 'warframeRankExceptions',
+    label: 'Rank Exceptions',
+    description:
+      'Regenerate warframe rank-30 bonus exceptions when scripts/data/warframe-rank-exceptions.json changes; force step to refresh manually.',
+  },
+  {
     key: 'exaltedStanceMods',
     label: 'Exalted Stances',
     description:

@@ -1,3 +1,4 @@
+import { scaleWarframeStatsToMaxRank } from '../../shared/equipmentRankStats.js';
 import type { Warframe, ModSlot } from '../types/warframe';
 import { aggregateAllMods } from './modStatParser';
 
@@ -35,11 +36,16 @@ export interface WarframeBonusEffects {
   abilityRangePct?: number;
 }
 
+export function getWarframeBaseStatsAtMaxRank(warframe: Warframe) {
+  return scaleWarframeStatsToMaxRank(warframe);
+}
+
 export function calculateWarframeStats(
   warframe: Warframe,
   slots: ModSlot[],
   bonus?: WarframeBonusEffects,
 ): WarframeCalcResult {
+  const baseStats = getWarframeBaseStatsAtMaxRank(warframe);
   const mods = aggregateAllMods(slots);
 
   const apply = (base: number, mult: number, bonusPct = 0, bonusFlat = 0): StatPair => ({
@@ -54,25 +60,25 @@ export function calculateWarframeStats(
 
   return {
     health: apply(
-      warframe.health ?? 0,
+      baseStats.health,
       mods.health,
       bonus?.healthPct,
       (bonus?.healthFlat ?? 0) + (mods.healthFlat ?? 0),
     ),
     shield: apply(
-      warframe.shield ?? 0,
+      baseStats.shield,
       mods.shield,
       bonus?.shieldPct,
       (bonus?.shieldFlat ?? 0) + (mods.shieldFlat ?? 0),
     ),
     armor: apply(
-      warframe.armor ?? 0,
+      baseStats.armor,
       mods.armor,
       bonus?.armorPct,
       (bonus?.armorFlat ?? 0) + (mods.armorFlat ?? 0),
     ),
     energy: apply(
-      warframe.power ?? 0,
+      baseStats.power,
       mods.energy,
       bonus?.energyPct,
       (bonus?.energyFlat ?? 0) + (mods.energyFlat ?? 0),

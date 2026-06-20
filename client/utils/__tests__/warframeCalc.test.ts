@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import type { Warframe, Mod, ModSlot } from '../../types/warframe';
+import type { Mod, ModSlot, Warframe } from '../../types/warframe';
 import { calculateWarframeStats } from '../warframeCalc';
 
 function makeWarframe(overrides?: Partial<Warframe>): Warframe {
@@ -17,20 +17,21 @@ function makeWarframe(overrides?: Partial<Warframe>): Warframe {
   };
 }
 
-function makeMod(descriptions: string[]): Mod {
+function makeMod(descriptions: string[], overrides?: Partial<Mod>): Mod {
   return {
     unique_name: '/test/mod',
     name: 'Test',
     description: JSON.stringify(descriptions),
     fusion_limit: descriptions.length - 1,
+    ...overrides,
   };
 }
 
 describe('calculateWarframeStats', () => {
-  it('returns base values with no mods', () => {
+  it('returns rank-30 base values with no mods', () => {
     const result = calculateWarframeStats(makeWarframe(), []);
-    expect(result.health.base).toBe(300);
-    expect(result.health.modded).toBe(300);
+    expect(result.health.base).toBe(400);
+    expect(result.health.modded).toBe(400);
     expect(result.abilityStrength.base).toBe(100);
     expect(result.abilityStrength.modded).toBe(100);
   });
@@ -38,7 +39,7 @@ describe('calculateWarframeStats', () => {
   it('applies health mod correctly', () => {
     const slots: ModSlot[] = [{ index: 0, type: 'general', mod: makeMod(['+100% Health']), rank: 0 }];
     const result = calculateWarframeStats(makeWarframe(), slots);
-    expect(result.health.modded).toBe(600);
+    expect(result.health.modded).toBe(800);
   });
 
   it('applies shield mod correctly', () => {
@@ -51,7 +52,7 @@ describe('calculateWarframeStats', () => {
       },
     ];
     const result = calculateWarframeStats(makeWarframe(), slots);
-    expect(result.shield.modded).toBe(600);
+    expect(result.shield.modded).toBe(800);
   });
 
   it('applies armor mod correctly', () => {
@@ -137,7 +138,104 @@ describe('calculateWarframeStats', () => {
   it('handles missing warframe stats gracefully', () => {
     const wf = makeWarframe({ health: undefined, shield: undefined });
     const result = calculateWarframeStats(wf, []);
-    expect(result.health.base).toBe(0);
+    expect(result.health.base).toBe(100);
     expect(result.shield.base).toBe(0);
+  });
+
+  it('scales Inaros Prime to rank 30 before applying mods', () => {
+    const inarosPrime = makeWarframe({
+      unique_name: '/Lotus/Powersuits/Sandman/InarosPrime',
+      name: 'Inaros Prime',
+      health: 2215,
+      shield: 0,
+      armor: 240,
+      power: 140,
+      sprint_speed: 1.05,
+    });
+
+    const noMods = calculateWarframeStats(inarosPrime, []);
+    expect(noMods.health.base).toBe(2415);
+    expect(noMods.energy.base).toBe(190);
+    expect(noMods.energy.modded).toBe(190);
+  });
+});
+
+describe('Inaros Prime Immortal build health regression', () => {
+  function umbraMod(name: string, rank10Line: string, unique_name: string): Mod {
+    const lines = [
+      rank10Line.replace(/(\d+)/, (m) => String(Math.round(Number(m) * 0.1))),
+      rank10Line.replace(/(\d+)/, (m) => String(Math.round(Number(m) * 0.2))),
+      rank10Line.replace(/(\d+)/, (m) => String(Math.round(Number(m) * 0.3))),
+      rank10Line.replace(/(\d+)/, (m) => String(Math.round(Number(m) * 0.4))),
+      rank10Line.replace(/(\d+)/, (m) => String(Math.round(Number(m) * 0.5))),
+      rank10Line.replace(/(\d+)/, (m) => String(Math.round(Number(m) * 0.6))),
+      rank10Line.replace(/(\d+)/, (m) => String(Math.round(Number(m) * 0.7))),
+      rank10Line.replace(/(\d+)/, (m) => String(Math.round(Number(m) * 0.8))),
+      rank10Line.replace(/(\d+)/, (m) => String(Math.round(Number(m) * 0.9))),
+      rank10Line,
+      rank10Line,
+    ];
+    return {
+      unique_name,
+      name,
+      mod_set: '/Lotus/Upgrades/ModSets/Umbra/UmbraModSet',
+      description: JSON.stringify(lines),
+      fusion_limit: 10,
+    };
+  }
+
+  it('matches in-game energy and reports post-rank-fix health delta', () => {
+    const inarosPrime = makeWarframe({
+      unique_name: '/Lotus/Powersuits/Sandman/InarosPrime',
+      name: 'Inaros Prime',
+      health: 2215,
+      shield: 0,
+      armor: 240,
+      power: 140,
+      sprint_speed: 1.05,
+    });
+
+    const slots: ModSlot[] = [
+      {
+        index: 0,
+        type: 'aura',
+        mod: makeMod(
+          [
+            'Squad gains +3% Maximum Health',
+            'Squad gains +7% Maximum Health',
+            'Squad gains +10% Maximum Health',
+            'Squad gains +13% Maximum Health',
+            'Squad gains +17% Maximum Health',
+            'Squad gains +20% Maximum Health',
+          ],
+          { name: 'Physique', fusion_limit: 5 },
+        ),
+        rank: 5,
+      },
+      {
+        index: 1,
+        type: 'general',
+        mod: umbraMod('Umbral Vitality', '+100% Health', '/u/vit'),
+        rank: 10,
+      },
+      {
+        index: 2,
+        type: 'general',
+        mod: umbraMod('Umbral Fiber', '+100% Armor', '/u/fiber'),
+        rank: 10,
+      },
+      {
+        index: 3,
+        type: 'general',
+        mod: umbraMod('Umbral Intensify', '+44% Ability Strength', '/u/int'),
+        rank: 10,
+      },
+    ];
+
+    const result = calculateWarframeStats(inarosPrime, slots);
+
+    expect(result.energy.modded).toBe(190);
+    expect(result.abilityStrength.modded).toBeCloseTo(177);
+    expect(result.health.modded).toBe(7245);
   });
 });

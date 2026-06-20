@@ -7,7 +7,11 @@ import { extractArchonShardBonuses } from '../../utils/archonShardBonuses';
 import { formatPercent } from '../../utils/damage';
 import { calculateWeaponDps, type WeaponCalcResult } from '../../utils/damageCalc';
 import { getDispositionPips, getEffectiveRivenDisposition } from '../../utils/riven';
-import { calculateWarframeStats, type WarframeBonusEffects } from '../../utils/warframeCalc';
+import {
+  calculateWarframeStats,
+  getWarframeBaseStatsAtMaxRank,
+  type WarframeBonusEffects,
+} from '../../utils/warframeCalc';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import type { ShardSlotConfig, ShardType } from './ArchonShardSlots';
 
@@ -91,19 +95,21 @@ function WarframeStats({
     return extractArchonShardBonuses(shardSlots, shardTypes);
   }, [shardSlots, shardTypes]);
 
+  const baseStats = useMemo(() => getWarframeBaseStatsAtMaxRank(warframe), [warframe]);
+
   const calc = useMemo(() => {
     if (!slots) return null;
     return calculateWarframeStats(warframe, slots, shardBonuses);
   }, [warframe, slots, shardBonuses]);
 
-  const baseStats: Array<{
+  const baseStatsDisplay: Array<{
     label: string;
     baseDisplay: string | undefined;
     moddedDisplay?: string;
     color?: StatColor;
   }> = [
     (() => {
-      const base = warframe.health;
+      const base = baseStats.health;
       const m = calc?.health.modded;
       return {
         label: 'Health',
@@ -113,7 +119,7 @@ function WarframeStats({
       };
     })(),
     (() => {
-      const base = warframe.shield;
+      const base = baseStats.shield;
       const m = calc?.shield.modded;
       return {
         label: 'Shield',
@@ -123,7 +129,7 @@ function WarframeStats({
       };
     })(),
     (() => {
-      const base = warframe.armor;
+      const base = baseStats.armor;
       const m = calc?.armor.modded;
       return {
         label: 'Armor',
@@ -143,7 +149,7 @@ function WarframeStats({
       };
     })(),
     (() => {
-      const base = warframe.power;
+      const base = baseStats.power;
       const m = calc?.energy.modded;
       return {
         label: 'Energy',
@@ -223,7 +229,7 @@ function WarframeStats({
       </div>
 
       <div className="mt-3 space-y-1.5">
-        {baseStats.map(
+        {baseStatsDisplay.map(
           (stat) =>
             stat.baseDisplay != null && (
               <div key={stat.label} className="flex justify-between text-xs">

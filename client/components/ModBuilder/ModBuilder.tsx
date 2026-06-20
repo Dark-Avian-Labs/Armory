@@ -56,6 +56,7 @@ import { getCompanionWeaponSelectionType, isCompanionWeapon } from '../../utils/
 import { calculateBuildDamage } from '../../utils/damage';
 import { calculateWeaponDps } from '../../utils/damageCalc';
 import { calculateTotalCapacity } from '../../utils/drain';
+import { getEquipmentModCapacityBase } from '../../utils/equipmentCapacity';
 import { getModTypesForEquipment, NO_MOD_TYPES_FOR_EQUIPMENT } from '../../utils/equipmentModTypes';
 import { calculateFormaCount, type FormaCount } from '../../utils/formaCounter';
 import {
@@ -82,7 +83,7 @@ import {
   matchesSpecialItemType,
   weaponOmitsExilusSlot,
 } from '../../utils/specialItems';
-import { getWeaponModCapacityBase, weaponSupportsValenceBonus } from '../../utils/weaponValence';
+import { weaponSupportsValenceBonus } from '../../utils/weaponValence';
 import { LazySuspenseFallback } from '../ui/LazySuspenseFallback';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { Modal } from '../ui/Modal';
@@ -1354,8 +1355,8 @@ export function ModBuilder() {
   );
 
   const modCapacityBase = useMemo(
-    () => getWeaponModCapacityBase(selectedEquipment ?? undefined),
-    [selectedEquipment],
+    () => getEquipmentModCapacityBase(equipmentType, selectedEquipment ?? undefined),
+    [equipmentType, selectedEquipment],
   );
 
   const capacity = useMemo(

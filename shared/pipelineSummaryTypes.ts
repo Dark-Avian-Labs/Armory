@@ -31,6 +31,9 @@ export interface StartupPipelineSummary {
     };
     modDescriptionsBackfilled?: number;
   };
+  warframeRankExceptions: StepSummaryBase & {
+    entryCount?: number;
+  };
   exaltedStanceMods: StepSummaryBase & {
     found?: number;
     insertedOrUpdated?: number;

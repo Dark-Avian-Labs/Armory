@@ -84,6 +84,13 @@ export function printStartupPipelineSummary(summary: StartupPipelineSummary): vo
     ...(db.error ? [`Error: ${db.error}`] : []),
   ]);
 
+  const re = s.warframeRankExceptions;
+  row('Rank Exceptions', re.outcome, [
+    re.detail,
+    ...(re.entryCount !== undefined ? [`Entries written: ${re.entryCount}.`] : []),
+    ...(re.error ? [`Error: ${re.error}`] : []),
+  ]);
+
   const es = s.exaltedStanceMods;
   row('Exalted Stances', es.outcome, [
     es.detail,
