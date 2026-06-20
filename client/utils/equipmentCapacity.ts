@@ -9,10 +9,6 @@ const WARFRAME_LIKE_CAPACITY_TYPES = new Set<EquipmentType>([
   'beast_claws',
 ]);
 
-/**
- * Max-rank mod capacity base before aura/stance bonuses and polarity.
- * Necramechs reach 40 capacity at item rank 40; stats stop at rank 30.
- */
 export function getEquipmentModCapacityBase(
   equipmentType: EquipmentType | undefined,
   equipment: { name?: string } | undefined,

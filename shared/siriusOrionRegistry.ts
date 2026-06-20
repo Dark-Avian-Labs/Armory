@@ -33,7 +33,6 @@ const FORM_BY_UNIQUE_NAME = new Map<string, SiriusOrionForm>(
   SIRIUS_ORION_FORMS.map((form) => [form.uniqueName, form]),
 );
 
-/** Overframe / wiki index names that map to a catalog unique_name. */
 export const SIRIUS_ORION_SCRAPE_NAME_ALIASES: Readonly<Record<string, string>> = {
   'sirius & orion': SIRIUS_SUIT_UNIQUE_NAME,
   'orion & sirius': ORION_SUIT_UNIQUE_NAME,
