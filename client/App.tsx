@@ -1,6 +1,7 @@
 import { ClerkProvider } from '@clerk/react';
 import type { ReactNode } from 'react';
 
+import { BuildStorageProvider } from './context/BuildStorageContext';
 import { CompareProvider } from './context/CompareContext';
 import { AuthProvider } from './features/auth/AuthContext';
 
@@ -20,7 +21,9 @@ export function App({ children }: { children: ReactNode }) {
   return (
     <ClerkProvider publishableKey={publishableKey} afterSignOutUrl="/builder/builds">
       <AuthProvider>
-        <CompareProvider>{children}</CompareProvider>
+        <BuildStorageProvider>
+          <CompareProvider>{children}</CompareProvider>
+        </BuildStorageProvider>
       </AuthProvider>
     </ClerkProvider>
   );
