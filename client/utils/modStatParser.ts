@@ -127,7 +127,17 @@ export interface ParseModEffectsOptions {
   umbraSetEquippedCount?: number;
 }
 
+function isOrbPickupConversionLine(line: string): boolean {
+  return (
+    /\bpickups?\s+give\b/i.test(line) ||
+    /\bhealth\s+orb/i.test(line) ||
+    /\benergy\s+orb/i.test(line)
+  );
+}
+
 function applyStatLineToEffects(line: string, effects: StatEffects): void {
+  if (isOrbPickupConversionLine(line)) return;
+
   const factionMult = line.match(/^x([\d.]+)\s+Damage to\b/i);
   if (factionMult) {
     effects.factionDamage += parseFloat(factionMult[1]) - 1;

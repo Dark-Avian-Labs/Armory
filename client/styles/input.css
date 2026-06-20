@@ -649,6 +649,10 @@ html.ui-clear:not(.dark) {
     font-size: 1.35rem;
   }
 
+  .custom-scroll {
+    scrollbar-gutter: stable;
+  }
+
   .custom-scroll::-webkit-scrollbar {
     width: 8px;
   }
