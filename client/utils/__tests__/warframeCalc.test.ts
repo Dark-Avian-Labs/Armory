@@ -230,6 +230,30 @@ describe('Inaros Prime Immortal build health regression', () => {
         mod: umbraMod('Umbral Intensify', '+44% Ability Strength', '/u/int'),
         rank: 10,
       },
+      {
+        index: 4,
+        type: 'general',
+        mod: makeMod(
+          [
+            'Convert +7.5% of Damage on Health to Energy. Without Shields, ally Overguard imitates Health.',
+            'Convert +45% of Damage on Health to Energy. Without Shields, ally Overguard imitates Health.',
+          ],
+          { name: 'Hunter Adrenaline', fusion_limit: 5 },
+        ),
+        rank: 5,
+      },
+      {
+        index: 5,
+        type: 'general',
+        mod: makeMod(
+          [
+            'Health pickups give +10% Energy. Energy pickups give +10% Health.',
+            'Health pickups give +110% Energy. Energy pickups give +110% Health.',
+          ],
+          { name: 'Equilibrium', fusion_limit: 10 },
+        ),
+        rank: 10,
+      },
     ];
 
     const result = calculateWarframeStats(inarosPrime, slots);

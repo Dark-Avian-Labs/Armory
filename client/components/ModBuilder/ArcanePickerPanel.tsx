@@ -34,12 +34,12 @@ export function ArcanePickerPanel({
 
   const filtered = arcanes.filter((a) => a.name.toLowerCase().includes(search.toLowerCase()));
 
-  const gridRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [cardScale, setCardScale] = useState<number>(0);
 
   const measure = useCallback(() => {
-    if (!gridRef.current) return;
-    const width = gridRef.current.clientWidth;
+    if (!scrollRef.current) return;
+    const width = scrollRef.current.clientWidth;
     if (width > 0) {
       setCardScale(width / (COLS * DEFAULT_ARCANE_LAYOUT.cardWidth));
     }
@@ -50,9 +50,9 @@ export function ArcanePickerPanel({
   }, [measure]);
 
   useEffect(() => {
-    if (!gridRef.current) return undefined;
+    if (!scrollRef.current) return undefined;
     const observer = new ResizeObserver(measure);
-    observer.observe(gridRef.current);
+    observer.observe(scrollRef.current);
     return () => observer.disconnect();
   }, [measure]);
 
@@ -90,12 +90,12 @@ export function ArcanePickerPanel({
 
       <div className="text-muted mb-2 text-xs">{filtered.length} arcanes available</div>
 
-      <div className="custom-scroll max-h-[calc(100vh-420px)] overflow-y-auto">
+      <div ref={scrollRef} className="custom-scroll max-h-[calc(100vh-420px)] overflow-y-auto">
         {loading && <p className="text-muted text-sm">Loading arcanes...</p>}
         {!loading && filtered.length === 0 && (
           <p className="text-muted text-sm">No arcanes match the search.</p>
         )}
-        <div ref={gridRef} className="grid grid-cols-4">
+        <div className="grid grid-cols-4">
           {cardScale > 0 && !loading && filtered.length > 0 && (
             <>
               {!search && (

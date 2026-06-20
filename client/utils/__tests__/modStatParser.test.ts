@@ -86,6 +86,34 @@ describe('parseModEffects', () => {
       expect(parseModEffects(mod, 5).health).toBeCloseTo(0.2);
     });
 
+    it('ignores Equilibrium orb conversion (not max health/energy)', () => {
+      const mod = makeMod(
+        [
+          'Health pickups give +10% Energy. Energy pickups give +10% Health.',
+          'Health pickups give +110% Energy. Energy pickups give +110% Health.',
+        ],
+        { name: 'Equilibrium', fusion_limit: 10 },
+      );
+      const effects = parseModEffects(mod, 10);
+      expect(effects.health).toBe(0);
+      expect(effects.energy).toBe(0);
+      expect(effects.healthFlat).toBe(0);
+      expect(effects.energyFlat).toBe(0);
+    });
+
+    it('ignores Hunter Adrenaline damage conversion line', () => {
+      const mod = makeMod(
+        [
+          'Convert +7.5% of Damage on Health to Energy. Without Shields, ally Overguard imitates Health.',
+          'Convert +45% of Damage on Health to Energy. Without Shields, ally Overguard imitates Health.',
+        ],
+        { name: 'Hunter Adrenaline', fusion_limit: 5 },
+      );
+      const effects = parseModEffects(mod, 5);
+      expect(effects.health).toBe(0);
+      expect(effects.energy).toBe(0);
+    });
+
     it('parses shield capacity', () => {
       const mod = makeMod(['+100% Shield Capacity']);
       expect(parseModEffects(mod, 0).shield).toBeCloseTo(1.0);
