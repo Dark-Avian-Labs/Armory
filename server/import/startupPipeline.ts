@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import type { PipelineStepKey } from '../../shared/pipelineSteps.js';
-import { EXPORTS_DIR, REQUIRED_EXPORTS } from '../config.js';
+import { EXPORTS_DIR, PROJECT_ROOT, REQUIRED_EXPORTS } from '../config.js';
 import { getCatalogDb } from '../db/connection.js';
 import { processExports, backfillModDescriptions } from '../db/queries.js';
 import { resetCatalogData } from '../db/resetCatalogData.js';
@@ -43,6 +43,10 @@ import {
   type StartupPipelineSummary,
   type SummaryOutcome,
 } from './pipelineSummary.js';
+import {
+  generateWarframeRankExceptions,
+  warframeRankExceptionsSourceChanged,
+} from './warframeRankExceptions.js';
 
 const TAG = '[DataPipeline]';
 const EXPORT_HASH_STATE_FILE = path.join(EXPORTS_DIR, '.processed-export-hashes.json');
@@ -152,6 +156,7 @@ function emptySummary(start: number): StartupPipelineSummary {
     schema: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     officialExports: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     sqliteFromExports: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
+    warframeRankExceptions: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     exaltedStanceMods: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     atragraphMods: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
     images: { outcome: 'skipped', detail: 'Pipeline did not reach this step.' },
@@ -352,6 +357,39 @@ async function runStartupPipelineInner(
     summary.durationMs = Date.now() - startTime;
     if (cli) printStartupPipelineSummary(summary);
     return summary;
+  }
+
+  const rankExceptionsSourceChanged = warframeRankExceptionsSourceChanged();
+  if (shouldRunStep('warframeRankExceptions', rankExceptionsSourceChanged, options)) {
+    const reason = isStepForced('warframeRankExceptions', options)
+      ? 'Force step requested — regenerating rank exception registry.'
+      : !fs.existsSync(path.join(PROJECT_ROOT, 'shared/warframeRankExceptions.generated.ts'))
+        ? 'Generated registry missing — building from source JSON.'
+        : 'Source JSON changed — regenerating rank exception registry.';
+    log(`[Rank Exceptions] ${reason}`);
+    try {
+      const result = generateWarframeRankExceptions();
+      log(`[Rank Exceptions] Done — ${result.entryCount} warframe exceptions written.`);
+      summary.warframeRankExceptions = {
+        outcome: 'ok',
+        detail: reason,
+        entryCount: result.entryCount,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      summary.warframeRankExceptions = {
+        outcome: 'failed',
+        detail: 'Could not regenerate warframe rank exception registry.',
+        error: msg,
+      };
+      err('[Rank Exceptions] Failed —', e);
+    }
+  } else {
+    log('[Rank Exceptions] Skipped — source JSON unchanged since last generation.');
+    summary.warframeRankExceptions = {
+      outcome: 'skipped',
+      detail: 'scripts/data/warframe-rank-exceptions.json unchanged since last generation.',
+    };
   }
 
   let warframeMarketLinkRowCount = 0;

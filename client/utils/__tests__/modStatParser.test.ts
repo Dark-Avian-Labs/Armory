@@ -71,6 +71,21 @@ describe('parseModEffects', () => {
       expect(parseModEffects(mod, 0).health).toBeCloseTo(1.0);
     });
 
+    it('parses Physique aura (Squad gains + Maximum Health)', () => {
+      const mod = makeMod(
+        [
+          'Squad gains +3% Maximum Health',
+          'Squad gains +7% Maximum Health',
+          'Squad gains +10% Maximum Health',
+          'Squad gains +13% Maximum Health',
+          'Squad gains +17% Maximum Health',
+          'Squad gains +20% Maximum Health',
+        ],
+        { name: 'Physique', fusion_limit: 5 },
+      );
+      expect(parseModEffects(mod, 5).health).toBeCloseTo(0.2);
+    });
+
     it('parses shield capacity', () => {
       const mod = makeMod(['+100% Shield Capacity']);
       expect(parseModEffects(mod, 0).shield).toBeCloseTo(1.0);
