@@ -318,3 +318,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.67.2** `fix` [#392](https://github.com/Dark-Avian-Labs/Armory/pull/392): rank stats
 - **v1.67.3** `fix` [#393](https://github.com/Dark-Avian-Labs/Armory/pull/393): health multiplier
 - **v1.67.4** `fix` [#394](https://github.com/Dark-Avian-Labs/Armory/pull/394): caching
+- **v1.67.5** `chore` [#396](https://github.com/Dark-Avian-Labs/Armory/pull/396): update dependencies
