@@ -26,7 +26,7 @@ The server listens on port 3002 by default.
 
 ### Key gotchas
 
-- **Node >= 25 and pnpm >= 11 required.** Use `nvm install 25` and `npm install -g pnpm@latest-11`. The `packageManager` field in `package.json` must stay an exact version (e.g. `pnpm@11.3.0`) — Corepack does not accept dist-tags like `latest-11`.
+- **Node >= 26 and pnpm >= 11 required.** Use `nvm install 26` and `npm install -g pnpm@latest-11`. The `packageManager` field in `package.json` must stay an exact version (e.g. `pnpm@11.3.0`) — Corepack does not accept dist-tags like `latest-11`.
 - **Encrypted `.env.development` / `.env.production` files.** When `DOTENV_PRIVATE_KEY_DEVELOPMENT` is set as an env var, use dotenvx to decrypt at runtime: `NODE_ENV=development pnpm dotenvx run -f .env.development -- node dist/server/index.js`. Without the private key, create a plain `.env` from `.env.example` and run with `node --env-file=.env`.
 - **API-only in development mode.** Armory only serves the React SPA when `NODE_ENV=production`. In development, the root URL returns 404 ("Cannot GET /"). This is by design; in normal dev flow you'd use Vite's dev server for the client.
 - **Database auto-creates on first start.** Armory uses two SQLite files: `ARMORY_DB_PATH` (catalog only; Codex reads this) and `USER_DB_PATH` (builds, loadouts, favorites). Use absolute paths in production. See `docs/catalog-rebuild.md` for catalog-only rebuilds.
@@ -39,7 +39,7 @@ The server listens on port 3002 by default.
 
 ### Cloud VM-specific notes
 
-- **PATH override:** The Cloud VM has `/exec-daemon/node` (Node 22) ahead of nvm in PATH. Prepend nvm's Node 25 path: `export PATH="/home/ubuntu/.nvm/versions/node/v25.9.0/bin:$PATH"`.
+- **PATH override:** The Cloud VM has `/exec-daemon/node` (Node 22) ahead of nvm in PATH. Prepend nvm's Node 26 path: `export PATH="/home/ubuntu/.nvm/versions/node/v26.4.0/bin:$PATH"`.
 
 ### UI consistency
 
