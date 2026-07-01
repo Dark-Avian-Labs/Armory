@@ -20,8 +20,8 @@
     "test:coverage": "vitest run --coverage && node scripts/patchCoverageLayout.mjs"
   },
   "dependencies": {
-    "@clerk/express": "^2.1.31",
-    "@clerk/react": "^6.11.0",
+    "@clerk/express": "^2.1.33",
+    "@clerk/react": "^6.11.2",
     "@dotenvx/dotenvx": "^1.75.1",
     "@fontsource-variable/cascadia-mono": "^5.2.2",
     "@fontsource-variable/geist": "^5.2.9",
@@ -44,7 +44,7 @@
     "lzma": "^2.3.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.0",
+    "react-router-dom": "^7.18.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -53,7 +53,7 @@
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/npm": "^13.1.5",
     "@semantic-release/release-notes-generator": "^14.1.1",
-    "@tailwindcss/vite": "^4.3.1",
+    "@tailwindcss/vite": "^4.3.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.10",
@@ -67,11 +67,11 @@
     "@vitest/coverage-v8": "4.1.9",
     "domhandler": "^6.0.1",
     "globals": "^17.7.0",
-    "oxfmt": "^0.56.0",
-    "oxlint": "^1.71.0",
+    "oxfmt": "^0.57.0",
+    "oxlint": "^1.72.0",
     "semantic-release": "25.0.5",
     "supertest": "^7.2.2",
-    "tailwindcss": "^4.3.1",
+    "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3",
     "vite": "^8.1.0",
     "vitest": "^4.1.9"

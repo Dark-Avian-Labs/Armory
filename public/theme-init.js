@@ -46,18 +46,14 @@
     root.classList.remove('dark');
     if (theme === 'dark') root.classList.add('dark');
 
-    function normalizeUiStyle(value) {
-      if (value === 'solid') return 'clear';
-      return value;
-    }
     function isValidUiStyle(value) {
-      return value === 'prism' || value === 'shadow' || value === 'clear' || value === 'liquid';
+      return value === 'prism' || value === 'shadow' || value === 'clear';
     }
 
-    var ui = normalizeUiStyle(readCookie('dal.ui.style').trim());
+    var ui = readCookie('dal.ui.style').trim();
     if (!isValidUiStyle(ui)) {
       try {
-        ui = normalizeUiStyle((localStorage.getItem('dal.ui.style') || '').trim());
+        ui = (localStorage.getItem('dal.ui.style') || '').trim();
       } catch (e) {
         if (typeof console !== 'undefined' && console && typeof console.warn === 'function') {
           console.warn('Unable to read UI style from localStorage; falling back to default.', e);
@@ -66,7 +62,7 @@
       }
     }
     if (!isValidUiStyle(ui)) ui = 'prism';
-    root.classList.remove('ui-prism', 'ui-shadow', 'ui-clear', 'ui-liquid');
+    root.classList.remove('ui-prism', 'ui-shadow', 'ui-clear');
     root.classList.add('ui-' + ui);
   } catch {}
 })();
