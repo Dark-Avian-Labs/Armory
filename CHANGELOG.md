@@ -320,3 +320,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.67.4** `fix` [#394](https://github.com/Dark-Avian-Labs/Armory/pull/394): caching
 - **v1.67.5** `chore` [#396](https://github.com/Dark-Avian-Labs/Armory/pull/396): update dependencies
 - **v1.67.6** `chore` [#400](https://github.com/Dark-Avian-Labs/Armory/pull/400): remove liquid theme
+- **v1.67.7** `chore` [#405](https://github.com/Dark-Avian-Labs/Armory/pull/405): update dependencies
