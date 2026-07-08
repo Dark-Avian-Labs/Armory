@@ -18,10 +18,16 @@ interface ElementMod {
   value: number;
 }
 
+export interface CalculateFinalDamageOptions {
+  /** When set, primary element mods are summed into this type instead of paired. */
+  elementalConversionTarget?: PrimaryElement;
+}
+
 export function calculateFinalDamage(
   baseDamage: number[],
   elementMods: ElementMod[],
   damageMultipliers: Partial<Record<DamageType, number>> = {},
+  options?: CalculateFinalDamageOptions,
 ): DamageEntry[] {
   const output: Map<DamageType, number> = new Map();
 
@@ -43,11 +49,15 @@ export function calculateFinalDamage(
 
   const sortedMods = [...elementMods].sort((a, b) => a.slotIndex - b.slotIndex);
 
-  const elementSequence = buildElementSequence(sortedMods, innateElements);
+  if (options?.elementalConversionTarget && sortedMods.length > 0) {
+    const target = options.elementalConversionTarget;
+    const modTotal = sortedMods.reduce((sum, mod) => sum + mod.value, 0);
+    const existing = output.get(target) || 0;
+    output.set(target, existing + modTotal);
+  } else if (sortedMods.length > 0) {
+    const elementSequence = buildElementSequence(sortedMods, innateElements);
+    const combinedElements = combineElements(elementSequence);
 
-  const combinedElements = combineElements(elementSequence);
-
-  if (sortedMods.length > 0) {
     for (const combined of combinedElements) {
       const existing = output.get(combined.type) || 0;
       output.set(combined.type, existing + combined.value);

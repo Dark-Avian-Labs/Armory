@@ -1,3 +1,4 @@
+import { damagePerShotFromFireBehaviors } from '../../shared/damageFromFireBehaviors.js';
 import {
   DAMAGE_TYPES,
   PRIMARY_ELEMENTS,
@@ -6,20 +7,35 @@ import {
   type ValenceBonus,
   type Weapon,
 } from '../types/warframe';
-import { detectDamageConversions, prepareBaseDamageForCalculation } from './damageConversion';
+import {
+  detectDamageConversions,
+  prepareBaseDamageForCalculation,
+  remapElementModsForConversion,
+} from './damageConversion';
 import { calculateFinalDamage, type DamageEntry } from './elements';
 import { aggregateAllMods, type StatEffects } from './modStatParser';
 
 export function parseDamageArray(weapon: Weapon): number[] {
   const emptyDamageArray = Array.from({ length: 20 }, () => 0);
-  if (!weapon.damage_per_shot) return emptyDamageArray;
-  try {
-    const arr = JSON.parse(weapon.damage_per_shot);
-    if (Array.isArray(arr)) return arr;
-    return emptyDamageArray;
-  } catch {
-    return emptyDamageArray;
+  if (weapon.damage_per_shot) {
+    try {
+      const arr = JSON.parse(weapon.damage_per_shot);
+      if (Array.isArray(arr)) return arr;
+    } catch {
+      // fall through to fire_behaviors / total_damage
+    }
   }
+
+  const fromBehaviors = damagePerShotFromFireBehaviors(weapon.fire_behaviors);
+  if (fromBehaviors) return fromBehaviors;
+
+  if (weapon.total_damage && weapon.total_damage > 0) {
+    const fallback = [...emptyDamageArray];
+    fallback[2] = weapon.total_damage;
+    return fallback;
+  }
+
+  return emptyDamageArray;
 }
 
 export function applyValenceBonusToBaseDamage(
@@ -68,6 +84,85 @@ export function getInnateSecondaryElements(baseDamage: number[]): DamageEntry[] 
   return result;
 }
 
+const COMBINED_ELEMENT_MOD_TYPES = [
+  'Blast',
+  'Radiation',
+  'Gas',
+  'Magnetic',
+  'Viral',
+  'Corrosive',
+] as const satisfies readonly DamageType[];
+
+function getSlotDescription(slot: ModSlot): string | null {
+  if (!slot.mod?.description) return null;
+
+  try {
+    const descriptions: string[] = JSON.parse(slot.mod.description);
+    if (!Array.isArray(descriptions) || descriptions.length === 0) return null;
+
+    const currentRank = (slot as ModSlot & { currentRank?: number }).currentRank;
+    const rankValue =
+      typeof slot.rank === 'number'
+        ? slot.rank
+        : typeof currentRank === 'number'
+          ? currentRank
+          : descriptions.length - 1;
+    const rankIndex = Math.min(Math.max(Math.trunc(rankValue), 0), descriptions.length - 1);
+    const desc = descriptions[rankIndex];
+    return typeof desc === 'string' ? desc : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseElementPercentFromDescription(desc: string, element: string): number {
+  const escapedElement = element.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const elementSpecificMatch =
+    desc.match(new RegExp(`${escapedElement}\\s+damage[^\\d+\\-]*\\+?([\\d.]+)%`, 'i')) ??
+    desc.match(
+      new RegExp(`\\+?([\\d.]+)%\\s*(?:<[^>]+>\\s*)?${escapedElement}(?:\\s+damage)?`, 'i'),
+    );
+
+  const match = elementSpecificMatch ?? desc.match(/\+?([\d.]+)%/);
+  return match ? parseFloat(match[1]) : 0;
+}
+
+export function extractCombinedElementMods(slots: ModSlot[]): Array<{
+  slotIndex: number;
+  element: DamageType;
+  value: number;
+}> {
+  const result: Array<{
+    slotIndex: number;
+    element: DamageType;
+    value: number;
+  }> = [];
+
+  for (const slot of slots) {
+    if (!slot.mod || slot.type !== 'general') continue;
+
+    const desc = getSlotDescription(slot);
+    if (!desc) continue;
+
+    const lower = desc.toLowerCase();
+    for (const element of COMBINED_ELEMENT_MOD_TYPES) {
+      const elementLower = element.toLowerCase();
+      if (!lower.includes(`${elementLower} damage`) && !lower.includes(elementLower)) {
+        continue;
+      }
+
+      const value = parseElementPercentFromDescription(desc, element);
+      result.push({
+        slotIndex: slot.index,
+        element,
+        value,
+      });
+    }
+  }
+
+  return result;
+}
+
 export function extractElementMods(slots: ModSlot[]): Array<{
   slotIndex: number;
   element: (typeof PRIMARY_ELEMENTS)[number];
@@ -85,21 +180,10 @@ export function extractElementMods(slots: ModSlot[]): Array<{
     const modDesc = slot.mod.description;
     if (!modDesc) continue;
 
+    const desc = getSlotDescription(slot);
+    if (!desc) continue;
+
     try {
-      const descriptions: string[] = JSON.parse(modDesc);
-      if (!Array.isArray(descriptions) || descriptions.length === 0) continue;
-
-      const currentRank = (slot as ModSlot & { currentRank?: number }).currentRank;
-      const rankValue =
-        typeof slot.rank === 'number'
-          ? slot.rank
-          : typeof currentRank === 'number'
-            ? currentRank
-            : descriptions.length - 1;
-      const rankIndex = Math.min(Math.max(Math.trunc(rankValue), 0), descriptions.length - 1);
-      const desc = descriptions[rankIndex];
-      if (typeof desc !== 'string') continue;
-
       const lower = desc.toLowerCase();
       for (const element of PRIMARY_ELEMENTS) {
         const elementLower = element.toLowerCase();
@@ -107,15 +191,7 @@ export function extractElementMods(slots: ModSlot[]): Array<{
           continue;
         }
 
-        const escapedElement = element.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const elementSpecificMatch =
-          desc.match(new RegExp(`${escapedElement}\\s+damage[^\\d+\\-]*\\+?([\\d.]+)%`, 'i')) ??
-          desc.match(
-            new RegExp(`\\+?([\\d.]+)%\\s*(?:<[^>]+>\\s*)?${escapedElement}(?:\\s+damage)?`, 'i'),
-          );
-
-        const match = elementSpecificMatch ?? desc.match(/\+?([\d.]+)%/);
-        const value = match ? parseFloat(match[1]) : 0;
+        const value = parseElementPercentFromDescription(desc, element);
         result.push({
           slotIndex: slot.index,
           element,
@@ -148,7 +224,8 @@ export function calculateBuildDamage(
   const baseFromWeapon = parseDamageArray(weapon);
   const innateSecondary = getInnateSecondaryElements(baseFromWeapon);
   const baseDamage = applyValenceBonusToBaseDamage(baseFromWeapon, valence);
-  const elementMods = extractElementMods(slots);
+  let elementMods = extractElementMods(slots);
+  const combinedElementMods = extractCombinedElementMods(slots);
 
   const effects = precomputedEffects ?? aggregateAllMods(slots);
 
@@ -162,8 +239,28 @@ export function calculateBuildDamage(
   }
 
   const conversions = detectDamageConversions(slots);
+  elementMods = remapElementModsForConversion(elementMods, conversions.elementalTarget);
   const adjustedBase = prepareBaseDamageForCalculation(baseDamage, damageMultipliers, conversions);
-  const damageBreakdown = calculateFinalDamage(adjustedBase, elementMods, {});
+  const damageBreakdown = calculateFinalDamage(
+    adjustedBase,
+    elementMods,
+    {},
+    {
+      elementalConversionTarget: conversions.elementalTarget,
+    },
+  );
+
+  for (const combinedMod of combinedElementMods) {
+    const existing = damageBreakdown.find((entry) => entry.type === combinedMod.element);
+    if (existing) {
+      existing.value += combinedMod.value;
+    } else {
+      damageBreakdown.push({
+        type: combinedMod.element,
+        value: combinedMod.value,
+      });
+    }
+  }
 
   for (const innate of innateSecondary) {
     const existing = damageBreakdown.find((d) => d.type === innate.type);

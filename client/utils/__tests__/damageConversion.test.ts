@@ -175,9 +175,42 @@ describe('calculateBuildDamage with conversion mods', () => {
 
     expect(result.damageBreakdown).toEqual([
       { type: 'Slash', value: 100 },
-      { type: 'Cold', value: 320 },
+      { type: 'Cold', value: 220 },
     ]);
-    expect(result.totalDamage).toBe(420);
+    expect(result.totalDamage).toBe(320);
+  });
+
+  it('converts other primary element mods into the claws conversion target', () => {
+    const slots: ModSlot[] = [
+      {
+        index: 0,
+        type: 'general',
+        mod: makeMod('Chilling Claws', ['+330% Cold\n+330% Status Chance']),
+        rank: 0,
+      },
+      {
+        index: 1,
+        type: 'general',
+        mod: makeMod('Shock Collar', ['+60% Electricity\n+60% Status Chance']),
+        rank: 3,
+      },
+      {
+        index: 2,
+        type: 'general',
+        mod: makeMod('Flame Gland', ['+60% Heat\n+60% Status Chance']),
+        rank: 3,
+      },
+    ];
+
+    const result = calculateBuildDamage(
+      makeWeapon([0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+      slots,
+    );
+
+    expect(result.damageBreakdown).toEqual([
+      { type: 'Slash', value: 100 },
+      { type: 'Cold', value: 450 },
+    ]);
   });
 
   it('leaves combined elemental damage unchanged when converting primaries', () => {
@@ -195,10 +228,10 @@ describe('calculateBuildDamage with conversion mods', () => {
 
     expect(result.damageBreakdown).toEqual([
       { type: 'Slash', value: 100 },
-      { type: 'Cold', value: 260 },
+      { type: 'Cold', value: 190 },
       { type: 'Blast', value: 50 },
     ]);
-    expect(result.totalDamage).toBe(410);
+    expect(result.totalDamage).toBe(340);
   });
 
   it('does not convert primaries when a combined-element claw mod is equipped', () => {
@@ -206,8 +239,8 @@ describe('calculateBuildDamage with conversion mods', () => {
       {
         index: 0,
         type: 'general',
-        mod: makeMod('Radon Claws', ['+60% Damage', '+80% Critical Damage']),
-        rank: 0,
+        mod: makeMod('Radon Claws', ['+60% Radiation\n+80% Critical Damage']),
+        rank: 3,
       },
     ];
 
@@ -217,10 +250,11 @@ describe('calculateBuildDamage with conversion mods', () => {
       'Cold',
       'Electricity',
       'Heat',
+      'Radiation',
       'Slash',
       'Toxin',
     ]);
-    expect(result.damageBreakdown.find((entry) => entry.type === 'Radiation')).toBeUndefined();
+    expect(result.damageBreakdown.find((entry) => entry.type === 'Radiation')?.value).toBe(60);
   });
 
   it('applies both physical and elemental conversions when both mods are equipped', () => {
@@ -246,9 +280,41 @@ describe('calculateBuildDamage with conversion mods', () => {
 
     expect(result.damageBreakdown).toEqual([
       { type: 'Slash', value: 240 },
-      { type: 'Heat', value: 600 },
+      { type: 'Heat', value: 360 },
     ]);
-    expect(result.totalDamage).toBe(840);
+    expect(result.totalDamage).toBe(600);
+  });
+
+  it('matches the Panzer Claws companion build breakdown', () => {
+    const panzerClaws: Weapon = {
+      unique_name: '/test/panzer-claws',
+      name: 'Panzer Claws',
+      mastery_req: 0,
+      total_damage: 90,
+      damage_per_shot: JSON.stringify([0, 0, 45, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+      critical_chance: 0.25,
+      critical_multiplier: 2,
+      proc_chance: 0.125,
+      fire_rate: 1,
+      range: 1.5,
+    };
+
+    const slots: ModSlot[] = [
+      { index: 0, type: 'general', mod: makeMod('Precision Conditioning', ['+385% Melee Damage']), rank: 0 },
+      { index: 1, type: 'general', mod: makeMod('Chilling Claws', ['+330% Cold\n+330% Status Chance']), rank: 0 },
+      { index: 2, type: 'general', mod: makeMod('Maul', ['+330% Melee Damage']), rank: 0 },
+      { index: 3, type: 'general', mod: makeMod('Radon Claws', ['+60% Radiation\n+80% Critical Damage']), rank: 0 },
+      { index: 4, type: 'general', mod: makeMod('Shock Collar', ['+60% Electricity\n+60% Status Chance']), rank: 0 },
+      { index: 5, type: 'general', mod: makeMod('Flame Gland', ['+60% Heat\n+60% Status Chance']), rank: 0 },
+    ];
+
+    const result = calculateBuildDamage(panzerClaws, slots);
+
+    expect(result.damageBreakdown.find((entry) => entry.type === 'Slash')?.value).toBeCloseTo(366.8);
+    expect(result.damageBreakdown.find((entry) => entry.type === 'Cold')?.value).toBeCloseTo(816.8);
+    expect(result.damageBreakdown.find((entry) => entry.type === 'Radiation')?.value).toBe(60);
+    expect(result.damageBreakdown.find((entry) => entry.type === 'Magnetic')).toBeUndefined();
+    expect(result.damageBreakdown.find((entry) => entry.type === 'Heat')).toBeUndefined();
   });
 });
 
