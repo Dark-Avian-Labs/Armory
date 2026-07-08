@@ -40,7 +40,8 @@ export const PIPELINE_STEPS = [
   {
     key: 'hiddenCompanionWeapons',
     label: 'Companion Weapons',
-    description: 'Hidden beast claws from Overframe (manual force only; not run automatically).',
+    description:
+      'Beast claw stats from the Claws (Beast) wiki page when exports change or data is missing.',
   },
   {
     key: 'overframe',

@@ -1,10 +1,22 @@
 import fs from 'fs';
 import path from 'path';
 
+import { BEAST_CLAW_REGISTRY } from '../../shared/beastClawRegistry.js';
 import { IMAGES_DIR, PROJECT_ROOT } from '../config.js';
 import { getCatalogDb } from '../db/connection.js';
-import { scrapeItemPageByPath } from './itemScraper.js';
+import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
+import {
+  beastClawsWikiRevisionChanged,
+  writeStoredBeastClawsWikiRevision,
+} from '../import/beastClawsWikiRevision.js';
+import {
+  BEAST_CLAWS_WIKI_PAGE,
+  parseBeastClawsFromWikiHtml,
+  serializeParsedBeastClawDamagePerShot,
+} from './beastClawsWiki.js';
+import { getWikiUserAgent } from './wikiUserAgent.js';
 
+const WIKI_BASE = 'https://wiki.warframe.com';
 const BEAST_CLAWS_ICON_PATH = '/icons/beast-claws.png';
 const BEAST_CLAWS_ICON_FILE = 'beast-claws.png';
 
@@ -14,169 +26,80 @@ function ensureBeastClawsIconInDataImages(onProgress?: (msg: string) => void): v
   const targetPath = path.join(targetDir, BEAST_CLAWS_ICON_FILE);
 
   if (!fs.existsSync(sourcePath)) {
-    onProgress?.(`Overframe hidden claw sync: icon source not found at ${sourcePath}`);
+    onProgress?.(`Beast claws wiki sync: icon source not found at ${sourcePath}`);
     return;
   }
 
   fs.mkdirSync(targetDir, { recursive: true });
   fs.copyFileSync(sourcePath, targetPath);
-  onProgress?.(`Overframe hidden claw sync: icon copied to ${targetPath}`);
+  onProgress?.(`Beast claws wiki sync: icon copied to ${targetPath}`);
 }
 
-const HIDDEN_BEAST_CLAW_BUILD_PAGES = [
-  '/build/new/7150/sly-claws/',
-  '/build/new/7151/chesa-claws/',
-  '/build/new/7152/helminth-claws/',
-  '/build/new/7153/vasca-claws/',
-  '/build/new/7154/sunika-claws/',
-  '/build/new/7156/adarza-claws/',
-  '/build/new/7157/huras-claws/',
-  '/build/new/7158/crescent-claws/',
-  '/build/new/7160/smeeta-claws/',
-  '/build/new/7161/pharaoh-claws/',
-  '/build/new/7162/medjay-claws/',
-  '/build/new/7163/vizier-claws/',
-  '/build/new/7164/raksa-claws/',
-  '/build/new/7165/panzer-claws/',
-  '/build/new/7166/sahasa-claws/',
-  '/build/new/7169/venari-claws/',
-  '/build/new/7171/venari-prime-claws/',
-];
-
-interface OverframeWeaponData {
-  name: string;
-  uniqueName: string;
-  iconPath?: string;
-  artifactSlots?: string[];
-  behaviors?: Record<string, unknown>[];
-  criticalChance?: number;
-  criticalMultiplier?: number;
-  procChance?: number;
-  totalDamage?: number;
-}
-
-function toNumber(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  return null;
-}
-
-function sumDamageFromBehavior(behavior: Record<string, unknown>): number | null {
-  const impact = behavior['impact:WeaponImpactBehavior'] as Record<string, unknown> | undefined;
-  const attackData = impact?.AttackData as Record<string, unknown> | undefined;
-  const amount = toNumber(attackData?.Amount);
-  return amount;
-}
-
-function extractWeaponDataFromNextData(nextData: unknown): OverframeWeaponData | null {
-  if (!nextData || typeof nextData !== 'object') return null;
-  const root = nextData as Record<string, unknown>;
-  const item = (
-    (root.props as Record<string, unknown> | undefined)?.pageProps as
-      | Record<string, unknown>
-      | undefined
-  )?.item;
-  if (!item || typeof item !== 'object') return null;
-
-  const itemRecord = item as Record<string, unknown>;
-  const data = itemRecord.data as Record<string, unknown> | undefined;
-
-  const name = String(itemRecord.name ?? '').trim();
-  const uniqueName = String(itemRecord.path ?? '').trim();
-  if (!name || !uniqueName) return null;
-
-  const productCategory = String(data?.ProductCategory ?? '');
-  if (productCategory !== 'SentinelWeapons') return null;
-
-  const behaviorsRaw = Array.isArray(data?.Behaviors) ? (data?.Behaviors as unknown[]) : [];
-  const behaviors = behaviorsRaw.filter(
-    (value): value is Record<string, unknown> =>
-      !!value && typeof value === 'object' && !Array.isArray(value),
+async function fetchBeastClawsWikiHtml(): Promise<string> {
+  const response = await fetchWithTimeout(
+    `${WIKI_BASE}/w/${BEAST_CLAWS_WIKI_PAGE}`,
+    {
+      headers: {
+        Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+        'User-Agent': getWikiUserAgent(),
+      },
+    },
+    FETCH_TIMEOUT_MS.wikiFetch,
   );
-  if (behaviors.length === 0) return null;
 
-  const firstBehavior = behaviors[0];
-  const impact = firstBehavior['impact:WeaponImpactBehavior'] as
-    | Record<string, unknown>
-    | undefined;
-
-  const totalDamage = sumDamageFromBehavior(firstBehavior);
-
-  const artifactSlotsRaw = data?.ArtifactSlots;
-  const artifactSlots = Array.isArray(artifactSlotsRaw)
-    ? artifactSlotsRaw.filter((slot): slot is string => typeof slot === 'string')
-    : undefined;
-
-  const iconPath = typeof data?.Icon === 'string' ? data.Icon : undefined;
-
-  return {
-    name,
-    uniqueName,
-    iconPath,
-    artifactSlots,
-    behaviors,
-    criticalChance: toNumber(impact?.criticalHitChance) ?? undefined,
-    criticalMultiplier: toNumber(impact?.criticalHitDamageMultiplier) ?? undefined,
-    procChance: toNumber((impact?.AttackData as Record<string, unknown>)?.ProcChance) ?? undefined,
-    totalDamage: totalDamage ?? undefined,
-  };
-}
-
-async function fetchOverframeNextData(relativeUrl: string): Promise<OverframeWeaponData | null> {
-  const scraped = await scrapeItemPageByPath(relativeUrl, relativeUrl);
-  if (!scraped) return null;
-  return extractWeaponDataFromNextData(scraped.nextData);
-}
-
-function slugFromBuildPage(page: string): string | null {
-  const match = page.match(/\/build\/new\/\d+\/([^/]+)\/?$/);
-  return match?.[1] ?? null;
-}
-
-function slugToDisplayName(slug: string): string {
-  return slug
-    .split('-')
-    .map((part) => (part.length > 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part))
-    .join(' ');
-}
-
-function isBuildPageSynced(page: string): boolean {
-  const slug = slugFromBuildPage(page);
-  if (!slug) return false;
-
-  const db = getCatalogDb();
-  const row = db
-    .prepare(
-      `SELECT artifact_slots FROM weapons
-       WHERE product_category = 'SentinelWeapons'
-         AND lower(name) = lower(?)
-       LIMIT 1`,
-    )
-    .get(slugToDisplayName(slug)) as { artifact_slots: string | null } | undefined;
-
-  return row?.artifact_slots != null;
-}
-
-function pagesNeedingSync(onlyMissing: boolean): string[] {
-  if (!onlyMissing) return HIDDEN_BEAST_CLAW_BUILD_PAGES;
-  return HIDDEN_BEAST_CLAW_BUILD_PAGES.filter((page) => !isBuildPageSynced(page));
-}
-
-export function hiddenCompanionWeaponsNeedSync(onlyMissing: boolean): boolean {
-  if (!onlyMissing) return true;
-  return pagesNeedingSync(true).length > 0;
-}
-
-export async function syncHiddenCompanionWeaponsFromOverframe(
-  onProgress?: (msg: string) => void,
-  onlyMissing = false,
-): Promise<{ insertedOrUpdated: number; found: number }> {
-  const pages = pagesNeedingSync(onlyMissing);
-  if (pages.length === 0) {
-    onProgress?.('Overframe hidden claw sync: all companion weapons already synced; skipped.');
-    return { insertedOrUpdated: 0, found: 0 };
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch beast claws wiki page: ${response.status} ${response.statusText}`,
+    );
   }
 
+  return response.text();
+}
+
+export function beastClawsNeedSync(onlyMissing: boolean): boolean {
+  if (!onlyMissing) return true;
+
+  const db = getCatalogDb();
+  for (const entry of BEAST_CLAW_REGISTRY) {
+    const row = db
+      .prepare(`SELECT damage_per_shot FROM weapons WHERE unique_name = ?`)
+      .get(entry.uniqueName) as { damage_per_shot: string | null } | undefined;
+
+    if (!row?.damage_per_shot) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/** @deprecated Use syncBeastClawsFromWiki */
+export const hiddenCompanionWeaponsNeedSync = beastClawsNeedSync;
+
+export async function syncBeastClawsFromWiki(
+  onProgress?: (msg: string) => void,
+  onlyMissing = false,
+): Promise<{ insertedOrUpdated: number; found: number; revisionId: string | null }> {
   ensureBeastClawsIconInDataImages(onProgress);
+  onProgress?.(`Beast claws wiki sync: fetching ${BEAST_CLAWS_WIKI_PAGE}`);
+
+  const html = await fetchBeastClawsWikiHtml();
+  const parsed = parseBeastClawsFromWikiHtml(html);
+
+  if (
+    onlyMissing &&
+    parsed.revisionId &&
+    !beastClawsWikiRevisionChanged(parsed.revisionId) &&
+    !beastClawsNeedSync(true)
+  ) {
+    onProgress?.(`Beast claws wiki sync: wiki revision ${parsed.revisionId} unchanged; skipped.`);
+    return { insertedOrUpdated: 0, found: parsed.rows.length, revisionId: parsed.revisionId };
+  }
+
+  if (parsed.rows.length === 0) {
+    throw new Error('Beast claws wiki sync: no claw stat rows parsed from wiki page.');
+  }
+
   const db = getCatalogDb();
   const upsert = db.prepare(`
     INSERT INTO weapons (
@@ -186,13 +109,13 @@ export async function syncHiddenCompanionWeaponsFromOverframe(
       slot,
       mastery_req,
       total_damage,
+      damage_per_shot,
       critical_chance,
       critical_multiplier,
       proc_chance,
       sentinel,
       image_path,
-      artifact_slots,
-      fire_behaviors
+      artifact_slots
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(unique_name) DO UPDATE SET
@@ -200,43 +123,50 @@ export async function syncHiddenCompanionWeaponsFromOverframe(
       product_category = excluded.product_category,
       slot = excluded.slot,
       total_damage = excluded.total_damage,
+      damage_per_shot = excluded.damage_per_shot,
       critical_chance = excluded.critical_chance,
       critical_multiplier = excluded.critical_multiplier,
       proc_chance = excluded.proc_chance,
       sentinel = excluded.sentinel,
       image_path = excluded.image_path,
-      artifact_slots = COALESCE(excluded.artifact_slots, weapons.artifact_slots),
-      fire_behaviors = COALESCE(excluded.fire_behaviors, weapons.fire_behaviors)
+      artifact_slots = COALESCE(weapons.artifact_slots, excluded.artifact_slots)
   `);
 
-  let found = 0;
   let insertedOrUpdated = 0;
-  for (const page of pages) {
-    onProgress?.(`Overframe hidden claw sync: fetching ${page}`);
-    const weapon = await fetchOverframeNextData(page);
-    if (!weapon) continue;
-    found += 1;
-
+  for (const row of parsed.rows) {
     const result = upsert.run(
-      weapon.uniqueName,
-      weapon.name,
+      row.uniqueName,
+      row.clawsName,
       'SentinelWeapons',
       5,
       0,
-      weapon.totalDamage ?? null,
-      weapon.criticalChance ?? null,
-      weapon.criticalMultiplier ?? null,
-      weapon.procChance ?? null,
+      row.totalDamage,
+      serializeParsedBeastClawDamagePerShot(row),
+      row.criticalChance,
+      row.criticalMultiplier,
+      row.procChance,
       1,
       BEAST_CLAWS_ICON_PATH,
-      weapon.artifactSlots ? JSON.stringify(weapon.artifactSlots) : null,
-      weapon.behaviors ? JSON.stringify(weapon.behaviors) : null,
+      null,
     );
     if (result.changes > 0) insertedOrUpdated += result.changes;
   }
 
+  if (parsed.revisionId) {
+    writeStoredBeastClawsWikiRevision(parsed.revisionId);
+  }
+
   onProgress?.(
-    `Overframe hidden claw sync complete: ${found} found, ${insertedOrUpdated} rows changed`,
+    `Beast claws wiki sync complete: ${parsed.rows.length} parsed, ${insertedOrUpdated} rows changed` +
+      (parsed.revisionId ? ` (revision ${parsed.revisionId})` : ''),
   );
-  return { insertedOrUpdated, found };
+
+  return {
+    insertedOrUpdated,
+    found: parsed.rows.length,
+    revisionId: parsed.revisionId,
+  };
 }
+
+/** @deprecated Use syncBeastClawsFromWiki */
+export const syncHiddenCompanionWeaponsFromOverframe = syncBeastClawsFromWiki;

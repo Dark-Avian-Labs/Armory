@@ -55,7 +55,7 @@ function parseElementalConversionTarget(text: string, modName: string): PrimaryE
   if (named) return named;
 
   const match = text.match(
-    /convert(?:ing|s)?\s+all\s+elemental\s+damage(?:\s+from\s+the\s+claws)?\s+(?:to|into)\s+(?:<[^>]+>\s*)?(heat|cold|electricity|toxin)/i,
+    /convert(?:ing|s)?\s+all\s+elemental\s+damage(?:\s+from\s+(?:the|these)\s+claws)?\s+(?:to|into)\s+(?:<[^>]+>\s*)?(heat|cold|electricity|toxin)/i,
   );
   if (!match) return null;
 
@@ -148,6 +148,14 @@ export function applyPrimaryElementConversionToBase(
 
   copy[targetIdx] = (copy[targetIdx] || 0) + total;
   return copy;
+}
+
+export function remapElementModsForConversion<T extends { element: PrimaryElement }>(
+  elementMods: T[],
+  target?: PrimaryElement,
+): T[] {
+  if (!target) return elementMods;
+  return elementMods.map((mod) => ({ ...mod, element: target }));
 }
 
 export function prepareBaseDamageForCalculation(

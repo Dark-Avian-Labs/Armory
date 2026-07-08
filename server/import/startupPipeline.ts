@@ -18,7 +18,7 @@ import {
   syncExaltedStanceModsFromOverframe,
   syncExaltedStanceWikiImagesOnly,
 } from '../scraping/exaltedStanceMods.js';
-import { syncHiddenCompanionWeaponsFromOverframe } from '../scraping/hiddenCompanionWeapons.js';
+import { beastClawsNeedSync, syncBeastClawsFromWiki } from '../scraping/hiddenCompanionWeapons.js';
 import { syncIncarnonFromWiki } from '../scraping/incarnonWiki.js';
 import { countItemsMissingOverframeData, scrapeIndex } from '../scraping/indexScraper.js';
 import { scrapeItems } from '../scraping/itemScraper.js';
@@ -609,17 +609,22 @@ async function runStartupPipelineInner(
   }
 
   const onlyMissingCompanions = usesOnlyMissingMode('hiddenCompanionWeapons', options);
-  if (shouldRunStep('hiddenCompanionWeapons', false, options)) {
-    await prepareOverframeFetch();
-    log('[Companion Weapons] Syncing hidden companion weapons from Overframe...');
+  if (
+    shouldRunStep(
+      'hiddenCompanionWeapons',
+      dataChanged || beastClawsNeedSync(onlyMissingCompanions),
+      options,
+    )
+  ) {
+    log('[Companion Weapons] Syncing beast claws from wiki...');
     try {
-      const result = await syncHiddenCompanionWeaponsFromOverframe((msg) => {
+      const result = await syncBeastClawsFromWiki((msg) => {
         log(`[Companion Weapons] ${msg}`);
       }, onlyMissingCompanions);
       log(`[Companion Weapons] Done — ${result.found} found, ${result.insertedOrUpdated} updated.`);
       summary.hiddenCompanionWeapons = {
         outcome: 'ok',
-        detail: `Fetched ${result.found} weapons, updated ${result.insertedOrUpdated} rows.`,
+        detail: `Fetched ${result.found} weapons from wiki, updated ${result.insertedOrUpdated} rows.`,
         found: result.found,
         insertedOrUpdated: result.insertedOrUpdated,
       };
@@ -629,10 +634,10 @@ async function runStartupPipelineInner(
       err('[Companion Weapons] Sync failed —', e);
     }
   } else {
-    log('[Companion Weapons] Skipped — hidden companion weapons already synced.');
+    log('[Companion Weapons] Skipped — beast claw wiki data is up to date.');
     summary.hiddenCompanionWeapons = {
       outcome: 'skipped',
-      detail: 'All hidden companion weapons already have build data.',
+      detail: 'Beast claw wiki stats are already synced.',
     };
   }
 
