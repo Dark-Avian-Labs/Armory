@@ -12,6 +12,7 @@
     "start": "node dist/server/index.js",
     "data:import": "node dist/server/import/runManualImport.js",
     "data:migrate-artifact-slots": "node dist/server/import/runMigrateArtifactSlots.js",
+    "data:rank-exceptions": "node scripts/generate-warframe-rank-exceptions.mjs",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "format": "oxfmt --write .",
