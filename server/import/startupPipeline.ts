@@ -45,6 +45,7 @@ import {
 } from './pipelineSummary.js';
 import {
   generateWarframeRankExceptions,
+  isWarframeRankExceptionsSourceAvailable,
   warframeRankExceptionsSourceChanged,
 } from './warframeRankExceptions.js';
 
@@ -359,7 +360,9 @@ async function runStartupPipelineInner(
     return summary;
   }
 
-  const rankExceptionsSourceChanged = warframeRankExceptionsSourceChanged();
+  const rankExceptionsSourceAvailable = isWarframeRankExceptionsSourceAvailable();
+  const rankExceptionsSourceChanged =
+    rankExceptionsSourceAvailable && warframeRankExceptionsSourceChanged();
   if (shouldRunStep('warframeRankExceptions', rankExceptionsSourceChanged, options)) {
     const reason = isStepForced('warframeRankExceptions', options)
       ? 'Force step requested — regenerating rank exception registry.'
@@ -384,6 +387,15 @@ async function runStartupPipelineInner(
       };
       err('[Rank Exceptions] Failed —', e);
     }
+  } else if (!rankExceptionsSourceAvailable) {
+    log(
+      '[Rank Exceptions] Skipped — source JSON is not in the deployment bundle; using compiled registry.',
+    );
+    summary.warframeRankExceptions = {
+      outcome: 'skipped',
+      detail:
+        'scripts/data/warframe-rank-exceptions.json is unavailable on this host; using compiled warframe rank exceptions.',
+    };
   } else {
     log('[Rank Exceptions] Skipped — source JSON unchanged since last generation.');
     summary.warframeRankExceptions = {
