@@ -6,6 +6,7 @@ import {
   type ValenceBonus,
   type Weapon,
 } from '../types/warframe';
+import { detectDamageConversions, prepareBaseDamageForCalculation } from './damageConversion';
 import { calculateFinalDamage, type DamageEntry } from './elements';
 import { aggregateAllMods, type StatEffects } from './modStatParser';
 
@@ -160,7 +161,9 @@ export function calculateBuildDamage(
     if (mult !== 0) damageMultipliers[dt] = mult;
   }
 
-  const damageBreakdown = calculateFinalDamage(baseDamage, elementMods, damageMultipliers);
+  const conversions = detectDamageConversions(slots);
+  const adjustedBase = prepareBaseDamageForCalculation(baseDamage, damageMultipliers, conversions);
+  const damageBreakdown = calculateFinalDamage(adjustedBase, elementMods, {});
 
   for (const innate of innateSecondary) {
     const existing = damageBreakdown.find((d) => d.type === innate.type);
