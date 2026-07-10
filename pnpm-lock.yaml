@@ -15,14 +15,14 @@ importers:
   .:
     dependencies:
       '@clerk/express':
-        specifier: ^2.1.36
-        version: 2.1.36(express@5.2.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: ^2.1.37
+        version: 2.1.37(express@5.2.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@clerk/react':
-        specifier: ^6.11.4
-        version: 6.11.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: ^6.12.0
+        version: 6.12.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@dotenvx/dotenvx':
-        specifier: ^2.1.5
-        version: 2.1.5
+        specifier: ^2.2.2
+        version: 2.2.2
       '@fontsource-variable/cascadia-mono':
         specifier: ^5.2.2
         version: 5.2.2
@@ -214,25 +214,25 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@clerk/backend@3.11.0':
-    resolution: {integrity: sha512-msK+Mvc8tmX3o8UTL6r9h7dodW9vPLvDjyVWLM0yLe5kuvvV5ag70O1qt5SXTCZd7HruS3MAuwUzn3PoQHoT3g==}
+  '@clerk/backend@3.11.1':
+    resolution: {integrity: sha512-rBEI0Erfd1Ddp7V+kxPL+Ki6QorNhQeLtliwAMNoM/CmbVqk7fGrNAa1iE0OIX5Q5ajjAcOiBMne7InhIQyraQ==}
     engines: {node: '>=20.9.0'}
 
-  '@clerk/express@2.1.36':
-    resolution: {integrity: sha512-hh4pVcXYgJD1TKfUN7Wuf7IPpKJiz3JQYzi0U6frhjm//DIbPMnwmGq968PKP5rGOtehnMT4fBTJKOxs+2UkmQ==}
+  '@clerk/express@2.1.37':
+    resolution: {integrity: sha512-yk9AdZfQ07erQMRX8598s9bmBKOISivFo83diz5cGIN46cfrFS76Ma7LtBtb5de1LD1A23CTnDBSmgYuKRSWOQ==}
     engines: {node: '>=20.9.0'}
     peerDependencies:
       express: ^4.17.0 || ^5.0.0
 
-  '@clerk/react@6.11.4':
-    resolution: {integrity: sha512-3ft1broqXA6hSMXOhnVwEXDCqmaXSvYW65au6fOdhc26YPQbLL6e56FkJ4y/1c3uObpivuwe9MXj3ln4ZD0zmw==}
+  '@clerk/react@6.12.0':
+    resolution: {integrity: sha512-QswCaOkrh56Mh1FnFPsaAF2n6zgA9sdUtvsf6tTVTe4XLp4FnD+rIqIQOKtZ6LhdvvKtZyyzo8KFcvOOtmFuyQ==}
     engines: {node: '>=20.9.0'}
     peerDependencies:
       react: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
       react-dom: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
 
-  '@clerk/shared@4.24.0':
-    resolution: {integrity: sha512-QgAihmKS4ld3YSqSPMaKnzU4RGV+60k5khcjiz0xi4BCUST+UJAbV8f3Hw0osxq/Rw9rsxmRlcoxhEMsN5SOFA==}
+  '@clerk/shared@4.25.0':
+    resolution: {integrity: sha512-49WX0F0wqQvY2vf2ehNRZcKby0zkuaMinxF8O9GONOkaDktWISVghVHyCl+aN2hYk0r80UAXosD1T3rLSUlWog==}
     engines: {node: '>=20.9.0'}
     peerDependencies:
       react: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
@@ -247,8 +247,8 @@ packages:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
 
-  '@dotenvx/dotenvx@2.1.5':
-    resolution: {integrity: sha512-PdXaPN6pGRWW3ofLDCpNGWZZjFaEjDKQTXKMnlQuVTDsqtNgJHUu/HItvr4wTzoO+y8kVRj1CSX+rrPwmV1FMA==}
+  '@dotenvx/dotenvx@2.2.2':
+    resolution: {integrity: sha512-mOTd4lz85E5Vl+dQ0HuXu++OOujzriHtDbMLLbdRQARct6Psil/R5yS2dSFNlP5lA9mD0GgxdHPxNU4YLK5Pug==}
     hasBin: true
 
   '@dotenvx/primitives@1.7.1':
@@ -2870,8 +2870,8 @@ packages:
     resolution: {integrity: sha512-eNRKgb3z66Yp3D2CixVujOUvXLFUTij/zVnV8KRyvFdQwpz7I5DS8UfRkTeLzb64u+dkzDSdelE24izu+zSSUg==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
-  systeminformation@5.31.14:
-    resolution: {integrity: sha512-nefRpMCsAI4m71/6JHH//KPaP/d5nTuRVxEtQ7N7SlBrX18DAcC+5Z1JKZYeN9Iw49qMx95BTo/gBMk3Y2H6+g==}
+  systeminformation@5.31.15:
+    resolution: {integrity: sha512-7mqCtD28TK5dVdLAQONVa/Do/NBgMH2dxqf49nh6DIKoEWuDg6tkgGBP+dN22VEJVPZa/QqiHomhWNRn4WUNTQ==}
     engines: {node: '>=8.0.0'}
     os: [darwin, linux, win32, freebsd, openbsd, netbsd, sunos, android]
     hasBin: true
@@ -3250,33 +3250,33 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@clerk/backend@3.11.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@clerk/backend@3.11.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@clerk/shared': 4.24.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@clerk/shared': 4.25.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       standardwebhooks: 1.0.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - react
       - react-dom
 
-  '@clerk/express@2.1.36(express@5.2.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@clerk/express@2.1.37(express@5.2.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@clerk/backend': 3.11.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@clerk/shared': 4.24.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@clerk/backend': 3.11.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@clerk/shared': 4.25.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       express: 5.2.1
       tslib: 2.8.1
     transitivePeerDependencies:
       - react
       - react-dom
 
-  '@clerk/react@6.11.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@clerk/react@6.12.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@clerk/shared': 4.24.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@clerk/shared': 4.25.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
       tslib: 2.8.1
 
-  '@clerk/shared@4.24.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@clerk/shared@4.25.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@tanstack/query-core': 5.101.2
       dequal: 2.0.3
@@ -3289,7 +3289,7 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@dotenvx/dotenvx@2.1.5':
+  '@dotenvx/dotenvx@2.2.2':
     dependencies:
       '@dotenvx/primitives': 1.7.1
       commander: 11.1.0
@@ -3304,7 +3304,7 @@ snapshots:
       open: 8.4.2
       picomatch: 4.0.5
       synckit: 0.11.13
-      systeminformation: 5.31.14
+      systeminformation: 5.31.15
       undici: 7.28.0
       which: 6.0.1
       yocto-spinner: 1.2.1
@@ -5769,7 +5769,7 @@ snapshots:
     dependencies:
       '@pkgr/core': 0.3.6
 
-  systeminformation@5.31.14: {}
+  systeminformation@5.31.15: {}
 
   tagged-tag@1.0.0: {}
 
