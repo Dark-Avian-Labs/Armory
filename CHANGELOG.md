@@ -324,3 +324,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.67.8** `fix` [#408](https://github.com/Dark-Avian-Labs/Armory/pull/408): damage conversion
 - **v1.67.9** `fix` [#409](https://github.com/Dark-Avian-Labs/Armory/pull/409): damage calculation
 - **v1.67.10** `fix` [#410](https://github.com/Dark-Avian-Labs/Armory/pull/410): import script
+- **v1.67.11** `chore` [#414](https://github.com/Dark-Avian-Labs/Armory/pull/414): update dependencies
