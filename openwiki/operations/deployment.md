@@ -7,6 +7,7 @@ This section covers deployment procedures, environment configuration, monitoring
 ### Required Environment Variables
 
 #### Server Configuration
+
 ```bash
 # Server bind address
 PORT=3002
@@ -29,6 +30,7 @@ SESSION_COOKIE_NAME=armory.session
 ```
 
 #### Authentication (Clerk)
+
 ```bash
 # Production Clerk keys (required)
 CLERK_SECRET_KEY=sk_live_...
@@ -39,6 +41,7 @@ VITE_CLERK_PUBLISHABLE_KEY=pk_live_...
 ```
 
 #### Security
+
 ```bash
 # Behind reverse proxy
 TRUST_PROXY=1
@@ -52,6 +55,7 @@ WIKI_USER_AGENT=ArmoryBot/1.0 (https://armory.example.com; admin@example.com)
 ```
 
 ### Optional Configuration
+
 ```bash
 # Legal page URL (defaults to internal page)
 LEGAL_PAGE_URL=https://example.com/legal
@@ -67,6 +71,7 @@ RATE_LIMIT_MAX=100           # requests per window
 ### Environment File Management
 
 #### dotenvx Encryption
+
 ```bash
 # Encrypt environment file for safe storage
 pnpm dlx dotenvx encrypt --key DOTENV_PRIVATE_KEY_PRODUCTION .env
@@ -80,6 +85,7 @@ NODE_ENV=production pnpm dotenvx run -f .env.production -- node dist/server/inde
 ```
 
 #### Plain .env Alternative
+
 ```bash
 # Create from template
 cp .env.example .env
@@ -92,6 +98,7 @@ node --env-file=.env dist/server/index.js
 ## Build Process
 
 ### Production Build
+
 ```bash
 # Install dependencies
 pnpm install
@@ -107,6 +114,7 @@ pnpm run build
 ```
 
 ### Development Build
+
 ```bash
 # Type checking only
 pnpm run typecheck
@@ -121,6 +129,7 @@ pnpm run typecheck
 ### Server Deployment
 
 #### 1. Prepare Server
+
 ```bash
 # Create application directory
 sudo mkdir -p /var/lib/armory
@@ -132,6 +141,7 @@ git clone https://github.com/your-org/armory.git .
 ```
 
 #### 2. Configure Environment
+
 ```bash
 # Create data directory
 mkdir -p data
@@ -145,6 +155,7 @@ pnpm dlx dotenvx encrypt --key $DOTENV_PRIVATE_KEY_PRODUCTION .env.production
 ```
 
 #### 3. Build and Start
+
 ```bash
 # Install dependencies
 pnpm install
@@ -159,6 +170,7 @@ NODE_ENV=production pnpm dotenvx run -f .env.production -- node dist/server/inde
 ### Process Management
 
 #### systemd Service
+
 ```ini
 # /etc/systemd/system/armory.service
 [Unit]
@@ -180,6 +192,7 @@ WantedBy=multi-user.target
 ```
 
 #### PM2 Process Manager
+
 ```bash
 # Install PM2 globally
 npm install -g pm2
@@ -196,12 +209,13 @@ pm2 startup
 ## Reverse Proxy Configuration
 
 ### Nginx Configuration
+
 ```nginx
 # /etc/nginx/sites-available/armory
 server {
     listen 80;
     server_name armory.example.com;
-    
+
     # Redirect HTTP to HTTPS
     return 301 https://$server_name$request_uri;
 }
@@ -209,16 +223,16 @@ server {
 server {
     listen 443 ssl http2;
     server_name armory.example.com;
-    
+
     # SSL certificates
     ssl_certificate /etc/letsencrypt/live/armory.example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/armory.example.com/privkey.pem;
-    
+
     # Security headers (complements Helmet.js)
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    
+
     # Proxy to Armory
     location / {
         proxy_pass http://127.0.0.1:3002;
@@ -229,19 +243,19 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # Timeouts
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
     }
-    
+
     # Health check endpoint
     location /healthz {
         proxy_pass http://127.0.0.1:3002/healthz;
         access_log off;
     }
-    
+
     # Ready check endpoint
     location /readyz {
         proxy_pass http://127.0.0.1:3002/readyz;
@@ -253,12 +267,14 @@ server {
 ## Health Monitoring
 
 ### Health Endpoints
+
 - **`GET /healthz`**: Basic application health (always returns 200 when server is running)
 - **`GET /readyz`**: Readiness check (returns 200 only when databases are accessible)
 
 ### Monitoring Integration
 
 #### Prometheus Metrics
+
 ```typescript
 // Custom metrics can be added via prom-client
 import promClient from 'prom-client';
@@ -271,6 +287,7 @@ const httpRequestDuration = new promClient.Histogram({
 ```
 
 #### Logging Structure (`/server/logger.ts`)
+
 ```typescript
 interface LogEntry {
   timestamp: string;
@@ -291,6 +308,7 @@ console.log(JSON.stringify(logEntry));
 ### Backup Procedures
 
 #### Automated Backups
+
 ```bash
 #!/bin/bash
 # /usr/local/bin/backup-armory.sh
@@ -316,6 +334,7 @@ find "$BACKUP_DIR" -name "*.db.gz" -mtime +30 -delete
 ```
 
 #### Cron Configuration
+
 ```cron
 # /etc/cron.d/armory-backup
 0 2 * * * armory /usr/local/bin/backup-armory.sh
@@ -324,6 +343,7 @@ find "$BACKUP_DIR" -name "*.db.gz" -mtime +30 -delete
 ### Database Maintenance
 
 #### Regular Maintenance Tasks
+
 ```bash
 # Optimize database (run weekly)
 sqlite3 /var/lib/armory/data/armory.db "VACUUM;"
@@ -335,6 +355,7 @@ sqlite3 /var/lib/armory/data/builds.db "ANALYZE;"
 ```
 
 #### Migration Procedures
+
 ```bash
 # Check current schema version
 sqlite3 /var/lib/armory/data/armory.db "PRAGMA user_version;"
@@ -346,16 +367,19 @@ sqlite3 /var/lib/armory/data/armory.db "PRAGMA user_version;"
 ## Scaling Considerations
 
 ### Vertical Scaling
+
 - **Memory**: 512MB minimum, 1GB+ recommended for production
 - **CPU**: 1+ cores, more beneficial for concurrent imports
 - **Storage**: 100MB+ for databases, plus space for cached images
 
 ### Horizontal Scaling Limitations
+
 - **SQLite**: Not designed for concurrent write access from multiple processes
 - **Session Storage**: SQLite session store not shared across instances
 - **Recommendation**: Single instance deployment recommended
 
 ### Load Testing
+
 - **Concurrent Users**: Test with 50+ concurrent mod builder sessions
 - **API Endpoints**: Focus on `/api/builds` and `/api/catalog` endpoints
 - **Import Process**: Test full import pipeline memory usage
@@ -363,18 +387,21 @@ sqlite3 /var/lib/armory/data/armory.db "PRAGMA user_version;"
 ## Security Considerations
 
 ### Application Security
+
 - **CSP Headers**: Configured via Helmet.js middleware
 - **CSRF Protection**: Enabled on all state-changing endpoints
 - **Rate Limiting**: Applied to authentication and API endpoints
 - **Input Validation**: Zod schema validation for all user inputs
 
 ### Infrastructure Security
+
 - **Firewall Rules**: Restrict access to necessary ports only
 - **Database Permissions**: Read-only access for catalog database
 - **File Permissions**: Restrict access to environment files
 - **Regular Updates**: Keep Node.js and dependencies updated
 
 ### Authentication Security
+
 - **Clerk Configuration**: Use production keys, enable MFA
 - **Session Management**: Secure cookies, appropriate timeouts
 - **Admin Access**: Role-based access control for import triggers
@@ -385,6 +412,7 @@ sqlite3 /var/lib/armory/data/armory.db "PRAGMA user_version;"
 ### Common Issues
 
 #### Server Won't Start
+
 ```bash
 # Check error logs
 journalctl -u armory.service -n 50
@@ -398,6 +426,7 @@ sqlite3 /var/lib/armory/data/armory.db "SELECT 1;"
 ```
 
 #### Import Pipeline Failing
+
 ```bash
 # Check import logs
 grep "import" /var/log/armory.log
@@ -410,6 +439,7 @@ curl -I https://content.warframe.com
 ```
 
 #### Client Loading Issues
+
 ```bash
 # Check static file serving
 curl -I https://armory.example.com/
@@ -423,6 +453,7 @@ ls -la /var/lib/armory/dist/client/
 ### Log Analysis
 
 #### Key Log Patterns
+
 ```
 # Successful startup
 INFO: Server started on port 3002
@@ -440,6 +471,7 @@ WARN: Failed authentication attempt from IP
 ```
 
 #### Error Patterns
+
 ```
 # Database errors
 ERROR: SQLITE_ERROR: no such table
@@ -459,24 +491,28 @@ ERROR: JavaScript heap out of memory
 ### Recovery Procedures
 
 #### Database Corruption
+
 1. Stop Armory service
 2. Restore from latest backup
 3. Verify database integrity
 4. Restart service
 
 #### Data Import Failure
+
 1. Check import lease status
 2. Clear stale lease if needed
 3. Trigger manual import
 4. Monitor import progress
 
 #### Application Failure
+
 1. Check application logs
 2. Verify dependencies
 3. Clear `node_modules` and reinstall if needed
 4. Rebuild application
 
 ### Backup Verification
+
 ```bash
 # Regular backup testing procedure
 BACKUP_FILE="/var/backups/armory/armory_latest.db.gz"
@@ -491,6 +527,7 @@ rm test.db
 ## Performance Tuning
 
 ### Database Tuning
+
 ```bash
 # SQLite pragma settings for production
 sqlite3 armory.db "PRAGMA journal_mode = WAL;"
@@ -499,6 +536,7 @@ sqlite3 armory.db "PRAGMA cache_size = -2000;"  # 2MB cache
 ```
 
 ### Node.js Tuning
+
 ```bash
 # Increase memory limit for large imports
 NODE_OPTIONS="--max-old-space-size=2048" node dist/server/index.js
@@ -508,6 +546,7 @@ NODE_OPTIONS="--experimental-worker" node dist/server/index.js
 ```
 
 ### Monitoring Setup
+
 ```bash
 # Install monitoring tools
 # prometheus-node-exporter for system metrics
@@ -518,14 +557,17 @@ NODE_OPTIONS="--experimental-worker" node dist/server/index.js
 ## Source References
 
 ### Configuration Files
+
 - **Environment Template**: `/.env.example`
 - **Server Config**: `/server/config.js`
 - **Build Config**: `/vite.config.ts`
 
 ### Deployment Scripts
+
 - **Quality Checks**: `/run-quality-checks.mjs`
 - **Preflight Check**: `/scripts/runtime-preflight.mjs`
 
 ### Monitoring
+
 - **Logger**: `/server/logger.ts`
 - **Health Endpoints**: `/server/routes/api.ts`

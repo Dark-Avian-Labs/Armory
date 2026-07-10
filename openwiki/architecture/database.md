@@ -23,18 +23,21 @@ Armory uses a multi-database SQLite architecture with clear separation between c
 ```
 
 ### Catalog Database (`armory.db`)
+
 - **Purpose**: Store all game data imported from Digital Extremes exports and wiki scraping
 - **Access**: Read-only for application, read-only for external Codex project
 - **Size**: ~8MB (contains mods, equipment, images, etc.)
 - **Location**: `./data/armory.db` (configurable via `ARMORY_DB_PATH`)
 
 ### User Database (`builds.db`)
+
 - **Purpose**: Store user-generated content - builds, loadouts, favorites, settings
 - **Access**: Read-write for authenticated users
 - **Size**: Grows with user activity
 - **Location**: `./data/builds.db` (configurable via `USER_DB_PATH`)
 
 ### Session Database (`session.db`)
+
 - **Purpose**: Store CSRF tokens and session data for security
 - **Access**: Internal use only by express-session middleware
 - **Location**: `./data/session.db` (configurable via `SESSION_DB_PATH`)
@@ -44,6 +47,7 @@ Armory uses a multi-database SQLite architecture with clear separation between c
 ### Catalog Schema (`/server/db/catalogSchema.ts`)
 
 #### Core Tables
+
 - **`mods`**: Warframe mods with stats, polarities, ranks
 - **`equipment`**: Warframes, weapons, companions, archwings
 - **`equipment_slots`**: Slot configurations for each equipment type
@@ -52,12 +56,14 @@ Armory uses a multi-database SQLite architecture with clear separation between c
 - **`images`**: Cached images from wiki and exports
 
 #### Derived Data Tables
+
 - **`helminth_abilities`**: Subsumed abilities from Helminth system
 - **`archon_shards`**: Archon shard configurations and effects
 - **`warframe_rank_exceptions`**: Special rank handling for certain Warframes
 - **`damage_formulas`**: Wiki-scraped damage calculation formulas
 
 #### Import Metadata
+
 - **`import_runs`**: History of data import executions
 - **`export_manifest`**: Digital Extremes export metadata and hashes
 - **`scraping_cache`**: Wiki scraping results and timestamps
@@ -65,6 +71,7 @@ Armory uses a multi-database SQLite architecture with clear separation between c
 ### User Schema (`/server/db/userSchema.ts`)
 
 #### User Content
+
 - **`builds`**: Saved mod configurations with metadata
 - **`build_items`**: Individual mod placements within builds
 - **`loadouts`**: Collections of builds for quick access
@@ -72,6 +79,7 @@ Armory uses a multi-database SQLite architecture with clear separation between c
 - **`favorites`**: User-starred builds and equipment
 
 #### User Management
+
 - **`user_settings`**: Per-user application preferences
 - **`user_sync_state`**: Synchronization state with external systems
 
@@ -80,6 +88,7 @@ Armory uses a multi-database SQLite architecture with clear separation between c
 ## Database Connections
 
 ### Connection Management (`/server/db/connection.ts`)
+
 ```typescript
 // Single connections per database
 const catalogDb = new Database(CATALOG_DB_PATH, { readonly: true });
@@ -87,12 +96,19 @@ const userDb = new Database(USER_DB_PATH);
 const sessionDb = new Database(SESSION_DB_PATH);
 
 // Connection pooling via better-sqlite3 connection reuse
-export function getCatalogDb() { return catalogDb; }
-export function getUserDb() { return userDb; }
-export function getSessionDb() { return sessionDb; }
+export function getCatalogDb() {
+  return catalogDb;
+}
+export function getUserDb() {
+  return userDb;
+}
+export function getSessionDb() {
+  return sessionDb;
+}
 ```
 
 ### Query Organization (`/server/db/queries.ts`)
+
 - **Prepared Statements**: Reusable query templates for performance
 - **Type-Safe Queries**: TypeScript interfaces for query results
 - **Transaction Support**: Atomic operations for data consistency
@@ -100,6 +116,7 @@ export function getSessionDb() { return sessionDb; }
 ## Data Import and Population
 
 ### Startup Pipeline (`/server/import/startupPipeline.ts`)
+
 1. **Schema Creation**: Creates tables if they don't exist
 2. **Catalog Check**: Determines if import is needed (empty or stale)
 3. **Full Import**: Downloads DE exports, parses, inserts data
@@ -108,6 +125,7 @@ export function getSessionDb() { return sessionDb; }
 6. **Derived Data**: Generates registries (Helminth, etc.)
 
 ### Import Recovery
+
 - **Lease System**: Prevents concurrent import runs
 - **Error Recovery**: Resume failed imports from checkpoint
 - **Incremental Updates**: Update only changed data where possible
@@ -115,6 +133,7 @@ export function getSessionDb() { return sessionDb; }
 ## Indexing Strategy
 
 ### Catalog Database Indexes
+
 ```sql
 -- Frequent lookups by unique identifiers
 CREATE INDEX idx_mods_uniqueName ON mods(uniqueName);
@@ -130,6 +149,7 @@ CREATE INDEX idx_equipment_name ON equipment(name);
 ```
 
 ### User Database Indexes
+
 ```sql
 -- User-specific data access
 CREATE INDEX idx_builds_userId ON builds(userId);
@@ -143,11 +163,13 @@ CREATE INDEX idx_loadout_builds_buildId ON loadout_builds(buildId);
 ## Migration System
 
 ### Schema Migrations (`/server/db/catalogMigrations.ts`)
+
 - **Versioned Migrations**: Sequential migration files
 - **Forward-Only**: Migrations only apply forward, no rollback
 - **Data Repair**: Specialized repair functions for data issues
 
 ### Example Migration
+
 ```typescript
 export const catalogMigrations = [
   {
@@ -161,7 +183,7 @@ export const catalogMigrations = [
           -- ... other columns
         );
       `);
-    }
+    },
   },
   // Additional migrations...
 ];
@@ -170,15 +192,18 @@ export const catalogMigrations = [
 ## Backup and Recovery
 
 ### Backup Strategy
+
 - **Catalog Database**: Back up after successful import runs
 - **User Database**: Regular backups based on activity
 - **Session Database**: Ephemeral, can be recreated
 
 ### Backup Locations
+
 - **`data/_backup/`**: Automatic backups
 - **`data/_atragraph-audit/`**: Audit logs and change tracking
 
 ### Recovery Procedures
+
 1. **Catalog Corruption**: Restore from backup or re-run import
 2. **User Data Loss**: Restore from most recent backup
 3. **Session Loss**: No recovery needed - users re-authenticate
@@ -186,11 +211,13 @@ export const catalogMigrations = [
 ## External Integration
 
 ### Codex Project Integration
+
 - **Direct File Access**: Codex reads `armory.db` via `ARMORY_DB_PATH`
 - **Schema Stability**: Catalog schema must remain backward compatible
 - **Data Freshness**: Codex depends on Armory's import pipeline
 
 ### Integration Points
+
 1. **Shared Database Path**: Environment variable coordination
 2. **Schema Versioning**: Version checks to ensure compatibility
 3. **Data Validation**: Cross-checks between Armory and Codex
@@ -198,16 +225,19 @@ export const catalogMigrations = [
 ## Performance Considerations
 
 ### Query Optimization
+
 - **Prepared Statements**: Reused across requests
 - **Appropriate Indexes**: Based on query patterns
 - **Selective Loading**: Load only required columns
 
 ### Connection Management
+
 - **Single Connection**: Better-sqlite3 prefers single connection
 - **Read-Only Connections**: Catalog DB uses readonly connection
 - **Connection Pooling**: Built into better-sqlite3
 
 ### Memory Management
+
 - **Streaming Results**: Large queries stream results instead of loading all at once
 - **Query Limits**: Pagination for large result sets
 - **Cache Warming**: Preload frequently accessed data on startup
@@ -215,11 +245,13 @@ export const catalogMigrations = [
 ## Monitoring and Maintenance
 
 ### Health Checks
+
 - **Database Connectivity**: `/readyz` endpoint verifies all DB connections
 - **Schema Validation**: Startup schema verification
 - **Import Status**: Monitoring of last successful import
 
 ### Maintenance Tasks
+
 1. **Vacuum**: Periodically run `VACUUM` to optimize storage
 2. **Analyze**: Update query planner statistics
 3. **Backup Rotation**: Manage backup file retention

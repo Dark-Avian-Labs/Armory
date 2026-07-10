@@ -5,6 +5,7 @@ This section covers the core Warframe game mechanics that Armory models and supp
 ## Equipment Hierarchy
 
 ### Equipment Types (`/shared/equipmentTypes.ts`)
+
 ```typescript
 export type EquipmentType =
   | 'Warframe'
@@ -21,18 +22,21 @@ export type EquipmentType =
 ```
 
 ### Warframes
+
 - **Standard Warframes**: Base variants with standard stats
 - **Prime Warframes**: Upgraded variants with improved stats and polarities
 - **Special Variants**: Umbra, Prime Access, etc.
 - **Signature Traits**: Unique abilities and mechanics per Warframe
 
 ### Weapons
+
 - **Primary Weapons**: Rifles, shotguns, bows, launchers
 - **Secondary Weapons**: Pistols, throwing weapons, dual pistols
 - **Melee Weapons**: Swords, hammers, polearms, whips
 - **Special Categories**: Kitguns, Zaws, modular weapons
 
 ### Companions
+
 - **Sentinels**: Robotic companions with precept slots
 - **Pets**: Kubrows, Kavats, Predasites, etc.
 - **Robotic**: MOAs, Hounds
@@ -41,6 +45,7 @@ export type EquipmentType =
 ## Mod System
 
 ### Mod Types
+
 - **Warframe Mods**: Apply to Warframe equipment slots
 - **Weapon Mods**: Apply to weapon equipment slots
 - **Aura Mods**: Special slot affecting entire loadout capacity
@@ -49,6 +54,7 @@ export type EquipmentType =
 - **Archon Shards**: End-game stat modifiers
 
 ### Mod Rarity System
+
 - **Common** (Bronze): Basic mods with standard effects
 - **Uncommon** (Silver): Enhanced mods with better stats
 - **Rare** (Gold): Powerful mods with significant effects
@@ -56,6 +62,7 @@ export type EquipmentType =
 - **Primed**: Upgraded versions of existing mods
 
 ### Mod Polarity System
+
 - **Madurai (V)**: Offensive mods (damage, crit, etc.)
 - **Vazarin (D)**: Defensive mods (health, armor, shields)
 - **Naramon (-)**: Utility mods (energy, efficiency, duration)
@@ -67,6 +74,7 @@ export type EquipmentType =
 ## Slot Management
 
 ### Warframe Slots
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      Warframe Slots                         │
@@ -78,11 +86,13 @@ export type EquipmentType =
 ```
 
 ### Weapon Slots
+
 - **8 Regular Slots**: Standard mod placement
 - **Stance Slot** (Melee only): Special slot for stance mods
 - **Exilus Slot** (some weapons): Utility slot option
 
 ### Capacity System
+
 - **Base Capacity**: Equipment's starting mod capacity
 - **Level Scaling**: +1 capacity per level (max 30 for most equipment)
 - **Aura Bonus**: Aura mods provide capacity bonus (x2 for matching polarity)
@@ -92,6 +102,7 @@ export type EquipmentType =
 ## Damage System
 
 ### Damage Types (`/shared/damageTypes.ts`)
+
 ```typescript
 export type DamageType =
   | 'Impact'
@@ -112,6 +123,7 @@ export type DamageType =
 ```
 
 ### Damage Calculation (`/shared/damageFromWiki.ts`)
+
 ```typescript
 export interface DamageCalculation {
   baseDamage: number;
@@ -127,6 +139,7 @@ export interface DamageCalculation {
 ```
 
 ### Status Effects
+
 - **Impact**: Stagger, reduces accuracy
 - **Puncture**: Weaken, reduces damage dealt
 - **Slash**: Bleed, true damage over time
@@ -139,6 +152,7 @@ export interface DamageCalculation {
 ## Set Bonuses
 
 ### Mod Sets
+
 - **Vigilante**: Critical enhancement set
 - **Gladiator**: Melee critical set
 - **Augur**: Shield conversion set
@@ -147,6 +161,7 @@ export interface DamageCalculation {
 - **Amalgam**: Hybrid weapon set
 
 ### Set Bonus Mechanics
+
 - **Progressive Bonuses**: Effects improve with more set mods equipped
 - **Cross-Equipment**: Some sets work across multiple pieces of equipment
 - **Stacking Rules**: Limits on how many times bonuses can stack
@@ -155,18 +170,21 @@ export interface DamageCalculation {
 ## Special Systems
 
 ### Helminth System (`/shared/helminthRegistry.ts`)
+
 - **Ability Subsumption**: Extract abilities from Warframes
 - **Compatibility Rules**: Which Warframes can receive which abilities
 - **Resource Costs**: Helminth resource requirements for subsumption
 - **Ability Modding**: Subsumed abilities can be modded like regular abilities
 
 ### Archon Shards
+
 - **Tauforged vs Regular**: Different strength levels
 - **Slot Configuration**: 5 shard slots per Warframe
 - **Shard Types**: Crimson (strength), Azure (duration), Amber (efficiency)
 - **Stacking Effects**: How multiple shards of same type interact
 
 ### Incarnon Weapons
+
 - **Evolution System**: Multiple evolution stages
 - **Perk Selection**: Choose between evolution perks
 - **Transformation**: Alternate fire mode transformation
@@ -175,18 +193,21 @@ export interface DamageCalculation {
 ## Game Mechanics Integration
 
 ### Ability Scaling
+
 - **Strength**: Increases ability damage and healing
 - **Duration**: Increases ability effect duration
 - **Range**: Increases ability area of effect
 - **Efficiency**: Reduces ability energy cost
 
 ### Survivability Stats
+
 - **Health**: Base health pool
 - **Shields**: Regenerating protective barrier
 - **Armor**: Damage reduction for health
 - **Energy**: Resource for ability casting
 
 ### Movement & Utility
+
 - **Sprint Speed**: Base movement speed
 - **Parkour Velocity**: Bullet jump and aim glide effectiveness
 - **Ability Cast Speed**: How quickly abilities activate
@@ -195,12 +216,14 @@ export interface DamageCalculation {
 ## Compatibility Rules
 
 ### Mod Conflicts
+
 - **Exclusive Mods**: Cannot be equipped together
 - **Stacking Limits**: Maximum number of similar effects
 - **Polarity Restrictions**: Mods can only go in specific polarity slots
 - **Equipment Restrictions**: Mods limited to specific equipment types
 
 ### Build Validation
+
 - **Capacity Validation**: Ensure build doesn't exceed capacity
 - **Mod Compatibility**: Check for conflicting mod combinations
 - **Equipment Restrictions**: Verify mods are allowed on equipment
@@ -209,16 +232,19 @@ export interface DamageCalculation {
 ## Source References
 
 ### Type Definitions
+
 - **Equipment Types**: `/shared/equipmentTypes.ts`
 - **Damage Types**: `/shared/damageTypes.ts`
 - **Mod Types**: `/shared/mods.ts`
 
 ### Game Data
+
 - **Helminth Registry**: `/shared/helminthRegistry.generated.ts`
 - **Archon Shards**: `/shared/archonShardRegistry.ts`
 - **Damage Formulas**: `/shared/damageFromWiki.ts`
 
 ### Business Logic
+
 - **Damage Calculation**: `/shared/damageFromFireBehaviors.ts`
 - **Equipment Stats**: `/shared/equipmentRankStats.ts`
 - **Polarity System**: `/shared/polarities.ts`

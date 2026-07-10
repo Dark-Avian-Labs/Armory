@@ -5,6 +5,7 @@
 Armory is a Warframe mod builder and planner application that provides comprehensive mod configuration, damage calculation, and build management for Warframe players. The application imports game data directly from Digital Extremes' public exports and supplements it with data scraped from the Warframe wiki.
 
 **Key Features:**
+
 - Full mod builder with slot management and polarity matching
 - Damage calculation engine using wiki-scraped formulas
 - Helminth ability system integration
@@ -37,11 +38,13 @@ Armory is a Warframe mod builder and planner application that provides comprehen
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js 26+
 - pnpm 11+
 - Clerk account (for authentication)
 
 ### Installation
+
 1. Clone the repository
 2. Install dependencies: `pnpm install`
 3. Copy environment file: `cp .env.example .env`
@@ -50,6 +53,7 @@ Armory is a Warframe mod builder and planner application that provides comprehen
 6. Start the server: `pnpm start`
 
 ### Development
+
 - Run type checking: `pnpm run typecheck`
 - Run tests: `pnpm run test`
 - Run validation suite: `pnpm run validate`
@@ -58,36 +62,42 @@ Armory is a Warframe mod builder and planner application that provides comprehen
 ## Documentation Sections
 
 ### [Architecture](architecture/)
+
 - **System Overview**: Full-stack React/Express architecture with SQLite databases
 - **Database Design**: Three SQLite databases (catalog, user data, sessions)
 - **Authentication**: Clerk integration with CSRF protection
 - **Data Flow**: Import pipeline and wiki scraping workflows
 
 ### [Workflows](workflows/)
+
 - **Mod Building**: Create and configure Warframe mod builds
 - **Data Import**: Automated data import from DE exports and wiki
 - **User Builds**: Save, load, and share builds with other users
 - **Damage Calculation**: Real-time damage computation with wiki formulas
 
 ### [Domain Concepts](domain/)
+
 - **Warframe Modding**: Game-specific modding concepts and mechanics
 - **Helminth System**: Ability subsumption and compatibility
 - **Equipment Types**: Warframes, weapons, companions, and archwings
 - **Damage System**: Damage types, modifiers, and calculation formulas
 
 ### [Operations](operations/)
+
 - **Deployment**: Production deployment and health monitoring
 - **Database Management**: Schema creation, migrations, and backups
 - **Environment Configuration**: Required environment variables
 - **Troubleshooting**: Common issues and solutions
 
 ### [Testing](testing/)
+
 - **Test Structure**: Vitest setup and test organization
 - **API Testing**: Express route testing with supertest
 - **Unit Testing**: Business logic testing patterns
 - **Quality Checks**: Linting, formatting, and type checking
 
 ### [Integrations](integrations/)
+
 - **Clerk Authentication**: User authentication and webhook handling
 - **Wiki Scraping**: Warframe wiki data integration
 - **Codex Integration**: Database sharing with external Codex project
@@ -96,20 +106,24 @@ Armory is a Warframe mod builder and planner application that provides comprehen
 ## Key Source Files
 
 ### Server Entry Points
+
 - `/server/index.ts` - Main Express server configuration
 - `/server/routes/api.ts` - Primary API router
 - `/server/routes/buildsRouter.ts` - Build management API
 
 ### Client Entry Points
+
 - `/client/main.tsx` - React application entry point
 - `/client/App.tsx` - Root application component
 
 ### Database Schema
+
 - `/server/db/catalogSchema.ts` - Catalog database table definitions
 - `/server/db/userSchema.ts` - User data table definitions
 - `/server/db/schema.js` - Schema creation utilities
 
 ### Data Import
+
 - `/server/import/startupPipeline.ts` - Complete data import pipeline
 - `/server/scraping/wikiScraper.ts` - Wiki scraping foundation
 - `/scripts/generate-helminth-registry.mjs` - Data generation scripts
