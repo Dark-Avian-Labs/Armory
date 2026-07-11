@@ -77,15 +77,32 @@ function createTestCatalogSchema(db: Database.Database): void {
     CREATE TABLE warframes (
       unique_name TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      artifact_slots TEXT
+      artifact_slots TEXT,
+      aura_polarity TEXT,
+      exilus_polarity TEXT,
+      polarities TEXT
     );
     CREATE TABLE weapons (
       unique_name TEXT PRIMARY KEY,
-      artifact_slots TEXT
+      name TEXT NOT NULL,
+      artifact_slots TEXT,
+      product_category TEXT,
+      slot INTEGER,
+      sentinel INTEGER
     );
     CREATE TABLE companions (
       unique_name TEXT PRIMARY KEY,
       artifact_slots TEXT
+    );
+    CREATE TABLE builds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      clerk_user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      equipment_type TEXT NOT NULL,
+      equipment_unique_name TEXT NOT NULL,
+      mod_config TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
   db.prepare('INSERT INTO warframes (unique_name, name, artifact_slots) VALUES (?, ?, ?)').run(
@@ -94,6 +111,20 @@ function createTestCatalogSchema(db: Database.Database): void {
     null,
   );
 }
+
+const TEST_WEAPON = '/Lotus/Weapons/Tenno/Pistols/TestRegulators/TestRegulators';
+const WEAPON_SLOTS_WITH_EXILUS = [
+  'AP_UNIVERSAL',
+  'AP_UNIVERSAL',
+  'AP_UNIVERSAL',
+  'AP_UNIVERSAL',
+  'AP_UNIVERSAL',
+  'AP_UNIVERSAL',
+  'AP_UNIVERSAL',
+  'AP_UNIVERSAL',
+  'AP_UNIVERSAL',
+  'AP_POWER',
+];
 
 function createTestApp() {
   const app = express();
@@ -138,10 +169,55 @@ describe('PATCH /admin/catalog/artifact-slots', () => {
       .patch('/api/admin/catalog/artifact-slots')
       .send({ unique_name: TEST_WF, artifact_slots: UPDATED_SLOTS });
     expect(patch.status).toBe(200);
-    expect(patch.body).toMatchObject({ ok: true, unique_name: TEST_WF });
+    expect(patch.body).toMatchObject({ ok: true, unique_name: TEST_WF, updated_builds: 0 });
 
     const refreshed = await request(app).get('/api/warframes');
     expect(refreshed.status).toBe(200);
     expect(artifactSlotsFor(TEST_WF, refreshed)).toEqual(UPDATED_SLOTS);
+  });
+
+  it('reconciles existing builds when artifact slots change', async () => {
+    const db = dbState.db!;
+    db.prepare(
+      'INSERT INTO weapons (unique_name, name, product_category, slot, sentinel, artifact_slots) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(TEST_WEAPON, 'Regulators Prime', 'SpecialItems', 0, 0, null);
+
+    const existingSlots = Array.from({ length: 8 }, (_, index) => ({
+      index,
+      type: 'general',
+      mod: { unique_name: `/Lotus/Upgrades/Mods/Pistol/TestMod${index}`, name: `Mod ${index}` },
+    }));
+    db.prepare(
+      `INSERT INTO builds (clerk_user_id, name, equipment_type, equipment_unique_name, mod_config)
+       VALUES (?, ?, ?, ?, ?)`,
+    ).run(
+      'user_1',
+      'Regulators Build',
+      'secondary',
+      TEST_WEAPON,
+      JSON.stringify({
+        name: 'Regulators Build',
+        equipment_type: 'secondary',
+        equipment_unique_name: TEST_WEAPON,
+        slots: existingSlots,
+      }),
+    );
+
+    const app = createTestApp();
+    const patch = await request(app)
+      .patch('/api/admin/catalog/artifact-slots')
+      .send({ unique_name: TEST_WEAPON, artifact_slots: WEAPON_SLOTS_WITH_EXILUS });
+    expect(patch.status).toBe(200);
+    expect(patch.body.updated_builds).toBe(1);
+
+    const row = db.prepare('SELECT mod_config FROM builds WHERE equipment_unique_name = ?').get(TEST_WEAPON) as {
+      mod_config: string;
+    };
+    const config = JSON.parse(row.mod_config) as {
+      slots: Array<{ type: string; mod?: { unique_name?: string } }>;
+    };
+    expect(config.slots).toHaveLength(9);
+    expect(config.slots[8]?.type).toBe('exilus');
+    expect(config.slots[0]?.mod?.unique_name).toBe('/Lotus/Upgrades/Mods/Pistol/TestMod0');
   });
 });

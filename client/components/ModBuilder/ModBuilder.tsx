@@ -18,6 +18,12 @@ import {
   warframeExilusArtifactIndex,
 } from '../../../shared/artifactSlotState.js';
 import {
+  buildModSlotsAreEquivalent,
+  reconcileStoredBuildModSlots,
+  type BuildModSlot,
+} from '../../../shared/buildSlotLayout.js';
+import type { EquipmentSlotConfigKey } from '../../../shared/equipmentSlotConfig.js';
+import {
   formatSiriusOrionWarframeHeading,
   siriusOrionEquipmentSaveName,
 } from '../../../shared/siriusOrionRegistry.js';
@@ -744,9 +750,11 @@ export function ModBuilder() {
   }, [buildId, routeEqType, equipmentId, getBuild, loaded]);
 
   const slotsInitKeyRef = useRef<string | null>(null);
+  const buildSlotsReconcileKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     slotsInitKeyRef.current = null;
+    buildSlotsReconcileKeyRef.current = null;
   }, [routeKey]);
 
   useEffect(() => {
@@ -1086,6 +1094,57 @@ export function ModBuilder() {
     setIncarnonSelections(undefined);
     setActiveIncarnonTier(null);
   }, [selectedEquipment, equipmentType, buildId]);
+
+  useEffect(() => {
+    if (!buildId || !loaded || !selectedEquipment) return;
+
+    const equipmentTypeKey = equipmentType as EquipmentSlotConfigKey;
+    if (!(equipmentTypeKey in EQUIPMENT_SLOT_CONFIGS)) return;
+
+    const reconcileKey = `${buildId}:${selectedEquipment.unique_name}:${selectedEquipment.artifact_slots ?? ''}:${slots.length}`;
+    if (buildSlotsReconcileKeyRef.current === reconcileKey) return;
+    if (slots.length === 0) return;
+
+    let artifactSlotsRaw: string[] = [];
+    try {
+      artifactSlotsRaw = selectedEquipment.artifact_slots
+        ? (JSON.parse(selectedEquipment.artifact_slots) as string[])
+        : [];
+    } catch {
+      artifactSlotsRaw = [];
+    }
+
+    const companionWeaponSelectionTypes: EquipmentType[] = [
+      'primary',
+      'secondary',
+      'melee',
+      'beast_claws',
+    ];
+    const isSelectedCompanionWeapon =
+      companionWeaponSelectionTypes.includes(equipmentType) &&
+      isCompanionWeapon(selectedEquipment as Weapon);
+
+    const warframe = equipmentType === 'warframe' ? (selectedEquipment as Warframe) : undefined;
+
+    const reconciled = reconcileStoredBuildModSlots(slots as BuildModSlot[], {
+      equipmentType: equipmentTypeKey,
+      equipmentName: selectedEquipment.name,
+      artifactSlotsRaw,
+      exportDefaults: warframe
+        ? {
+            aura_polarity: warframe.aura_polarity,
+            exilus_polarity: warframe.exilus_polarity,
+            polarities: warframe.polarities,
+          }
+        : undefined,
+      isCompanionWeaponEquipped: isSelectedCompanionWeapon,
+    });
+
+    buildSlotsReconcileKeyRef.current = reconcileKey;
+    if (!buildModSlotsAreEquivalent(slots as BuildModSlot[], reconciled)) {
+      setSlots(reconciled as ModSlot[]);
+    }
+  }, [buildId, loaded, selectedEquipment, equipmentType, slots]);
 
   useEffect(() => {
     if (buildId || equipmentType !== 'melee' || !selectedEquipment?.unique_name) {
