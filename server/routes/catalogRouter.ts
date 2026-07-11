@@ -13,7 +13,8 @@ import { getClerkUserId } from '../auth/clerkUser.js';
 import { requireArmoryAdmin } from '../auth/middleware.js';
 import { bustCatalogResponseCache, sendCachedCatalogJson } from '../cache/catalogResponseCache.js';
 import { getCachedModList } from '../cache/modListCache.js';
-import { getCatalogDb } from '../db/connection.js';
+import { getCatalogDb, getUserDb } from '../db/connection.js';
+import { reconcileBuildsForArtifactSlotChange } from '../db/reconcileBuildsForArtifactSlots.js';
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
 import {
   getAdminImportSnapshot,
@@ -465,8 +466,21 @@ catalogRouter.patch(
         return;
       }
 
+      const updatedBuilds = reconcileBuildsForArtifactSlotChange(
+        getUserDb(),
+        db,
+        table,
+        uniqueName,
+        body.artifact_slots,
+      );
+
       bustCatalogResponseCache();
-      res.json({ ok: true, unique_name: uniqueName, artifact_slots: body.artifact_slots });
+      res.json({
+        ok: true,
+        unique_name: uniqueName,
+        artifact_slots: body.artifact_slots,
+        updated_builds: updatedBuilds,
+      });
     } catch (err) {
       sendInternalError(res, 'admin.catalog.artifactSlots', err);
     }
