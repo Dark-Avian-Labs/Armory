@@ -149,3 +149,35 @@ export async function loadEquipmentItemsForTab(
 export function catalogKeyForItem(equipmentType: EquipmentType, uniqueName: string): string {
   return `${equipmentType}\t${uniqueName}`;
 }
+
+const EQUIPMENT_TYPE_TO_PICKER_TAB: Partial<Record<EquipmentType, EquipmentPickerTab>> = {
+  warframe: 'warframe',
+  primary: 'primary',
+  secondary: 'secondary',
+  melee: 'melee',
+  companion_weapon: 'companion_weapon',
+  archgun: 'archgun',
+  archmelee: 'archmelee',
+  companion: 'companion',
+  archwing: 'archwing',
+  necramech: 'necramech',
+};
+
+/** Load one catalog row using the same merge rules as the equipment picker (includes SpecialItems). */
+export async function loadEquipmentCatalogRow(
+  equipmentType: EquipmentType,
+  uniqueName: string,
+): Promise<EquipmentItem | null> {
+  const tab = EQUIPMENT_TYPE_TO_PICKER_TAB[equipmentType];
+  if (tab) {
+    const items = await loadEquipmentItemsForTab(tab);
+    return items.find((row) => row.unique_name === uniqueName) ?? null;
+  }
+  if (equipmentType === 'beast_claws') {
+    const response = await apiFetch('/api/weapons?type=SentinelWeapons');
+    const data = (await response.json()) as { items?: EquipmentItem[] };
+    if (!response.ok) throw new Error('Failed to load equipment catalog.');
+    return data.items?.find((row) => row.unique_name === uniqueName) ?? null;
+  }
+  throw new Error('Unsupported equipment type for slot editing.');
+}

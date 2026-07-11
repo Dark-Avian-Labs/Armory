@@ -16,7 +16,7 @@ import {
   type ArtifactSlotEditorRow,
 } from '../../utils/artifactSlotLayout';
 import { bustEquipmentLookupCache } from '../../utils/loadEquipmentLookup';
-import { CATEGORY_API, type EquipmentPickerTab } from '../BuildsCatalog/buildsCatalogUtils';
+import { loadEquipmentCatalogRow } from '../BuildsCatalog/buildsCatalogUtils';
 import { Modal } from '../ui/Modal';
 
 const POLARITY_ICONS: Record<string, string> = {
@@ -43,17 +43,6 @@ function SlotPolarityIcon({ polarity, size = 24 }: { polarity: string; size?: nu
   );
 }
 
-function equipmentFetchUrl(equipmentType: EquipmentType): string | null {
-  if (equipmentType === 'beast_claws') {
-    return '/api/weapons?type=SentinelWeapons';
-  }
-  const tab = equipmentType as EquipmentPickerTab;
-  if (tab === 'companion_weapon') {
-    return CATEGORY_API.companion_weapon;
-  }
-  return CATEGORY_API[tab] || null;
-}
-
 type CatalogItem = Warframe | Weapon | Companion;
 
 interface ArtifactSlotsEditorModalProps {
@@ -77,22 +66,15 @@ export function ArtifactSlotsEditorModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const url = equipmentFetchUrl(equipmentType);
-    if (!url) {
-      setError('Unsupported equipment type for slot editing.');
-      setLoading(false);
-      return;
-    }
-
     let alive = true;
     void (async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await apiFetch(url);
-        const body = (await res.json()) as { items?: CatalogItem[] };
-        if (!res.ok) throw new Error('Failed to load equipment catalog.');
-        const item = body.items?.find((row) => row.unique_name === uniqueName);
+        const item = (await loadEquipmentCatalogRow(
+          equipmentType,
+          uniqueName,
+        )) as CatalogItem | null;
         if (!item) throw new Error('Equipment not found in catalog.');
         if (!alive) return;
         const parsed = parseArtifactSlotsJson(item.artifact_slots);
