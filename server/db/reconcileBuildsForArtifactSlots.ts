@@ -162,8 +162,8 @@ export function reconcileBuildsForArtifactSlotChange(
       WHERE id = ?`,
   );
 
-  let updated = 0;
   const reconcile = userDb.transaction((rows: BuildRow[]) => {
+    let updated = 0;
     for (const row of rows) {
       if (!isEquipmentSlotConfigKey(row.equipment_type)) continue;
 
@@ -186,8 +186,9 @@ export function reconcileBuildsForArtifactSlotChange(
       updateStmt.run(JSON.stringify(nextConfig), row.id);
       updated += 1;
     }
+    return updated;
   });
 
-  reconcile(builds);
+  const updated = reconcile(builds);
   return updated;
 }
