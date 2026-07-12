@@ -123,14 +123,17 @@ export function buildModSlotsFromArtifactSlots(input: BuildSlotLayoutInput): Bui
     slots.push({ index: idx++, type: 'posture', polarity: pol });
   }
 
+  // General slots are emitted in display order (left-to-right), while artifact
+  // overrides are stored in reverse index order for general slots.
   for (let i = 0; i < config.generalSlots; i++) {
-    const artifactIndex = config.generalSlots - 1 - i;
+    const displayIndex = i;
+    const artifactIndex = config.generalSlots - 1 - displayIndex;
     if (hasArtifactSlotOverrides && !isArtifactSlotVisible(artifactSlots, artifactIndex, true)) {
       continue;
     }
     const polarity = hasArtifactSlotOverrides
       ? polarityFromArtifactAp(artifactSlots[artifactIndex])
-      : legacyGeneralPolarities[i] || undefined;
+      : legacyGeneralPolarities[displayIndex] || undefined;
     slots.push({ index: idx++, type: 'general', polarity });
   }
 
