@@ -13,7 +13,10 @@
       if (!part) return '';
       try {
         return decodeURIComponent(part.slice(name.length + 1));
-      } catch {
+      } catch (e) {
+        if (typeof console !== 'undefined' && console && typeof console.warn === 'function') {
+          console.warn('Unable to decode cookie value; falling back to default.', e);
+        }
         return '';
       }
     }
