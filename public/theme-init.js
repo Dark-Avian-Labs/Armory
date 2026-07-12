@@ -67,7 +67,7 @@
     if (!isValidUiStyle(ui)) ui = 'prism';
     root.classList.remove('ui-prism', 'ui-shadow', 'ui-clear');
     root.classList.add('ui-' + ui);
-  } catch (e) {
+  } catch {
     // Intentionally suppress all initialization errors to avoid blocking page rendering.
   }
 })();
