@@ -21,9 +21,9 @@
     "test:coverage": "vitest run --coverage && node scripts/patchCoverageLayout.mjs"
   },
   "dependencies": {
-    "@clerk/express": "^2.1.38",
+    "@clerk/express": "^2.1.40",
     "@clerk/react": "^6.12.1",
-    "@dotenvx/dotenvx": "^2.3.4",
+    "@dotenvx/dotenvx": "^2.6.0",
     "@fontsource-variable/cascadia-mono": "^5.2.2",
     "@fontsource-variable/geist": "^5.2.9",
     "@fontsource-variable/geist-mono": "^5.2.8",
