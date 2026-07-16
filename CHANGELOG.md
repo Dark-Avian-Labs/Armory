@@ -327,3 +327,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.67.11** `chore` [#414](https://github.com/Dark-Avian-Labs/Armory/pull/414): update dependencies
 - **v1.67.12** `fix` [#415](https://github.com/Dark-Avian-Labs/Armory/pull/415): special items editor
 - **v1.67.13** `fix` [#416](https://github.com/Dark-Avian-Labs/Armory/pull/416): admin editor
+- **v1.67.14** `chore` [#426](https://github.com/Dark-Avian-Labs/Armory/pull/426): update dependencies
