@@ -21,9 +21,9 @@
     "test:coverage": "vitest run --coverage && node scripts/patchCoverageLayout.mjs"
   },
   "dependencies": {
-    "@clerk/express": "^2.1.38",
-    "@clerk/react": "^6.12.1",
-    "@dotenvx/dotenvx": "^2.3.4",
+    "@clerk/express": "^2.1.41",
+    "@clerk/react": "^6.12.3",
+    "@dotenvx/dotenvx": "^2.9.0",
     "@fontsource-variable/cascadia-mono": "^5.2.2",
     "@fontsource-variable/geist": "^5.2.9",
     "@fontsource-variable/geist-mono": "^5.2.8",
@@ -40,7 +40,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "express-session": "^1.19.0",
-    "helmet": "^8.2.0",
+    "helmet": "^8.3.0",
     "html-to-image": "^1.11.13",
     "lzma": "^2.3.2",
     "react": "^19.2.7",
