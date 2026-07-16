@@ -68,6 +68,6 @@
     root.classList.remove('ui-prism', 'ui-shadow', 'ui-clear');
     root.classList.add('ui-' + ui);
   } catch {
-    // Intentionally suppress all initialization errors to avoid blocking page rendering.
+    // ignore
   }
 })();

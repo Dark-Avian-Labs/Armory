@@ -1,4 +1,3 @@
-/** Indices align with client `DAMAGE_TYPES` / DE `damagePerShot` export order. */
 export const DAMAGE_PER_SHOT_LENGTH = 20;
 
 const ATTACK_DATA_DT_TO_INDEX: Record<string, number> = {
