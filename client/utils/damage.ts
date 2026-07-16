@@ -22,7 +22,7 @@ export function parseDamageArray(weapon: Weapon): number[] {
       const arr = JSON.parse(weapon.damage_per_shot);
       if (Array.isArray(arr)) return arr;
     } catch {
-      // fall through to fire_behaviors / total_damage
+      // ignore
     }
   }
 

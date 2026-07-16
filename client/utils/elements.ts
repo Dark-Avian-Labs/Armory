@@ -19,7 +19,6 @@ interface ElementMod {
 }
 
 export interface CalculateFinalDamageOptions {
-  /** When set, primary element mods are summed into this type instead of paired. */
   elementalConversionTarget?: PrimaryElement;
 }
 

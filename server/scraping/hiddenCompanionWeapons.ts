@@ -73,9 +73,6 @@ export function beastClawsNeedSync(onlyMissing: boolean): boolean {
   return false;
 }
 
-/** @deprecated Use syncBeastClawsFromWiki */
-export const hiddenCompanionWeaponsNeedSync = beastClawsNeedSync;
-
 export async function syncBeastClawsFromWiki(
   onProgress?: (msg: string) => void,
   onlyMissing = false,
@@ -167,6 +164,3 @@ export async function syncBeastClawsFromWiki(
     revisionId: parsed.revisionId,
   };
 }
-
-/** @deprecated Use syncBeastClawsFromWiki */
-export const syncHiddenCompanionWeaponsFromOverframe = syncBeastClawsFromWiki;

@@ -163,7 +163,6 @@ const SLOT_EDITOR_PICKER_TAB: Partial<Record<EquipmentPickerTab, EquipmentPicker
   necramech: 'necramech',
 };
 
-/** Load one catalog row using the same merge rules as the equipment picker (includes SpecialItems). */
 export async function loadEquipmentCatalogRow(
   equipmentType: EquipmentPickerTab,
   uniqueName: string,
