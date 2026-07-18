@@ -1,265 +1,49 @@
-# Database Architecture
+---
+type: Data Model
+title: Databases
+description: Catalog, user, and session SQLite roles — paths, schemas, and Codex read access.
+tags: [sqlite, database, catalog]
+timestamp: 2026-07-18T20:40:00Z
+---
 
-Armory uses a multi-database SQLite architecture with clear separation between catalog data (read-only game content) and user data (read-write user builds). This design enables external integration while maintaining performance and data integrity.
+# Databases
 
-## Database Overview
+Armory uses three SQLite files. Paths are resolved in `server/config.ts`. Production requires an **absolute** `USER_DB_PATH`; absolute paths are recommended for all three.
 
-### Three SQLite Databases
+| Env               | Default             | Schema                       | Purpose                                              |
+| ----------------- | ------------------- | ---------------------------- | ---------------------------------------------------- |
+| `ARMORY_DB_PATH`  | `./data/armory.db`  | `server/db/catalogSchema.ts` | Game catalog (Codex reads this read-only)            |
+| `USER_DB_PATH`    | `./data/builds.db`  | `server/db/userSchema.ts`    | Builds, loadouts, favorites                          |
+| `SESSION_DB_PATH` | `./data/session.db` | `server/db/sessionSchema.ts` | Express-session store for **CSRF** (not Clerk login) |
 
-```
-┌────────────────────────────────────────────────────────────┐
-│                      Database Layer                        │
-├────────────────────┬────────────────────┬──────────────────┤
-│   Catalog Database │   User Database    │  Session Database│
-│   (armory.db)      │   (builds.db)      │  (session.db)    │
-├────────────────────┼────────────────────┼──────────────────┤
-│ • Mods             │ • Builds           │ • CSRF Tokens    │
-│ • Equipment        │ • Loadouts         │ • Session Data   │
-│ • Game Data        │ • Favorites        │                  │
-│ • Wiki Data        │ • User Settings    │                  │
-│ • Images           │                    │                  │
-│ • Derived Data     │                    │                  │
-└────────────────────┴────────────────────┴──────────────────┘
-```
+Wiring: `server/db/connection.ts`, `server/db/schema.ts` (`createAppSchema` = catalog + user).
 
-### Catalog Database (`armory.db`)
+## Catalog (`armory.db`)
 
-- **Purpose**: Store all game data imported from Digital Extremes exports and wiki scraping
-- **Access**: Read-only for application, read-only for external Codex project
-- **Size**: ~8MB (contains mods, equipment, images, etc.)
-- **Location**: `./data/armory.db` (configurable via `ARMORY_DB_PATH`)
+Core tables include `warframes`, `abilities`, `weapons`, `companions`, `mods` (+ `mod_level_stats`, `mod_sets`, `mod_set_members`), `arcanes`, `archon_shard_types` / `archon_shard_buffs`, `warframe_market_links`, and `codex_modular_weapons`. Import bookkeeping uses lease/run tables managed by the import stack.
 
-### User Database (`builds.db`)
+**Codex:** opens `ARMORY_DB_PATH` read-only for Warframe catalog sync. Keep catalog healthy and imported before expecting Codex sync to work. See also [Codex modular weapons](../domain/codex-modular-weapons.md) and [Warframe Market links](../integrations/warframe-market.md).
 
-- **Purpose**: Store user-generated content - builds, loadouts, favorites, settings
-- **Access**: Read-write for authenticated users
-- **Size**: Grows with user activity
-- **Location**: `./data/builds.db` (configurable via `USER_DB_PATH`)
+## User (`builds.db`)
 
-### Session Database (`session.db`)
+- `builds` — per-user `mod_config` JSON, visibility, share tokens
+- `loadouts` / `loadout_builds` — loadout composition
+- `build_favorites` — favorites keyed by `clerk_user_id`
 
-- **Purpose**: Store CSRF tokens and session data for security
-- **Access**: Internal use only by express-session middleware
-- **Location**: `./data/session.db` (configurable via `SESSION_DB_PATH`)
+Force Full Re-import and `server/db/resetCatalogData.ts` clear **catalog** tables only and refuse if user tables are accidentally present in the catalog DB.
 
-## Schema Design
+## Session (`session.db`)
 
-### Catalog Schema (`/server/db/catalogSchema.ts`)
+Stores Express sessions used with CSRF middleware. Clerk identity is separate; do not treat this DB as the source of truth for login.
 
-#### Core Tables
+## What to watch out for
 
-- **`mods`**: Warframe mods with stats, polarities, ranks
-- **`equipment`**: Warframes, weapons, companions, archwings
-- **`equipment_slots`**: Slot configurations for each equipment type
-- **`mod_sets`**: Mod set bonuses and compatibility
-- **`damage_types`**: Damage type definitions and relationships
-- **`images`**: Cached images from wiki and exports
+- Relative paths in production for `USER_DB_PATH` fatal-exit.
+- Do not point Codex at the user DB — only the catalog path is shared.
+- Schema auto-create on boot ≠ populated catalog; run [data import](../workflows/data-import.md).
 
-#### Derived Data Tables
+## Related
 
-- **`helminth_abilities`**: Subsumed abilities from Helminth system
-- **`archon_shards`**: Archon shard configurations and effects
-- **`warframe_rank_exceptions`**: Special rank handling for certain Warframes
-- **`damage_formulas`**: Wiki-scraped damage calculation formulas
-
-#### Import Metadata
-
-- **`import_runs`**: History of data import executions
-- **`export_manifest`**: Digital Extremes export metadata and hashes
-- **`scraping_cache`**: Wiki scraping results and timestamps
-
-### User Schema (`/server/db/userSchema.ts`)
-
-#### User Content
-
-- **`builds`**: Saved mod configurations with metadata
-- **`build_items`**: Individual mod placements within builds
-- **`loadouts`**: Collections of builds for quick access
-- **`loadout_builds`**: Many-to-many relationship between loadouts and builds
-- **`favorites`**: User-starred builds and equipment
-
-#### User Management
-
-- **`user_settings`**: Per-user application preferences
-- **`user_sync_state`**: Synchronization state with external systems
-
-### Session Schema (Auto-generated by better-sqlite3-session-store)
-
-## Database Connections
-
-### Connection Management (`/server/db/connection.ts`)
-
-```typescript
-// Single connections per database
-const catalogDb = new Database(CATALOG_DB_PATH, { readonly: true });
-const userDb = new Database(USER_DB_PATH);
-const sessionDb = new Database(SESSION_DB_PATH);
-
-// Connection pooling via better-sqlite3 connection reuse
-export function getCatalogDb() {
-  return catalogDb;
-}
-export function getUserDb() {
-  return userDb;
-}
-export function getSessionDb() {
-  return sessionDb;
-}
-```
-
-### Query Organization (`/server/db/queries.ts`)
-
-- **Prepared Statements**: Reusable query templates for performance
-- **Type-Safe Queries**: TypeScript interfaces for query results
-- **Transaction Support**: Atomic operations for data consistency
-
-## Data Import and Population
-
-### Startup Pipeline (`/server/import/startupPipeline.ts`)
-
-1. **Schema Creation**: Creates tables if they don't exist
-2. **Catalog Check**: Determines if import is needed (empty or stale)
-3. **Full Import**: Downloads DE exports, parses, inserts data
-4. **Wiki Scraping**: Fetches supplementary data from wiki
-5. **Image Caching**: Downloads and caches stance mod images
-6. **Derived Data**: Generates registries (Helminth, etc.)
-
-### Import Recovery
-
-- **Lease System**: Prevents concurrent import runs
-- **Error Recovery**: Resume failed imports from checkpoint
-- **Incremental Updates**: Update only changed data where possible
-
-## Indexing Strategy
-
-### Catalog Database Indexes
-
-```sql
--- Frequent lookups by unique identifiers
-CREATE INDEX idx_mods_uniqueName ON mods(uniqueName);
-CREATE INDEX idx_equipment_uniqueName ON equipment(uniqueName);
-
--- Equipment type queries
-CREATE INDEX idx_equipment_type ON equipment(type);
-CREATE INDEX idx_equipment_slots_equipmentId ON equipment_slots(equipmentId);
-
--- Search optimization
-CREATE INDEX idx_mods_name ON mods(name);
-CREATE INDEX idx_equipment_name ON equipment(name);
-```
-
-### User Database Indexes
-
-```sql
--- User-specific data access
-CREATE INDEX idx_builds_userId ON builds(userId);
-CREATE INDEX idx_builds_createdAt ON builds(createdAt DESC);
-
--- Loadout relationships
-CREATE INDEX idx_loadout_builds_loadoutId ON loadout_builds(loadoutId);
-CREATE INDEX idx_loadout_builds_buildId ON loadout_builds(buildId);
-```
-
-## Migration System
-
-### Schema Migrations (`/server/db/catalogMigrations.ts`)
-
-- **Versioned Migrations**: Sequential migration files
-- **Forward-Only**: Migrations only apply forward, no rollback
-- **Data Repair**: Specialized repair functions for data issues
-
-### Example Migration
-
-```typescript
-export const catalogMigrations = [
-  {
-    version: 1,
-    up: (db: Database) => {
-      db.exec(`
-        CREATE TABLE mods (
-          id INTEGER PRIMARY KEY,
-          uniqueName TEXT UNIQUE NOT NULL,
-          name TEXT NOT NULL,
-          -- ... other columns
-        );
-      `);
-    },
-  },
-  // Additional migrations...
-];
-```
-
-## Backup and Recovery
-
-### Backup Strategy
-
-- **Catalog Database**: Back up after successful import runs
-- **User Database**: Regular backups based on activity
-- **Session Database**: Ephemeral, can be recreated
-
-### Backup Locations
-
-- **`data/_backup/`**: Automatic backups
-- **`data/_atragraph-audit/`**: Audit logs and change tracking
-
-### Recovery Procedures
-
-1. **Catalog Corruption**: Restore from backup or re-run import
-2. **User Data Loss**: Restore from most recent backup
-3. **Session Loss**: No recovery needed - users re-authenticate
-
-## External Integration
-
-### Codex Project Integration
-
-- **Direct File Access**: Codex reads `armory.db` via `ARMORY_DB_PATH`
-- **Schema Stability**: Catalog schema must remain backward compatible
-- **Data Freshness**: Codex depends on Armory's import pipeline
-
-### Integration Points
-
-1. **Shared Database Path**: Environment variable coordination
-2. **Schema Versioning**: Version checks to ensure compatibility
-3. **Data Validation**: Cross-checks between Armory and Codex
-
-## Performance Considerations
-
-### Query Optimization
-
-- **Prepared Statements**: Reused across requests
-- **Appropriate Indexes**: Based on query patterns
-- **Selective Loading**: Load only required columns
-
-### Connection Management
-
-- **Single Connection**: Better-sqlite3 prefers single connection
-- **Read-Only Connections**: Catalog DB uses readonly connection
-- **Connection Pooling**: Built into better-sqlite3
-
-### Memory Management
-
-- **Streaming Results**: Large queries stream results instead of loading all at once
-- **Query Limits**: Pagination for large result sets
-- **Cache Warming**: Preload frequently accessed data on startup
-
-## Monitoring and Maintenance
-
-### Health Checks
-
-- **Database Connectivity**: `/readyz` endpoint verifies all DB connections
-- **Schema Validation**: Startup schema verification
-- **Import Status**: Monitoring of last successful import
-
-### Maintenance Tasks
-
-1. **Vacuum**: Periodically run `VACUUM` to optimize storage
-2. **Analyze**: Update query planner statistics
-3. **Backup Rotation**: Manage backup file retention
-
-## Source References
-
-- **Schema Definitions**: `/server/db/catalogSchema.ts`, `/server/db/userSchema.ts`
-- **Connection Management**: `/server/db/connection.ts`
-- **Query Templates**: `/server/db/queries.ts`
-- **Migrations**: `/server/db/catalogMigrations.ts`, `/server/db/repairArtifactSlots.ts`
-- **Import Pipeline**: `/server/import/startupPipeline.ts`
+- [System overview](overview.md)
+- [Data import](../workflows/data-import.md)
+- [Mod building](../workflows/mod-building.md)

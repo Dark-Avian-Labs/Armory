@@ -1,154 +1,74 @@
-# Armory OpenWiki Quickstart
-
-## Overview
-
-Armory is a Warframe mod builder and planner application that provides comprehensive mod configuration, damage calculation, and build management for Warframe players. The application imports game data directly from Digital Extremes' public exports and supplements it with data scraped from the Warframe wiki.
-
-**Key Features:**
-
-- Full mod builder with slot management and polarity matching
-- Damage calculation engine using wiki-scraped formulas
-- Helminth ability system integration
-- User build saving and loadout management
-- Authentication via Clerk with role-based access
-- Direct database integration with external Codex project
-
-## Repository Structure
-
-```
-/
-├── client/                 # React frontend (Vite + Tailwind CSS)
-│   ├── app/               # Application routes and pages
-│   ├── components/        # UI components by domain
-│   ├── features/          # Feature-based modules
-│   ├── hooks/            # Custom React hooks
-│   └── utils/            # Client-side utilities
-├── server/                # Express.js backend
-│   ├── routes/           # API endpoints
-│   ├── db/              # Database layer (SQLite)
-│   ├── import/          # Data import pipeline
-│   ├── scraping/        # Wiki scraping functionality
-│   └── auth/            # Clerk authentication
-├── shared/               # Shared TypeScript definitions
-├── scripts/             # Build and data generation scripts
-├── data/               # SQLite database files
-└── tests/              # Test suite (Vitest)
-```
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 26+
-- pnpm 11+
-- Clerk account (for authentication)
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies: `pnpm install`
-3. Copy environment file: `cp .env.example .env`
-4. Configure required environment variables (see [Environment Configuration](operations/environment.md))
-5. Build the application: `pnpm run build`
-6. Start the server: `pnpm start`
-
-### Development
-
-- Run type checking: `pnpm run typecheck`
-- Run tests: `pnpm run test`
-- Run validation suite: `pnpm run validate`
-- Start development server: Use Vite dev server for client development
-
-## Documentation Sections
-
-### [Architecture](architecture/)
-
-- **System Overview**: Full-stack React/Express architecture with SQLite databases
-- **Database Design**: Three SQLite databases (catalog, user data, sessions)
-- **Authentication**: Clerk integration with CSRF protection
-- **Data Flow**: Import pipeline and wiki scraping workflows
-
-### [Workflows](workflows/)
-
-- **Mod Building**: Create and configure Warframe mod builds
-- **Data Import**: Automated data import from DE exports and wiki
-- **User Builds**: Save, load, and share builds with other users
-- **Damage Calculation**: Real-time damage computation with wiki formulas
-
-### [Domain Concepts](domain/)
-
-- **Warframe Modding**: Game-specific modding concepts and mechanics
-- **Helminth System**: Ability subsumption and compatibility
-- **Equipment Types**: Warframes, weapons, companions, and archwings
-- **Damage System**: Damage types, modifiers, and calculation formulas
-
-### [Operations](operations/)
-
-- **Deployment**: Production deployment and health monitoring
-- **Database Management**: Schema creation, migrations, and backups
-- **Environment Configuration**: Required environment variables
-- **Troubleshooting**: Common issues and solutions
-
-### [Testing](testing/)
-
-- **Test Structure**: Vitest setup and test organization
-- **API Testing**: Express route testing with supertest
-- **Unit Testing**: Business logic testing patterns
-- **Quality Checks**: Linting, formatting, and type checking
-
-### [Integrations](integrations/)
-
-- **Clerk Authentication**: User authentication and webhook handling
-- **Wiki Scraping**: Warframe wiki data integration
-- **Codex Integration**: Database sharing with external Codex project
-- **Digital Extremes API**: DE export manifest and data download
-
-## Key Source Files
-
-### Server Entry Points
-
-- `/server/index.ts` - Main Express server configuration
-- `/server/routes/api.ts` - Primary API router
-- `/server/routes/buildsRouter.ts` - Build management API
-
-### Client Entry Points
-
-- `/client/main.tsx` - React application entry point
-- `/client/App.tsx` - Root application component
-
-### Database Schema
-
-- `/server/db/catalogSchema.ts` - Catalog database table definitions
-- `/server/db/userSchema.ts` - User data table definitions
-- `/server/db/schema.js` - Schema creation utilities
-
-### Data Import
-
-- `/server/import/startupPipeline.ts` - Complete data import pipeline
-- `/server/scraping/wikiScraper.ts` - Wiki scraping foundation
-- `/scripts/generate-helminth-registry.mjs` - Data generation scripts
-
-## Development Workflow
-
-1. **Database Setup**: The application automatically creates SQLite databases on first run
-2. **Data Import**: Initial data import runs automatically on server startup
-3. **Client Development**: Use Vite dev server for hot reload during development
-4. **Testing**: Run `pnpm run validate` before committing changes
-5. **Building**: Production build compiles both server and client code
-
-## Environment Notes
-
-- **Development Mode**: API-only mode; client served via Vite dev server
-- **Production Mode**: Full-stack mode; client built and served by Express
-- **Encrypted Environment**: Supports dotenvx for encrypted environment variables
-- **Required Variables**: Clerk keys, session secret, wiki user-agent
-
-## Related Projects
-
-- **Codex**: External project that reads Armory's SQLite catalog directly for Warframe data synchronization
-- **Digital Extremes Export API**: Source of official game data
-- **Warframe Wiki**: Supplementary data source for damage formulas and images
-
+---
+type: Repository Overview
+title: Armory Quickstart
+description: Entrypoint for agents and humans — what Armory is, how to run it, and where to dig deeper.
+tags: [quickstart, armory]
+timestamp: 2026-07-18T21:05:00Z
 ---
 
-**Next Steps:** Review the [Architecture Overview](architecture/) for detailed technical documentation, or check [Workflows](workflows/) for business process documentation.
+# Armory Quickstart
+
+## What it is
+
+**Armory** is a Warframe mod builder and planner. It imports equipment and mod data from Digital Extremes’ public exports (plus wiki and third-party enrichment), lets players configure builds with Helminth, Archon shards, and Incarnon options, and persists user builds/loadouts behind Clerk auth. Codex reads Armory’s catalog SQLite (`ARMORY_DB_PATH`) for Warframe sync.
+
+## Stack and layout
+
+| Layer   | Choice                                                         |
+| ------- | -------------------------------------------------------------- |
+| Runtime | Node ≥26, pnpm ≥11 (`packageManager` exact version)            |
+| Server  | Express 5, better-sqlite3, TypeScript ESM                      |
+| Client  | React 19, Vite 8, Tailwind CSS 4, React Router 7               |
+| Auth    | Clerk (`@clerk/express` / `@clerk/react`) + CSRF session store |
+
+```
+client/     React SPA (ModBuilder, builds, loadouts, admin)
+server/     Express API, import pipeline, scraping, auth, DB
+shared/     Build keys, Helminth/Archon registries, pipeline steps
+scripts/    Generators, runtime-preflight, quality helpers
+tests/      Cross-cutting Vitest suites
+data/       Default SQLite + exports/images (local)
+```
+
+## How to run
+
+1. `pnpm install`
+2. Copy `.env.example` → `.env` (or use dotenvx with `DOTENV_PRIVATE_KEY_DEVELOPMENT`)
+3. `pnpm run build`
+4. Populate catalog: `pnpm run data:import` (or Admin Force Full Re-import after first start)
+5. `pnpm start` — default port **3002**
+
+Preferred encrypted-env start (from [AGENTS.md](../AGENTS.md)):
+
+```bash
+NODE_ENV=development pnpm dotenvx run -f .env.development -- node dist/server/index.js
+```
+
+Without the private key: `NODE_ENV=development node --env-file=.env dist/server/index.js`.
+
+**Dev UI:** Express serves the SPA only when `NODE_ENV=production`. In development the API is API-only (root returns 404); use Vite for the client.
+
+Quality gate: `pnpm run validate` (preflight → format → lint → typecheck → tests).
+
+## Concept map
+
+| Area         | Page                                                                                                                                            |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture | [System overview](architecture/overview.md) · [Databases](architecture/database.md)                                                             |
+| Workflows    | [Data import](workflows/data-import.md) · [Mod building](workflows/mod-building.md) · [Share and visibility](workflows/share-and-visibility.md) |
+| Domain       | [Warframe modding](domain/warframe-modding.md) · [Codex modular weapons](domain/codex-modular-weapons.md)                                       |
+| Integrations | [Clerk auth](integrations/clerk-auth.md) · [Warframe Market links](integrations/warframe-market.md)                                             |
+| Operations   | [Deployment](operations/deployment.md)                                                                                                          |
+| Testing      | [Test structure](testing/test-structure.md)                                                                                                     |
+
+## Agent gotchas
+
+- Keep `packageManager` as an **exact** pnpm version (Corepack rejects dist-tags).
+- Placeholder Clerk keys (`pk_test_placeholder` / `sk_test_placeholder`) make Clerk middleware return **500** on routes — server still listens.
+- Three SQLite files: catalog (`ARMORY_DB_PATH`), user (`USER_DB_PATH`), session (`SESSION_DB_PATH`). Codex reads the catalog only.
+- Server start creates/migrates schema; **full catalog populate is `data:import` or admin import**, not automatic on listen.
+- Build keys in `mod_config` use `/Armory/Helminth/...`, `/Armory/Ability/...`, `/Armory/Archon/...` (older v1 fields still load).
+- Force Full Re-import resets **catalog tables only**; user DB is untouched.
+- Start/import Armory before Codex so `armory.db` exists and is populated.
+- Windows agent shells may prepend Node 22 — prefer system Node 26; rebuild `better-sqlite3` after Node changes.
+- UI tokens are mirrored manually with Codex (no shared UI package).
