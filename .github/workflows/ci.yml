@@ -36,7 +36,7 @@ concurrency:
 jobs:
   deployment-check:
     if: ${{ !contains(github.event.head_commit.message, 'chore(release)') && !contains(github.event.head_commit.message, 'build(release)') }}
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 10
 
     outputs:
@@ -116,7 +116,7 @@ jobs:
           echo "Reason: Only devDependencies, lockfile, or non-runtime package.json edits"
 
   version:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 10
 
     needs: [deployment-check]
@@ -138,7 +138,7 @@ jobs:
         uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -161,7 +161,7 @@ jobs:
           echo "sha=$(git rev-parse origin/main)" >> "$GITHUB_OUTPUT"
 
   validate:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 10
 
     needs: [deployment-check, version]
@@ -177,7 +177,7 @@ jobs:
         uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
@@ -185,20 +185,11 @@ jobs:
       - name: Install dependencies (fresh lockfile)
         uses: ./.github/actions/pnpm-install-fresh
 
-      - name: Check formatting
-        run: pnpm run check-format
-
-      - name: Check linting
-        run: pnpm run lint
-
-      - name: Check types
-        run: pnpm run typecheck
-
-      - name: Run tests
-        run: pnpm run test
+      - name: Run quality checks
+        run: pnpm run validate
 
   build-and-deploy:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 10
 
     needs: [deployment-check, version, validate]
@@ -214,7 +205,7 @@ jobs:
         uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
@@ -350,7 +341,7 @@ jobs:
         run: rm -f ~/.ssh/deploy_key
 
   discord-status:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 10
     needs: [deployment-check, version, validate, build-and-deploy]
     if: ${{ always() && github.ref == 'refs/heads/main' }}

@@ -1,12 +1,14 @@
 # Armory
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Cursor](https://img.shields.io/badge/Cursor-IDE-141414?logo=cursor&logoColor=white)](https://cursor.com)
+[![CI](https://github.com/Dark-Avian-Labs/Armory/actions/workflows/ci.yml/badge.svg)](https://github.com/Dark-Avian-Labs/Armory/actions/workflows/ci.yml)
+[![PR](https://github.com/Dark-Avian-Labs/Armory/actions/workflows/pr.yml/badge.svg)](https://github.com/Dark-Avian-Labs/Armory/actions/workflows/pr.yml)
 ![Node](https://img.shields.io/badge/Node-%3E%3D26-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react&logoColor=black)
 ![Vite](https://img.shields.io/badge/Vite-8.x-646CFF?logo=vite&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?logo=tailwindcss&logoColor=white)
+[![Cursor](https://img.shields.io/badge/Cursor-IDE-141414?logo=cursor&logoColor=white)](https://cursor.com)
 
 Armory is a mod builder and planner for Warframe. It mirrors in-game feel where practical and surfaces extra detail and stats.
 Mod and equipment data come from Digital Extremes’ public export, with wiki and third-party sources used where helpful.
@@ -17,7 +19,7 @@ Armory also backs Codex’s Warframe import workflow. Sign-in, access control, a
 - Node.js 26+
 - pnpm 11+
 
-## Setup
+## Quick start
 
 1. Install Node.js and pnpm using your preferred method for your OS.
 
@@ -31,7 +33,6 @@ Armory also backs Codex’s Warframe import workflow. Sign-in, access control, a
 
    ```bash
    cp .env.example .env
-   nano .env
    ```
 
 4. Build and run:
@@ -40,6 +41,15 @@ Armory also backs Codex’s Warframe import workflow. Sign-in, access control, a
    pnpm run build
    pnpm start
    ```
+
+## Examples
+
+```bash
+curl -sS http://127.0.0.1:3002/healthz
+curl -sS http://127.0.0.1:3002/readyz
+```
+
+After deploy, smoke-check `GET /healthz` and `GET /readyz` on the public host (expect `200` when databases are reachable).
 
 ## dotenvx and encrypted env files
 
@@ -58,7 +68,7 @@ Suggested secret naming when vault is enabled:
 
 Use one key per environment to reduce blast radius.
 
-## Environment variables
+## Environment
 
 | Variable                | Description                                                                        |
 | ----------------------- | ---------------------------------------------------------------------------------- |
@@ -82,6 +92,7 @@ Client `VITE_*` variables are listed in `.env.example`.
 
 | Script                  | Description                                      |
 | ----------------------- | ------------------------------------------------ |
+| `pnpm run validate`     | Format check, lint, typecheck, and tests.        |
 | `pnpm run build`        | Compile server TypeScript and Vite client build. |
 | `pnpm start`            | Run production server from `dist/`.              |
 | `pnpm run typecheck`    | Typecheck server and client.                     |
@@ -90,10 +101,11 @@ Client `VITE_*` variables are listed in `.env.example`.
 | `pnpm run lint:fix`     | Run Oxlint with `--fix`.                         |
 | `pnpm run format`       | Run Oxfmt.                                       |
 | `pnpm run check-format` | Verify Oxfmt formatting.                         |
-| `pnpm run validate`     | Format check, lint, typecheck, and tests.        |
 | `pnpm run test`         | Run Vitest once.                                 |
 
-After deploy, smoke-check `GET /healthz` and `GET /readyz` on the public host (expect `200` when databases are reachable).
+## Development
+
+Agent-oriented docs: [openwiki/quickstart.md](openwiki/quickstart.md). Org standards: AppBase `docs/org-standards/`.
 
 ## License
 
