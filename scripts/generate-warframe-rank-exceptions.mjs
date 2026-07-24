@@ -6,6 +6,46 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const sourcePath = path.join(root, 'scripts/data/warframe-rank-exceptions.json');
 const outPath = path.join(root, 'shared/warframeRankExceptions.generated.ts');
 
+/**
+ * Emit TypeScript object literals that match oxfmt (unquoted keys, single-quoted
+ * strings, trailing commas). JSON.stringify output fails check-format.
+ */
+function formatTsString(value) {
+  return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+}
+
+function formatBonuses(bonuses) {
+  return `{
+      health: ${bonuses.health},
+      shield: ${bonuses.shield},
+      armor: ${bonuses.armor},
+      energy: ${bonuses.energy},
+    }`;
+}
+
+function formatEntries(rows) {
+  const items = rows.map(
+    (row) => `  {
+    uniqueName: ${formatTsString(row.uniqueName)},
+    name: ${formatTsString(row.name)},
+    bonuses: ${formatBonuses(row.bonuses)},
+  }`,
+  );
+  return `[\n${items.join(',\n')},\n]`;
+}
+
+function formatByUniqueName(byUniqueName) {
+  const items = Object.entries(byUniqueName).map(
+    ([uniqueName, bonuses]) => `  ${formatTsString(uniqueName)}: {
+    health: ${bonuses.health},
+    shield: ${bonuses.shield},
+    armor: ${bonuses.armor},
+    energy: ${bonuses.energy},
+  }`,
+  );
+  return `{\n${items.join(',\n')},\n}`;
+}
+
 function readSourceRows() {
   const raw = fs.readFileSync(sourcePath, 'utf8');
   const rows = JSON.parse(raw);
@@ -43,19 +83,9 @@ export interface WarframeRankExceptionEntry {
   bonuses: RankStatBonuses;
 }
 
-export const WARFRAME_RANK_EXCEPTION_ENTRIES: readonly WarframeRankExceptionEntry[] = ${JSON.stringify(
-  rows.map((row) => ({
-    uniqueName: row.uniqueName,
-    name: row.name,
-    bonuses: row.bonuses,
-  })),
-  null,
-  2,
-)};
+export const WARFRAME_RANK_EXCEPTION_ENTRIES: readonly WarframeRankExceptionEntry[] = ${formatEntries(rows)};
 
-export const WARFRAME_RANK_EXCEPTIONS_BY_UNIQUE_NAME: Readonly<
-  Record<string, RankStatBonuses>
-> = ${JSON.stringify(byUniqueName, null, 2)};
+export const WARFRAME_RANK_EXCEPTIONS_BY_UNIQUE_NAME: Readonly<Record<string, RankStatBonuses>> = ${formatByUniqueName(byUniqueName)};
 `;
 
 fs.writeFileSync(outPath, body, 'utf8');

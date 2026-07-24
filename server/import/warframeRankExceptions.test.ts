@@ -1,11 +1,17 @@
+import fs from 'fs';
+import path from 'path';
+
 import { describe, expect, it } from 'vitest';
 
+import { PROJECT_ROOT } from '../config.js';
 import {
   generateWarframeRankExceptions,
   hashWarframeRankExceptionsSource,
   isWarframeRankExceptionsSourceAvailable,
   warframeRankExceptionsSourceChanged,
 } from './warframeRankExceptions.js';
+
+const OUT_PATH = path.join(PROJECT_ROOT, 'shared/warframeRankExceptions.generated.ts');
 
 describe('warframeRankExceptions', () => {
   it('has a committed source JSON in the repo', () => {
@@ -20,8 +26,11 @@ describe('warframeRankExceptions', () => {
   });
 
   it('regenerates the TypeScript registry from source JSON', () => {
+    const before = fs.readFileSync(OUT_PATH, 'utf8');
     const result = generateWarframeRankExceptions();
     expect(result.entryCount).toBeGreaterThan(0);
     expect(warframeRankExceptionsSourceChanged()).toBe(false);
+    // Generator must emit oxfmt-compatible output so regen does not dirty the tree.
+    expect(fs.readFileSync(OUT_PATH, 'utf8')).toBe(before);
   });
 });
