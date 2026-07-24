@@ -19,8 +19,7 @@ export function SignInPage() {
       subtitle="Plan and share Warframe builds with your Dark Avian Labs account."
     >
       <SignIn
-        routing="path"
-        path="/sign-in"
+        routing="hash"
         signUpUrl="/sign-up"
         fallbackRedirectUrl="/builder/builds"
         appearance={buildClerkAppearance(mode)}
