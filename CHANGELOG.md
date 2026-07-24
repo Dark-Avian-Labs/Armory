@@ -330,3 +330,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.67.14** `chore` [#426](https://github.com/Dark-Avian-Labs/Armory/pull/426): update dependencies
 - **v1.67.15** `chore` [#431](https://github.com/Dark-Avian-Labs/Armory/pull/431): chore/org standards alignment
 - **v1.67.16** `chore` [#439](https://github.com/Dark-Avian-Labs/Armory/pull/439): fix/clerk auth hash routing
+- **v1.67.17** `chore` [#441](https://github.com/Dark-Avian-Labs/Armory/pull/441): fix/rank exceptions oxfmt output
