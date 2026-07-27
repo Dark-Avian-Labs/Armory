@@ -22,7 +22,10 @@ import {
   reconcileStoredBuildModSlots,
   type BuildModSlot,
 } from '../../../shared/buildSlotLayout.js';
-import type { EquipmentSlotConfigKey } from '../../../shared/equipmentSlotConfig.js';
+import {
+  equipmentExilusArtifactIndex,
+  type EquipmentSlotConfigKey,
+} from '../../../shared/equipmentSlotConfig.js';
 import {
   formatSiriusOrionWarframeHeading,
   siriusOrionEquipmentSaveName,
@@ -1062,7 +1065,7 @@ export function ModBuilder() {
     const exilusArtifactIndex =
       equipmentType === 'warframe'
         ? warframeExilusArtifactIndex(artifactSlotsRaw, config.generalSlots)
-        : config.generalSlots + 1;
+        : equipmentExilusArtifactIndex(config);
     if (
       config.hasExilus &&
       !isSelectedCompanionWeapon &&

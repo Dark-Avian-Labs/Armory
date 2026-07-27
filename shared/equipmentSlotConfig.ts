@@ -120,13 +120,22 @@ export const EQUIPMENT_SLOT_CONFIGS: Record<EquipmentSlotConfigKey, EquipmentSlo
   },
 };
 
+export function equipmentHasSpecialSlot(config: EquipmentSlotConfig): boolean {
+  return config.hasAura || config.hasStance || config.hasPosture;
+}
+
+/** Artifact-slot index of exilus for non-warframe layouts (and compact warframes). */
+export function equipmentExilusArtifactIndex(config: EquipmentSlotConfig): number {
+  return config.generalSlots + (equipmentHasSpecialSlot(config) ? 1 : 0);
+}
+
 export function artifactSlotsStorageLength(
   config: EquipmentSlotConfig,
   options?: { hasSecondAura?: boolean },
 ): number {
   return (
     config.generalSlots +
-    (config.hasAura || config.hasStance || config.hasPosture ? 1 : 0) +
+    (equipmentHasSpecialSlot(config) ? 1 : 0) +
     (options?.hasSecondAura ? 1 : 0) +
     (config.hasExilus ? 1 : 0)
   );

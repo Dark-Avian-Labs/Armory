@@ -6,7 +6,11 @@ import {
   normalizeWarframeArtifactSlotsForLoad,
   warframeExilusArtifactIndex,
 } from './artifactSlotState.js';
-import { EQUIPMENT_SLOT_CONFIGS, type EquipmentSlotConfigKey } from './equipmentSlotConfig.js';
+import {
+  EQUIPMENT_SLOT_CONFIGS,
+  equipmentExilusArtifactIndex,
+  type EquipmentSlotConfigKey,
+} from './equipmentSlotConfig.js';
 import { POLARITIES, type PolarityKey } from './polarities.js';
 import { equipmentHasStanceSlot, weaponOmitsExilusSlot } from './specialEquipmentSlots.js';
 
@@ -139,7 +143,7 @@ export function buildModSlotsFromArtifactSlots(input: BuildSlotLayoutInput): Bui
   const exilusArtifactIndex =
     equipmentType === 'warframe'
       ? warframeExilusArtifactIndex(artifactSlotsRaw, config.generalSlots)
-      : config.generalSlots + 1;
+      : equipmentExilusArtifactIndex(config);
 
   if (
     config.hasExilus &&

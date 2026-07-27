@@ -74,4 +74,27 @@ describe('artifactSlotLayout', () => {
     expect(saved).toHaveLength(12);
     expect(saved[0]).toBe('AP_ATTACK');
   });
+
+  it('round-trips primary gun exilus at index 8 (9-slot storage)', () => {
+    const slots = [
+      'AP_ATTACK',
+      'AP_UNIVERSAL',
+      'AP_UNIVERSAL',
+      'AP_UNIVERSAL',
+      'AP_UNIVERSAL',
+      'AP_UNIVERSAL',
+      'AP_UNIVERSAL',
+      'AP_DEFENSE',
+      'AP_TACTIC',
+    ];
+    const rows = buildArtifactSlotEditorRows('primary', slots, 'Boltor Prime');
+    expect(rows.find((r) => r.id === 'exilus')).toMatchObject({
+      enabled: true,
+      polarity: 'AP_TACTIC',
+      artifactIndex: 8,
+    });
+    const saved = artifactSlotsFromEditorRows('primary', rows);
+    expect(saved).toHaveLength(9);
+    expect(saved[8]).toBe('AP_TACTIC');
+  });
 });

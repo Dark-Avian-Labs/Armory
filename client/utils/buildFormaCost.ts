@@ -6,6 +6,7 @@ import {
   normalizeWarframeArtifactSlotsForLoad,
   warframeExilusArtifactIndex,
 } from '../../shared/artifactSlotState.js';
+import { equipmentExilusArtifactIndex } from '../../shared/equipmentSlotConfig.js';
 import {
   EQUIPMENT_SLOT_CONFIGS,
   POLARITIES,
@@ -110,7 +111,7 @@ function buildDefaultPolarities(
   const exilusArtifactIndex =
     equipmentType === 'warframe'
       ? warframeExilusArtifactIndex(artifactSlotsRaw, config.generalSlots)
-      : config.generalSlots + 1;
+      : equipmentExilusArtifactIndex(config);
 
   if (
     config.hasExilus &&
