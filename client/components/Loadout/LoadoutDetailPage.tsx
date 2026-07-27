@@ -18,7 +18,7 @@ import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 type LookupRecord = Record<string, Record<string, unknown>>;
 
-const WARFRAME_LIKE: EquipmentType[] = ['warframe', 'archwing', 'necramech'];
+const WARFRAME_LIKE: EquipmentType[] = ['warframe', 'archwing', 'necramech', 'companion'];
 const WEAPON_LIKE: EquipmentType[] = [
   'primary',
   'secondary',
@@ -196,13 +196,17 @@ function LoadoutBuildSummaryCard({
   const slots = (Array.isArray(build.slots) ? build.slots : []) as ModSlot[];
   const wfLike = isWarframeLike(build.equipment_type);
   const wpnLike = isWeaponLike(build.equipment_type);
+  const isCompanion = build.equipment_type === 'companion';
 
   const warframe = wfLike && equipmentRow ? (equipmentRow as unknown as Warframe) : null;
   const weapon = wpnLike && equipmentRow ? (equipmentRow as unknown as Weapon) : null;
 
   const shardBonuses = useMemo(
-    () => extractArchonShardBonuses(build.shardSlots, undefined),
-    [build.shardSlots],
+    () =>
+      build.equipment_type === 'warframe'
+        ? extractArchonShardBonuses(build.shardSlots, undefined)
+        : {},
+    [build.equipment_type, build.shardSlots],
   );
 
   const wfCalc = useMemo(() => {
@@ -224,7 +228,7 @@ function LoadoutBuildSummaryCard({
   }, [weapon, slots, build.valenceBonus]);
 
   const abilityNames = useMemo(() => {
-    if (!warframe?.abilities) return [] as string[];
+    if (!warframe?.abilities || isCompanion) return [] as string[];
     try {
       const parsed = JSON.parse(String(warframe.abilities)) as unknown;
       if (!Array.isArray(parsed)) return [];
@@ -238,7 +242,7 @@ function LoadoutBuildSummaryCard({
     } catch {
       return [];
     }
-  }, [warframe]);
+  }, [warframe, isCompanion]);
 
   return (
     <div className="glass-shell flex flex-col gap-3 p-4">
@@ -264,7 +268,28 @@ function LoadoutBuildSummaryCard({
         </div>
       </div>
 
-      {wfCalc ? (
+      {wfCalc && isCompanion ? (
+        <dl className="text-muted grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
+          <dt>Health</dt>
+          <dd className="text-foreground text-right font-medium">
+            {wfCalc.health.modded.toFixed(0)}
+          </dd>
+          <dt>Shield</dt>
+          <dd className="text-foreground text-right font-medium">
+            {wfCalc.shield.modded.toFixed(0)}
+          </dd>
+          <dt>Armor</dt>
+          <dd className="text-foreground text-right font-medium">
+            {wfCalc.armor.modded.toFixed(0)}
+          </dd>
+          <dt>Energy</dt>
+          <dd className="text-foreground text-right font-medium">
+            {wfCalc.energy.modded.toFixed(0)}
+          </dd>
+        </dl>
+      ) : null}
+
+      {wfCalc && !isCompanion ? (
         <dl className="text-muted grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
           <dt>Duration</dt>
           <dd className="text-foreground text-right font-medium">

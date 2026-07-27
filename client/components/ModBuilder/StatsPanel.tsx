@@ -2,21 +2,32 @@ import { useEffect, useMemo, useState, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 import type { IncarnonData, IncarnonSelection } from '../../types/incarnon';
-import type { Warframe, Weapon, EquipmentType, ModSlot, ValenceBonus } from '../../types/warframe';
+import type {
+  Companion,
+  Warframe,
+  Weapon,
+  EquipmentType,
+  ModSlot,
+  ValenceBonus,
+} from '../../types/warframe';
 import { extractArchonShardBonuses } from '../../utils/archonShardBonuses';
 import { formatPercent } from '../../utils/damage';
 import { calculateWeaponDps, type WeaponCalcResult } from '../../utils/damageCalc';
+import { isAvatarStatsEquipmentType } from '../../utils/equipmentKind';
 import { getDispositionPips, getEffectiveRivenDisposition } from '../../utils/riven';
 import {
   calculateWarframeStats,
   getWarframeBaseStatsAtMaxRank,
+  type AvatarStatsEntity,
   type WarframeBonusEffects,
 } from '../../utils/warframeCalc';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import type { ShardSlotConfig, ShardType } from './ArchonShardSlots';
 
+type AvatarEquipment = Warframe | Companion;
+
 interface StatsPanelProps {
-  equipment: Warframe | Weapon;
+  equipment: AvatarEquipment | Weapon;
   type: EquipmentType;
   displayName?: string;
   abilities?: ReactNode;
@@ -44,6 +55,7 @@ export function StatsPanel({
   incarnonSelections,
   headerActions,
 }: StatsPanelProps) {
+  const isAvatar = isAvatarStatsEquipmentType(type);
   return (
     <div className="glass-panel overflow-visible p-4">
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -53,14 +65,15 @@ export function StatsPanel({
         ) : null}
       </div>
 
-      {type === 'warframe' ? (
-        <WarframeStats
-          warframe={equipment as Warframe}
+      {isAvatar ? (
+        <AvatarStats
+          avatar={equipment as AvatarEquipment}
+          compact={type === 'companion'}
           displayName={displayName}
-          abilities={abilities}
+          abilities={type === 'warframe' ? abilities : undefined}
           slots={slots}
-          shardSlots={shardSlots}
-          shardTypes={shardTypes}
+          shardSlots={type === 'warframe' ? shardSlots : undefined}
+          shardTypes={type === 'warframe' ? shardTypes : undefined}
         />
       ) : (
         <WeaponStats
@@ -76,31 +89,39 @@ export function StatsPanel({
   );
 }
 
-function WarframeStats({
-  warframe,
+function AvatarStats({
+  avatar,
+  compact,
   displayName,
   abilities,
   slots,
   shardSlots,
   shardTypes,
 }: {
-  warframe: Warframe;
+  avatar: AvatarEquipment;
+  compact: boolean;
   displayName?: string;
   abilities?: ReactNode;
   slots?: ModSlot[];
   shardSlots?: ShardSlotConfig[];
   shardTypes?: ShardType[];
 }) {
+  const entity = avatar as AvatarStatsEntity & AvatarEquipment;
   const shardBonuses = useMemo<WarframeBonusEffects>(() => {
     return extractArchonShardBonuses(shardSlots, shardTypes);
   }, [shardSlots, shardTypes]);
 
-  const baseStats = useMemo(() => getWarframeBaseStatsAtMaxRank(warframe), [warframe]);
+  const baseStats = useMemo(() => getWarframeBaseStatsAtMaxRank(entity), [entity]);
 
   const calc = useMemo(() => {
     if (!slots) return null;
-    return calculateWarframeStats(warframe, slots, shardBonuses);
-  }, [warframe, slots, shardBonuses]);
+    return calculateWarframeStats(entity, slots, shardBonuses);
+  }, [entity, slots, shardBonuses]);
+
+  const sprintSpeed = 'sprint_speed' in avatar ? avatar.sprint_speed : undefined;
+  const passiveWiki =
+    'passive_description_wiki' in avatar ? avatar.passive_description_wiki : undefined;
+  const passiveBase = 'passive_description' in avatar ? avatar.passive_description : undefined;
 
   const baseStatsDisplay: Array<{
     label: string;
@@ -138,16 +159,20 @@ function WarframeStats({
         color: base != null && m != null ? statColor(base, m) : undefined,
       };
     })(),
-    (() => {
-      const base = warframe.sprint_speed;
-      const m = calc?.sprintSpeed.modded;
-      return {
-        label: 'Sprint Speed',
-        baseDisplay: base?.toFixed(2),
-        moddedDisplay: m != null ? m.toFixed(2) : undefined,
-        color: base != null && m != null ? statColor(base, m) : undefined,
-      };
-    })(),
+    ...(!compact
+      ? [
+          (() => {
+            const base = sprintSpeed;
+            const m = calc?.sprintSpeed.modded;
+            return {
+              label: 'Sprint Speed',
+              baseDisplay: base?.toFixed(2),
+              moddedDisplay: m != null ? m.toFixed(2) : undefined,
+              color: base != null && m != null ? statColor(base, m) : undefined,
+            };
+          })(),
+        ]
+      : []),
     (() => {
       const base = baseStats.power;
       const m = calc?.energy.modded;
@@ -165,38 +190,40 @@ function WarframeStats({
     baseDisplay: string;
     moddedDisplay?: string;
     color?: StatColor;
-  }> = calc
-    ? [
-        {
-          label: 'Duration',
-          baseDisplay: '100%',
-          moddedDisplay: `${calc.abilityDuration.modded.toFixed(0)}%`,
-          color: statColor(100, calc.abilityDuration.modded),
-        },
-        {
-          label: 'Efficiency',
-          baseDisplay: '100%',
-          moddedDisplay: `${calc.abilityEfficiency.modded.toFixed(0)}%`,
-          color: statColor(100, calc.abilityEfficiency.modded),
-        },
-        {
-          label: 'Range',
-          baseDisplay: '100%',
-          moddedDisplay: `${calc.abilityRange.modded.toFixed(0)}%`,
-          color: statColor(100, calc.abilityRange.modded),
-        },
-        {
-          label: 'Strength',
-          baseDisplay: '100%',
-          moddedDisplay: `${calc.abilityStrength.modded.toFixed(0)}%`,
-          color: statColor(100, calc.abilityStrength.modded),
-        },
-      ]
-    : [];
+  }> =
+    !compact && calc
+      ? [
+          {
+            label: 'Duration',
+            baseDisplay: '100%',
+            moddedDisplay: `${calc.abilityDuration.modded.toFixed(0)}%`,
+            color: statColor(100, calc.abilityDuration.modded),
+          },
+          {
+            label: 'Efficiency',
+            baseDisplay: '100%',
+            moddedDisplay: `${calc.abilityEfficiency.modded.toFixed(0)}%`,
+            color: statColor(100, calc.abilityEfficiency.modded),
+          },
+          {
+            label: 'Range',
+            baseDisplay: '100%',
+            moddedDisplay: `${calc.abilityRange.modded.toFixed(0)}%`,
+            color: statColor(100, calc.abilityRange.modded),
+          },
+          {
+            label: 'Strength',
+            baseDisplay: '100%',
+            moddedDisplay: `${calc.abilityStrength.modded.toFixed(0)}%`,
+            color: statColor(100, calc.abilityStrength.modded),
+          },
+        ]
+      : [];
 
   const passiveText = useMemo(() => {
-    const wiki = warframe.passive_description_wiki?.trim() ?? '';
-    const base = warframe.passive_description?.trim() ?? '';
+    if (compact) return '';
+    const wiki = passiveWiki?.trim() ?? '';
+    const base = passiveBase?.trim() ?? '';
     let raw: string;
     if (wiki && base) {
       const wikiWordCount = wiki.split(/\s+/).filter(Boolean).length;
@@ -207,14 +234,14 @@ function WarframeStats({
       raw = wiki || base;
     }
     return raw ? formatPassiveLineBreaks(raw) : '';
-  }, [warframe.passive_description, warframe.passive_description_wiki]);
+  }, [compact, passiveBase, passiveWiki]);
 
   return (
     <div className="space-y-2">
-      {warframe.image_path && (
+      {avatar.image_path && (
         <img
-          src={`/images${warframe.image_path}`}
-          alt={warframe.name}
+          src={`/images${avatar.image_path}`}
+          alt={avatar.name}
           className="mx-auto mb-3 h-24 w-24 rounded-lg object-cover"
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = 'none';
@@ -222,10 +249,10 @@ function WarframeStats({
         />
       )}
       <div className="text-foreground text-center text-sm font-semibold">
-        {displayName ?? warframe.name}
+        {displayName ?? avatar.name}
       </div>
       <div className="text-muted text-center text-xs">
-        MR <span className="font-mono tabular-nums">{warframe.mastery_req}</span>
+        MR <span className="font-mono tabular-nums">{avatar.mastery_req}</span>
       </div>
 
       <div className="mt-3 space-y-1.5">

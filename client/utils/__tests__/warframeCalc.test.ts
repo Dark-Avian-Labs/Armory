@@ -263,3 +263,41 @@ describe('Inaros Prime Immortal build health regression', () => {
     expect(result.health.modded).toBe(7245);
   });
 });
+
+describe('calculateWarframeStats for companions', () => {
+  function makeCompanion() {
+    return {
+      unique_name: '/Lotus/Types/Friendly/Pets/CatbrowPet/CatbrowPetPowerSuit',
+      name: 'Smeeta Kavat',
+      health: 50,
+      shield: 70,
+      armor: 50,
+      power: 100,
+      product_category: 'KubrowPets',
+      mastery_req: 0,
+    };
+  }
+
+  it('scales companion base stats to max rank', () => {
+    const result = calculateWarframeStats(makeCompanion(), []);
+    expect(result.health.base).toBe(150);
+    expect(result.shield.base).toBe(170);
+    expect(result.armor.base).toBe(50);
+    expect(result.energy.base).toBe(150);
+  });
+
+  it('applies companion health and shield mods', () => {
+    const slots: ModSlot[] = [
+      { index: 0, type: 'general', mod: makeMod(['+100% Health']), rank: 0 },
+      {
+        index: 1,
+        type: 'general',
+        mod: makeMod(['+100% Shield Capacity']),
+        rank: 0,
+      },
+    ];
+    const result = calculateWarframeStats(makeCompanion(), slots);
+    expect(result.health.modded).toBe(300);
+    expect(result.shield.modded).toBe(340);
+  });
+});
