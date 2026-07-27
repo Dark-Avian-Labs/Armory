@@ -15,7 +15,8 @@ describe('buildSlotLayout', () => {
       mod: { unique_name: `/Lotus/Upgrades/Mods/Pistol/TestMod${index}`, name: `Mod ${index}` },
     }));
 
-    const artifactSlots = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_UNIVERSAL', 'AP_POWER'];
+    // Primary/secondary storage is 9 slots: 0-7 general, 8 exilus
+    const artifactSlots = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_POWER'];
 
     const reconciled = reconcileStoredBuildModSlots(existing, {
       equipmentType: 'secondary',
@@ -30,12 +31,31 @@ describe('buildSlotLayout', () => {
     expect(reconciled[7]?.mod).toEqual(existing[7]?.mod);
   });
 
+  it('shows exilus for length-9 primary artifact_slots (exilus at index 8)', () => {
+    const slots = buildModSlotsFromArtifactSlots({
+      equipmentType: 'primary',
+      equipmentName: 'Boltor Prime',
+      artifactSlotsRaw: [
+        'AP_ATTACK',
+        'AP_UNIVERSAL',
+        'AP_UNIVERSAL',
+        'AP_UNIVERSAL',
+        'AP_UNIVERSAL',
+        'AP_UNIVERSAL',
+        'AP_UNIVERSAL',
+        'AP_DEFENSE',
+        'AP_TACTIC',
+      ],
+    });
+    expect(slots).toHaveLength(9);
+    expect(slots[8]).toMatchObject({ type: 'exilus', polarity: 'AP_TACTIC' });
+  });
+
   it('returns equivalent slots when layout already matches', () => {
     const target = buildModSlotsFromArtifactSlots({
       equipmentType: 'secondary',
       equipmentName: 'Regulators Prime',
       artifactSlotsRaw: [
-        'AP_UNIVERSAL',
         'AP_UNIVERSAL',
         'AP_UNIVERSAL',
         'AP_UNIVERSAL',

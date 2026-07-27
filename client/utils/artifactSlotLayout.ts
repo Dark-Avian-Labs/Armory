@@ -13,6 +13,7 @@ import {
 import {
   artifactSlotsStorageLength,
   EQUIPMENT_SLOT_CONFIGS,
+  equipmentExilusArtifactIndex,
   type EquipmentSlotConfig,
 } from '../../shared/equipmentSlotConfig.js';
 import { POLARITIES, type PolarityKey } from '../../shared/polarities.js';
@@ -130,7 +131,7 @@ export function buildArtifactSlotEditorRows(
   const exilusIndex =
     equipmentType === 'warframe'
       ? WARFRAME_EXTENDED_ARTIFACT_SLOT_COUNT - 1
-      : config.generalSlots + 1;
+      : equipmentExilusArtifactIndex(config);
   const exilusReadIndex =
     equipmentType === 'warframe'
       ? warframeExilusArtifactIndex(slotsForLayout, config.generalSlots)

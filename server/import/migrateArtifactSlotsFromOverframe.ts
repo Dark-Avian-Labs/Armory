@@ -7,6 +7,8 @@ import {
 import {
   artifactSlotsStorageLength,
   EQUIPMENT_SLOT_CONFIGS,
+  equipmentExilusArtifactIndex,
+  equipmentHasSpecialSlot,
   type EquipmentSlotConfig,
 } from '../../shared/equipmentSlotConfig.js';
 
@@ -103,8 +105,8 @@ export function convertEquipmentArtifactSlotsFromOverframe(
   }
 
   if (config.hasExilus) {
-    const exilusIndex = g + (config.hasAura || config.hasStance || config.hasPosture ? 1 : 0);
-    if (legacy.length === OVERFRAME_GUN_LEGACY_LENGTH && !config.hasStance && !config.hasPosture) {
+    const exilusIndex = equipmentExilusArtifactIndex(config);
+    if (legacy.length === OVERFRAME_GUN_LEGACY_LENGTH && !equipmentHasSpecialSlot(config)) {
       result[exilusIndex] = legacy[8] ?? 'AP_UNIVERSAL';
     } else if (legacy.length >= OVERFRAME_MELEE_LEGACY_LENGTH && config.hasStance) {
       result[exilusIndex] = legacy[9] ?? legacy[10] ?? 'AP_UNIVERSAL';
