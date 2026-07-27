@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import { buildEditPath, buildReadOnlyPath } from '../../app/paths';
 import { useBuildFavorites } from '../../hooks/useBuildFavorites';

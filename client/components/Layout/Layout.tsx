@@ -8,7 +8,7 @@ import {
   useRef,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import {
   APP_DISPLAY_NAME,

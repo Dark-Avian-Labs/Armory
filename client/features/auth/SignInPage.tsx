@@ -2,7 +2,7 @@ import { ClerkAuthShell } from '@/components/ClerkAuthShell';
 import { useTheme } from '@/context/ThemeContext';
 import { buildClerkAppearance } from '@/lib/clerkAppearance';
 import { SignIn } from '@clerk/react';
-import { Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router';
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 
 import { APP_PATHS, buildLoadoutPath, buildReadOnlyPath, userBuildsPath } from '../../app/paths';
 import { EQUIPMENT_TYPE_LABELS, type EquipmentType, type StoredBuild } from '../../types/warframe';

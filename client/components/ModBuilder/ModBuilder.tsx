@@ -7,7 +7,7 @@ import {
   useSearchParams,
   useBlocker,
   type BlockerFunction,
-} from 'react-router-dom';
+} from 'react-router';
 
 import {
   isArtifactSlotDisabled,
