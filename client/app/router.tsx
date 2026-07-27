@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router';
 
 import { App } from '../App';
 import { Layout } from '../components/Layout/Layout';

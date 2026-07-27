@@ -3,7 +3,7 @@ type: Repository Overview
 title: Armory Quickstart
 description: Entrypoint for agents and humans — what Armory is, how to run it, and where to dig deeper.
 tags: [quickstart, armory]
-timestamp: 2026-07-18T21:05:00Z
+timestamp: 2026-07-27T15:55:00Z
 ---
 
 # Armory Quickstart
@@ -18,7 +18,7 @@ timestamp: 2026-07-18T21:05:00Z
 | ------- | -------------------------------------------------------------- |
 | Runtime | Node ≥26, pnpm ≥11 (`packageManager` exact version)            |
 | Server  | Express 5, better-sqlite3, TypeScript ESM                      |
-| Client  | React 19, Vite 8, Tailwind CSS 4, React Router 7               |
+| Client  | React 19, Vite 8, Tailwind CSS 4, React Router 8               |
 | Auth    | Clerk (`@clerk/express` / `@clerk/react`) + CSRF session store |
 
 ```

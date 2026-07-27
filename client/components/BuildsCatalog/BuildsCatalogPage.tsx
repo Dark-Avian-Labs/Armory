@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import { buildEquipmentBuildsListPath } from '../../app/paths';
 import type { EquipmentType } from '../../types/warframe';

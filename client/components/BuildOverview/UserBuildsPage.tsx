@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 
 import { isClerkUserId } from '../../utils/isClerkUserId';
 import { BuildOverview } from './BuildOverview';
