@@ -332,3 +332,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.67.16** `chore` [#439](https://github.com/Dark-Avian-Labs/Armory/pull/439): fix/clerk auth hash routing
 - **v1.67.17** `chore` [#441](https://github.com/Dark-Avian-Labs/Armory/pull/441): fix/rank exceptions oxfmt output
 - **v1.67.18** `chore` [#443](https://github.com/Dark-Avian-Labs/Armory/pull/443): fix/weapon exilus slot index
+- **v1.67.19** `chore` [#444](https://github.com/Dark-Avian-Labs/Armory/pull/444): fix/react router 8
