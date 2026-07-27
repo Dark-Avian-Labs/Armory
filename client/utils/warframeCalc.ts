@@ -1,5 +1,5 @@
 import { scaleWarframeStatsToMaxRank } from '../../shared/equipmentRankStats.js';
-import type { Warframe, ModSlot } from '../types/warframe';
+import type { ModSlot } from '../types/warframe';
 import { aggregateAllMods } from './modStatParser';
 
 export interface StatPair {
@@ -36,12 +36,23 @@ export interface WarframeBonusEffects {
   abilityRangePct?: number;
 }
 
-export function getWarframeBaseStatsAtMaxRank(warframe: Warframe) {
+/** Minimal shape for warframe / companion avatar stat scaling and modding. */
+export interface AvatarStatsEntity {
+  unique_name: string;
+  health?: number;
+  shield?: number;
+  armor?: number;
+  power?: number;
+  sprint_speed?: number;
+  product_category?: string;
+}
+
+export function getWarframeBaseStatsAtMaxRank(warframe: AvatarStatsEntity) {
   return scaleWarframeStatsToMaxRank(warframe);
 }
 
 export function calculateWarframeStats(
-  warframe: Warframe,
+  warframe: AvatarStatsEntity,
   slots: ModSlot[],
   bonus?: WarframeBonusEffects,
 ): WarframeCalcResult {

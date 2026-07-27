@@ -21,6 +21,7 @@ import { resolveShardSlotForDisplay } from '../../utils/buildConfigPersist';
 import { calculateBuildDamage, formatDamage } from '../../utils/damage';
 import { calculateWeaponDps } from '../../utils/damageCalc';
 import { getElementColor } from '../../utils/elements';
+import { isAvatarStatsEquipmentType } from '../../utils/equipmentKind';
 import type { FormaCount } from '../../utils/formaCounter';
 import { renderDamageTypeWords } from '../../utils/renderDamageTypeWords';
 import { formatShardBuffDescription } from '../../utils/shardBuffFormat';
@@ -858,12 +859,14 @@ export function BuildShareModal({
   const [error, setError] = useState<string | null>(null);
 
   const isWarframe = equipmentType === 'warframe';
+  const isAvatarStats = isAvatarStatsEquipmentType(equipmentType);
+  const isCompanion = equipmentType === 'companion';
   const shareAbilities = useWarframeShareAbilities(
     isWarframe ? (equipment as Warframe) : null,
     helminthConfig,
   );
   const shareIncarnon = useWeaponShareIncarnon(
-    !isWarframe ? (equipment as Weapon) : null,
+    !isAvatarStats ? (equipment as Weapon) : null,
     incarnonEnabled,
     incarnonSelections,
   );
@@ -876,24 +879,24 @@ export function BuildShareModal({
         }
       : undefined;
   const warframeCalc = useMemo(() => {
-    if (!isWarframe) return null;
+    if (!isAvatarStats) return null;
     try {
-      const bonuses = extractArchonShardBonuses(shardSlots, shardTypes);
+      const bonuses = isWarframe ? extractArchonShardBonuses(shardSlots, shardTypes) : undefined;
       return calculateWarframeStats(equipment as Warframe, slots, bonuses);
     } catch (err) {
       console.error('[BuildShareModal] calculateWarframeStats failed', err);
       return null;
     }
-  }, [equipment, isWarframe, shardSlots, shardTypes, slots]);
+  }, [equipment, isAvatarStats, isWarframe, shardSlots, shardTypes, slots]);
 
   const weaponCalc = useMemo(() => {
-    if (isWarframe) return null;
+    if (isAvatarStats) return null;
     try {
       return calculateWeaponDps(equipment as Weapon, slots, valenceBonus, incarnonInput);
     } catch {
       return null;
     }
-  }, [equipment, isWarframe, slots, valenceBonus, incarnonInput]);
+  }, [equipment, isAvatarStats, slots, valenceBonus, incarnonInput]);
 
   const equippedSlots = useMemo(() => slots.filter((s) => s.mod), [slots]);
   const filledArcanes = useMemo(() => arcaneSlots.filter((s) => s.arcane), [arcaneSlots]);
@@ -1130,56 +1133,75 @@ export function BuildShareModal({
   );
 
   const warframeRightColumn =
-    isWarframe && warframeCalc ? (
+    isAvatarStats && warframeCalc ? (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 pl-1">
         <ShareHeroImage equipmentImagePath={equipmentImagePath} equipmentName={equipmentName} />
-        <div className="shrink-0 px-0.5 py-1">
-          <ShareSkillsPanel
-            ownAbilities={shareAbilities.ownAbilities}
-            dbAbilities={shareAbilities.dbAbilities}
-            selectedReplacement={shareAbilities.selectedReplacement}
-            helminthConfig={helminthConfig}
-            iconPx={skillIconPx}
-            iconsOnly
-          />
-        </div>
-        <div className="min-h-0 shrink-0 pr-[30px] pl-0.5">
-          <ShareShardColumn compact textLeftIconRight slots={shardSlots} shards={shardTypes} />
-        </div>
+        {isWarframe ? (
+          <>
+            <div className="shrink-0 px-0.5 py-1">
+              <ShareSkillsPanel
+                ownAbilities={shareAbilities.ownAbilities}
+                dbAbilities={shareAbilities.dbAbilities}
+                selectedReplacement={shareAbilities.selectedReplacement}
+                helminthConfig={helminthConfig}
+                iconPx={skillIconPx}
+                iconsOnly
+              />
+            </div>
+            <div className="min-h-0 shrink-0 pr-[30px] pl-0.5">
+              <ShareShardColumn compact textLeftIconRight slots={shardSlots} shards={shardTypes} />
+            </div>
+          </>
+        ) : null}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <ShareRadarAuto
-              labels={['Health', 'Shield', 'Armor', 'Sprint Speed', 'Energy']}
-              values={[
-                warframeCalc.health.modded,
-                warframeCalc.shield.modded,
-                warframeCalc.armor.modded,
-                warframeCalc.sprintSpeed.modded,
-                warframeCalc.energy.modded,
-              ]}
+              labels={
+                isCompanion
+                  ? ['Health', 'Shield', 'Armor', 'Energy']
+                  : ['Health', 'Shield', 'Armor', 'Sprint Speed', 'Energy']
+              }
+              values={
+                isCompanion
+                  ? [
+                      warframeCalc.health.modded,
+                      warframeCalc.shield.modded,
+                      warframeCalc.armor.modded,
+                      warframeCalc.energy.modded,
+                    ]
+                  : [
+                      warframeCalc.health.modded,
+                      warframeCalc.shield.modded,
+                      warframeCalc.armor.modded,
+                      warframeCalc.sprintSpeed.modded,
+                      warframeCalc.energy.modded,
+                    ]
+              }
             />
           </div>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <ShareRadarAuto
-              labels={[
-                'Ability Duration',
-                'Ability Efficiency',
-                'Ability Range',
-                'Ability Strength',
-              ]}
-              values={[
-                warframeCalc.abilityDuration.modded,
-                warframeCalc.abilityEfficiency.modded,
-                warframeCalc.abilityRange.modded,
-                warframeCalc.abilityStrength.modded,
-              ]}
-              fill="rgba(70, 214, 190, 0.28)"
-              stroke="rgba(120, 230, 210, 0.95)"
-            />
-          </div>
+          {!isCompanion ? (
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <ShareRadarAuto
+                labels={[
+                  'Ability Duration',
+                  'Ability Efficiency',
+                  'Ability Range',
+                  'Ability Strength',
+                ]}
+                values={[
+                  warframeCalc.abilityDuration.modded,
+                  warframeCalc.abilityEfficiency.modded,
+                  warframeCalc.abilityRange.modded,
+                  warframeCalc.abilityStrength.modded,
+                ]}
+                fill="rgba(70, 214, 190, 0.28)"
+                stroke="rgba(120, 230, 210, 0.95)"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
-    ) : isWarframe ? (
+    ) : isAvatarStats ? (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 pl-1">
         <ShareHeroImage equipmentImagePath={equipmentImagePath} equipmentName={equipmentName} />
         <p className="text-[11px] text-[#b6c5ed]">Stats unavailable for this build.</p>
@@ -1187,7 +1209,7 @@ export function BuildShareModal({
     ) : null;
 
   const weaponRightColumn =
-    !isWarframe && weaponCalc && weaponRadarValues ? (
+    !isAvatarStats && weaponCalc && weaponRadarValues ? (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 pl-1">
         <ShareHeroImage equipmentImagePath={equipmentImagePath} equipmentName={equipmentName} />
         {shareIncarnon.showIncarnon ? (
@@ -1207,7 +1229,7 @@ export function BuildShareModal({
           />
         </div>
       </div>
-    ) : !isWarframe ? (
+    ) : !isAvatarStats ? (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 pl-1">
         <ShareHeroImage equipmentImagePath={equipmentImagePath} equipmentName={equipmentName} />
         <p className="text-[11px] text-[#b6c5ed]">Stats unavailable.</p>
@@ -1401,7 +1423,7 @@ export function BuildShareModal({
                   <div className="relative z-10 flex min-h-0 flex-1 flex-col px-4 pt-4 pb-3">
                     <div className="flex min-h-0 min-w-0 flex-1 flex-row gap-0">
                       {leftColumn}
-                      {isWarframe ? warframeRightColumn : weaponRightColumn}
+                      {isAvatarStats ? warframeRightColumn : weaponRightColumn}
                     </div>
                   </div>
                 </div>
