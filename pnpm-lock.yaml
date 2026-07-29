@@ -15,14 +15,14 @@ importers:
   .:
     dependencies:
       '@clerk/express':
-        specifier: ^2.1.46
-        version: 2.1.46(express@5.2.1(supports-color@7.2.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^2.1.47
+        version: 2.1.47(express@5.2.1(supports-color@7.2.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@clerk/react':
         specifier: ^6.12.8
         version: 6.12.8(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@dotenvx/dotenvx':
-        specifier: ^2.18.1
-        version: 2.18.1
+        specifier: ^2.19.0
+        version: 2.19.0
       '@fontsource-variable/cascadia-mono':
         specifier: ^5.3.0
         version: 5.3.0
@@ -214,12 +214,12 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@clerk/backend@3.13.1':
-    resolution: {integrity: sha512-iFsPemW1862vnciPC8qpherSG4M4/vnwCNGzZ9waZtco+h5UIDP8qXBruAbo/JYA3Z3DpSaFjhoakelONWku7Q==}
+  '@clerk/backend@3.13.2':
+    resolution: {integrity: sha512-z6rPQzEj1SbGmjMoyGnECY1R7YrcD4dJILlWLXFvSUsWxb8csAYzcXp50T2kVtV3ThlcjOMrI0oDQyqvTdt65A==}
     engines: {node: '>=20.9.0'}
 
-  '@clerk/express@2.1.46':
-    resolution: {integrity: sha512-u+tL78ifKotVn5jBsMc7CELaTN04K41fTl0t0vmridcFrgDIC6VKF975HHoh5wIorY1QUW5LST5REMwkHx4u2Q==}
+  '@clerk/express@2.1.47':
+    resolution: {integrity: sha512-fX4R7Cp1cODBxEqkaK9vMhvxvgqVkIzLE4gcO89/DPXeOfUvKWlMvbJeRLC/nsI4mwL9ymdrHYCsdLBDBuehsQ==}
     engines: {node: '>=20.9.0'}
     peerDependencies:
       express: ^4.17.0 || ^5.0.0
@@ -247,8 +247,8 @@ packages:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
 
-  '@dotenvx/dotenvx@2.18.1':
-    resolution: {integrity: sha512-bU8w7yuH/OA+lfwGPB4Z0cgFbcU4XdE9BkaW4umVY95acTo1RogfmPuag5OtZuwcS8R/qkWHEw7eFia9Ruhj/w==}
+  '@dotenvx/dotenvx@2.19.0':
+    resolution: {integrity: sha512-DPy8Xbe+wV8gDRAC9Kr324dkgH4aQS7tPGh1YLkBSBICFvAQNe5umnpRT7IZ0yJ3VlsfWVFJ6+2s9dcZjtQOAw==}
     hasBin: true
 
   '@dotenvx/primitives@2.1.1':
@@ -3192,7 +3192,7 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@clerk/backend@3.13.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@clerk/backend@3.13.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@clerk/shared': 4.25.8(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       standardwebhooks: 1.0.0
@@ -3201,9 +3201,9 @@ snapshots:
       - react
       - react-dom
 
-  '@clerk/express@2.1.46(express@5.2.1(supports-color@7.2.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@clerk/express@2.1.47(express@5.2.1(supports-color@7.2.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
-      '@clerk/backend': 3.13.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@clerk/backend': 3.13.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@clerk/shared': 4.25.8(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       express: 5.2.1(supports-color@7.2.0)
       tslib: 2.8.1
@@ -3231,7 +3231,7 @@ snapshots:
   '@colors/colors@1.5.0':
     optional: true
 
-  '@dotenvx/dotenvx@2.18.1':
+  '@dotenvx/dotenvx@2.19.0':
     dependencies:
       '@dotenvx/primitives': 2.1.1
       '@dotenvx/tooling': 1.0.3
