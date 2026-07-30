@@ -2,13 +2,14 @@ import fs from 'fs';
 import path from 'path';
 
 import { BEAST_CLAW_REGISTRY } from '../../shared/beastClawRegistry.js';
-import { IMAGES_DIR, PROJECT_ROOT } from '../config.js';
+import { PROJECT_ROOT } from '../config.js';
 import { getCatalogDb } from '../db/connection.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
+import { FETCH_BYTE_LIMITS, FETCH_TIMEOUT_MS, fetchBounded } from '../http/fetchWithTimeout.js';
 import {
   beastClawsWikiRevisionChanged,
   writeStoredBeastClawsWikiRevision,
 } from '../import/beastClawsWikiRevision.js';
+import { safeImagePathUnderRoot } from '../import/safeImagePath.js';
 import {
   BEAST_CLAWS_WIKI_PAGE,
   parseBeastClawsFromWikiHtml,
@@ -22,21 +23,20 @@ const BEAST_CLAWS_ICON_FILE = 'beast-claws.png';
 
 function ensureBeastClawsIconInDataImages(onProgress?: (msg: string) => void): void {
   const sourcePath = path.join(PROJECT_ROOT, 'icons', BEAST_CLAWS_ICON_FILE);
-  const targetDir = path.join(IMAGES_DIR, 'icons');
-  const targetPath = path.join(targetDir, BEAST_CLAWS_ICON_FILE);
+  const targetPath = safeImagePathUnderRoot(['icons', BEAST_CLAWS_ICON_FILE]);
 
   if (!fs.existsSync(sourcePath)) {
     onProgress?.(`Beast claws wiki sync: icon source not found at ${sourcePath}`);
     return;
   }
 
-  fs.mkdirSync(targetDir, { recursive: true });
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
   fs.copyFileSync(sourcePath, targetPath);
   onProgress?.(`Beast claws wiki sync: icon copied to ${targetPath}`);
 }
 
 async function fetchBeastClawsWikiHtml(): Promise<string> {
-  const response = await fetchWithTimeout(
+  const { response, body } = await fetchBounded(
     `${WIKI_BASE}/w/${BEAST_CLAWS_WIKI_PAGE}`,
     {
       headers: {
@@ -45,6 +45,7 @@ async function fetchBeastClawsWikiHtml(): Promise<string> {
       },
     },
     FETCH_TIMEOUT_MS.wikiFetch,
+    FETCH_BYTE_LIMITS.html,
   );
 
   if (!response.ok) {
@@ -53,7 +54,7 @@ async function fetchBeastClawsWikiHtml(): Promise<string> {
     );
   }
 
-  return response.text();
+  return body.toString('utf-8');
 }
 
 export function beastClawsNeedSync(onlyMissing: boolean): boolean {

@@ -3,9 +3,14 @@ import path from 'path';
 
 import type Database from 'better-sqlite3';
 
-import { IMAGES_DIR } from '../config.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import {
+  FETCH_BYTE_LIMITS,
+  FETCH_TIMEOUT_MS,
+  fetchBounded,
+  isAbortError,
+} from '../http/fetchWithTimeout.js';
 import { collectIncarnonGenesisUnlockers } from '../import/incarnonGenesisSeed.js';
+import { safeImagePathUnderRoot } from '../import/safeImagePath.js';
 import type { IncarnonData, IncarnonEvolutionTier, IncarnonPerkOption } from './incarnonTypes.js';
 import { parseGenesisPageWithWeaponValues, parseIntrinsicPageHtml } from './incarnonWikiParse.js';
 import { getWikiUserAgent } from './wikiUserAgent.js';
@@ -21,8 +26,6 @@ const INTRINSIC_INCANNON_WEAPONS = [
   'Ruvox',
   'Thalys',
 ] as const;
-
-const INCARNON_IMAGES_DIR = path.join(IMAGES_DIR, 'incarnon');
 
 export interface IncarnonWikiSyncResult {
   pagesScraped: number;
@@ -40,7 +43,7 @@ function sleep(ms: number): Promise<void> {
 
 async function fetchWikiPage(slug: string): Promise<string> {
   const url = `${WIKI_BASE}/w/${slug}`;
-  const response = await fetchWithTimeout(
+  const { response, body } = await fetchBounded(
     url,
     {
       headers: {
@@ -49,29 +52,27 @@ async function fetchWikiPage(slug: string): Promise<string> {
       },
     },
     FETCH_TIMEOUT_MS.exportDownload,
+    FETCH_BYTE_LIMITS.html,
   );
   if (!response.ok) {
     throw new Error(`HTTP ${response.status} for ${slug}`);
   }
-  return response.text();
-}
-
-function safeImageFileName(fileName: string): string {
-  return fileName.replace(/[<>:"|?*]/g, '_');
+  return body.toString('utf-8');
 }
 
 function imagePathFromFileName(fileName: string): string {
-  return `/incarnon/${safeImageFileName(fileName)}`;
+  const localPath = safeImagePathUnderRoot(['incarnon', fileName]);
+  const base = path.basename(localPath);
+  return `/incarnon/${base}`;
 }
 
 async function ensureIncarnonImage(fileName: string): Promise<{
   imagePath: string;
   downloaded: boolean;
 }> {
-  fs.mkdirSync(INCARNON_IMAGES_DIR, { recursive: true });
-  const safeName = safeImageFileName(fileName);
-  const localPath = path.join(INCARNON_IMAGES_DIR, safeName);
+  const localPath = safeImagePathUnderRoot(['incarnon', fileName]);
   const imagePath = imagePathFromFileName(fileName);
+  fs.mkdirSync(path.dirname(localPath), { recursive: true });
 
   if (fs.existsSync(localPath) && fs.statSync(localPath).size > 0) {
     return { imagePath, downloaded: false };
@@ -79,24 +80,28 @@ async function ensureIncarnonImage(fileName: string): Promise<{
 
   const url = `${WIKI_BASE}/images/${encodeURIComponent(fileName).replace(/%2F/g, '/')}`;
   try {
-    const response = await fetchWithTimeout(
+    const { response, body } = await fetchBounded(
       url,
       { headers: { 'User-Agent': getWikiUserAgent() } },
       FETCH_TIMEOUT_MS.exportDownload,
+      FETCH_BYTE_LIMITS.image,
+      { requireImageMime: true },
     );
     if (!response.ok) {
       const thumbUrl = `${WIKI_BASE}/images/thumb/${encodeURIComponent(fileName)}/256px-${encodeURIComponent(fileName)}`;
-      const thumbResponse = await fetchWithTimeout(
+      const thumb = await fetchBounded(
         thumbUrl,
         { headers: { 'User-Agent': getWikiUserAgent() } },
         FETCH_TIMEOUT_MS.exportDownload,
+        FETCH_BYTE_LIMITS.image,
+        { requireImageMime: true },
       );
-      if (!thumbResponse.ok) {
-        throw new Error(`HTTP ${response.status} / ${thumbResponse.status} for ${fileName}`);
+      if (!thumb.response.ok) {
+        throw new Error(`HTTP ${response.status} / ${thumb.response.status} for ${fileName}`);
       }
-      fs.writeFileSync(localPath, Buffer.from(await thumbResponse.arrayBuffer()));
+      fs.writeFileSync(localPath, thumb.body);
     } else {
-      fs.writeFileSync(localPath, Buffer.from(await response.arrayBuffer()));
+      fs.writeFileSync(localPath, body);
     }
     return { imagePath, downloaded: true };
   } catch (error) {

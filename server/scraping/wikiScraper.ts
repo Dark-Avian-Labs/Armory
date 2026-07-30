@@ -3,7 +3,7 @@ import type { Element } from 'domhandler';
 
 import { catalogArmoryKeyForArchonBuff } from '../db/catalogKeys.js';
 import { getCatalogDb } from '../db/connection.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
+import { FETCH_BYTE_LIMITS, FETCH_TIMEOUT_MS, fetchTextBounded } from '../http/fetchWithTimeout.js';
 import {
   fetchHelminthWikiHtml,
   HELMINTH_WIKI_URL,
@@ -11,6 +11,20 @@ import {
 } from './helminthWikiPage.js';
 
 const WIKI_BASE = 'https://wiki.warframe.com';
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit | undefined,
+  timeoutMs: number,
+): Promise<{ ok: boolean; status: number; statusText: string; text: () => Promise<string> }> {
+  const { response, text } = await fetchTextBounded(url, init, timeoutMs, FETCH_BYTE_LIMITS.html);
+  return {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+    text: async () => text,
+  };
+}
 
 const SLOT_SECONDARY = 0;
 const SLOT_PRIMARY = 1;

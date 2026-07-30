@@ -5,9 +5,15 @@ import type Database from 'better-sqlite3';
 import * as cheerio from 'cheerio';
 import type { AnyNode, Element } from 'domhandler';
 
-import { IMAGES_DIR } from '../config.js';
 import { getCatalogDb } from '../db/connection.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import {
+  FETCH_BYTE_LIMITS,
+  FETCH_TIMEOUT_MS,
+  fetchBounded,
+  fetchWithTimeout,
+  isAbortError,
+} from '../http/fetchWithTimeout.js';
+import { safeImagePathUnderRoot, sanitizePathSegment } from '../import/safeImagePath.js';
 import { getWikiUserAgent } from './wikiUserAgent.js';
 
 const WIKI_BASE = 'https://wiki.warframe.com';
@@ -276,9 +282,16 @@ function diskPathForAtragraphImage(
   kind: 'Overlay' | 'Card',
   ext: string,
 ): { diskPath: string; dbImagePath: string } {
-  const safeSetKey = setKey.replace(/[<>:"|?*]/g, '_');
+  const safeSetKey = sanitizePathSegment(setKey.replace(/[<>:"|?*]/g, '_'));
+  if (!safeSetKey || safeSetKey === '.' || safeSetKey === '..') {
+    throw new Error(`Invalid atragraph set key: ${setKey}`);
+  }
   const fileName = `${kind}${ext}`;
-  const diskPath = path.join(IMAGES_DIR, ...ARMORY_ATRAGRAPH_DISK_SEGMENTS, safeSetKey, fileName);
+  const diskPath = safeImagePathUnderRoot([
+    ...ARMORY_ATRAGRAPH_DISK_SEGMENTS,
+    safeSetKey,
+    fileName,
+  ]);
   const dbImagePath = `${ARMORY_ATRAGRAPH_WIKI_PREFIX}${safeSetKey}/${fileName}`;
   return { diskPath, dbImagePath };
 }
@@ -296,12 +309,17 @@ async function downloadAtragraphImage(
   }
 
   let response: Response;
+  let buffer: Buffer;
   try {
-    response = await fetchWithTimeout(
+    const result = await fetchBounded(
       downloadUrl,
       { headers: wikiFetchHeaders() },
       FETCH_TIMEOUT_MS.binaryImage,
+      FETCH_BYTE_LIMITS.image,
+      { requireImageMime: true },
     );
+    response = result.response;
+    buffer = result.body;
   } catch (error: unknown) {
     if (isAbortError(error)) return null;
     throw error;
@@ -314,7 +332,6 @@ async function downloadAtragraphImage(
   const urlPath = new URL(downloadUrl).pathname;
   const extMatch = urlPath.match(/\.(png|jpe?g|webp)$/i);
   const ext = extMatch ? `.${extMatch[1]!.toLowerCase()}` : '.png';
-  const buffer = Buffer.from(await response.arrayBuffer());
   const { diskPath, dbImagePath } = diskPathForAtragraphImage(setKey, kind, ext);
   fs.mkdirSync(path.dirname(diskPath), { recursive: true });
   fs.writeFileSync(diskPath, buffer);
@@ -324,22 +341,22 @@ async function downloadAtragraphImage(
 
 async function fetchAtragraphWikiHtml(onProgress?: (msg: string) => void): Promise<string | null> {
   const url = toWikiArticleUrl(ATRAGRAPH_WIKI_PAGE_TITLE);
-  let response: Response;
   try {
-    response = await fetchWithTimeout(
+    const { response, body } = await fetchBounded(
       url,
       { headers: wikiFetchHeaders() },
       FETCH_TIMEOUT_MS.htmlPage,
+      FETCH_BYTE_LIMITS.html,
     );
+    if (!response.ok) {
+      onProgress?.(`[atragraphMods] wiki page request failed (${response.status})`);
+      return null;
+    }
+    return body.toString('utf-8');
   } catch (error: unknown) {
     if (isAbortError(error)) return null;
     throw error;
   }
-  if (!response.ok) {
-    onProgress?.(`[atragraphMods] wiki page request failed (${response.status})`);
-    return null;
-  }
-  return response.text();
 }
 
 export function countModsMissingAtragraphImages(db: Database.Database = getCatalogDb()): number {

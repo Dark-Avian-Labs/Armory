@@ -43,7 +43,9 @@
     "tmp/**",
     "out/**",
     "pnpm-lock.yaml",
-    "**/pnpm-lock.yaml"
+    "**/pnpm-lock.yaml",
+    "final-audit-report.html",
+    "security-audit-report.html"
   ],
 
   "overrides": [

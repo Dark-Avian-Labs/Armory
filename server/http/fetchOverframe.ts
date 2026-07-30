@@ -6,7 +6,7 @@ import {
   type CuimpOptions,
 } from 'cuimp';
 
-import { FETCH_TIMEOUT_MS } from './fetchWithTimeout.js';
+import { FETCH_BYTE_LIMITS, FETCH_TIMEOUT_MS } from './fetchWithTimeout.js';
 
 const OVERFRAME_BASE_URL = 'https://overframe.gg';
 const BUILD_ID_BOOTSTRAP_PATH = '/build/new/warframes/';
@@ -84,7 +84,20 @@ export function extractFullNextDataFromHtml(html: string): Record<string, unknow
 
 function toAbsoluteOverframeUrl(pathOrUrl: string): string {
   if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
-    return pathOrUrl;
+    let parsed: URL;
+    try {
+      parsed = new URL(pathOrUrl);
+    } catch {
+      throw new Error(`Invalid Overframe URL: ${pathOrUrl}`);
+    }
+    if (parsed.protocol !== 'https:') {
+      throw new Error(`Overframe URL must be HTTPS: ${pathOrUrl}`);
+    }
+    const host = parsed.hostname.toLowerCase();
+    if (host !== 'overframe.gg' && host !== 'media.overframe.gg') {
+      throw new Error(`Overframe URL host not allowed: ${host}`);
+    }
+    return parsed.toString();
   }
   return `${OVERFRAME_BASE_URL}${pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`}`;
 }
@@ -416,6 +429,9 @@ export async function fetchOverframeHtml(
 ): Promise<string> {
   await ensureOverframeFetchReady();
   const { body } = await fetchOverframeRaw(path, timeoutMs);
+  if (Buffer.byteLength(body, 'utf8') > FETCH_BYTE_LIMITS.html) {
+    throw new Error(`Overframe HTML exceeded ${FETCH_BYTE_LIMITS.html} byte limit`);
+  }
   const buildId = extractBuildIdFromHtml(body);
   if (buildId) {
     cachedBuildId ??= buildId;
@@ -429,6 +445,9 @@ export async function fetchOverframeBytes(
 ): Promise<Buffer> {
   await ensureOverframeFetchReady();
   const { rawBody } = await fetchOverframeRaw(pathOrUrl, timeoutMs);
+  if (rawBody.length > FETCH_BYTE_LIMITS.image) {
+    throw new Error(`Overframe binary exceeded ${FETCH_BYTE_LIMITS.image} byte limit`);
+  }
   return rawBody;
 }
 

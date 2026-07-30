@@ -63,6 +63,16 @@ describe('ModConfigSchema', () => {
       ).success,
     ).toBe(false);
   });
+
+  it('rejects invalid equipment_image schemes and hosts', () => {
+    expect(ModConfigSchema.safeParse(minimalModConfig({ equipment_image: 'javascript:alert(1)' })).success).toBe(false);
+    expect(ModConfigSchema.safeParse(minimalModConfig({ equipment_image: 'https://evil.example/x.png' })).success).toBe(
+      false,
+    );
+    expect(
+      ModConfigSchema.safeParse(minimalModConfig({ equipment_image: '/Lotus/Types/Weapons/Foo.png' })).success,
+    ).toBe(true);
+  });
 });
 
 describe('ModSlotSchema', () => {

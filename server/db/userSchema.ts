@@ -75,6 +75,7 @@ export function createUserSchema(): void {
   db.exec(
     'CREATE INDEX IF NOT EXISTS idx_builds_equipment_discovery ON builds(equipment_type, equipment_unique_name)',
   );
+  db.exec('CREATE INDEX IF NOT EXISTS idx_loadout_builds_build ON loadout_builds(build_id)');
 
   console.log('[DB] User schema created/verified');
 }

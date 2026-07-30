@@ -124,7 +124,6 @@ export function equipmentHasSpecialSlot(config: EquipmentSlotConfig): boolean {
   return config.hasAura || config.hasStance || config.hasPosture;
 }
 
-/** Artifact-slot index of exilus for non-warframe layouts (and compact warframes). */
 export function equipmentExilusArtifactIndex(config: EquipmentSlotConfig): number {
   return config.generalSlots + (equipmentHasSpecialSlot(config) ? 1 : 0);
 }

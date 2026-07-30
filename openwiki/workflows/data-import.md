@@ -3,7 +3,7 @@ type: Workflow
 title: Data Import
 description: DE export download, SQLite load, wiki/Overframe enrichment, CLI and admin triggers.
 tags: [import, pipeline, catalog]
-timestamp: 2026-07-18T20:40:00Z
+timestamp: 2026-07-30T17:05:00Z
 ---
 
 # Data Import
@@ -12,13 +12,14 @@ The import pipeline downloads Digital Extremes public exports, rebuilds catalog 
 
 ## Where to start
 
-| Trigger          | Path                                                        |
-| ---------------- | ----------------------------------------------------------- |
-| Step definitions | `shared/pipelineSteps.ts`                                   |
-| Orchestration    | `server/import/startupPipeline.ts`, `pipeline.ts`           |
-| CLI              | `pnpm run data:import` → `server/import/runManualImport.ts` |
-| Admin job / SSE  | `server/import/adminImportJob.ts`                           |
-| Catalog reset    | `server/db/resetCatalogData.ts`                             |
+| Trigger          | Path                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------- |
+| Step definitions | `shared/pipelineSteps.ts`                                                                   |
+| Orchestration    | `server/import/startupPipeline.ts`, `pipeline.ts`                                           |
+| CLI              | `pnpm run data:import` → `server/import/runManualImport.ts`                                 |
+| Admin job / SSE  | `server/import/adminImportJob.ts`                                                           |
+| Catalog reset    | `server/db/resetCatalogData.ts`                                                             |
+| Safe fetch/path  | `server/http/fetchWithTimeout.ts`, `allowedFetchHosts.ts`, `server/import/safeImagePath.ts` |
 
 ## Steps (order)
 
@@ -52,6 +53,8 @@ Admin can pass `forceImport`, `forceImages`, and `forceSteps`. Lease/locking use
 - Overframe slot scrape is force-only; prefer Admin slot editor for polarity fixes.
 - Wiki fetches need a valid `WIKI_USER_AGENT`.
 - Never reset catalog into a DB that also holds user tables.
+- Outbound imports use HTTPS host allowlists, `redirect: 'error'`, response byte caps, and path containment under `IMAGES_DIR` (no `..` escapes). Overframe traffic goes through `fetchOverframe` (cuimp) with its own host checks.
+- Admin SSE import progress skips response compression (`text/event-stream`).
 
 ## Related
 

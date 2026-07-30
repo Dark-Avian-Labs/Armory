@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 
-import { IMAGES_DIR } from '../config.js';
 import { getCatalogDb } from '../db/connection.js';
 import { fetchOverframeBytes } from '../http/fetchOverframe.js';
-import { FETCH_TIMEOUT_MS, isAbortError } from '../http/fetchWithTimeout.js';
+import { FETCH_BYTE_LIMITS, FETCH_TIMEOUT_MS, isAbortError } from '../http/fetchWithTimeout.js';
+import { safeImagePathUnderRoot } from '../import/safeImagePath.js';
 import { fetchWikiImageForExaltedStanceMod } from './exaltedStanceWikiImages.js';
 import { scrapeItemPageByPath } from './itemScraper.js';
 
@@ -172,8 +172,13 @@ function extractOverframeStanceData(nextData: unknown): OverframeStanceData | nu
 async function ensureOverframeTextureInDataImages(texturePath: string): Promise<string | null> {
   const normalized = texturePath.startsWith('/') ? texturePath : `/${texturePath}`;
   const dbImagePath = `${normalized}.webp`;
-  const localRelativePath = dbImagePath.replace(/^\/+/, '').replace(/\//g, path.sep);
-  const localFilePath = path.join(IMAGES_DIR, localRelativePath);
+  const relative = dbImagePath.replace(/^\/+/, '');
+  let localFilePath: string;
+  try {
+    localFilePath = safeImagePathUnderRoot(relative);
+  } catch {
+    return null;
+  }
 
   if (fs.existsSync(localFilePath)) {
     return dbImagePath;
@@ -190,6 +195,9 @@ async function ensureOverframeTextureInDataImages(texturePath: string): Promise<
     throw error;
   }
   if (bytes.length === 0) return null;
+  if (bytes.length > FETCH_BYTE_LIMITS.image) {
+    return null;
+  }
 
   fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
   fs.writeFileSync(localFilePath, bytes);
