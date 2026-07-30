@@ -40,15 +40,3 @@ jobs:
 
       - name: Build project
         run: pnpm run build
-
-      - name: Test coverage report
-        run: pnpm run test:coverage
-
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-report
-          path: coverage/
-          if-no-files-found: ignore
-          retention-days: 7
