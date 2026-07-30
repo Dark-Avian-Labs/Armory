@@ -3,8 +3,14 @@ import path from 'path';
 
 import * as cheerio from 'cheerio';
 
-import { IMAGES_DIR } from '../config.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import {
+  FETCH_BYTE_LIMITS,
+  FETCH_TIMEOUT_MS,
+  fetchBounded,
+  fetchWithTimeout,
+  isAbortError,
+} from '../http/fetchWithTimeout.js';
+import { safeImagePathUnderRoot, sanitizeUniqueNameSegments } from '../import/safeImagePath.js';
 import { getWikiUserAgent } from './wikiUserAgent.js';
 
 const WIKI_BASE = 'https://wiki.warframe.com';
@@ -124,35 +130,34 @@ function pickInfoboxImageSrc(html: string): string | null {
 
 async function fetchWikiHtml(pageTitle: string): Promise<string | null> {
   const url = toWikiArticleUrl(pageTitle);
-  let response: Response;
   try {
-    response = await fetchWithTimeout(
+    const { response, body } = await fetchBounded(
       url,
       { headers: wikiFetchHeaders() },
       FETCH_TIMEOUT_MS.htmlPage,
+      FETCH_BYTE_LIMITS.html,
     );
+    if (!response.ok) return null;
+    return body.toString('utf-8');
   } catch (error: unknown) {
     if (isAbortError(error)) return null;
     throw error;
   }
-  if (!response.ok) return null;
-  return response.text();
 }
 
 function diskPathForExaltedStanceWikiImage(
   uniqueName: string,
   ext: string,
 ): { diskPath: string; dbImagePath: string } {
-  const safeName = uniqueName.replace(/^\//, '').replace(/[<>:"|?*]/g, '_');
-  const segments = safeName.split(/[/\\]+/).filter(Boolean);
-  const fileBase = (segments.length > 0 ? segments.pop()! : 'stance') + ext;
-  const diskPath = path.join(
-    IMAGES_DIR,
+  const segments = sanitizeUniqueNameSegments(uniqueName);
+  const fileBase = `${segments[segments.length - 1]}${ext}`;
+  const dirSegments = segments.slice(0, -1);
+  const diskPath = safeImagePathUnderRoot([
     ...ARMORY_STANCE_WIKI_ROOT_SEGMENTS,
-    ...segments,
+    ...dirSegments,
     fileBase,
-  );
-  const dbSuffix = [...segments, fileBase].join('/');
+  ]);
+  const dbSuffix = [...dirSegments, fileBase].join('/');
   const dbImagePath = `/ArmoryWiki/StanceMod/${dbSuffix}`;
   return { diskPath, dbImagePath };
 }
@@ -162,12 +167,17 @@ async function downloadWikiImageToDisk(
   uniqueName: string,
 ): Promise<string | null> {
   let response: Response;
+  let buffer: Buffer;
   try {
-    response = await fetchWithTimeout(
+    const result = await fetchBounded(
       fullUrl,
       { headers: wikiFetchHeaders() },
       FETCH_TIMEOUT_MS.binaryImage,
+      FETCH_BYTE_LIMITS.image,
+      { requireImageMime: true },
     );
+    response = result.response;
+    buffer = result.body;
   } catch (error: unknown) {
     if (isAbortError(error)) return null;
     throw error;
@@ -178,7 +188,6 @@ async function downloadWikiImageToDisk(
   const extMatch = urlPath.match(/\.(png|jpe?g|webp)$/i);
   const ext = extMatch ? `.${extMatch[1]!.toLowerCase()}` : '.png';
 
-  const buffer = Buffer.from(await response.arrayBuffer());
   const { diskPath, dbImagePath } = diskPathForExaltedStanceWikiImage(uniqueName, ext);
   fs.mkdirSync(path.dirname(diskPath), { recursive: true });
   fs.writeFileSync(diskPath, buffer);

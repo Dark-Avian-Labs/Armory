@@ -4,10 +4,36 @@ import type { Mod } from '../types/warframe';
 import { apiFetch } from '../utils/api';
 
 const TTL_MS = 5 * 60 * 1000;
+const PAGE_LIMIT = 500;
 
 type CacheEntry = { promise: Promise<Mod[]>; at: number };
 
 const catalogCache = new Map<string, CacheEntry>();
+
+function withPagination(url: string, limit: number, offset: number): string {
+  const parsed = new URL(url, 'http://local.invalid');
+  parsed.searchParams.set('limit', String(limit));
+  parsed.searchParams.set('offset', String(offset));
+  return `${parsed.pathname}${parsed.search}`;
+}
+
+async function fetchAllModPages(url: string): Promise<Mod[]> {
+  const all: Mod[] = [];
+  let offset = 0;
+  for (;;) {
+    const pageUrl = withPagination(url, PAGE_LIMIT, offset);
+    const response = await apiFetch(pageUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const body = (await response.json()) as { items?: Mod[] };
+    const items = Array.isArray(body.items) ? body.items : [];
+    all.push(...items);
+    if (items.length < PAGE_LIMIT) break;
+    offset += PAGE_LIMIT;
+  }
+  return all;
+}
 
 function loadModCatalog(url: string): Promise<Mod[]> {
   const now = Date.now();
@@ -15,14 +41,7 @@ function loadModCatalog(url: string): Promise<Mod[]> {
   if (cached && now - cached.at < TTL_MS) {
     return cached.promise;
   }
-  const promise = (async () => {
-    const response = await apiFetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const body = (await response.json()) as { items?: Mod[] };
-    return Array.isArray(body.items) ? body.items : [];
-  })().catch((error: unknown) => {
+  const promise = fetchAllModPages(url).catch((error: unknown) => {
     if (catalogCache.get(url)?.promise === promise) {
       catalogCache.delete(url);
     }

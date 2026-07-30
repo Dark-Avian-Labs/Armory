@@ -1,4 +1,9 @@
-import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import {
+  FETCH_BYTE_LIMITS,
+  FETCH_TIMEOUT_MS,
+  fetchBounded,
+  isAbortError,
+} from '../http/fetchWithTimeout.js';
 
 const ITEMS_URL = 'https://api.warframe.market/v2/items';
 
@@ -11,14 +16,18 @@ const FETCH_HEADERS = {
 
 export async function fetchWarframeMarketSlugSet(): Promise<ReadonlySet<string>> {
   let response: Response;
+  let body: Buffer;
   try {
-    response = await fetchWithTimeout(
+    const result = await fetchBounded(
       ITEMS_URL,
       {
         headers: FETCH_HEADERS as unknown as HeadersInit,
       },
       FETCH_TIMEOUT_MS.warframeMarketItems,
+      FETCH_BYTE_LIMITS.manifest,
     );
+    response = result.response;
+    body = result.body;
   } catch (error: unknown) {
     if (isAbortError(error)) {
       throw new Error(
@@ -31,7 +40,7 @@ export async function fetchWarframeMarketSlugSet(): Promise<ReadonlySet<string>>
   if (!response.ok) {
     throw new Error(`warframe.market items fetch failed: HTTP ${response.status}`);
   }
-  const json = (await response.json()) as {
+  const json = JSON.parse(body.toString('utf-8')) as {
     data?: { slug?: string }[];
   };
   const rows = Array.isArray(json.data) ? json.data : [];

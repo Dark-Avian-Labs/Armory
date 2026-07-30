@@ -14,14 +14,20 @@ import {
   BUILD_SELECT_LIST,
   COPY_PREFIX,
   LOADOUT_SELECT_LIST,
+  MAX_LOADOUTS_PER_USER,
   MAX_NAME_LENGTH,
+  countUserBuilds,
+  countUserLoadouts,
   fetchBuildsByIds,
+  MAX_BUILDS_PER_USER,
   normalizeUserDescription,
+  parseListPagination,
   parseNumericId,
   sendInternalError,
   toBuildResponse,
   type BuildRow,
 } from './apiShared.js';
+import { LoadoutSlotTypeSchema } from './modConfigValidation.js';
 
 export const loadoutsRouter = Router();
 
@@ -33,11 +39,17 @@ loadoutsRouter.get('/loadouts', (req: Request, res: Response) => {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
+    const { limit, offset } = parseListPagination(req, {
+      defaultLimit: MAX_LOADOUTS_PER_USER,
+      max: MAX_LOADOUTS_PER_USER,
+    });
     const loadouts = db
-      .prepare('SELECT * FROM loadouts WHERE clerk_user_id = ? ORDER BY updated_at DESC')
-      .all(clerkUserId) as Array<Record<string, unknown>>;
+      .prepare(
+        `SELECT ${LOADOUT_SELECT_LIST} FROM loadouts WHERE clerk_user_id = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?`,
+      )
+      .all(clerkUserId, limit, offset) as Array<Record<string, unknown>>;
     if (loadouts.length === 0) {
-      res.json({ loadouts });
+      res.json({ loadouts, limit, offset });
       return;
     }
     const loadoutIds = loadouts
@@ -47,12 +59,14 @@ loadoutsRouter.get('/loadouts', (req: Request, res: Response) => {
       for (const l of loadouts) {
         (l as Record<string, unknown>).builds = [];
       }
-      res.json({ loadouts });
+      res.json({ loadouts, limit, offset });
       return;
     }
     const placeholders = loadoutIds.map(() => '?').join(',');
     const allBuilds = db
-      .prepare(`SELECT * FROM loadout_builds WHERE loadout_id IN (${placeholders})`)
+      .prepare(
+        `SELECT loadout_id, build_id, slot_type FROM loadout_builds WHERE loadout_id IN (${placeholders})`,
+      )
       .all(...loadoutIds) as Array<Record<string, unknown>>;
     const buildsByLoadoutId = new Map<number, Array<Record<string, unknown>>>();
     for (const b of allBuilds) {
@@ -70,7 +84,7 @@ loadoutsRouter.get('/loadouts', (req: Request, res: Response) => {
       (l as Record<string, unknown>).builds =
         typeof id === 'number' && Number.isFinite(id) ? (buildsByLoadoutId.get(id) ?? []) : [];
     }
-    res.json({ loadouts });
+    res.json({ loadouts, limit, offset });
   } catch (err) {
     sendInternalError(res, 'loadouts.list', err);
   }
@@ -180,8 +194,15 @@ loadoutsRouter.post('/loadouts', (req: Request, res: Response) => {
     }
 
     const sanitizedName = name.trim();
-    if (sanitizedName.length === 0 || sanitizedName.length > 255) {
+    if (sanitizedName.length === 0 || sanitizedName.length > MAX_NAME_LENGTH) {
       res.status(400).json({ error: 'Invalid name' });
+      return;
+    }
+
+    if (countUserLoadouts(db, clerkUserId) >= MAX_LOADOUTS_PER_USER) {
+      res.status(403).json({
+        error: `Loadout limit reached (max ${MAX_LOADOUTS_PER_USER} per user)`,
+      });
       return;
     }
 
@@ -208,7 +229,7 @@ loadoutsRouter.put('/loadouts/:id', (req: Request, res: Response) => {
       return;
     }
     const existing = db
-      .prepare('SELECT * FROM loadouts WHERE id = ? AND clerk_user_id = ?')
+      .prepare(`SELECT ${LOADOUT_SELECT_LIST} FROM loadouts WHERE id = ? AND clerk_user_id = ?`)
       .get(parsedId, clerkUserId) as Record<string, unknown> | undefined;
     if (!existing) {
       res.status(404).json({ error: 'Loadout not found' });
@@ -393,9 +414,9 @@ loadoutsRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
       return;
     }
 
-    const sourceLoadout = db.prepare('SELECT * FROM loadouts WHERE id = ?').get(id) as
-      | Record<string, unknown>
-      | undefined;
+    const sourceLoadout = db
+      .prepare(`SELECT ${LOADOUT_SELECT_LIST} FROM loadouts WHERE id = ?`)
+      .get(id) as Record<string, unknown> | undefined;
     if (!sourceLoadout) {
       res.status(404).json({ error: 'Loadout not found' });
       return;
@@ -403,6 +424,27 @@ loadoutsRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
     const sourceUserId = sourceLoadout.clerk_user_id;
     if (typeof sourceUserId !== 'string' || sourceUserId !== clerkUserId) {
       res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+
+    if (countUserLoadouts(db, clerkUserId) >= MAX_LOADOUTS_PER_USER) {
+      res.status(403).json({
+        error: `Loadout limit reached (max ${MAX_LOADOUTS_PER_USER} per user)`,
+      });
+      return;
+    }
+
+    const sourceLinks = db
+      .prepare('SELECT build_id, slot_type FROM loadout_builds WHERE loadout_id = ?')
+      .all(id) as Array<{
+      build_id: number;
+      slot_type: string;
+    }>;
+    const buildsNeeded = sourceLinks.length;
+    if (countUserBuilds(db, clerkUserId) + buildsNeeded > MAX_BUILDS_PER_USER) {
+      res.status(403).json({
+        error: `Build limit would be exceeded (max ${MAX_BUILDS_PER_USER} per user)`,
+      });
       return;
     }
 
@@ -421,14 +463,9 @@ loadoutsRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
         .run(clerkUserId, copyName, normalizeUserDescription(sourceLoadout.description));
       const newId = Number(createdLoadout.lastInsertRowid);
 
-      const sourceLinks = db
-        .prepare('SELECT build_id, slot_type FROM loadout_builds WHERE loadout_id = ?')
-        .all(id) as Array<{
-        build_id: number;
-        slot_type: string;
-      }>;
-
       for (const link of sourceLinks) {
+        const slotParsed = LoadoutSlotTypeSchema.safeParse(link.slot_type);
+        if (!slotParsed.success) continue;
         const sourceBuild = db
           .prepare(`SELECT ${BUILD_SELECT_LIST} FROM builds WHERE id = ?`)
           .get(link.build_id) as BuildRow | undefined;
@@ -450,7 +487,7 @@ loadoutsRouter.post('/loadouts/:id/copy', (req: Request, res: Response) => {
           );
         db.prepare(
           'INSERT OR REPLACE INTO loadout_builds (loadout_id, build_id, slot_type) VALUES (?, ?, ?)',
-        ).run(newId, copiedBuild.lastInsertRowid, link.slot_type);
+        ).run(newId, copiedBuild.lastInsertRowid, slotParsed.data);
       }
 
       return newId;
@@ -477,7 +514,8 @@ loadoutsRouter.post('/loadouts/:id/builds', (req: Request, res: Response) => {
     }
     const { build_id, slot_type } = req.body;
     const buildId = Number.parseInt(String(build_id), 10);
-    if (!Number.isFinite(buildId) || buildId <= 0 || typeof slot_type !== 'string') {
+    const slotParsed = LoadoutSlotTypeSchema.safeParse(slot_type);
+    if (!Number.isFinite(buildId) || buildId <= 0 || !slotParsed.success) {
       res.status(400).json({ error: 'Invalid loadout build payload' });
       return;
     }
@@ -485,7 +523,7 @@ loadoutsRouter.post('/loadouts/:id/builds', (req: Request, res: Response) => {
       .prepare(
         'INSERT OR REPLACE INTO loadout_builds (loadout_id, build_id, slot_type) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM loadouts WHERE id = ? AND clerk_user_id = ?) AND EXISTS (SELECT 1 FROM builds WHERE id = ? AND clerk_user_id = ?)',
       )
-      .run(loadoutId, buildId, slot_type, loadoutId, clerkUserId, buildId, clerkUserId);
+      .run(loadoutId, buildId, slotParsed.data, loadoutId, clerkUserId, buildId, clerkUserId);
     if (result.changes === 0) {
       res.status(404).json({
         error: 'Loadout or build not found, or you do not have permission to add it',
@@ -511,9 +549,14 @@ loadoutsRouter.delete('/loadouts/:id/builds/:slotType', (req: Request, res: Resp
       res.status(400).json({ error: 'Invalid loadout id' });
       return;
     }
+    const slotParsed = LoadoutSlotTypeSchema.safeParse(req.params.slotType);
+    if (!slotParsed.success) {
+      res.status(400).json({ error: 'Invalid slot type' });
+      return;
+    }
     db.prepare(
       'DELETE FROM loadout_builds WHERE loadout_id = ? AND slot_type = ? AND EXISTS (SELECT 1 FROM loadouts WHERE id = ? AND clerk_user_id = ?)',
-    ).run(loadoutId, req.params.slotType, loadoutId, clerkUserId);
+    ).run(loadoutId, slotParsed.data, loadoutId, clerkUserId);
     res.json({ success: true });
   } catch (err) {
     sendInternalError(res, 'loadouts.removeBuild', err);

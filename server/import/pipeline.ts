@@ -3,7 +3,12 @@ import path from 'path';
 
 import type { ImportPipelineStats } from '../../shared/pipelineSummaryTypes.js';
 import { CONTENT_BASE_URL, EXPORTS_DIR, REQUIRED_EXPORTS } from '../config.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import {
+  FETCH_BYTE_LIMITS,
+  FETCH_TIMEOUT_MS,
+  fetchBounded,
+  isAbortError,
+} from '../http/fetchWithTimeout.js';
 import { downloadAndParseManifest, type ManifestEntry } from './manifest.js';
 
 export type { ImportPipelineStats };
@@ -116,8 +121,16 @@ export async function runImportPipeline(
 
     try {
       let response: Response;
+      let text: string;
       try {
-        response = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.exportDownload);
+        const result = await fetchBounded(
+          url,
+          {},
+          FETCH_TIMEOUT_MS.exportDownload,
+          FETCH_BYTE_LIMITS.manifest,
+        );
+        response = result.response;
+        text = result.body.toString('utf-8');
       } catch (error: unknown) {
         if (isAbortError(error)) {
           throw new Error(
@@ -130,7 +143,6 @@ export async function runImportPipeline(
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const text = await response.text();
       fs.writeFileSync(localPath, text, 'utf-8');
       fs.writeFileSync(hashPath, entry.hash, 'utf-8');
 

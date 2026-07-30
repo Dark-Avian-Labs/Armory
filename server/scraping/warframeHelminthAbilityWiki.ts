@@ -2,7 +2,7 @@ import * as cheerio from 'cheerio';
 
 import { getCatalogDb } from '../db/connection.js';
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
+import { FETCH_BYTE_LIMITS, FETCH_TIMEOUT_MS, fetchTextBounded } from '../http/fetchWithTimeout.js';
 import { normalizeAbilityName } from './helminthWikiPage.js';
 import { getWikiUserAgent } from './wikiUserAgent.js';
 
@@ -41,13 +41,14 @@ export function parseSubsumableAbilitiesFromWarframeAbilitiesHtml(html: string):
 
 async function fetchWarframeAbilitiesHtml(warframeName: string): Promise<string | null> {
   const url = `${WIKI_BASE}/w/${warframeWikiSlug(warframeName)}/Abilities`;
-  const res = await fetchWithTimeout(
+  const { response, text } = await fetchTextBounded(
     url,
     { headers: { 'User-Agent': getWikiUserAgent() } },
     FETCH_TIMEOUT_MS.wikiFetch,
+    FETCH_BYTE_LIMITS.html,
   );
-  if (!res.ok) return null;
-  return res.text();
+  if (!response.ok) return null;
+  return text;
 }
 
 function sleep(ms: number): Promise<void> {

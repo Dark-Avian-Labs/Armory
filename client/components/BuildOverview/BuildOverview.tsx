@@ -135,8 +135,8 @@ export function BuildOverview({
       try {
         const isClerkId = isClerkUserId(slug);
         const url = isClerkId
-          ? `/api/builds/by-user?${new URLSearchParams({ clerk_user_id: slug }).toString()}`
-          : `/api/users/${encodeURIComponent(slug)}/builds`;
+          ? `/api/builds/by-user?${new URLSearchParams({ clerk_user_id: slug, limit: '500' }).toString()}`
+          : `/api/users/${encodeURIComponent(slug)}/builds?limit=500`;
         const res = await apiFetch(url);
         if (!res.ok) {
           if (alive) {

@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 
-import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
+import { FETCH_BYTE_LIMITS, FETCH_TIMEOUT_MS, fetchBounded } from '../http/fetchWithTimeout.js';
 import { getWikiUserAgent } from './wikiUserAgent.js';
 
 export const HELMINTH_WIKI_URL = 'https://wiki.warframe.com/w/Helminth';
@@ -36,7 +36,7 @@ export async function fetchHelminthWikiHtml(): Promise<{
   error?: string;
 }> {
   try {
-    const response = await fetchWithTimeout(
+    const { response, body } = await fetchBounded(
       HELMINTH_WIKI_URL,
       {
         headers: {
@@ -44,6 +44,7 @@ export async function fetchHelminthWikiHtml(): Promise<{
         },
       },
       FETCH_TIMEOUT_MS.wikiFetch,
+      FETCH_BYTE_LIMITS.html,
     );
     if (!response.ok) {
       return {
@@ -52,7 +53,7 @@ export async function fetchHelminthWikiHtml(): Promise<{
         error: `HTTP ${response.status} ${response.statusText}`,
       };
     }
-    return { html: await response.text(), fetchOk: true };
+    return { html: body.toString('utf-8'), fetchOk: true };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return { html: null, fetchOk: false, error: message };

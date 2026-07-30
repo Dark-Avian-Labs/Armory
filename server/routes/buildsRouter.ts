@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { z } from 'zod';
 
 import {
   DELETED_USER_LABEL,
@@ -19,16 +20,33 @@ import {
   BUILD_SELECT_LIST,
   BUILD_SELECT_LIST_FROM_B,
   COPY_PREFIX,
+  MAX_BUILDS_PER_USER,
+  MAX_LOADOUTS_PER_USER,
   MAX_NAME_LENGTH,
+  countUserBuilds,
   fetchPublicLoadoutsForUser,
   normalizeUserDescription,
+  parseListPagination,
   parseNumericId,
   sendInternalError,
   toBuildListItem,
   toBuildResponse,
   type BuildRow,
 } from './apiShared.js';
-import { ModConfigSchema } from './modConfigValidation.js';
+import {
+  EquipmentTypeSchema,
+  MAX_EQUIPMENT_UNIQUE_NAME_LENGTH,
+  ModConfigSchema,
+} from './modConfigValidation.js';
+
+const BuildCreateBodySchema = z.object({
+  name: z.string().trim().min(1).max(MAX_NAME_LENGTH),
+  equipment_type: EquipmentTypeSchema,
+  equipment_unique_name: z.string().trim().min(1).max(MAX_EQUIPMENT_UNIQUE_NAME_LENGTH),
+  mod_config: z.unknown(),
+  visibility: z.unknown().optional(),
+  description: z.unknown().optional(),
+});
 
 export const buildsRouter = Router();
 
@@ -44,21 +62,28 @@ buildsRouter.get('/users/:username/builds', async (req: Request, res: Response) 
       res.status(404).json({ error: 'User not found' });
       return;
     }
+    const { limit, offset } = parseListPagination(req);
     const db = getUserDb();
     const rows = db
       .prepare(
         `SELECT ${BUILD_SELECT_LIST} FROM builds
          WHERE clerk_user_id = ? AND visibility = 'public'
-         ORDER BY updated_at DESC`,
+         ORDER BY updated_at DESC
+         LIMIT ? OFFSET ?`,
       )
-      .all(clerkUserId) as BuildRow[];
+      .all(clerkUserId, limit, offset) as BuildRow[];
     const ownerUsernames = await resolveOwnerUsernames([clerkUserId]);
-    const loadouts = fetchPublicLoadoutsForUser(db, clerkUserId, ownerUsernames);
+    const loadouts = fetchPublicLoadoutsForUser(db, clerkUserId, ownerUsernames, {
+      limit: MAX_LOADOUTS_PER_USER,
+      offset: 0,
+    });
     res.json({
       owner_user_id: clerkUserId,
       owner_username: getOwnerDisplayName(clerkUserId, ownerUsernames),
       builds: rows.map((row) => toBuildListItem(row, ownerUsernames)),
       loadouts,
+      limit,
+      offset,
     });
   } catch (err) {
     sendInternalError(res, 'users.buildsByUsername', err);
@@ -74,15 +99,19 @@ buildsRouter.get('/builds', (req: Request, res: Response) => {
       return;
     }
 
+    const { limit, offset } = parseListPagination(req, {
+      defaultLimit: MAX_BUILDS_PER_USER,
+      max: MAX_BUILDS_PER_USER,
+    });
     const rows = db
       .prepare(
-        `SELECT ${BUILD_SELECT_LIST} FROM builds WHERE clerk_user_id = ? ORDER BY updated_at DESC`,
+        `SELECT ${BUILD_SELECT_LIST} FROM builds WHERE clerk_user_id = ? ORDER BY updated_at DESC LIMIT ? OFFSET ?`,
       )
-      .all(clerkUserId) as BuildRow[];
+      .all(clerkUserId, limit, offset) as BuildRow[];
 
     const builds = rows.map((row) => toBuildResponse(row));
 
-    res.json({ builds });
+    res.json({ builds, limit, offset });
   } catch (err) {
     sendInternalError(res, 'builds.list', err);
   }
@@ -123,22 +152,29 @@ buildsRouter.get('/builds/by-user', async (req: Request, res: Response) => {
       return;
     }
 
+    const { limit, offset } = parseListPagination(req);
     const rows = db
       .prepare(
         `SELECT ${BUILD_SELECT_LIST} FROM builds
          WHERE clerk_user_id = ? AND visibility = 'public'
-         ORDER BY updated_at DESC`,
+         ORDER BY updated_at DESC
+         LIMIT ? OFFSET ?`,
       )
-      .all(clerkUserId) as BuildRow[];
+      .all(clerkUserId, limit, offset) as BuildRow[];
 
     const ownerUsernames = await resolveOwnerUsernames([clerkUserId]);
-    const loadouts = fetchPublicLoadoutsForUser(db, clerkUserId, ownerUsernames);
+    const loadouts = fetchPublicLoadoutsForUser(db, clerkUserId, ownerUsernames, {
+      limit: MAX_LOADOUTS_PER_USER,
+      offset: 0,
+    });
 
     res.json({
       owner_user_id: clerkUserId,
       owner_username: getOwnerDisplayName(clerkUserId, ownerUsernames),
       builds: rows.map((row) => toBuildListItem(row, ownerUsernames)),
       loadouts,
+      limit,
+      offset,
     });
   } catch (err) {
     sendInternalError(res, 'builds.byUser', err);
@@ -162,14 +198,16 @@ buildsRouter.get('/builds/by-equipment', async (req: Request, res: Response) => 
       return;
     }
 
+    const { limit, offset } = parseListPagination(req);
     const rows = db
       .prepare(
         `SELECT ${BUILD_SELECT_LIST} FROM builds
          WHERE equipment_type = ? AND equipment_unique_name = ?
            AND visibility = 'public'
-         ORDER BY updated_at DESC`,
+         ORDER BY updated_at DESC
+         LIMIT ? OFFSET ?`,
       )
-      .all(equipmentType, equipmentUniqueName) as BuildRow[];
+      .all(equipmentType, equipmentUniqueName, limit, offset) as BuildRow[];
 
     const ownerUsernames = await resolveOwnerUsernames(rows.map((r) => r.clerk_user_id));
 
@@ -181,9 +219,10 @@ buildsRouter.get('/builds/by-equipment', async (req: Request, res: Response) => 
          INNER JOIN builds b ON b.id = lb.build_id
          WHERE b.equipment_type = ? AND b.equipment_unique_name = ?
            AND (COALESCE(l.visibility, 'private') = 'public' OR l.clerk_user_id = ?)
-         ORDER BY l.updated_at DESC`,
+         ORDER BY l.updated_at DESC
+         LIMIT ? OFFSET ?`,
       )
-      .all(equipmentType, equipmentUniqueName, sessionUserId ?? '') as Array<{
+      .all(equipmentType, equipmentUniqueName, sessionUserId ?? '', limit, offset) as Array<{
       id: number;
       name: string;
       clerk_user_id: string;
@@ -206,6 +245,8 @@ buildsRouter.get('/builds/by-equipment', async (req: Request, res: Response) => 
     res.json({
       builds: rows.map((row) => toBuildListItem(row, ownerUsernames)),
       loadouts,
+      limit,
+      offset,
     });
   } catch (err) {
     sendInternalError(res, 'builds.byEquipment', err);
@@ -223,21 +264,26 @@ buildsRouter.get('/builds/favorites', (req: Request, res: Response) => {
 
     const authState = getClerkAuthState(req);
     const readContext = buildReadAccessContext(req, clerkUserId, authState.isArmoryAdmin);
+    const { limit, offset } = parseListPagination(req, {
+      defaultLimit: MAX_BUILDS_PER_USER,
+      max: MAX_BUILDS_PER_USER,
+    });
     const rows = db
       .prepare(
         `SELECT ${BUILD_SELECT_LIST_FROM_B}
          FROM builds b
          INNER JOIN build_favorites f ON f.build_id = b.id
          WHERE f.clerk_user_id = ?
-         ORDER BY f.created_at DESC`,
+         ORDER BY f.created_at DESC
+         LIMIT ? OFFSET ?`,
       )
-      .all(clerkUserId) as BuildRow[];
+      .all(clerkUserId, limit, offset) as BuildRow[];
 
     const builds = rows
       .filter((row) => canReadBuild(row, readContext))
       .map((row) => toBuildResponse(row));
 
-    res.json({ builds });
+    res.json({ builds, limit, offset });
   } catch (err) {
     sendInternalError(res, 'builds.favorites.list', err);
   }
@@ -425,30 +471,28 @@ buildsRouter.post('/builds', (req: Request, res: Response) => {
       return;
     }
 
-    const { name, equipment_type, equipment_unique_name, mod_config } = req.body;
-    const visRaw = req.body?.visibility;
-    const visibility = parseVisibility(visRaw);
-    const shareToken = resolveShareTokenForVisibility(undefined, visibility, null);
-    const description = normalizeUserDescription(req.body?.description);
-
-    const modConfigResult = ModConfigSchema.safeParse(mod_config);
-    if (
-      typeof name !== 'string' ||
-      typeof equipment_type !== 'string' ||
-      typeof equipment_unique_name !== 'string'
-    ) {
+    const bodyResult = BuildCreateBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
       res.status(400).json({ error: 'Invalid build payload' });
       return;
     }
 
-    const sanitizedName = name.trim();
-    if (sanitizedName.length === 0 || sanitizedName.length > MAX_NAME_LENGTH) {
-      res.status(400).json({ error: 'Invalid name' });
+    const { name, equipment_type, equipment_unique_name, mod_config } = bodyResult.data;
+    const visRaw = bodyResult.data.visibility;
+    const visibility = parseVisibility(visRaw);
+    const shareToken = resolveShareTokenForVisibility(undefined, visibility, null);
+    const description = normalizeUserDescription(bodyResult.data.description);
+
+    const modConfigResult = ModConfigSchema.safeParse(mod_config);
+    if (!modConfigResult.success) {
+      res.status(400).json({ error: 'Invalid mod_config' });
       return;
     }
 
-    if (!modConfigResult.success) {
-      res.status(400).json({ error: 'Invalid mod_config' });
+    if (countUserBuilds(db, clerkUserId) >= MAX_BUILDS_PER_USER) {
+      res.status(403).json({
+        error: `Build limit reached (max ${MAX_BUILDS_PER_USER} per user)`,
+      });
       return;
     }
 
@@ -459,7 +503,7 @@ buildsRouter.post('/builds', (req: Request, res: Response) => {
       )
       .run(
         clerkUserId,
-        sanitizedName,
+        name,
         equipment_type,
         equipment_unique_name,
         JSON.stringify(modConfigResult.data),
@@ -645,6 +689,13 @@ buildsRouter.post('/builds/:id/copy', (req: Request, res: Response) => {
       requestedNameTruncated.length > 0
         ? requestedNameTruncated
         : `${COPY_PREFIX}${source.name.trim().slice(0, MAX_NAME_LENGTH - COPY_PREFIX.length)}`;
+
+    if (countUserBuilds(db, clerkUserId) >= MAX_BUILDS_PER_USER) {
+      res.status(403).json({
+        error: `Build limit reached (max ${MAX_BUILDS_PER_USER} per user)`,
+      });
+      return;
+    }
 
     const result = db
       .prepare(

@@ -254,14 +254,12 @@ catalogRouter.get('/mods', async (req: Request, res: Response) => {
 
     const allItems = await getCachedModList(cacheKey, () => loadDedupedMods(db, query));
 
-    const responseLimit = limit === null ? allItems.length : limit;
-    const responseOffset = limit === null ? 0 : offset;
-    const page = allItems.slice(responseOffset, responseOffset + responseLimit);
+    const page = allItems.slice(offset, offset + limit);
     res.json({
       items: page,
       total: allItems.length,
-      limit: responseLimit,
-      offset: responseOffset,
+      limit,
+      offset,
     });
   } catch (err) {
     sendInternalError(res, 'mods.list', err);

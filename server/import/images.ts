@@ -1,9 +1,15 @@
 import fs from 'fs';
 import path from 'path';
 
-import { IMAGE_BASE_URL, IMAGES_DIR, EXPORTS_DIR } from '../config.js';
+import { IMAGE_BASE_URL, EXPORTS_DIR } from '../config.js';
 import { getCatalogDb } from '../db/connection.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import {
+  FETCH_BYTE_LIMITS,
+  FETCH_TIMEOUT_MS,
+  fetchBounded,
+  isAbortError,
+} from '../http/fetchWithTimeout.js';
+import { safeImagePathUnderRoot, sanitizeUniqueNameSegments } from './safeImagePath.js';
 
 export interface ImageDownloadResult {
   total: number;
@@ -69,13 +75,15 @@ function getImagePaths(entry: ManifestImageEntry): {
   const bangIndex = textureLocation.indexOf('!');
   const hash = bangIndex !== -1 ? textureLocation.substring(bangIndex + 1) : '';
 
-  const safeName = uniqueName.replace(/^\//, '').replace(/[<>:"|?*]/g, '_');
+  const segments = sanitizeUniqueNameSegments(uniqueName);
   const ext = path.extname(textureLocation.split('!')[0]) || '.png';
-  const localPath = path.join(IMAGES_DIR, safeName + ext);
+  const safeRel = [...segments];
+  safeRel[safeRel.length - 1] = `${safeRel[safeRel.length - 1]}${ext}`;
+  const localPath = safeImagePathUnderRoot(safeRel);
   const localDir = path.dirname(localPath);
   const hashPath = `${localPath}.hash`;
 
-  const dbImagePath = `/${safeName.replace(/\\/g, '/')}${ext}`;
+  const dbImagePath = `/${segments.join('/')}${ext}`;
 
   return { localPath, localDir, hash, hashPath, dbImagePath, ext };
 }
@@ -85,7 +93,14 @@ async function downloadSingleImage(
   forceDownload = false,
 ): Promise<{ dbImagePath: string; status: 'downloaded' | 'skipped' } | { error: string }> {
   const { textureLocation } = entry;
-  const { localPath, localDir, hash, hashPath, dbImagePath } = getImagePaths(entry);
+  let paths: ReturnType<typeof getImagePaths>;
+  try {
+    paths = getImagePaths(entry);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { error: `${entry.uniqueName}: ${msg}` };
+  }
+  const { localPath, localDir, hash, hashPath, dbImagePath } = paths;
 
   if (!forceDownload && hash && fs.existsSync(localPath) && fs.existsSync(hashPath)) {
     const existingHash = fs.readFileSync(hashPath, 'utf-8').trim();
@@ -97,8 +112,17 @@ async function downloadSingleImage(
   const url = `${IMAGE_BASE_URL}${textureLocation}`;
   try {
     let response: Response;
+    let buffer: Buffer;
     try {
-      response = await fetchWithTimeout(url, {}, FETCH_TIMEOUT_MS.binaryImage);
+      const result = await fetchBounded(
+        url,
+        {},
+        FETCH_TIMEOUT_MS.binaryImage,
+        FETCH_BYTE_LIMITS.image,
+        { requireImageMime: true },
+      );
+      response = result.response;
+      buffer = result.body;
     } catch (error: unknown) {
       if (isAbortError(error)) {
         throw new Error(`Image fetch timed out after ${FETCH_TIMEOUT_MS.binaryImage}ms`);
@@ -108,8 +132,6 @@ async function downloadSingleImage(
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
 
     if (!fs.existsSync(localDir)) {
       fs.mkdirSync(localDir, { recursive: true });

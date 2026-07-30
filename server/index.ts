@@ -28,6 +28,7 @@ import {
   IMAGES_DIR,
   ensureDataDirs,
   SHUTDOWN_TIMEOUT_MS,
+  USING_INSECURE_DEV_SESSION_SECRET,
 } from './config.js';
 import { closeAll, getCatalogDb, getSessionDb, getUserDb } from './db/connection.js';
 import { repairPlaceholderArtifactSlots } from './db/repairArtifactSlots.js';
@@ -65,7 +66,19 @@ if (NODE_ENV === 'production' && SECURE_COOKIES && !TRUST_PROXY) {
 
 app.use(createAppHelmet());
 app.use(requestIdMiddleware);
-app.use(compression());
+app.use(
+  compression({
+    filter: (req, res) => {
+      if (req.path.includes('/stream')) return false;
+      const accept = req.headers.accept;
+      if (typeof accept === 'string' && accept.includes('text/event-stream')) return false;
+      const contentType = res.getHeader('Content-Type');
+      if (typeof contentType === 'string' && contentType.includes('text/event-stream'))
+        return false;
+      return compression.filter(req, res);
+    },
+  }),
+);
 
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const rateLimitDefaults = {
@@ -79,6 +92,12 @@ const appApiLimiter = rateLimit({
   max: 600,
 });
 
+const writeApiLimiter = rateLimit({
+  ...rateLimitDefaults,
+  max: 120,
+  message: { error: 'Too many write requests, please try again later' },
+});
+
 app.use(
   '/api/webhooks/clerk',
   appApiLimiter,
@@ -86,7 +105,7 @@ app.use(
   clerkWebhookRouter,
 );
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(clerkMiddleware());
@@ -104,6 +123,15 @@ const baselineLimiter = rateLimit({
 });
 app.use(baselineLimiter);
 
+app.use('/api', (req, res, next) => {
+  const method = req.method.toUpperCase();
+  if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
+    writeApiLimiter(req, res, next);
+    return;
+  }
+  next();
+});
+
 const sessionStore = new SQLiteStore({
   client: sessionDb,
   expired: { clear: true, intervalMs: 15 * 60 * 1000 },
@@ -113,7 +141,7 @@ const cookieOptions: express.CookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000,
   httpOnly: true,
   secure: SECURE_COOKIES,
-  sameSite: SECURE_COOKIES ? 'none' : 'lax',
+  sameSite: 'lax',
 };
 if (COOKIE_DOMAIN) cookieOptions.domain = COOKIE_DOMAIN;
 
@@ -207,7 +235,23 @@ const publicPageLimiter = rateLimit({
 app.use('/api/auth', authRouter);
 app.use('/api', appApiLimiter, apiRouter);
 
-app.use('/images', express.static(IMAGES_DIR));
+app.use('/images', (req, res, next) => {
+  if (/\.hash$/i.test(req.path)) {
+    res.status(404).end();
+    return;
+  }
+  next();
+});
+app.use(
+  '/images',
+  express.static(IMAGES_DIR, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.hash')) {
+        res.setHeader('Cache-Control', 'no-store');
+      }
+    },
+  }),
+);
 
 app.use('/icons', express.static(path.join(PROJECT_ROOT, 'icons')));
 app.get('/favicon.ico', publicPageLimiter, (_req, res) => {
@@ -300,7 +344,25 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 const server = app.listen(PORT, HOST, () => {
   log('info', `${APP_NAME} server listening`, { host: HOST, port: PORT, nodeEnv: NODE_ENV });
+  if (USING_INSECURE_DEV_SESSION_SECRET) {
+    const hostIsLoopback =
+      HOST === '127.0.0.1' || HOST === 'localhost' || HOST === '::1' || HOST === '[::1]';
+    if (!hostIsLoopback) {
+      log(
+        'warn',
+        'INSECURE DEV SESSION_SECRET is active while HOST is non-loopback. Set SESSION_SECRET or bind to 127.0.0.1.',
+        { host: HOST },
+      );
+    } else {
+      log(
+        'warn',
+        'Using insecure DEV SESSION_SECRET (ALLOW_INSECURE_DEV=1). Do not use in production.',
+      );
+    }
+  }
 });
+server.headersTimeout = 65_000;
+server.requestTimeout = 120_000;
 
 function shutdown(): void {
   let done = false;

@@ -3,7 +3,7 @@ type: Repository Overview
 title: Armory Quickstart
 description: Entrypoint for agents and humans — what Armory is, how to run it, and where to dig deeper.
 tags: [quickstart, armory]
-timestamp: 2026-07-27T15:55:00Z
+timestamp: 2026-07-30T17:05:00Z
 ---
 
 # Armory Quickstart
@@ -70,5 +70,7 @@ Quality gate: `pnpm run validate` (preflight → format → lint → typecheck �
 - Build keys in `mod_config` use `/Armory/Helminth/...`, `/Armory/Ability/...`, `/Armory/Archon/...` (older v1 fields still load).
 - Force Full Re-import resets **catalog tables only**; user DB is untouched.
 - Start/import Armory before Codex so `armory.db` exists and is populated.
+- Missing `SESSION_SECRET` in development needs `ALLOW_INSECURE_DEV=1` and loopback `HOST`.
+- Per-user caps: 250 builds / 50 loadouts; list APIs are paginated.
 - Windows agent shells may prepend Node 22 — prefer system Node 26; rebuild `better-sqlite3` after Node changes.
 - UI tokens are mirrored manually with Codex (no shared UI package).

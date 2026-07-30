@@ -30,7 +30,6 @@ describe('warframeRankExceptions', () => {
     const result = generateWarframeRankExceptions();
     expect(result.entryCount).toBeGreaterThan(0);
     expect(warframeRankExceptionsSourceChanged()).toBe(false);
-    // Generator must emit oxfmt-compatible output so regen does not dirty the tree.
     expect(fs.readFileSync(OUT_PATH, 'utf8')).toBe(before);
   });
 });

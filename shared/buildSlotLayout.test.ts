@@ -15,7 +15,6 @@ describe('buildSlotLayout', () => {
       mod: { unique_name: `/Lotus/Upgrades/Mods/Pistol/TestMod${index}`, name: `Mod ${index}` },
     }));
 
-    // Primary/secondary storage is 9 slots: 0-7 general, 8 exilus
     const artifactSlots = [...Array.from({ length: 8 }, () => 'AP_UNIVERSAL'), 'AP_POWER'];
 
     const reconciled = reconcileStoredBuildModSlots(existing, {

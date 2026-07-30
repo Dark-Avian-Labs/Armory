@@ -7,6 +7,10 @@ import { log } from '../logger.js';
 
 export const MAX_NAME_LENGTH = 255;
 export const MAX_DESCRIPTION_LENGTH = 8000;
+export const MAX_BUILDS_PER_USER = 250;
+export const MAX_LOADOUTS_PER_USER = 50;
+export const MAX_EQUIPMENT_TYPE_LENGTH = 64;
+export const MAX_EQUIPMENT_UNIQUE_NAME_LENGTH = 512;
 export const COPY_PREFIX = 'Copy of ';
 export const BUILD_SELECT_LIST =
   'id, clerk_user_id, name, equipment_type, equipment_unique_name, mod_config, created_at, updated_at, visibility, description, share_token';
@@ -15,6 +19,7 @@ export const BUILD_SELECT_LIST_FROM_B =
 export const LOADOUT_SELECT_LIST =
   'id, clerk_user_id, name, visibility, description, created_at, updated_at, share_token';
 export const MODS_PAGE_MAX = 500;
+export const LIST_PAGE_DEFAULT = 100;
 
 export const WEAPON_JUNK_PREFIXES = [
   '/Lotus/Types/Friendly/Pets/CreaturePets/',
@@ -34,6 +39,7 @@ export function fetchPublicLoadoutsForUser(
   db: Database.Database,
   clerkUserId: string,
   ownerNames: Map<string, string | null>,
+  pagination?: { limit: number; offset: number },
 ): Array<{
   id: string;
   name: string;
@@ -43,14 +49,17 @@ export function fetchPublicLoadoutsForUser(
   updated_at: string;
   builds: Array<{ build_id: string; slot_type: string }>;
 }> {
+  const limit = pagination?.limit ?? LIST_PAGE_DEFAULT;
+  const offset = pagination?.offset ?? 0;
   const loadoutRows = db
     .prepare(
       `SELECT id, name, clerk_user_id, visibility, updated_at
        FROM loadouts
        WHERE clerk_user_id = ? AND visibility = 'public'
-       ORDER BY updated_at DESC`,
+       ORDER BY updated_at DESC
+       LIMIT ? OFFSET ?`,
     )
-    .all(clerkUserId) as Array<{
+    .all(clerkUserId, limit, offset) as Array<{
     id: number;
     name: string;
     clerk_user_id: string;
@@ -218,19 +227,33 @@ export function sendInternalError(res: Response, context: string, err: unknown):
   res.status(500).json({ error: 'Internal server error' });
 }
 
-export function parseListPagination(req: Request): { limit: number | null; offset: number } {
-  const hasLimit = req.query.limit !== undefined;
-  const hasOffset = req.query.offset !== undefined;
-  if (!hasLimit && !hasOffset) {
-    return { limit: null, offset: 0 };
-  }
-  const limitRaw = Number(req.query.limit ?? 100);
+export function parseListPagination(
+  req: Request,
+  options?: { defaultLimit?: number; max?: number },
+): { limit: number; offset: number } {
+  const defaultLimit = options?.defaultLimit ?? LIST_PAGE_DEFAULT;
+  const max = options?.max ?? MODS_PAGE_MAX;
+  const limitRaw = Number(req.query.limit ?? defaultLimit);
   const offsetRaw = Number(req.query.offset ?? 0);
   const limit = Number.isFinite(limitRaw)
-    ? Math.min(Math.max(Math.trunc(limitRaw), 1), MODS_PAGE_MAX)
-    : 100;
+    ? Math.min(Math.max(Math.trunc(limitRaw), 1), max)
+    : defaultLimit;
   const offset = Number.isFinite(offsetRaw) ? Math.max(Math.trunc(offsetRaw), 0) : 0;
   return { limit, offset };
+}
+
+export function countUserBuilds(db: Database.Database, clerkUserId: string): number {
+  const row = db
+    .prepare('SELECT COUNT(*) AS c FROM builds WHERE clerk_user_id = ?')
+    .get(clerkUserId) as { c: number };
+  return row?.c ?? 0;
+}
+
+export function countUserLoadouts(db: Database.Database, clerkUserId: string): number {
+  const row = db
+    .prepare('SELECT COUNT(*) AS c FROM loadouts WHERE clerk_user_id = ?')
+    .get(clerkUserId) as { c: number };
+  return row?.c ?? 0;
 }
 
 export function fetchBuildsByIds(db: Database.Database, ids: number[]): BuildRow[] {

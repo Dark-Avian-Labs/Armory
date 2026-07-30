@@ -2,7 +2,7 @@ import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 
 import { getCatalogDb } from '../db/connection.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout } from '../http/fetchWithTimeout.js';
+import { FETCH_BYTE_LIMITS, FETCH_TIMEOUT_MS, fetchTextBounded } from '../http/fetchWithTimeout.js';
 import { getWikiUserAgent } from './wikiUserAgent.js';
 
 const WIKI_BASE = 'https://wiki.warframe.com';
@@ -84,13 +84,14 @@ export function parseWeaponFireBehaviorsFromWikiHtml(html: string): WikiFireBeha
 
 async function fetchWeaponWikiHtml(name: string): Promise<string | null> {
   const url = `${WIKI_BASE}/w/${wikiSlug(name)}`;
-  const res = await fetchWithTimeout(
+  const { response, text } = await fetchTextBounded(
     url,
     { headers: { 'User-Agent': getWikiUserAgent() } },
     FETCH_TIMEOUT_MS.wikiFetch,
+    FETCH_BYTE_LIMITS.html,
   );
-  if (!res.ok) return null;
-  return res.text();
+  if (!response.ok) return null;
+  return text;
 }
 
 function sleep(ms: number): Promise<void> {

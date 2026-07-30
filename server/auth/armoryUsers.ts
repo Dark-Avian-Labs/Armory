@@ -62,9 +62,21 @@ export function markArmoryUserDeleted(clerkUserId: string): void {
   );
 }
 
+const CLERK_SYNC_TIMEOUT_MS = 5_000;
+const CLERK_FANOUT_MAX_PER_REQUEST = 25;
+
 export async function syncArmoryUserFromClerk(clerkUserId: string): Promise<string | null> {
   try {
-    const user = await clerkClient.users.getUser(clerkUserId);
+    const user = await Promise.race([
+      clerkClient.users.getUser(clerkUserId),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          const err = new Error(`Clerk getUser timed out after ${CLERK_SYNC_TIMEOUT_MS}ms`);
+          err.name = 'TimeoutError';
+          reject(err);
+        }, CLERK_SYNC_TIMEOUT_MS);
+      }),
+    ]);
     const username = user.username?.trim();
     if (!username) return null;
     upsertArmoryUser(clerkUserId, username);
@@ -128,7 +140,9 @@ export async function resolveOwnerUsernames(
   if (missing.length === 0) return map;
 
   const now = Date.now();
-  const toSync = missing.filter((id) => (clerkSyncCooldown.get(id) ?? 0) <= now);
+  const toSync = missing
+    .filter((id) => (clerkSyncCooldown.get(id) ?? 0) <= now)
+    .slice(0, CLERK_FANOUT_MAX_PER_REQUEST);
   if (toSync.length === 0) return map;
 
   await Promise.all(

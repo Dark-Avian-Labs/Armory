@@ -36,7 +36,6 @@ export interface WarframeBonusEffects {
   abilityRangePct?: number;
 }
 
-/** Minimal shape for warframe / companion avatar stat scaling and modding. */
 export interface AvatarStatsEntity {
   unique_name: string;
   health?: number;

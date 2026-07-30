@@ -105,7 +105,6 @@ export function generateWarframeRankExceptions(): { entryCount: number } {
     throw new Error(`Cannot regenerate warframe rank exceptions: missing ${GENERATOR_SCRIPT}`);
   }
 
-  // Single codegen path (CLI + pipeline) so format stays oxfmt-compatible.
   execFileSync(process.execPath, [GENERATOR_SCRIPT], {
     cwd: PROJECT_ROOT,
     stdio: 'pipe',

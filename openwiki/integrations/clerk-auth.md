@@ -3,7 +3,7 @@ type: Integration
 title: Clerk Authentication
 description: Clerk identity, Armory admin role, CSRF session store, and webhook hooks.
 tags: [clerk, auth, csrf, admin]
-timestamp: 2026-07-18T20:40:00Z
+timestamp: 2026-07-30T17:05:00Z
 ---
 
 # Clerk Authentication
@@ -27,12 +27,14 @@ Armory uses Clerk for sign-in and session claims. Express-session + SQLite (`SES
 3. `requireArmoryAdmin` (and related guards) return 403 for non-admins.
 4. CSRF tokens are tied to the Express session store in `session.db`, separate from Clerk.
 5. Production requires real `CLERK_SECRET_KEY` and publishable key (`CLERK_PUBLISHABLE_KEY` or `VITE_CLERK_PUBLISHABLE_KEY`).
+6. Session cookie may be scoped with `COOKIE_DOMAIN` so sibling apps on the same apex share CSRF/session state; `ALLOWED_APP_ORIGINS` lists full trust peers (Codex + Armory).
 
 ## What to watch out for
 
 - Placeholder Clerk keys cause middleware to **500** on requests — expected in bare local setups without real keys; the process still listens.
 - Admin role lives in Clerk public/session metadata (`apps.armory`), not in Armory SQLite.
 - Do not document or commit real secrets; use `.env.example` placeholders only.
+- Missing `SESSION_SECRET` outside production requires `ALLOW_INSECURE_DEV=1` with loopback-only `HOST` — see [deployment](../operations/deployment.md).
 
 ## Related
 

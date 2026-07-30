@@ -6,10 +6,6 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const sourcePath = path.join(root, 'scripts/data/warframe-rank-exceptions.json');
 const outPath = path.join(root, 'shared/warframeRankExceptions.generated.ts');
 
-/**
- * Emit TypeScript object literals that match oxfmt (unquoted keys, single-quoted
- * strings, trailing commas). JSON.stringify output fails check-format.
- */
 function formatTsString(value) {
   return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 }

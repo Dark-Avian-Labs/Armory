@@ -3,7 +3,12 @@ import { createRequire } from 'module';
 import path from 'path';
 
 import { MANIFEST_URL, EXPORTS_DIR } from '../config.js';
-import { FETCH_TIMEOUT_MS, fetchWithTimeout, isAbortError } from '../http/fetchWithTimeout.js';
+import {
+  FETCH_BYTE_LIMITS,
+  FETCH_TIMEOUT_MS,
+  fetchBounded,
+  isAbortError,
+} from '../http/fetchWithTimeout.js';
 
 const require = createRequire(import.meta.url);
 const { LZMA } = require('lzma');
@@ -19,8 +24,16 @@ export async function downloadAndParseManifest(): Promise<ManifestEntry[]> {
   console.log(`[Import] Downloading manifest from ${MANIFEST_URL}`);
 
   let response: Response;
+  let compressedBuffer: Buffer;
   try {
-    response = await fetchWithTimeout(MANIFEST_URL, {}, FETCH_TIMEOUT_MS.manifest);
+    const result = await fetchBounded(
+      MANIFEST_URL,
+      {},
+      FETCH_TIMEOUT_MS.manifest,
+      FETCH_BYTE_LIMITS.manifest,
+    );
+    response = result.response;
+    compressedBuffer = result.body;
   } catch (error: unknown) {
     if (isAbortError(error)) {
       throw new Error(`Manifest fetch timed out after ${FETCH_TIMEOUT_MS.manifest}ms`);
@@ -31,7 +44,6 @@ export async function downloadAndParseManifest(): Promise<ManifestEntry[]> {
     throw new Error(`Failed to download manifest: ${response.status} ${response.statusText}`);
   }
 
-  const compressedBuffer = Buffer.from(await response.arrayBuffer());
   console.log(`[Import] Downloaded ${compressedBuffer.length} bytes, decompressing...`);
 
   const text = await decompressLzma(compressedBuffer);

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { isAllowedEquipmentImage } from '../http/allowedFetchHosts.js';
 import {
   appendModConfigSizeIssues,
   MAX_ARCANE_SLOTS,
@@ -8,6 +9,8 @@ import {
 } from './modConfigLimits.js';
 
 export const MAX_MOD_CONFIG_NAME_LENGTH = 255;
+export const MAX_EQUIPMENT_UNIQUE_NAME_LENGTH = 512;
+export const MAX_EQUIPMENT_IMAGE_LENGTH = 2048;
 
 const RivenStatSchema = z.object({
   stat: z.string().trim(),
@@ -55,6 +58,34 @@ export const EquipmentTypeSchema = z.enum([
   'tektolyst',
 ]);
 
+export const LoadoutSlotTypeSchema = z.enum([
+  'warframe',
+  'primary',
+  'secondary',
+  'melee',
+  'companion',
+  'companion_weapon',
+  'archwing',
+  'archgun',
+  'archmelee',
+  'beast_claws',
+  'necramech',
+  'kdrive',
+  'tektolyst',
+  'special_primary',
+  'special_secondary',
+  'special_melee',
+]);
+
+export const EquipmentImageSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(MAX_EQUIPMENT_IMAGE_LENGTH)
+  .refine(isAllowedEquipmentImage, {
+    message: 'equipment_image must be a same-origin relative path or an allowlisted HTTPS URL',
+  });
+
 export const ModSlotSchema = z
   .object({
     index: z.number().int().min(0),
@@ -73,7 +104,7 @@ export const ModConfigSchema = z
     id: z.string().trim().min(1).optional(),
     name: z.string().trim().min(1).max(MAX_MOD_CONFIG_NAME_LENGTH),
     equipment_type: EquipmentTypeSchema,
-    equipment_unique_name: z.string().trim().min(1),
+    equipment_unique_name: z.string().trim().min(1).max(MAX_EQUIPMENT_UNIQUE_NAME_LENGTH),
     slots: z.array(ModSlotSchema),
     helminth: z
       .union([
@@ -148,7 +179,7 @@ export const ModConfigSchema = z
       .nullable()
       .optional(),
     equipment_name: z.string().trim().min(1).optional(),
-    equipment_image: z.string().trim().min(1).optional(),
+    equipment_image: EquipmentImageSchema.optional(),
     note: z.string().optional(),
   })
   .superRefine((config, ctx) => {

@@ -120,12 +120,32 @@ if (NODE_ENV === 'production' && !path.isAbsolute(USER_DB_PATH)) {
 }
 
 const DEV_SESSION_SECRET = 'armory-dev-only-session-secret-32ch';
-const rawSessionSecret =
-  process.env.SESSION_SECRET?.trim() || (NODE_ENV === 'production' ? '' : DEV_SESSION_SECRET);
-if (NODE_ENV === 'production' && rawSessionSecret.length < 32) {
+const ALLOW_INSECURE_DEV = process.env.ALLOW_INSECURE_DEV?.trim() === '1';
+const envSessionSecret = process.env.SESSION_SECRET?.trim() || '';
+let usingInsecureDevSessionSecret = false;
+let rawSessionSecret = envSessionSecret;
+if (!rawSessionSecret) {
+  if (NODE_ENV === 'production') {
+    throw new Error('[FATAL] SESSION_SECRET must be set and at least 32 characters in production.');
+  }
+  if (!ALLOW_INSECURE_DEV) {
+    throw new Error(
+      '[FATAL] SESSION_SECRET must be set. For local-only insecure defaults, set ALLOW_INSECURE_DEV=1.',
+    );
+  }
+  const host = HOST.trim().toLowerCase();
+  if (host !== '127.0.0.1' && host !== 'localhost' && host !== '::1') {
+    throw new Error(
+      '[FATAL] ALLOW_INSECURE_DEV=1 requires HOST to be loopback (127.0.0.1, localhost, or ::1).',
+    );
+  }
+  rawSessionSecret = DEV_SESSION_SECRET;
+  usingInsecureDevSessionSecret = true;
+} else if (NODE_ENV === 'production' && rawSessionSecret.length < 32) {
   throw new Error('[FATAL] SESSION_SECRET must be set and at least 32 characters in production.');
 }
 export const SESSION_SECRET = rawSessionSecret;
+export const USING_INSECURE_DEV_SESSION_SECRET = usingInsecureDevSessionSecret;
 
 export const APP_NAME = 'Armory';
 

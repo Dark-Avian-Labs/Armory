@@ -143,6 +143,7 @@ export function BuildsByEquipmentPage() {
         const qs = new URLSearchParams({
           equipment_type: equipmentType,
           equipment_unique_name: decodedUnique,
+          limit: '500',
         });
         const res = await apiFetch(`/api/builds/by-equipment?${qs.toString()}`);
         if (!res.ok) {
