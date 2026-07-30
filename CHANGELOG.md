@@ -336,3 +336,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.67.20** `chore` [#445](https://github.com/Dark-Avian-Labs/Armory/pull/445): fix/companion avatar stats
 - **v1.67.21** `chore` [#446](https://github.com/Dark-Avian-Labs/Armory/pull/446): fix/dotenvx quiet load
 - **v1.67.22** `chore` [#449](https://github.com/Dark-Avian-Labs/Armory/pull/449): ci/drop pr coverage artifact
+- **v1.67.23** `chore` [#450](https://github.com/Dark-Avian-Labs/Armory/pull/450): fix/security audit hardening
