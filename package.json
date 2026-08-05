@@ -23,7 +23,7 @@
   "dependencies": {
     "@clerk/express": "^2.1.49",
     "@clerk/react": "^6.12.10",
-    "@dotenvx/dotenvx": "^2.19.1",
+    "@dotenvx/dotenvx": "^2.19.2",
     "@fontsource-variable/cascadia-mono": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
