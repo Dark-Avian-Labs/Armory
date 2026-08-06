@@ -340,3 +340,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.67.24** `chore` [#452](https://github.com/Dark-Avian-Labs/Armory/pull/452): dependabot/npm_and_yarn/production dependencies 00664c08f1
 - **v1.67.25** `chore(deps)`: update @fontsource-variable/material-symbols-rounded to version 5.3.2 and bump related dependencies
 - **v1.67.26** `chore` [#459](https://github.com/Dark-Avian-Labs/Armory/pull/459): dependabot/npm_and_yarn/production dependencies 68d8acc52a
+- **v1.67.27** `chore` [#461](https://github.com/Dark-Avian-Labs/Armory/pull/461): dependabot/npm_and_yarn/production dependencies 9aeb7c0105
