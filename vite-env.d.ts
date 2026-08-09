@@ -7,7 +7,6 @@ interface ImportMetaEnv {
   readonly VITE_LEGAL_PAGE_URL?: string;
   readonly VITE_CLERK_PUBLISHABLE_KEY?: string;
   readonly VITE_SHARED_THEME_COOKIE_DOMAIN?: string;
-  readonly VITE_SIBLING_APPS?: string;
 }
 
 interface ImportMeta {

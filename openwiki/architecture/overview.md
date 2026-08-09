@@ -43,7 +43,7 @@ Armory is a single-package TypeScript app: an Express API plus a Vite-built Reac
 
 - Do not assume `pnpm start` in development serves `/` — that is intentional.
 - Catalog emptiness after first schema create is normal until import runs.
-- Cross-app CORS / sibling links use shared origins and UI config; see `.env.example` (`ALLOWED_APP_ORIGINS`, sibling apps).
+- Cross-app CORS / shared session trust use `ALLOWED_APP_ORIGINS` and `COOKIE_DOMAIN`; see `.env.example`.
 
 ## Related
 

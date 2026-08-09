@@ -10,15 +10,8 @@ import {
 } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
 
-import {
-  APP_DISPLAY_NAME,
-  APP_ID,
-  APP_VERSION,
-  LEGAL_ENTITY_NAME,
-  LEGAL_PAGE_URL,
-} from '../../app/config';
+import { APP_DISPLAY_NAME, APP_VERSION, LEGAL_ENTITY_NAME, LEGAL_PAGE_URL } from '../../app/config';
 import { APP_PATHS, buildNewPath } from '../../app/paths';
-import { getSiblingAppLinks } from '../../app/siblingApps';
 import feathers from '../../assets/feathers.svg';
 import { useCompare } from '../../context/CompareContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -76,7 +69,6 @@ export function Layout() {
   const currentYear = new Date().getFullYear();
   const isLoggedIn = auth.status === 'ok';
   const isAdmin = auth.status === 'ok' && auth.isArmoryAdmin;
-  const siblingAppLinks = getSiblingAppLinks(APP_ID);
   const compactModBuilderUi =
     searchParams.get('compact') === '1' && isCompactModBuilderRoute(location.pathname);
 
@@ -331,17 +323,6 @@ export function Layout() {
                         <div className="user-menu-divider" role="separator" />
                         <UiStyleSelector />
                         <AtragraphModsToggle />
-                        {siblingAppLinks.map((app) => (
-                          <a
-                            key={app.id}
-                            href={app.href}
-                            className="user-menu-item"
-                            role="menuitem"
-                            onClick={() => setUserMenuOpen(false)}
-                          >
-                            {app.label}
-                          </a>
-                        ))}
                         {isAdmin ? (
                           <Link
                             to={APP_PATHS.admin}
