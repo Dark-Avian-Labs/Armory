@@ -345,3 +345,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.67.29** `chore` [#465](https://github.com/Dark-Avian-Labs/Armory/pull/465): ci/adopt action v1.1 features
 - **v1.67.30** `chore` [#466](https://github.com/Dark-Avian-Labs/Armory/pull/466): ci/dependabot grouped updates
 - **v1.67.31** `chore` [#469](https://github.com/Dark-Avian-Labs/Armory/pull/469): chore/remove sibling menu links
+- **v1.67.32** `chore` [#473](https://github.com/Dark-Avian-Labs/Armory/pull/473): dependabot/npm_and_yarn/production dependencies 9b13c3d09a
