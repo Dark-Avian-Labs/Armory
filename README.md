@@ -10,9 +10,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?logo=tailwindcss&logoColor=white)
 [![Cursor](https://img.shields.io/badge/Cursor-IDE-141414?logo=cursor&logoColor=white)](https://cursor.com)
 
-Armory is a mod builder and planner for Warframe. It mirrors in-game feel where practical and surfaces extra detail and stats.
-Mod and equipment data come from Digital Extremes’ public export, with wiki and third-party sources used where helpful.
-Armory also backs Codex’s Warframe import workflow. Sign-in, access control, and profile settings use [Clerk](https://clerk.com) directly.
+Armory is a Warframe mod builder and planner. The UI tries to feel like the in-game arsenal, then adds the extra stats you want at a desk. Equipment and mods come from Digital Extremes' public export, with wiki and other sources filling gaps. You can configure Helminth, Archon shards, and Incarnon options, then save named builds and loadouts. Codex reads the same catalog for Warframe collection tracking. Sign-in uses [Clerk](https://clerk.com).
 
 ## Requirements
 
