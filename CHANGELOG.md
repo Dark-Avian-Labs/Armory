@@ -352,3 +352,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.67.36** `chore(deps)`: update @clerk/express to 2.1.59 and bump oxfmt and oxlint to 0.64.0 and 1.79.0 respectively
 - **v1.67.37** `chore(deps)` [#478](https://github.com/Dark-Avian-Labs/Armory/pull/478): bump @clerk/express in the production-dependencies group
 - **v1.68.0** `chore` [#479](https://github.com/Dark-Avian-Labs/Armory/pull/479): feat/acrylic theme and hex sides
+- **v1.69.0** `chore` [#480](https://github.com/Dark-Avian-Labs/Armory/pull/480): feat/rarity hue ladder
