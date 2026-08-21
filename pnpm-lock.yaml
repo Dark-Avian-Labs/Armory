@@ -139,7 +139,7 @@ importers:
         specifier: ^7.2.1
         version: 7.2.1
       '@vitejs/plugin-react':
-        specifier: ^6.0.5
+        specifier: ^6.1.0
         version: 6.1.0(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0))
       '@vitest/coverage-v8':
         specifier: 4.1.11
@@ -169,7 +169,7 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
       vite:
-        specifier: ^8.2.1
+        specifier: ^8.2.2
         version: 8.2.2(@types/node@26.2.0)(jiti@2.7.0)
       vitest:
         specifier: ^4.1.11
