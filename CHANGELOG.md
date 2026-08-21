@@ -350,3 +350,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.67.34** `chore` [#476](https://github.com/Dark-Avian-Labs/Armory/pull/476): update dependencies
 - **v1.67.35** `chore` [#477](https://github.com/Dark-Avian-Labs/Armory/pull/477): readme and deps
 - **v1.67.36** `chore(deps)`: update @clerk/express to 2.1.59 and bump oxfmt and oxlint to 0.64.0 and 1.79.0 respectively
+- **v1.67.37** `chore(deps)` [#478](https://github.com/Dark-Avian-Labs/Armory/pull/478): bump @clerk/express in the production-dependencies group
