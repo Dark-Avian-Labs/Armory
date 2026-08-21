@@ -89,7 +89,7 @@
   --color-rarity-uncommon: var(--color-rarity-green);
   --color-rarity-rare: var(--color-rarity-blue);
   --color-rarity-epic: var(--color-rarity-purple);
-  --color-rarity-legendary: var(--color-rarity-gold);
+  --color-rarity-legendary: var(--color-rarity-white);
   --color-rarity-mythic: var(--color-rarity-red);
   --color-rarity-lord: var(--color-rarity-orange);
   --color-rarity-exclusive: var(--color-rarity-red);
