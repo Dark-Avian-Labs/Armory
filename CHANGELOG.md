@@ -354,3 +354,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.68.0** `chore` [#479](https://github.com/Dark-Avian-Labs/Armory/pull/479): feat/acrylic theme and hex sides
 - **v1.69.0** `chore` [#480](https://github.com/Dark-Avian-Labs/Armory/pull/480): feat/rarity hue ladder
 - **v1.69.1** `chore` [#481](https://github.com/Dark-Avian-Labs/Armory/pull/481): feat/warframe rarity overlay
+- **v1.69.2** `chore` [#482](https://github.com/Dark-Avian-Labs/Armory/pull/482): fix/acrylic top row mod hover
