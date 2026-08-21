@@ -52,7 +52,7 @@ export function getRarityBorderColor(rarity: Rarity): string {
     case 'Galvanized':
       return 'var(--color-rarity-legendary)';
     case 'Archon':
-      return 'var(--color-rarity-orange)';
+      return 'var(--color-warning)';
     case 'Riven':
       return 'var(--color-riven)';
     case 'Empty':

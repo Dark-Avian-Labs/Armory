@@ -85,15 +85,23 @@
   --color-rarity-orange: oklch(70% 0.18 55);
   --color-rarity-red: oklch(62% 0.2 28);
 
-  --color-rarity-common: var(--color-rarity-gray);
-  --color-rarity-uncommon: var(--color-rarity-green);
-  --color-rarity-rare: var(--color-rarity-blue);
   --color-rarity-epic: var(--color-rarity-purple);
-  --color-rarity-legendary: var(--color-rarity-white);
   --color-rarity-mythic: var(--color-rarity-red);
   --color-rarity-lord: var(--color-rarity-orange);
   --color-rarity-exclusive: var(--color-rarity-red);
-  --color-rarity-peculiar: var(--color-rarity-pink);
+
+  /* Warframe overlay. Common is bronze, rare is gold, legendary is platinum. */
+  --color-wf-bronze: oklch(52% 0.06 75);
+  --color-wf-silver: oklch(80% 0 0);
+  --color-wf-gold: oklch(74% 0.14 85);
+  --color-wf-platinum: oklch(88% 0 0);
+  --color-wf-magenta: oklch(62% 0.2 310);
+
+  --color-rarity-common: var(--color-wf-bronze);
+  --color-rarity-uncommon: var(--color-wf-silver);
+  --color-rarity-rare: var(--color-wf-gold);
+  --color-rarity-legendary: var(--color-wf-platinum);
+  --color-rarity-peculiar: var(--color-wf-magenta);
 
   --color-riven: oklch(62% 0.12 290);
   --color-riven-light: oklch(78% 0.12 290);
