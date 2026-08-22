@@ -117,6 +117,7 @@ const baselineLimiter = rateLimit({
     req.path === '/healthz' ||
     req.path === '/api/version' ||
     req.path === '/favicon.ico' ||
+    req.path === '/favicon.png' ||
     req.path.startsWith('/images/') ||
     req.path.startsWith('/icons/') ||
     /^\/assets\/.+\.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?)$/i.test(req.path),
@@ -254,8 +255,12 @@ app.use(
 );
 
 app.use('/icons', express.static(path.join(PROJECT_ROOT, 'icons')));
+const faviconPng = path.join(PROJECT_ROOT, 'favicon.png');
+app.get('/favicon.png', publicPageLimiter, (_req, res) => {
+  res.sendFile(faviconPng);
+});
 app.get('/favicon.ico', publicPageLimiter, (_req, res) => {
-  res.sendFile(path.join(PROJECT_ROOT, 'favicon.ico'));
+  res.sendFile(faviconPng);
 });
 
 app.use('/api', (_req, res) => {
