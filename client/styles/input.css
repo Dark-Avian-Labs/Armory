@@ -90,7 +90,6 @@
   --color-rarity-lord: var(--color-rarity-orange);
   --color-rarity-exclusive: var(--color-rarity-red);
 
-  /* Warframe overlay. Common is bronze, rare is gold, legendary is platinum. */
   --color-wf-bronze: oklch(52% 0.06 75);
   --color-wf-silver: oklch(80% 0 0);
   --color-wf-gold: oklch(74% 0.14 85);
@@ -230,8 +229,6 @@ html.ui-clear:not(.dark) {
   --radius-ui-sm: 3px;
 }
 
-/* Acrylic is Win11 variant D: blur + saturate, tint, exclusion, grain.
-   Do not add brightness(). That was the discarded first pass and kills chroma. */
 html.ui-acrylic {
   --radius-ui: 8px;
   --radius-ui-lg: 8px;

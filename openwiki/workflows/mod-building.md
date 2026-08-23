@@ -38,6 +38,8 @@ Saved configs prefer stable Armory namespaces:
 
 Older v1 Helminth fields (DE unique names / ability indexes) still resolve via `shared/buildReference.ts` for backward compatibility.
 
+`GET /api/catalog/mods` caches by type/rarity only; free-text `search` is filtered after the cache lookup (`server/cache/modListCache.ts`).
+
 ## What to watch out for
 
 - Catalog must be imported before the builder has useful equipment/mod lists.

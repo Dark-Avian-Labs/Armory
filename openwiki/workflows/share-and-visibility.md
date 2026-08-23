@@ -3,7 +3,7 @@ type: Workflow
 title: Share and Visibility
 description: Build and loadout visibility (private/public/unlisted), share tokens, and public discovery routes.
 tags: [sharing, visibility, builds, loadouts]
-timestamp: 2026-07-18T21:05:00Z
+timestamp: 2026-08-23T04:20:00Z
 ---
 
 # Share and Visibility
@@ -30,7 +30,7 @@ Builds and loadouts in the [user database](../architecture/database.md) support 
 | `public`   | Anyone                                                | Yes                        |
 | `unlisted` | Owner, admin, or matching `?token=` / `?share_token=` | No                         |
 
-- Tokens are `randomBytes(24).toString('base64url')`, generated when entering `unlisted`, cleared when leaving it.
+- Tokens are `randomBytes(24).toString('base64url')`, generated when entering `unlisted`, cleared when leaving it. Unlisted `?token=` / `?share_token=` comparison is timing-safe (`server/http/timingSafeEqual.ts` via `canReadSharedResource`).
 - Denied reads return **404** (not 403) to avoid leaking existence.
 - `share_token` is included in JSON only for owners/admins.
 - A loadout cannot become `public`/`unlisted` while any linked build is still `private`.

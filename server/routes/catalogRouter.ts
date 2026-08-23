@@ -248,16 +248,23 @@ catalogRouter.get('/mods', async (req: Request, res: Response) => {
     const typeRaw = typeof req.query.type === 'string' ? req.query.type : undefined;
     const rarity = typeof req.query.rarity === 'string' ? req.query.rarity : undefined;
     const search = typeof req.query.search === 'string' ? req.query.search : undefined;
-    const query: ModListQuery = { typesRaw, typeRaw, rarity, search };
+    const query: ModListQuery = { typesRaw, typeRaw, rarity };
     const cacheKey = JSON.stringify(query);
     const { limit, offset } = parseListPagination(req);
 
     const allItems = await getCachedModList(cacheKey, () => loadDedupedMods(db, query));
 
-    const page = allItems.slice(offset, offset + limit);
+    const needle = search?.trim().toLowerCase();
+    const matched = needle
+      ? allItems.filter(
+          (item) => typeof item.name === 'string' && item.name.toLowerCase().includes(needle),
+        )
+      : allItems;
+
+    const page = matched.slice(offset, offset + limit);
     res.json({
       items: page,
-      total: allItems.length,
+      total: matched.length,
       limit,
       offset,
     });
@@ -363,22 +370,24 @@ catalogRouter.get('/helminth-abilities', (req: Request, res: Response) => {
 
 catalogRouter.get('/riven-stats', (req: Request, res: Response) => {
   try {
-    const db = getCatalogDb();
     const weaponType =
       typeof req.query.weapon_type === 'string' ? req.query.weapon_type : undefined;
 
-    let sql =
-      "SELECT unique_name, name, compat_name, upgrade_entries FROM mods WHERE upgrade_entries IS NOT NULL AND upgrade_entries != ''";
-    const params: string[] = [];
+    sendCachedCatalogJson(req, res, `riven-stats:${weaponType ?? ''}`, () => {
+      const db = getCatalogDb();
+      let sql =
+        "SELECT unique_name, name, compat_name, upgrade_entries FROM mods WHERE upgrade_entries IS NOT NULL AND upgrade_entries != ''";
+      const params: string[] = [];
 
-    if (weaponType) {
-      sql += ' AND type = ?';
-      params.push(weaponType);
-    }
+      if (weaponType) {
+        sql += ' AND type = ?';
+        params.push(weaponType);
+      }
 
-    sql += ' ORDER BY name';
-    const rows = db.prepare(sql).all(...params);
-    res.json({ items: rows });
+      sql += ' ORDER BY name';
+      const rows = db.prepare(sql).all(...params);
+      return { items: rows };
+    });
   } catch (err) {
     sendInternalError(res, 'rivenStats.list', err);
   }

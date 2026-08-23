@@ -21,16 +21,16 @@
     "test:coverage": "vitest run --coverage && node scripts/patchCoverageLayout.mjs"
   },
   "dependencies": {
-    "@clerk/express": "^2.1.60",
-    "@clerk/react": "^6.14.4",
+    "@clerk/express": "^2.1.61",
+    "@clerk/react": "^6.14.5",
     "@dotenvx/dotenvx": "^2.21.0",
     "@fontsource-variable/cascadia-mono": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/material-symbols-rounded": "^5.3.3",
+    "@napi-rs/lzma": "^1.5.1",
     "better-sqlite3": "^13.0.3",
-    "better-sqlite3-session-store": "^0.1.0",
     "cheerio": "^1.2.0",
     "clsx": "^2.1.1",
     "compression": "^1.8.1",
@@ -42,10 +42,10 @@
     "express-session": "^1.19.0",
     "helmet": "^8.3.0",
     "html-to-image": "^1.11.13",
-    "lzma": "^2.3.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router": "^8.3.0",
+    "undici": "^8.10.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

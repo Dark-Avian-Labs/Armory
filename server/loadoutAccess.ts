@@ -1,3 +1,5 @@
+import { timingSafeEqualString } from './http/timingSafeEqual.js';
+
 export type VisibilityRow = {
   clerk_user_id: string;
   visibility?: string | null;
@@ -26,7 +28,7 @@ export function canReadSharedResource(row: VisibilityRow, context: ReadAccessCon
   if (vis === 'unlisted') {
     const rowToken = normalizeShareToken(row.share_token);
     const queryToken = normalizeShareToken(shareToken);
-    return Boolean(rowToken && queryToken && rowToken === queryToken);
+    return Boolean(rowToken && queryToken && timingSafeEqualString(rowToken, queryToken));
   }
   return false;
 }

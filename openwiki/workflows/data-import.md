@@ -3,7 +3,7 @@ type: Workflow
 title: Data Import
 description: DE export download, SQLite load, wiki/Overframe enrichment, CLI and admin triggers.
 tags: [import, pipeline, catalog]
-timestamp: 2026-07-30T17:05:00Z
+timestamp: 2026-08-23T04:20:00Z
 ---
 
 # Data Import
@@ -45,7 +45,7 @@ Admin can pass `forceImport`, `forceImages`, and `forceSteps`. Lease/locking use
 
 **CLI:** `pnpm run build` then `pnpm run data:import`.
 
-**Admin:** authenticated Armory admin runs import via API/UI (streamed progress). Force Full Re-import resets catalog tables, then runs a fresh import (scraped/image column restore is not the goal of that reset).
+**Admin:** authenticated Armory admin runs import via API/UI (streamed progress). Force Full Re-import **downloads and verifies required DE exports first**; `resetCatalogData` runs only after those files are on disk and `missingRequiredExports()` is empty. Scraped/image column restore is not the goal of that reset.
 
 ## What to watch out for
 
@@ -53,7 +53,7 @@ Admin can pass `forceImport`, `forceImages`, and `forceSteps`. Lease/locking use
 - Overframe slot scrape is force-only; prefer Admin slot editor for polarity fixes.
 - Wiki fetches need a valid `WIKI_USER_AGENT`.
 - Never reset catalog into a DB that also holds user tables.
-- Outbound imports use HTTPS host allowlists, `redirect: 'error'`, response byte caps, and path containment under `IMAGES_DIR` (no `..` escapes). Overframe traffic goes through `fetchOverframe` (cuimp) with its own host checks.
+- Outbound imports use HTTPS host allowlists, `redirect: 'error'`, response byte caps, DNS-rebinding pin (`allowedFetchHosts.ts` + undici `Agent` in `fetchWithTimeout.ts`), and path containment under `IMAGES_DIR` (no `..` escapes). Export JSON is validated before it replaces on-disk files. Manifest decompression uses `@napi-rs/lzma` with a **64 MB** decompressed cap. Overframe traffic goes through `fetchOverframe` (cuimp) with its own host checks. Successful import busts `modListCache` and `catalogResponseCache`.
 - Admin SSE import progress skips response compression (`text/event-stream`).
 
 ## Related

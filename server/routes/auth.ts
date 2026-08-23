@@ -1,6 +1,6 @@
 import { Router, type NextFunction } from 'express';
 
-import { syncArmoryUserFromClerk } from '../auth/armoryUsers.js';
+import { hasActiveArmoryUser, syncArmoryUserFromClerk } from '../auth/armoryUsers.js';
 import { getClerkAuthState, requireAuthApi } from '../auth/middleware.js';
 
 export const authRouter = Router();
@@ -22,7 +22,9 @@ authRouter.get('/me', requireAuthApi, async (req, res, next: NextFunction) => {
       });
       return;
     }
-    await syncArmoryUserFromClerk(state.userId);
+    if (!hasActiveArmoryUser(state.userId)) {
+      await syncArmoryUserFromClerk(state.userId);
+    }
     res.json({
       authenticated: true,
       userId: state.userId,
@@ -31,8 +33,4 @@ authRouter.get('/me', requireAuthApi, async (req, res, next: NextFunction) => {
   } catch (err) {
     next(err);
   }
-});
-
-authRouter.post('/logout', (_req, res) => {
-  res.json({ ok: true, next: '/builder/builds' });
 });

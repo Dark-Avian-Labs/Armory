@@ -3,6 +3,6 @@ allowBuilds:
   better-sqlite3: true
 overrides:
   js-cookie: ^3.0.7
-  undici: ^7.24.4
+  undici: ^8.10.0
   ip-address: ^10.2.0
   tar: '>=7.5.11'

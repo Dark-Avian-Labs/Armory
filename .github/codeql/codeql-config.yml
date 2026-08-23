@@ -1,7 +1,0 @@
-name: CodeQL config
-
-query-filters:
-  - exclude:
-      id: js/clear-text-cookie
-      paths:
-        - tests/**

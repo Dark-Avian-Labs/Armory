@@ -10,13 +10,12 @@ import {
   type ReactNode,
 } from 'react';
 
-import { apiFetch, clearCsrfToken, API_UNAUTHORIZED_EVENT } from '../../utils/api';
+import { apiFetch, API_UNAUTHORIZED_EVENT } from '../../utils/api';
 import type { AuthErrorDetail, AuthState } from './types';
 
 interface AuthContextValue {
   auth: AuthState;
   refresh: () => Promise<void>;
-  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -103,19 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(API_UNAUTHORIZED_EVENT, handleUnauthorized);
   }, [refresh]);
 
-  const logout = useCallback(async () => {
-    try {
-      await apiFetch('/api/auth/logout', { method: 'POST' });
-    } finally {
-      clearCsrfToken();
-      window.location.href = '/builder/builds';
-    }
-  }, []);
-
-  const value = useMemo<AuthContextValue>(
-    () => ({ auth, refresh, logout }),
-    [auth, refresh, logout],
-  );
+  const value = useMemo<AuthContextValue>(() => ({ auth, refresh }), [auth, refresh]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

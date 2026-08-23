@@ -65,12 +65,29 @@ export function markArmoryUserDeleted(clerkUserId: string): void {
 const CLERK_SYNC_TIMEOUT_MS = 5_000;
 const CLERK_FANOUT_MAX_PER_REQUEST = 25;
 
+export function hasActiveArmoryUser(clerkUserId: string): boolean {
+  try {
+    const db = getCatalogDb();
+    if (!schemaInitialized) {
+      ensureArmoryUsersSchema(db);
+      schemaInitialized = true;
+    }
+    const row = db
+      .prepare('SELECT 1 FROM armory_users WHERE clerk_user_id = ? AND deleted_at IS NULL')
+      .get(clerkUserId);
+    return row !== undefined;
+  } catch {
+    return false;
+  }
+}
+
 export async function syncArmoryUserFromClerk(clerkUserId: string): Promise<string | null> {
+  let timeoutTimer: NodeJS.Timeout | undefined;
   try {
     const user = await Promise.race([
       clerkClient.users.getUser(clerkUserId),
       new Promise<never>((_, reject) => {
-        setTimeout(() => {
+        timeoutTimer = setTimeout(() => {
           const err = new Error(`Clerk getUser timed out after ${CLERK_SYNC_TIMEOUT_MS}ms`);
           err.name = 'TimeoutError';
           reject(err);
@@ -87,6 +104,8 @@ export async function syncArmoryUserFromClerk(clerkUserId: string): Promise<stri
       err: err instanceof Error ? err.message : String(err),
     });
     return null;
+  } finally {
+    if (timeoutTimer) clearTimeout(timeoutTimer);
   }
 }
 

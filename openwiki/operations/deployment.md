@@ -3,7 +3,7 @@ type: Operations Guide
 title: Deployment
 description: Build, env, health checks, and CI deploy expectations for Armory.
 tags: [ops, ci, deploy, env]
-timestamp: 2026-07-30T17:05:00Z
+timestamp: 2026-08-23T04:20:00Z
 ---
 
 # Deployment
@@ -35,7 +35,7 @@ Authenticated creates are capped: **250 builds** and **50 loadouts** per Clerk u
 
 ## Deploy shape (CI)
 
-Main-branch CI validates, builds with production env, and rsyncs `dist/`, icons, production deps, and encrypted env material to the host, then restarts the service. Smoke-check `/healthz` and `/readyz` after deploy.
+Main-branch CI validates, builds with production env, and rsyncs `dist/`, icons, production deps, and encrypted env material to the host, then restarts the service. Smoke-check `/healthz` and `/readyz` after deploy. Workflows run `pnpm install --frozen-lockfile` (the old `pnpm-install-fresh` action is gone). Unhandled errors shut down then exit **1** so the process manager can restart.
 
 ## What to watch out for
 

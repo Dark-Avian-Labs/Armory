@@ -1,4 +1,3 @@
-import { createRequire } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -34,6 +33,7 @@ import { closeAll, getCatalogDb, getSessionDb, getUserDb } from './db/connection
 import { repairPlaceholderArtifactSlots } from './db/repairArtifactSlots.js';
 import { createAppSchema } from './db/schema.js';
 import { createSessionSchema } from './db/sessionSchema.js';
+import { SqliteSessionStore } from './db/sqliteSessionStore.js';
 import { createAppHelmet } from './http/helmetCsp.js';
 import { getRequestId, requestIdMiddleware } from './http/requestId.js';
 import { isAdminImportRunning, waitForAdminImportIdle } from './import/adminImportJob.js';
@@ -42,9 +42,6 @@ import { log } from './logger.js';
 import { apiRouter } from './routes/api.js';
 import { authRouter } from './routes/auth.js';
 import { clerkWebhookRouter } from './routes/webhooks.js';
-
-const require = createRequire(import.meta.url);
-const SQLiteStore = require('better-sqlite3-session-store')(session);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -133,9 +130,9 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-const sessionStore = new SQLiteStore({
-  client: sessionDb,
-  expired: { clear: true, intervalMs: 15 * 60 * 1000 },
+const sessionStore = new SqliteSessionStore({
+  db: sessionDb,
+  cleanupIntervalMs: 15 * 60 * 1000,
 });
 
 const cookieOptions: express.CookieOptions = {
@@ -243,9 +240,11 @@ app.use('/images', (req, res, next) => {
   }
   next();
 });
+const GAME_ASSET_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 app.use(
   '/images',
   express.static(IMAGES_DIR, {
+    maxAge: GAME_ASSET_MAX_AGE_MS,
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.hash')) {
         res.setHeader('Cache-Control', 'no-store');
@@ -254,7 +253,10 @@ app.use(
   }),
 );
 
-app.use('/icons', express.static(path.join(PROJECT_ROOT, 'icons')));
+app.use(
+  '/icons',
+  express.static(path.join(PROJECT_ROOT, 'icons'), { maxAge: GAME_ASSET_MAX_AGE_MS }),
+);
 const faviconPng = path.join(PROJECT_ROOT, 'favicon.png');
 app.get('/favicon.png', publicPageLimiter, (_req, res) => {
   res.sendFile(faviconPng);
@@ -302,16 +304,34 @@ app.get('/auth/legal', publicPageLimiter, (_req, res) => {
 });
 
 if (NODE_ENV === 'production') {
-  app.use(publicPageLimiter, express.static(clientDir));
+  const sendSpaIndex = (res: express.Response): void => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(clientDir, 'index.html'));
+  };
+
+  app.use(
+    publicPageLimiter,
+    express.static(clientDir, {
+      index: false,
+      setHeaders: (res, filePath) => {
+        const relative = path.relative(clientDir, filePath);
+        if (relative.startsWith(`assets${path.sep}`)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      },
+    }),
+  );
 
   app.get('/login', publicPageLimiter, (_req, res) => {
     res.redirect('/sign-in');
   });
   app.get('/sign-in', publicPageLimiter, (_req, res) => {
-    res.sendFile(path.join(clientDir, 'index.html'));
+    sendSpaIndex(res);
   });
   app.get('/sign-up', publicPageLimiter, (_req, res) => {
-    res.sendFile(path.join(clientDir, 'index.html'));
+    sendSpaIndex(res);
   });
 
   app.get('/legal', publicPageLimiter, (_req, res) => {
@@ -319,7 +339,7 @@ if (NODE_ENV === 'production') {
   });
 
   app.get(/.*/, publicPageLimiter, (_req, res) => {
-    res.sendFile(path.join(clientDir, 'index.html'));
+    sendSpaIndex(res);
   });
 }
 
@@ -369,12 +389,13 @@ const server = app.listen(PORT, HOST, () => {
 server.headersTimeout = 65_000;
 server.requestTimeout = 120_000;
 
-function shutdown(): void {
+function shutdown(baseExitCode = 0): void {
   let done = false;
   function closeAndExit(exitCode: number): void {
     if (done) return;
     done = true;
     stopModListCacheCleanup();
+    sessionStore.dispose();
     try {
       closeAll();
     } catch (err) {
@@ -410,26 +431,26 @@ function shutdown(): void {
         closeAndExit(1);
         return;
       }
-      closeAndExit(0);
+      closeAndExit(baseExitCode);
     });
   })();
 }
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', () => shutdown(0));
+process.on('SIGTERM', () => shutdown(0));
 
 process.on('unhandledRejection', (reason) => {
   log('error', 'Unhandled promise rejection; shutting down', {
     err: reason instanceof Error ? (reason.stack ?? reason.message) : String(reason),
   });
-  shutdown();
+  shutdown(1);
 });
 
 process.on('uncaughtException', (err) => {
   log('error', 'Uncaught exception; shutting down', {
     err: err.stack ?? err.message,
   });
-  shutdown();
+  shutdown(1);
 });
 
 export default app;
