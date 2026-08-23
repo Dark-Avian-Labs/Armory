@@ -10,10 +10,10 @@ timestamp: 2026-08-23T04:20:00Z
 
 Armory uses three SQLite files. Paths are resolved in `server/config.ts`. Production requires an **absolute** `USER_DB_PATH`; absolute paths are recommended for all three.
 
-| Env               | Default             | Schema                       | Purpose                                              |
-| ----------------- | ------------------- | ---------------------------- | ---------------------------------------------------- |
-| `ARMORY_DB_PATH`  | `./data/armory.db`  | `server/db/catalogSchema.ts` | Game catalog (Codex reads this read-only)            |
-| `USER_DB_PATH`    | `./data/builds.db`  | `server/db/userSchema.ts`    | Builds, loadouts, favorites                          |
+| Env               | Default             | Schema                                                 | Purpose                                              |
+| ----------------- | ------------------- | ------------------------------------------------------ | ---------------------------------------------------- |
+| `ARMORY_DB_PATH`  | `./data/armory.db`  | `server/db/catalogSchema.ts`                           | Game catalog (Codex reads this read-only)            |
+| `USER_DB_PATH`    | `./data/builds.db`  | `server/db/userSchema.ts`                              | Builds, loadouts, favorites                          |
 | `SESSION_DB_PATH` | `./data/session.db` | `server/db/sessionSchema.ts` + `sqliteSessionStore.ts` | Express-session store for **CSRF** (not Clerk login) |
 
 Wiring: `server/db/connection.ts`, `server/db/schema.ts` (`createAppSchema` = catalog + user).

@@ -29,15 +29,15 @@ Armory is a single-package TypeScript app: an Express API plus a Vite-built Reac
 
 ## Major modules
 
-| Module                          | Role                                                    |
-| ------------------------------- | ------------------------------------------------------- |
+| Module                          | Role                                                               |
+| ------------------------------- | ------------------------------------------------------------------ |
 | `server/db/`                    | Catalog, user, and session schemas + vendored `SqliteSessionStore` |
-| `server/import/`                | DE export download and admin/CLI pipeline orchestration |
-| `server/scraping/`              | Wiki / Overframe enrichment steps                       |
-| `server/auth/`                  | Clerk middleware and admin checks                       |
-| `client/components/ModBuilder/` | Primary build editor UI                                 |
-| `client/components/Admin/`      | Import controls, slot editors                           |
-| `shared/`                       | Registries and validation shared by client and server   |
+| `server/import/`                | DE export download and admin/CLI pipeline orchestration            |
+| `server/scraping/`              | Wiki / Overframe enrichment steps                                  |
+| `server/auth/`                  | Clerk middleware and admin checks                                  |
+| `client/components/ModBuilder/` | Primary build editor UI                                            |
+| `client/components/Admin/`      | Import controls, slot editors                                      |
+| `shared/`                       | Registries and validation shared by client and server              |
 
 ## What to watch out for
 
