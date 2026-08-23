@@ -27,7 +27,7 @@ Armory models Warframe modding concepts needed for planning builds. Catalog fact
 - **Abilities** — referenced via `/Armory/Ability/...` keys derived from DE paths/names.
 - **Archon shards** — color/buff catalog + `/Armory/Archon/...` keys in build config.
 - **Incarnon** — evolution data synced when weapons export changes (`incarnonWiki` step).
-- **Damage / rivens** — client-side helpers compute planner stats from catalog + config (not a separate server sim service).
+- **Damage / rivens** — client-side helpers compute planner stats from catalog + config (not a separate server sim service). The server also exposes cached `GET /api/catalog/riven-stats` (`sendCachedCatalogJson`, busted on import).
 
 ## What to watch out for
 

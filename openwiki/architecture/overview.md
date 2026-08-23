@@ -3,7 +3,7 @@ type: Architecture Overview
 title: System Overview
 description: Armory client/server split, production SPA serving, and major runtime modules.
 tags: [architecture, express, react]
-timestamp: 2026-07-18T20:40:00Z
+timestamp: 2026-08-23T04:20:00Z
 ---
 
 # System Overview
@@ -31,7 +31,7 @@ Armory is a single-package TypeScript app: an Express API plus a Vite-built Reac
 
 | Module                          | Role                                                    |
 | ------------------------------- | ------------------------------------------------------- |
-| `server/db/`                    | Catalog, user, and session schemas + queries            |
+| `server/db/`                    | Catalog, user, and session schemas + vendored `SqliteSessionStore` |
 | `server/import/`                | DE export download and admin/CLI pipeline orchestration |
 | `server/scraping/`              | Wiki / Overframe enrichment steps                       |
 | `server/auth/`                  | Clerk middleware and admin checks                       |
@@ -44,6 +44,9 @@ Armory is a single-package TypeScript app: an Express API plus a Vite-built Reac
 - Do not assume `pnpm start` in development serves `/` — that is intentional.
 - Catalog emptiness after first schema create is normal until import runs.
 - Cross-app CORS / shared session trust use `ALLOWED_APP_ORIGINS` and `COOKIE_DOMAIN`; see `.env.example`.
+- `/images` and `/icons` cache for 30 days. Production `index.html` is `no-cache`; hashed `/assets/*` are immutable for a year (`server/index.ts`).
+- Catalog JSON uses `sendCachedCatalogJson` (ETag + 15m TTL, busted on import). Mod lists cache by type/rarity only; free-text search is applied after the cache hit.
+- `unhandledRejection` / `uncaughtException` run graceful shutdown and exit **1**.
 
 ## Related
 
