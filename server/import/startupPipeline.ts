@@ -109,6 +109,19 @@ function hasExportFiles(): boolean {
   }
 }
 
+/** Required export categories that have no JSON file on disk. */
+function missingRequiredExports(): string[] {
+  let categories: string[] = [];
+  try {
+    categories = listExportFiles().map((file) => file.category);
+  } catch {
+    return [...REQUIRED_EXPORTS];
+  }
+  return REQUIRED_EXPORTS.filter(
+    (prefix) => !categories.some((category) => category.startsWith(prefix)),
+  );
+}
+
 function exportHashChanged(
   category: string,
   current: Record<string, string>,
@@ -255,22 +268,6 @@ async function runStartupPipelineInner(
     return summary;
   }
 
-  if (forceImport) {
-    log('[Database] Force import — resetting catalog tables...');
-    try {
-      const cleared = resetCatalogData();
-      const total = Object.values(cleared).reduce((sum, n) => sum + n, 0);
-      log(`[Database] Catalog reset complete (${total} row(s) cleared).`);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      summary.blockingIssues.push(`Catalog reset failed: ${msg}`);
-      err('[Database] Catalog reset failed —', e);
-      summary.durationMs = Date.now() - startTime;
-      if (cli) printStartupPipelineSummary(summary);
-      return summary;
-    }
-  }
-
   log('[Exports] Downloading manifest and export files...');
   try {
     const importResult = await runImportPipeline((status) => {
@@ -299,6 +296,39 @@ async function runStartupPipelineInner(
     if (!hasExportFiles()) {
       err('[Exports] No export files on disk, cannot continue.');
       summary.blockingIssues.push('No export JSON files on disk after manifest/download step.');
+      summary.durationMs = Date.now() - startTime;
+      if (cli) printStartupPipelineSummary(summary);
+      return summary;
+    }
+  }
+
+  // Force import wipes the catalog, so it must only happen after the download
+  // step above has run and every required export is secured on disk.
+  // Otherwise a failed download during a force re-import would leave Armory
+  // (and Codex, which reads this catalog) with an empty database.
+  if (forceImport) {
+    const missingExports = missingRequiredExports();
+    if (missingExports.length > 0) {
+      err(
+        `[Database] Force import aborted — required export(s) missing on disk: ${missingExports.join(', ')}.`,
+      );
+      summary.blockingIssues.push(
+        `Force import aborted before catalog reset: missing required export(s) ${missingExports.join(', ')}.`,
+      );
+      summary.durationMs = Date.now() - startTime;
+      if (cli) printStartupPipelineSummary(summary);
+      return summary;
+    }
+
+    log('[Database] Force import — all required exports on disk, resetting catalog tables...');
+    try {
+      const cleared = resetCatalogData();
+      const total = Object.values(cleared).reduce((sum, n) => sum + n, 0);
+      log(`[Database] Catalog reset complete (${total} row(s) cleared).`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      summary.blockingIssues.push(`Catalog reset failed: ${msg}`);
+      err('[Database] Catalog reset failed —', e);
       summary.durationMs = Date.now() - startTime;
       if (cli) printStartupPipelineSummary(summary);
       return summary;

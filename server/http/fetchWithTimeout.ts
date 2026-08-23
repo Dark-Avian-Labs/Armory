@@ -1,4 +1,32 @@
-import { assertAllowedFetchUrl, assertAllowedImageMime } from './allowedFetchHosts.js';
+import dns from 'node:dns';
+
+import { Agent, fetch as undiciFetch, type RequestInit as UndiciRequestInit } from 'undici';
+
+import {
+  assertAllowedFetchUrl,
+  assertAllowedImageMime,
+  getPinnedAddresses,
+} from './allowedFetchHosts.js';
+
+// Connects to the addresses that assertAllowedFetchUrl validated (pinned for
+// a short TTL), so DNS cannot rebind between validation and connect. TLS
+// certificate checks still run against the original hostname.
+const pinnedAgent = new Agent({
+  connect: {
+    lookup(hostname, options, callback) {
+      const pinned = getPinnedAddresses(hostname);
+      if (pinned && pinned.length > 0) {
+        if (options.all) {
+          callback(null, pinned);
+        } else {
+          callback(null, [pinned[0]]);
+        }
+        return;
+      }
+      dns.lookup(hostname, options, callback);
+    },
+  },
+});
 
 export const FETCH_TIMEOUT_MS = {
   manifest: 120_000,
@@ -28,11 +56,13 @@ export async function fetchWithTimeout(
     callerSignal !== undefined && callerSignal !== null
       ? AbortSignal.any([timeoutSignal, callerSignal])
       : timeoutSignal;
-  return fetch(allowed, {
-    ...init,
+  const response = await undiciFetch(allowed, {
+    ...(init as UndiciRequestInit),
     signal,
     redirect: init?.redirect ?? 'error',
+    dispatcher: pinnedAgent,
   });
+  return response as unknown as Response;
 }
 
 export async function readResponseWithByteLimit(

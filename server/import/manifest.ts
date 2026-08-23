@@ -1,6 +1,7 @@
 import fs from 'fs';
-import { createRequire } from 'module';
 import path from 'path';
+
+import { LzmaDecompressor } from '@napi-rs/lzma';
 
 import { MANIFEST_URL, EXPORTS_DIR } from '../config.js';
 import {
@@ -10,9 +11,11 @@ import {
   isAbortError,
 } from '../http/fetchWithTimeout.js';
 
-const require = createRequire(import.meta.url);
-const { LZMA } = require('lzma');
-const lzmaWorker = LZMA();
+/** Decompressed manifest cap; the real manifest is well under 1 MB. */
+const MAX_MANIFEST_DECOMPRESSED_BYTES = 64 * 1024 * 1024;
+const LZMA_HEADER_SIZE = 13;
+const LZMA_UNKNOWN_SIZE = 0xffffffffffffffffn;
+const INPUT_CHUNK_SIZE = 256 * 1024;
 
 export interface ManifestEntry {
   category: string;
@@ -55,19 +58,51 @@ export async function downloadAndParseManifest(): Promise<ManifestEntry[]> {
   return parseManifestText(text);
 }
 
-function decompressLzma(compressed: Buffer): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const byteArray = Array.from(compressed);
-    lzmaWorker.decompress(byteArray, (result: string | null, error?: Error | string) => {
-      if (error) {
-        reject(typeof error === 'string' ? new Error(error) : error);
-      } else if (result !== null) {
-        resolve(result);
-      } else {
-        reject(new Error('LZMA decompression returned null'));
-      }
-    });
-  });
+/**
+ * Decompresses an LZMA-alone (.lzma) payload with a hard cap on the output
+ * size, so a hostile manifest cannot decompression-bomb the process. Exported
+ * for tests.
+ */
+export async function decompressLzma(compressed: Buffer): Promise<string> {
+  if (compressed.length < LZMA_HEADER_SIZE) {
+    throw new Error('LZMA payload is too short to contain a valid header');
+  }
+
+  // The LZMA-alone header declares the uncompressed size at offset 5
+  // (little-endian u64; all-0xFF means unknown). Reject oversized payloads
+  // before spending any decode work on them.
+  const declaredSize = compressed.readBigUInt64LE(5);
+  if (
+    declaredSize !== LZMA_UNKNOWN_SIZE &&
+    declaredSize > BigInt(MAX_MANIFEST_DECOMPRESSED_BYTES)
+  ) {
+    throw new Error(
+      `LZMA header declares ${declaredSize} uncompressed bytes, exceeding the ${MAX_MANIFEST_DECOMPRESSED_BYTES} byte cap`,
+    );
+  }
+
+  const decompressor = new LzmaDecompressor();
+  const parts: Buffer[] = [];
+  let total = 0;
+  const collect = (chunk: Buffer): void => {
+    total += chunk.length;
+    if (total > MAX_MANIFEST_DECOMPRESSED_BYTES) {
+      throw new Error(
+        `LZMA output exceeded the ${MAX_MANIFEST_DECOMPRESSED_BYTES} byte cap during decompression`,
+      );
+    }
+    if (chunk.length > 0) {
+      // update() returns a zero-copy view; copy before the next update call.
+      parts.push(Buffer.from(chunk));
+    }
+  };
+
+  for (let offset = 0; offset < compressed.length; offset += INPUT_CHUNK_SIZE) {
+    collect(decompressor.update(compressed.subarray(offset, offset + INPUT_CHUNK_SIZE)));
+  }
+  collect(await decompressor.finish());
+
+  return Buffer.concat(parts).toString('utf-8');
 }
 
 export function parseManifestText(text: string): ManifestEntry[] {

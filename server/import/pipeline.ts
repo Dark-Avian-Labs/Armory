@@ -143,17 +143,22 @@ export async function runImportPipeline(
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      fs.writeFileSync(localPath, text, 'utf-8');
-      fs.writeFileSync(hashPath, entry.hash, 'utf-8');
-
-      const fileStat = fs.statSync(localPath);
+      // Only replace the on-disk export once the download is complete and the
+      // payload parses as JSON; a bad response must never clobber a good file.
       let itemCount: number | undefined;
       try {
         const content = JSON.parse(text);
         itemCount = getItemCount(content);
       } catch {
-        // ignore
+        throw new Error(`Downloaded ${entry.category} is not valid JSON; keeping existing file`);
       }
+
+      const tmpPath = `${localPath}.tmp`;
+      fs.writeFileSync(tmpPath, text, 'utf-8');
+      fs.renameSync(tmpPath, localPath);
+      fs.writeFileSync(hashPath, entry.hash, 'utf-8');
+
+      const fileStat = fs.statSync(localPath);
 
       pipeStats.downloaded.push(entry.category);
       results.push({

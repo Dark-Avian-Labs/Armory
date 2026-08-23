@@ -1,3 +1,4 @@
+import type { LookupAddress } from 'node:dns';
 import dns from 'node:dns/promises';
 import net from 'node:net';
 
@@ -26,6 +27,23 @@ export const ALLOWED_EQUIPMENT_IMAGE_HOSTS = new Set([
 ]);
 
 const RELATIVE_EQUIPMENT_IMAGE_RE = /^\/[A-Za-z0-9/_.-]+$/;
+
+// Addresses validated by assertAllowedFetchUrl are pinned briefly so the
+// actual fetch connects to the same address that passed the private-IP check
+// (closes the DNS-rebinding TOCTOU window between validation and connect).
+const PIN_TTL_MS = 60_000;
+const pinnedAddresses = new Map<string, { records: LookupAddress[]; expiresAt: number }>();
+
+export function getPinnedAddresses(host: string): LookupAddress[] | null {
+  const key = host.toLowerCase();
+  const entry = pinnedAddresses.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    pinnedAddresses.delete(key);
+    return null;
+  }
+  return entry.records;
+}
 
 function isPrivateOrLoopbackIp(ip: string): boolean {
   const family = net.isIP(ip);
@@ -81,6 +99,9 @@ export async function assertAllowedFetchUrl(url: string | URL): Promise<URL> {
     if (isPrivateOrLoopbackIp(record.address)) {
       throw new Error(`Refusing fetch: ${host} resolved to private/loopback IP ${record.address}`);
     }
+  }
+  if (records.length > 0) {
+    pinnedAddresses.set(host, { records, expiresAt: Date.now() + PIN_TTL_MS });
   }
   return parsed;
 }
