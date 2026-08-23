@@ -11,7 +11,6 @@ import {
   isAbortError,
 } from '../http/fetchWithTimeout.js';
 
-/** Decompressed manifest cap; the real manifest is well under 1 MB. */
 const MAX_MANIFEST_DECOMPRESSED_BYTES = 64 * 1024 * 1024;
 const LZMA_HEADER_SIZE = 13;
 const LZMA_UNKNOWN_SIZE = 0xffffffffffffffffn;
@@ -58,11 +57,6 @@ export async function downloadAndParseManifest(): Promise<ManifestEntry[]> {
   return parseManifestText(text);
 }
 
-/**
- * Decompresses an LZMA-alone (.lzma) payload with a hard cap on the output
- * size, so a hostile manifest cannot decompression-bomb the process. Exported
- * for tests.
- */
 export async function decompressLzma(compressed: Buffer): Promise<string> {
   if (compressed.length < LZMA_HEADER_SIZE) {
     throw new Error('LZMA payload is too short to contain a valid header');

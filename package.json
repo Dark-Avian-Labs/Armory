@@ -21,8 +21,8 @@
     "test:coverage": "vitest run --coverage && node scripts/patchCoverageLayout.mjs"
   },
   "dependencies": {
-    "@clerk/express": "^2.1.60",
-    "@clerk/react": "^6.14.4",
+    "@clerk/express": "^2.1.61",
+    "@clerk/react": "^6.14.5",
     "@dotenvx/dotenvx": "^2.21.0",
     "@fontsource-variable/cascadia-mono": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
@@ -45,7 +45,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router": "^8.3.0",
-    "undici": "^7.29.0",
+    "undici": "^8.10.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

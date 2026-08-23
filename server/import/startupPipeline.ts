@@ -109,7 +109,6 @@ function hasExportFiles(): boolean {
   }
 }
 
-/** Required export categories that have no JSON file on disk. */
 function missingRequiredExports(): string[] {
   let categories: string[] = [];
   try {
@@ -353,7 +352,7 @@ async function runStartupPipelineInner(
       writeProcessedExportHashes(currentExportHashes);
       log(
         `[Database] Loaded ${counts.warframes} warframes, ${counts.weapons} weapons, ${counts.companions} companions, ` +
-          `${counts.mods} mods, ${counts.modSets} mod sets, ${counts.arcanes} arcanes, ${counts.abilities} abilities.`,
+        `${counts.mods} mods, ${counts.modSets} mod sets, ${counts.arcanes} arcanes, ${counts.abilities} abilities.`,
       );
       log(`[Database] Mod description backfill: ${backfillCount} row(s).`);
       summary.sqliteFromExports = {
@@ -507,7 +506,7 @@ async function runStartupPipelineInner(
       }, onlyMissingStances);
       log(
         `[Exalted Stances] Done — ${result.found} found, ${result.insertedOrUpdated} updated, ` +
-          `${result.wikiImagesApplied} wiki images.`,
+        `${result.wikiImagesApplied} wiki images.`,
       );
       summary.exaltedStanceMods = {
         outcome: 'ok',
@@ -578,7 +577,7 @@ async function runStartupPipelineInner(
       });
       log(
         `[Atragraph Mods] Done — ${result.setsFound} set(s), ${result.modsUpdated} mod row(s) updated, ` +
-          `${result.imagesDownloaded} image(s) downloaded.`,
+        `${result.imagesDownloaded} image(s) downloaded.`,
       );
       summary.atragraphMods = {
         outcome: 'ok',
@@ -620,8 +619,8 @@ async function runStartupPipelineInner(
     if (imgResult.downloaded > 0) {
       log(
         `[Images] Done — ${imgResult.downloaded} downloaded, ${imgResult.skipped} skipped` +
-          (imgResult.failed > 0 ? `, ${imgResult.failed} failed` : '') +
-          '.',
+        (imgResult.failed > 0 ? `, ${imgResult.failed} failed` : '') +
+        '.',
       );
     } else {
       log(`[Images] Done — all ${imgResult.skipped} images up to date.`);
@@ -768,8 +767,8 @@ async function runStartupPipelineInner(
       const wikiMerge = wikiResult.merge;
       log(
         `[Wiki] Done — ${wikiMerge.abilitiesUpdated} abilities, ${wikiMerge.passivesUpdated} passives, ` +
-          `${wikiMerge.augmentsUpdated} augments, ${wikiMerge.shardTypes} shard types, ` +
-          `${wikiMerge.shardBuffs} shard buffs, ${wikiMerge.weaponsProjectileSpeedsUpdated} projectile speeds.`,
+        `${wikiMerge.augmentsUpdated} augments, ${wikiMerge.shardTypes} shard types, ` +
+        `${wikiMerge.shardBuffs} shard buffs, ${wikiMerge.weaponsProjectileSpeedsUpdated} projectile speeds.`,
       );
       summary.wiki = {
         outcome: 'ok',
@@ -903,7 +902,7 @@ async function runStartupPipelineInner(
       } else {
         log(
           `[Incarnon] Done — ${incarnonResult.pagesScraped} pages, ${incarnonResult.weaponsTagged} weapons, ` +
-            `${incarnonResult.imagesDownloaded} images downloaded, ${incarnonResult.imagesSkipped} cached.`,
+          `${incarnonResult.imagesDownloaded} images downloaded, ${incarnonResult.imagesSkipped} cached.`,
         );
         summary.incarnonWiki = {
           outcome: incarnonResult.pagesFailed > 0 ? 'partial' : 'ok',
