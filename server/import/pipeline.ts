@@ -143,8 +143,6 @@ export async function runImportPipeline(
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      // Only replace the on-disk export once the download is complete and the
-      // payload parses as JSON; a bad response must never clobber a good file.
       let itemCount: number | undefined;
       try {
         const content = JSON.parse(text);

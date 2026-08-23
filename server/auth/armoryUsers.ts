@@ -65,7 +65,6 @@ export function markArmoryUserDeleted(clerkUserId: string): void {
 const CLERK_SYNC_TIMEOUT_MS = 5_000;
 const CLERK_FANOUT_MAX_PER_REQUEST = 25;
 
-/** True when a non-deleted armory_users row exists for this Clerk user. */
 export function hasActiveArmoryUser(clerkUserId: string): boolean {
   try {
     const db = getCatalogDb();

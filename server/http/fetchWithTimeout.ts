@@ -8,9 +8,6 @@ import {
   getPinnedAddresses,
 } from './allowedFetchHosts.js';
 
-// Connects to the addresses that assertAllowedFetchUrl validated (pinned for
-// a short TTL), so DNS cannot rebind between validation and connect. TLS
-// certificate checks still run against the original hostname.
 const pinnedAgent = new Agent({
   connect: {
     lookup(hostname, options, callback) {

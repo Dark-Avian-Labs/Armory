@@ -28,9 +28,6 @@ export const ALLOWED_EQUIPMENT_IMAGE_HOSTS = new Set([
 
 const RELATIVE_EQUIPMENT_IMAGE_RE = /^\/[A-Za-z0-9/_.-]+$/;
 
-// Addresses validated by assertAllowedFetchUrl are pinned briefly so the
-// actual fetch connects to the same address that passed the private-IP check
-// (closes the DNS-rebinding TOCTOU window between validation and connect).
 const PIN_TTL_MS = 60_000;
 const pinnedAddresses = new Map<string, { records: LookupAddress[]; expiresAt: number }>();
 

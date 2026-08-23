@@ -240,9 +240,6 @@ app.use('/images', (req, res, next) => {
   }
   next();
 });
-// Game images and icons change only on import (roughly every 3 months), so a
-// long client cache is safe; ETag revalidation still catches early updates
-// once the maxAge window expires.
 const GAME_ASSET_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 app.use(
   '/images',
@@ -307,8 +304,6 @@ app.get('/auth/legal', publicPageLimiter, (_req, res) => {
 });
 
 if (NODE_ENV === 'production') {
-  // Fleet cache policy: HTML is always revalidated (no-cache) while Vite's
-  // content-hashed files under /assets are immutable for a year.
   const sendSpaIndex = (res: express.Response): void => {
     res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(path.join(clientDir, 'index.html'));
@@ -444,8 +439,6 @@ function shutdown(baseExitCode = 0): void {
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
 
-// Org-wide crash policy: log, shut down gracefully, and exit non-zero so the
-// process manager (PM2) restarts a clean instance.
 process.on('unhandledRejection', (reason) => {
   log('error', 'Unhandled promise rejection; shutting down', {
     err: reason instanceof Error ? (reason.stack ?? reason.message) : String(reason),

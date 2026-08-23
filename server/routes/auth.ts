@@ -22,8 +22,6 @@ authRouter.get('/me', requireAuthApi, async (req, res, next: NextFunction) => {
       });
       return;
     }
-    // Only hit the Clerk Backend API when we have no local record yet;
-    // username changes are picked up by the Clerk webhook instead.
     if (!hasActiveArmoryUser(state.userId)) {
       await syncArmoryUserFromClerk(state.userId);
     }

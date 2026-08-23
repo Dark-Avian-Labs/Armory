@@ -68,9 +68,6 @@ export async function decompressLzma(compressed: Buffer): Promise<string> {
     throw new Error('LZMA payload is too short to contain a valid header');
   }
 
-  // The LZMA-alone header declares the uncompressed size at offset 5
-  // (little-endian u64; all-0xFF means unknown). Reject oversized payloads
-  // before spending any decode work on them.
   const declaredSize = compressed.readBigUInt64LE(5);
   if (
     declaredSize !== LZMA_UNKNOWN_SIZE &&
@@ -92,7 +89,6 @@ export async function decompressLzma(compressed: Buffer): Promise<string> {
       );
     }
     if (chunk.length > 0) {
-      // update() returns a zero-copy view; copy before the next update call.
       parts.push(Buffer.from(chunk));
     }
   };

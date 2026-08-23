@@ -302,10 +302,6 @@ async function runStartupPipelineInner(
     }
   }
 
-  // Force import wipes the catalog, so it must only happen after the download
-  // step above has run and every required export is secured on disk.
-  // Otherwise a failed download during a force re-import would leave Armory
-  // (and Codex, which reads this catalog) with an empty database.
   if (forceImport) {
     const missingExports = missingRequiredExports();
     if (missingExports.length > 0) {
