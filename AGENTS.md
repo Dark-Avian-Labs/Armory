@@ -2,75 +2,50 @@
 
 ## Org standards
 
-Shared Dark Avian Labs engineering conventions (README shape, CI/PR runners, validate, release tracks, OpenWiki) live in AppBase [`docs/org-standards/`](../AppBase/docs/org-standards/). Prefer those docs when aligning workflows or quality gates.
+Shared Dark Avian Labs engineering conventions (README shape, CI/PR runners, validate, release tracks) live in AppBase [`docs/org-standards/`](../AppBase/docs/org-standards/). The design system (theme axes, glass contracts, UI primitives, Clerk appearance) lives in AppBase [`AGENTS.md`](../AppBase/AGENTS.md). There is no shared UI package: when you change layout, glass, buttons, modals, or dropdowns here, apply the same change in Codex.
 
-## Cursor Cloud specific instructions
+## Overview
 
-### Overview
+Armory is a Warframe mod builder. Catalog data comes from Digital Extremes' public exports, with wiki and other sources filling gaps. Clerk handles sign-in. Codex reads Armory's catalog SQLite for Warframe collection sync.
 
-Armory is a Warframe mod builder/planner. It imports game data from DE's public exports and uses Clerk for authentication. Codex reads Armory's SQLite catalog directly for Warframe sync. It serves its web UI only in production mode; in development mode it is API-only.
+The React SPA is served only when `NODE_ENV=production`. In development the API runs alone (root URL 404s); use Vite for the client. Default listen port is **3002**. See `README.md` for scripts and env.
 
-### Running the service
+## Databases
 
-See `README.md` for standard scripts (`pnpm run build`, `pnpm start`, `pnpm run validate`, etc.).
+Three SQLite files. Do not point any two at the same path, and do not reuse Codex or BudgetPlanner files.
 
-To start in development mode after building (preferred when `DOTENV_PRIVATE_KEY_DEVELOPMENT` is available):
+| File    | Env               | Role                                                               |
+| ------- | ----------------- | ------------------------------------------------------------------ |
+| Catalog | `ARMORY_DB_PATH`  | Equipment, mods, users-for-public-URLs. Codex reads this file.     |
+| User    | `USER_DB_PATH`    | Builds, loadouts, favorites. Absolute path required in production. |
+| Session | `SESSION_DB_PATH` | CSRF only, not Clerk login.                                        |
 
-```bash
-NODE_ENV=development pnpm dotenvx run -f .env.development -- node dist/server/index.js
-```
+Boot creates/migrates schema and recovers the import lease. It does **not** fill the catalog. An empty catalog after first start is normal until `pnpm run data:import` or Admin Force Full Re-import. Codex needs a populated catalog, so import (or start Armory after an import) before expecting Warframe sync to work.
 
-Without the private key, use a plain `.env` instead:
+Force Full Re-import downloads and verifies required DE exports first, then resets catalog tables. User DB is untouched. Reset also leaves `armory_users` and `codex_modular_weapons` in the catalog DB, and refuses if user tables are accidentally present there. `armory_users` (Clerk id → username) lives in the catalog DB so public profile URLs work without the user DB.
 
-```bash
-NODE_ENV=development node --env-file=.env dist/server/index.js
-```
+## Catalog that Codex depends on
 
-The server listens on port 3002 by default.
+After weapons export processing, Armory fills `codex_modular_weapons` for Codex's Modular Weapons worksheet (MR-style parts; scaffolds/grips/braces excluded). Sync is display-name deduped. Codex falls back to path heuristics on `weapons` if the table is empty; keep this table authoritative. DE flags `codex_secret` / `exclude_from_codex` are stored but Codex does not filter on them today.
 
-### Key gotchas
+`warframe_market_links` is also catalog-side. Codex is the primary consumer; Armory has no first-class HTTP API for these rows. Market-link failures are recorded and do not abort the rest of import. Catalog reset **does** clear this table.
 
-- **Node >= 26 and pnpm >= 11 required.** Use `nvm install 26` and `npm install -g pnpm@latest-11`. The `packageManager` field in `package.json` must stay an exact version (e.g. `pnpm@11.3.0`) — Corepack does not accept dist-tags like `latest-11`.
-- **Encrypted `.env.development` / `.env.production` files.** When `DOTENV_PRIVATE_KEY_DEVELOPMENT` is set as an env var, use dotenvx to decrypt at runtime: `NODE_ENV=development pnpm dotenvx run -f .env.development -- node dist/server/index.js`. Without the private key, create a plain `.env` from `.env.example` and run with `node --env-file=.env`.
-- **API-only in development mode.** Armory only serves the React SPA when `NODE_ENV=production`. In development, the root URL returns 404 ("Cannot GET /"). This is by design; in normal dev flow you'd use Vite's dev server for the client.
-- **Database auto-creates on first start.** Armory uses two SQLite files: `ARMORY_DB_PATH` (catalog only; Codex reads this) and `USER_DB_PATH` (builds, loadouts, favorites). Use absolute paths in production. See `docs/catalog-rebuild.md` for catalog-only rebuilds.
-- **Force Full Re-import** (admin) resets catalog tables only, then runs a fresh import (no restore of scraped/image columns). User DB is untouched.
-- **Build keys:** Saves use `/Armory/Helminth/...`, `/Armory/Ability/...`, and `/Armory/Archon/...` in `mod_config` (v1 fields still load for older JSON).
-- **Clerk keys are required in production.** Set `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` (or `VITE_CLERK_PUBLISHABLE_KEY`). See `.env.example` for session-token metadata and admin role setup.
-- **Clerk middleware returns 500 on all routes with placeholder keys.** With `pk_test_placeholder` / `sk_test_placeholder`, the Clerk middleware throws on every request. The server still starts and listens correctly — auth-dependent endpoints just fail. This is expected in local dev without real Clerk keys.
-- **Build Armory before Codex.** Codex reads Armory's `armory.db` directly via `ARMORY_DB_PATH`. Armory auto-creates and populates its DB on first start, so run/start Armory at least once before Codex.
-- **Tests:** `pnpm run validate` (or `pnpm run test:coverage` for coverage). On Windows, Cursor agent shells prepend bundled Node 22 — `.cursor/hooks/prepend-system-node.ps1` rewrites Shell commands to prefer `C:\Program Files\nodejs`. After changing Node versions, run `pnpm rebuild better-sqlite3`.
+Overframe artifact-slot scrape is force-only. Prefer the Admin slot editor for polarity fixes; a normal import will not rewrite slots.
 
-### Cloud VM-specific notes
+## Builds and sharing
 
-- **PATH override:** The Cloud VM has `/exec-daemon/node` (Node 22) ahead of nvm in PATH. Prepend nvm's Node 26 path: `export PATH="/home/ubuntu/.nvm/versions/node/v26.4.0/bin:$PATH"`.
+Saves use `/Armory/Helminth/...`, `/Armory/Ability/...`, and `/Armory/Archon/...` in `mod_config`. Older v1 Helminth fields still resolve; keep that working if you touch `buildReference.ts`. Generated Helminth registry files are script-produced; do not hand-edit them.
 
-### UI consistency
+Planner damage/riven stats are computed on the client. Per-user caps are **250 builds** and **50 loadouts**.
 
-Armory and Codex mirror the same design tokens and component patterns manually (no shared UI package). When changing layout, glass surfaces, buttons, modals, or dropdowns in one app, apply the same change in the other.
+Visibility: `private` (owner/admin), `public` (listed), `unlisted` (token in `?token=` / `?share_token=` only). Default create is `private`. Denied reads return **404**, not 403. A loadout cannot become `public`/`unlisted` while any linked build is still `private`. An unlisted loadout token can reveal the owner's linked `public`/`unlisted` builds without each build's own token. Public discovery lists `public` only.
 
-| Area                | Spec                                                                                                                                                               |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Layout max width    | `max-w-[2000px]` on header, main content wrapper, and footer                                                                                                       |
-| Glass surfaces      | `glass-surface` (panels/cards), `glass-modal-surface` (dialogs), `glass-shell` (auth shells)                                                                       |
-| Header nav          | `header-link` with `.active` modifier — 40px height, 1rem radius, accent tokens when active                                                                        |
-| Buttons             | `btn btn-accent`, `btn btn-danger`, `btn btn-cancel` (modal dismiss), `btn btn-secondary` (neutral actions)                                                        |
-| Modals              | Use `Modal` component; `className` includes `glass-modal-surface`; footers use `modal-actions`                                                                     |
-| Dropdowns           | `SelectDropdown` with `triggerClassName` / `placement` props; user-menu triggers use `user-menu-select-trigger`                                                    |
-| Stale client banner | Gold `stale-update-cta` button with `stale-update-cta__label` text "Refresh", plus "Client out of date"                                                            |
-| Suspense fallback   | `LazySuspenseFallback` component                                                                                                                                   |
-| Toasts              | `.toast-pill` with optional `data-tone="success\|error\|warning"`                                                                                                  |
-| Form focus          | `.form-input:focus` and `.form-group input:focus` — accent border + soft glow (`box-shadow` ring)                                                                  |
-| Theme keys          | `--color-accent`, `--color-glass-border`, `--color-glass`, `--radius-ui`, `--shadow-panel`; UI style via `html.ui-prism` / `ui-shadow` / `ui-clear` / `ui-acrylic` |
+## Auth
 
-## OpenWiki
+Clerk keys are required in production (`apps.armory === 'admin'` for admin). Placeholder keys (`pk_test_placeholder` / `sk_test_placeholder`) make the middleware throw 500 on every request; the server still listens. Missing `SESSION_SECRET` outside production needs `ALLOW_INSECURE_DEV=1` and a loopback `HOST`. Production `SECURE_COOKIES` requires `TRUST_PROXY`.
 
-This repository has documentation located in the /openwiki directory.
+## Toolchain
 
-Start here:
+Node **26+**, pnpm **11.x**, exact `packageManager` (Corepack rejects dist-tags). Encrypted `.env.development` / `.env.production` need `DOTENV_PRIVATE_KEY_*` or `.env.keys`. `pnpm run validate` is the quality gate.
 
-- [OpenWiki quickstart](openwiki/quickstart.md)
-
-OpenWiki includes repository overview, architecture notes, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
-
-When working in this repository, read the OpenWiki quickstart first, then follow its links to the relevant architecture, workflow, domain, operation, and testing notes.
+On Windows, Cursor agent shells may prepend bundled Node 22. After changing Node versions, run `pnpm rebuild better-sqlite3`.

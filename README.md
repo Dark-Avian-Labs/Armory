@@ -103,7 +103,7 @@ Client `VITE_*` variables are listed in `.env.example`.
 
 ## Development
 
-Agent-oriented docs: [openwiki/quickstart.md](openwiki/quickstart.md). Org standards: AppBase `docs/org-standards/`.
+Design system: AppBase `AGENTS.md`. Org standards: AppBase `docs/org-standards/`.
 
 ## License
 
