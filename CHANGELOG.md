@@ -357,3 +357,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.69.2** `chore` [#482](https://github.com/Dark-Avian-Labs/Armory/pull/482): fix/acrylic top row mod hover
 - **v1.70.0** `chore` [#483](https://github.com/Dark-Avian-Labs/Armory/pull/483): feat/png favicon
 - **v1.70.1** `chore` [#484](https://github.com/Dark-Avian-Labs/Armory/pull/484): fix/security audit
+- **v1.70.2** `ci(deps)` [#488](https://github.com/Dark-Avian-Labs/Armory/pull/488): bump iShark5060/actions-discord-status
