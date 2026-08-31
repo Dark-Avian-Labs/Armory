@@ -10,10 +10,11 @@ import {
   getLatestImportRunRow,
   isImportLeaseHeld,
   maskClerkUserId,
+  noteImportLeaseHeartbeat,
   parseImportRunSteps,
   persistImportRunSteps,
   releaseImportLease,
-  renewImportLease,
+  touchLiveImportLease,
   tryAcquireImportLease,
   updateImportRun,
   type ImportLogLine,
@@ -163,14 +164,13 @@ export function resetAdminImportLock(): AdminImportResetResult {
       snapshot: getAdminImportSnapshot(),
     };
   }
-  if (isImportLeaseHeld()) {
+  if (!forceReleaseImportLease()) {
     return {
       cleared: false,
       reason: 'Import lease is held by another process; wait for it to finish or expire.',
       snapshot: getAdminImportSnapshot(),
     };
   }
-  forceReleaseImportLease();
   state.running = false;
   if (state.runId > 0 && !state.finishedAt) {
     state.finishedAt = nowIso();
@@ -276,9 +276,10 @@ export function startAdminImportJob(
     }
 
     try {
+      const leaseWatch = { lost: false };
       const heartbeat = setInterval(
         () => {
-          renewImportLease(lockToken);
+          noteImportLeaseHeartbeat(lockToken, leaseWatch);
         },
         5 * 60 * 1000,
       );
@@ -291,8 +292,9 @@ export function startAdminImportJob(
           forceSteps: options.forceSteps,
           importRunId: run.id,
           skipLease: true,
+          heldLockToken: lockToken,
           reporter: (line, level) => {
-            renewImportLease(lockToken);
+            touchLiveImportLease(lockToken, leaseWatch);
             pushLine(level, line);
           },
         });

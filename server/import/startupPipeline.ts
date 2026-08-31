@@ -34,9 +34,11 @@ import { downloadImages } from './images.js';
 import {
   ImportAlreadyRunningError,
   isImportLeaseHeld,
+  noteImportLeaseHeartbeat,
   releaseImportLease,
-  renewImportLease,
+  touchLiveImportLease,
   tryAcquireImportLease,
+  type ImportLeaseWatch,
 } from './importRuns.js';
 import { runImportPipeline, listExportFiles } from './pipeline.js';
 import { isStepForced, shouldRunStep, usesOnlyMissingMode } from './pipelineStepControl.js';
@@ -193,6 +195,7 @@ export interface StartupPipelineOptions {
   reporter?: (line: string, level: 'info' | 'error') => void;
   importRunId?: number;
   skipLease?: boolean;
+  heldLockToken?: string;
 }
 
 export async function runStartupPipeline(
@@ -208,25 +211,28 @@ export async function runStartupPipeline(
     if (!lockToken) {
       throw new ImportAlreadyRunningError();
     }
+  } else {
+    lockToken = options.heldLockToken ?? null;
   }
 
+  const leaseWatch: ImportLeaseWatch = { lost: false };
   try {
     const heartbeat = lockToken
       ? setInterval(
           () => {
-            renewImportLease(lockToken);
+            noteImportLeaseHeartbeat(lockToken, leaseWatch);
           },
           5 * 60 * 1000,
         )
       : null;
     heartbeat?.unref();
     try {
-      return await runStartupPipelineInner(options, lockToken);
+      return await runStartupPipelineInner(options, lockToken, leaseWatch);
     } finally {
       if (heartbeat) clearInterval(heartbeat);
     }
   } finally {
-    if (lockToken) {
+    if (manageLease && lockToken) {
       releaseImportLease(lockToken);
     }
   }
@@ -235,6 +241,7 @@ export async function runStartupPipeline(
 async function runStartupPipelineInner(
   options: StartupPipelineOptions = {},
   lockToken: string | null = null,
+  leaseWatch: ImportLeaseWatch = { lost: false },
 ): Promise<StartupPipelineSummary> {
   const startTime = Date.now();
   const cli = options.cliReport === true;
@@ -242,7 +249,7 @@ async function runStartupPipelineInner(
   const forceImages = options.forceImages === true;
 
   const emit = (level: 'info' | 'error', msg: string): void => {
-    if (lockToken) renewImportLease(lockToken);
+    touchLiveImportLease(lockToken, leaseWatch);
     const line = `${TAG} ${msg}`;
     options.reporter?.(line, level);
     writeLog(level, msg, { source: 'startupPipeline' });

@@ -29,10 +29,14 @@ export const BuildSaveModal = memo(function BuildSaveModal({
         {isCopy ? 'Copy Build' : 'Save Build'}
       </h3>
       {error ? <p className="error-msg mb-3">{error}</p> : null}
-      <label className="text-muted mb-2 block text-xs tracking-[0.18em] uppercase">
+      <label
+        htmlFor="save-build-name"
+        className="text-muted mb-2 block text-xs tracking-[0.18em] uppercase"
+      >
         Build Name
       </label>
       <input
+        id="save-build-name"
         type="text"
         value={name}
         onChange={(e) => onNameChange(e.target.value)}

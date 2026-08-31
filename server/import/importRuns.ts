@@ -51,6 +51,15 @@ export class ImportAlreadyRunningError extends Error {
   }
 }
 
+export class ImportLeaseLostError extends Error {
+  constructor(message = 'Import lease was lost; catalog writes aborted.') {
+    super(message);
+    this.name = 'ImportLeaseLostError';
+  }
+}
+
+export type ImportLeaseWatch = { lost: boolean };
+
 export function ensureImportRunsSchema(db: Database.Database = getCatalogDb()): void {
   if (schemaReady) return;
   db.exec(`
@@ -233,6 +242,20 @@ export function renewImportLease(lockToken: string): boolean {
   return updated.changes === 1;
 }
 
+export function noteImportLeaseHeartbeat(lockToken: string, watch: ImportLeaseWatch): void {
+  if (!renewImportLease(lockToken)) {
+    watch.lost = true;
+  }
+}
+
+export function touchLiveImportLease(lockToken: string | null, watch: ImportLeaseWatch): void {
+  if (!lockToken) return;
+  if (watch.lost || !renewImportLease(lockToken)) {
+    watch.lost = true;
+    throw new ImportLeaseLostError();
+  }
+}
+
 function getImportLeaseRow(): {
   lock_token: string | null;
   run_id: number | null;
@@ -314,14 +337,31 @@ export function recoverImportLeaseOnStartup(): void {
 }
 
 export function forceReleaseImportLease(): boolean {
-  const row = getImportLeaseRow();
-  if (!row?.lock_token) return false;
+  ensureImportRunsSchema();
   const db = getCatalogDb();
-  db.transaction(() => {
-    clearImportLeaseRow();
-    failInterruptedImportRuns(row.run_id);
+  return db.transaction(() => {
+    db.prepare(
+      'INSERT OR IGNORE INTO import_lease (id, lock_token, run_id, acquired_at) VALUES (1, NULL, NULL, NULL)',
+    ).run();
+    const row = getImportLeaseRow();
+    const updated = db
+      .prepare(
+        `UPDATE import_lease
+         SET lock_token = NULL, run_id = NULL, acquired_at = NULL
+         WHERE id = ?
+           AND (
+             lock_token IS NULL
+             OR acquired_at IS NULL
+             OR acquired_at <= datetime('now', '-${IMPORT_LEASE_TTL_MINUTES} minutes')
+           )`,
+      )
+      .run(LEASE_ROW_ID);
+    if (updated.changes !== 1) return false;
+    if (row?.lock_token) {
+      failInterruptedImportRuns(row.run_id);
+    }
+    return true;
   })();
-  return true;
 }
 
 export function isImportLeaseHeld(): boolean {
