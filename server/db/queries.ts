@@ -10,6 +10,7 @@ import {
 import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { syncCodexModularWeaponsTable } from '../codexModularWeapons.js';
 import { EXPORTS_DIR } from '../config.js';
+import { log } from '../logger.js';
 import { restoreModAtragraphPaths, saveModAtragraphPaths } from '../scraping/atragraphModsWiki.js';
 import { getCatalogDb } from './connection.js';
 
@@ -75,9 +76,7 @@ export function processExports(options?: { skipPreserve?: boolean }): {
 
   if (counts.weapons > 0) {
     const modular = syncCodexModularWeaponsTable(getCatalogDb());
-    console.log(
-      `[DB] Codex modular weapons catalog synced: ${modular.upserted} trackable component(s).`,
-    );
+    log('info', 'Codex modular weapons catalog synced', { upserted: modular.upserted });
   }
 
   return counts;
@@ -104,7 +103,7 @@ function saveImagePaths(): Map<string, string> {
     }
   }
   if (pathMap.size > 0) {
-    console.log(`[DB] Saved ${pathMap.size} image_path values before reprocessing`);
+    log('info', 'Saved image_path values before reprocessing', { count: pathMap.size });
   }
   return pathMap;
 }
@@ -123,7 +122,7 @@ function restoreImagePaths(pathMap: Map<string, string>): void {
     }
   });
   tx();
-  console.log(`[DB] Restored ${pathMap.size} image_path values after reprocessing`);
+  log('info', 'Restored image_path values after reprocessing', { count: pathMap.size });
 }
 
 interface ScrapedRow {
@@ -186,7 +185,7 @@ function saveScrapedData(): {
     saved.companions.length +
     saved.abilities.length +
     saved.mods.length;
-  if (total > 0) console.log(`[DB] Saved ${total} scraped data rows before reprocessing`);
+  if (total > 0) log('info', 'Saved scraped data rows before reprocessing', { count: total });
   return saved;
 }
 
@@ -242,7 +241,7 @@ function restoreScrapedData(saved: ReturnType<typeof saveScrapedData>): void {
   });
 
   tx();
-  console.log(`[DB] Restored ${total} scraped data rows after reprocessing`);
+  log('info', 'Restored scraped data rows after reprocessing', { count: total });
 }
 
 function readExport(category: string): Record<string, unknown[]> | null {
@@ -369,7 +368,7 @@ function processAbilities(data: Record<string, unknown[]>): number {
   });
   tx();
 
-  console.log(`[DB] Processed ${count} abilities (Helminth + per-warframe)`);
+  log('info', 'Processed abilities', { count });
   return count;
 }
 
@@ -709,9 +708,7 @@ function processArcanes(data: Record<string, unknown[]>): number {
   });
   tx();
 
-  console.log(
-    `[DB] Processed ${arcanes.length} arcanes (filtered from ${items.length} relic/arcane entries)`,
-  );
+  log('info', 'Processed arcanes', { count: arcanes.length, sourceCount: items.length });
   return arcanes.length;
 }
 
@@ -760,6 +757,6 @@ export function backfillModDescriptions(): number {
   });
   tx();
 
-  console.log(`[DB] Backfilled descriptions for ${count} mods`);
+  log('info', 'Backfilled mod descriptions', { count });
   return count;
 }

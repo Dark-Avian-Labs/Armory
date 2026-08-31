@@ -8,7 +8,7 @@ import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
 
-import { clerkMiddleware } from './auth/middleware.js';
+import { clerkMiddleware, getClerkAuthState } from './auth/middleware.js';
 import { stopModListCacheCleanup } from './cache/modListCache.js';
 import {
   APP_VERSION,
@@ -42,6 +42,7 @@ import { log } from './logger.js';
 import { apiRouter } from './routes/api.js';
 import { authRouter } from './routes/auth.js';
 import { clerkWebhookRouter } from './routes/webhooks.js';
+import { bindClerkUserSessionMiddleware } from './session/bindClerkUserSession.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -52,7 +53,7 @@ recoverImportLeaseOnStartup();
 
 const sessionDb = getSessionDb();
 createSessionSchema(sessionDb);
-console.log(`[${APP_NAME}] Session DB ready (${SESSION_DB_PATH})`);
+log('info', 'Session DB ready', { path: SESSION_DB_PATH });
 
 const app = express();
 
@@ -193,6 +194,18 @@ const { csrfSynchronisedProtection, generateToken } = csrfSync({
 
 app.use(csrfSynchronisedProtection);
 app.locals.generateCsrfToken = generateToken;
+app.use(
+  '/api',
+  bindClerkUserSessionMiddleware(
+    (req) => getClerkAuthState(req).userId,
+    (req) => {
+      const generate = req.app.locals.generateCsrfToken as
+        | ((request: express.Request, overwrite?: boolean) => string)
+        | undefined;
+      generate?.(req, true);
+    },
+  ),
+);
 
 const CSRF_PROTECTED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 function isSameHostOrigin(req: express.Request, origin: string): boolean {

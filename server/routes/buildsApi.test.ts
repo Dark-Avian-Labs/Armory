@@ -3,6 +3,8 @@ import express from 'express';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { __catalogResponseCacheTest } from '../cache/catalogResponseCache.js';
+import { MAX_NAME_LENGTH } from './apiShared.js';
 import { minimalModConfig } from './modConfigValidation.js';
 
 const authState = vi.hoisted(() => ({
@@ -91,6 +93,7 @@ describe('builds API routes', () => {
   });
 
   afterEach(() => {
+    __catalogResponseCacheTest.bust();
     dbState.db?.close();
     dbState.db = null;
   });
@@ -234,5 +237,76 @@ describe('builds API routes', () => {
     const res = await request(createTestApp()).get('/api/builds/1');
     expect(res.status).toBe(200);
     expect(res.body.build.share_token).toBe('share-abc123');
+  });
+
+  it('rejects build updates whose name exceeds MAX_NAME_LENGTH', async () => {
+    dbState
+      .db!.prepare(
+        `INSERT INTO builds (clerk_user_id, name, visibility, equipment_type, equipment_unique_name, mod_config)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        'user_owner',
+        'Public',
+        'public',
+        'warframe',
+        '/Lotus/Powersuits/Excalibur/Excalibur',
+        JSON.stringify(minimalModConfig()),
+      );
+    authState.userId = 'user_owner';
+    const res = await request(createTestApp())
+      .put('/api/builds/1')
+      .send({
+        name: 'x'.repeat(MAX_NAME_LENGTH + 1),
+        mod_config: minimalModConfig(),
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Invalid name');
+  });
+
+  it('caches public build catalog responses and busts on create', async () => {
+    dbState
+      .db!.prepare(
+        `INSERT INTO builds (clerk_user_id, name, visibility, equipment_type, equipment_unique_name, mod_config)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        'user_owner',
+        'Public',
+        'public',
+        'warframe',
+        '/Lotus/Powersuits/Excalibur/Excalibur',
+        JSON.stringify(minimalModConfig()),
+      );
+
+    const first = await request(createTestApp()).get('/api/builds/catalog');
+    expect(first.status).toBe(200);
+    expect(first.headers['cache-control']).toBe('public, max-age=30');
+    expect(first.body.entries).toEqual([
+      {
+        equipment_type: 'warframe',
+        equipment_unique_name: '/Lotus/Powersuits/Excalibur/Excalibur',
+        build_count: 1,
+      },
+    ]);
+
+    const etag = first.headers.etag;
+    expect(etag).toEqual(expect.any(String));
+    const cached = await request(createTestApp()).get('/api/builds/catalog').set('If-None-Match', String(etag));
+    expect(cached.status).toBe(304);
+
+    authState.userId = 'user_owner';
+    const created = await request(createTestApp()).post('/api/builds').send({
+      name: 'Second',
+      equipment_type: 'primary',
+      equipment_unique_name: '/Lotus/Weapons/Tenno/Rifle/Rifle',
+      mod_config: minimalModConfig(),
+      visibility: 'public',
+    });
+    expect(created.status).toBe(200);
+
+    const afterWrite = await request(createTestApp()).get('/api/builds/catalog');
+    expect(afterWrite.status).toBe(200);
+    expect(afterWrite.body.entries).toHaveLength(2);
   });
 });

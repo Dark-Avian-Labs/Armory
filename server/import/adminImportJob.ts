@@ -1,6 +1,7 @@
 import type { PipelineStepKey } from '../../shared/pipelineSteps.js';
 import { bustCatalogResponseCache } from '../cache/catalogResponseCache.js';
 import { bustModListCache } from '../cache/modListCache.js';
+import { log } from '../logger.js';
 import {
   createImportRun,
   forceReleaseImportLease,
@@ -130,10 +131,10 @@ function notify(): void {
     try {
       listener(snapshot);
     } catch (error) {
-      console.error(
-        `[AdminImport] Snapshot listener ${index} failed:`,
-        error instanceof Error ? error.message : String(error),
-      );
+      log('error', 'Admin import snapshot listener failed', {
+        index,
+        err: error instanceof Error ? error.message : String(error),
+      });
     }
     index += 1;
   }

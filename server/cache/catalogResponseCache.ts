@@ -23,8 +23,12 @@ function evictExcessEntries(): void {
   }
 }
 
-export function bustCatalogResponseCache(): void {
-  cache.clear();
+export function bustCatalogResponseCache(key?: string): void {
+  if (key === undefined) {
+    cache.clear();
+    return;
+  }
+  cache.delete(key);
 }
 
 export function sendCachedCatalogJson(
@@ -32,8 +36,11 @@ export function sendCachedCatalogJson(
   res: Response,
   key: string,
   loader: () => unknown,
+  options?: { ttlMs?: number; cacheControl?: string },
 ): void {
   const now = Date.now();
+  const ttlMs = options?.ttlMs ?? TTL_MS;
+  const cacheControl = options?.cacheControl ?? CACHE_CONTROL;
   let entry = cache.get(key);
   if (!entry || entry.expiresAt <= now) {
     const payload = JSON.stringify(loader());
@@ -41,14 +48,14 @@ export function sendCachedCatalogJson(
     entry = {
       payload,
       etag: `W/"${hash}"`,
-      expiresAt: now + TTL_MS,
+      expiresAt: now + ttlMs,
     };
     cache.set(key, entry);
     evictExcessEntries();
   }
 
   res.setHeader('ETag', entry.etag);
-  res.setHeader('Cache-Control', CACHE_CONTROL);
+  res.setHeader('Cache-Control', cacheControl);
   if (req.headers['if-none-match'] === entry.etag) {
     res.status(304).end();
     return;

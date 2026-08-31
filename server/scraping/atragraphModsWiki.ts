@@ -14,6 +14,7 @@ import {
   isAbortError,
 } from '../http/fetchWithTimeout.js';
 import { safeImagePathUnderRoot, sanitizePathSegment } from '../import/safeImagePath.js';
+import { log } from '../logger.js';
 import { getWikiUserAgent } from './wikiUserAgent.js';
 
 const WIKI_BASE = 'https://wiki.warframe.com';
@@ -481,7 +482,7 @@ export function saveModAtragraphPaths(): Map<string, StoredAtragraphPaths> {
     });
   }
   if (pathMap.size > 0) {
-    console.log(`[DB] Saved ${pathMap.size} atragraph image path(s) before reprocessing`);
+    log('info', 'Saved atragraph image paths before reprocessing', { count: pathMap.size });
   }
   return pathMap;
 }
@@ -498,5 +499,5 @@ export function restoreModAtragraphPaths(pathMap: Map<string, StoredAtragraphPat
     }
   });
   tx();
-  console.log(`[DB] Restored ${pathMap.size} atragraph image path(s) after reprocessing`);
+  log('info', 'Restored atragraph image paths after reprocessing', { count: pathMap.size });
 }

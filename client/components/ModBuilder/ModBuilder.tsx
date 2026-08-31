@@ -31,7 +31,6 @@ import {
   siriusOrionEquipmentSaveName,
 } from '../../../shared/siriusOrionRegistry.js';
 import { buildEditPath, userBuildsPath } from '../../app/paths';
-import { useCompare } from '../../context/CompareContext';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useApi } from '../../hooks/useApi';
 import { useBuildFavorites } from '../../hooks/useBuildFavorites';
@@ -62,8 +61,6 @@ import {
   persistShardSlotsForSave,
 } from '../../utils/buildConfigPersist';
 import { getCompanionWeaponSelectionType, isCompanionWeapon } from '../../utils/companionWeapons';
-import { calculateBuildDamage } from '../../utils/damage';
-import { calculateWeaponDps } from '../../utils/damageCalc';
 import { calculateTotalCapacity } from '../../utils/drain';
 import { getEquipmentModCapacityBase } from '../../utils/equipmentCapacity';
 import { getModTypesForEquipment, NO_MOD_TYPES_FOR_EQUIPMENT } from '../../utils/equipmentModTypes';
@@ -101,11 +98,15 @@ import { ArcaneSlots, type ArcaneSlot, type Arcane } from './ArcaneSlots';
 import { ArchonShardSlots, type ShardSlotConfig, type ShardType } from './ArchonShardSlots';
 import { BuildDescriptionPanel } from './BuildDescriptionPanel';
 import { BuildLoadoutsPanel } from './BuildLoadoutsPanel';
+import { BuildSaveModal } from './BuildSaveModal';
 import { CapacityBar } from './CapacityBar';
 import { CompactBuildOverview } from './CompactBuildOverview';
 import { ElementOutput } from './ElementOutput';
+import { useAddToCompare } from './hooks/useAddToCompare';
+import { useDocumentPictureInPicture } from './hooks/useDocumentPictureInPicture';
 import { useModBuilderState } from './hooks/useModBuilderState';
 import { IncarnonUpgradePanel } from './IncarnonUpgradePanel';
+import { ModBuilderToasts } from './ModBuilderToasts';
 import { ModSlotGrid } from './ModSlotGrid';
 import { StatsPanel } from './StatsPanel';
 import { ValenceBonusPanel, DEFAULT_VALENCE_BONUS } from './ValenceBonusPanel';
@@ -137,14 +138,6 @@ const RivenBuilder = lazy(() =>
 const IncarnonPickerPanel = lazy(() =>
   import('./IncarnonPickerPanel').then((m) => ({ default: m.IncarnonPickerPanel })),
 );
-
-type DocumentPictureInPictureApi = {
-  requestWindow(options?: { width?: number; height?: number }): Promise<Window>;
-};
-
-type WindowWithDocumentPictureInPicture = Window & {
-  documentPictureInPicture?: DocumentPictureInPictureApi;
-};
 
 function getAbilityName(warframe: Warframe | null, index: number): string {
   if (!warframe?.abilities) return `Ability ${index + 1}`;
@@ -555,7 +548,19 @@ export function ModBuilder() {
 
   const isDirty = dirtyBaseline !== null && livePersistFingerprintRef.current !== dirtyBaseline;
 
-  const { addSnapshot, snapshots: compareSnapshots } = useCompare();
+  const { addToCompare, compareToast, compareCount, compareFull } = useAddToCompare({
+    selectedEquipment:
+      selectedEquipment && equipmentType !== 'warframe' ? (selectedEquipment as Weapon) : null,
+    equipmentType,
+    buildName,
+    hydratedSlots,
+    effectiveValenceBonus,
+    hasIncarnon,
+    incarnonEnabled,
+    incarnonData,
+    incarnonSelections,
+  });
+  const { openPip: openBuildPip, pipToastMessage } = useDocumentPictureInPicture(buildName);
 
   const resolveSpecialItem = useCallback(
     async (targetUniqueName: string): Promise<Equipment | null> => {
@@ -1572,30 +1577,12 @@ export function ModBuilder() {
   );
 
   const [rivenToastMessage, setRivenToastMessage] = useState<string | null>(null);
-  const [pipToastMessage, setPipToastMessage] = useState<string | null>(null);
-  const pipWindowRef = useRef<Window | null>(null);
 
   useEffect(() => {
     if (!rivenToastMessage) return undefined;
     const timer = window.setTimeout(() => setRivenToastMessage(null), 2500);
     return () => window.clearTimeout(timer);
   }, [rivenToastMessage]);
-
-  useEffect(() => {
-    if (!pipToastMessage) return undefined;
-    const timer = window.setTimeout(() => setPipToastMessage(null), 3000);
-    return () => window.clearTimeout(timer);
-  }, [pipToastMessage]);
-
-  useEffect(() => {
-    return () => {
-      const pipWindow = pipWindowRef.current;
-      if (pipWindow && !pipWindow.closed) {
-        pipWindow.close();
-      }
-      pipWindowRef.current = null;
-    };
-  }, []);
 
   const handleRivenClose = useCallback(() => {
     if (editingRivenSlot !== null && draftRivenSlot === editingRivenSlot) {
@@ -1673,116 +1660,6 @@ export function ModBuilder() {
     'btn btn-secondary flex h-9 w-9 shrink-0 items-center justify-center p-0';
   const readOnlyAdminEditButtonClass =
     'btn btn-danger flex h-9 w-9 shrink-0 items-center justify-center p-0';
-
-  const openBuildPip = useCallback(async () => {
-    if (typeof window === 'undefined') return;
-    const existing = pipWindowRef.current;
-    if (existing && !existing.closed) {
-      existing.focus();
-      return;
-    }
-
-    const pipApi = (window as WindowWithDocumentPictureInPicture).documentPictureInPicture;
-    if (!pipApi?.requestWindow) {
-      setPipToastMessage('Picture-in-Picture is not supported in this browser.');
-      return;
-    }
-
-    try {
-      const pipWindow = await pipApi.requestWindow({
-        width: Math.min(Math.max(window.innerWidth, 700), 1280),
-        height: Math.min(Math.max(window.innerHeight, 500), 900),
-      });
-      pipWindowRef.current = pipWindow;
-      const pipUrl = new URL(window.location.href);
-      pipUrl.searchParams.set('view', '1');
-      pipUrl.searchParams.set('compact', '1');
-      pipUrl.searchParams.set('pip', '1');
-
-      const pipDoc = pipWindow.document;
-      pipDoc.title = `Armory - ${buildName}`;
-      pipDoc.documentElement.style.height = '100%';
-      pipDoc.documentElement.style.overflow = 'hidden';
-      pipDoc.body.style.margin = '0';
-      pipDoc.body.style.padding = '0';
-      pipDoc.body.style.height = '100%';
-      pipDoc.body.style.minHeight = '100%';
-      pipDoc.body.style.overflow = 'hidden';
-      pipDoc.body.style.background = '#090d18';
-
-      const iframe = pipDoc.createElement('iframe');
-      iframe.src = pipUrl.toString();
-      iframe.title = 'Armory Build';
-      iframe.style.width = '100%';
-      iframe.style.height = '100%';
-      iframe.style.border = '0';
-      iframe.style.display = 'block';
-
-      pipDoc.body.innerHTML = '';
-      pipDoc.body.appendChild(iframe);
-      pipWindow.addEventListener(
-        'pagehide',
-        () => {
-          if (pipWindowRef.current === pipWindow) {
-            pipWindowRef.current = null;
-          }
-        },
-        { once: true },
-      );
-    } catch (error) {
-      console.error('[ModBuilder] Failed to open PiP window', error);
-      setPipToastMessage(
-        'Unable to open Picture-in-Picture. Your browser may require user interaction or block this page in PiP.',
-      );
-    }
-  }, [buildName]);
-
-  const [compareToast, setCompareToast] = useState(false);
-  const compareToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (compareToastTimeoutRef.current !== null) {
-        clearTimeout(compareToastTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const addToCompare = () => {
-    if (!selectedEquipment || equipmentType === 'warframe') return;
-    const weapon = selectedEquipment as Weapon;
-    const vb = effectiveValenceBonus;
-    const incarnonInput =
-      hasIncarnon && incarnonEnabled
-        ? { enabled: true, data: incarnonData, selections: incarnonSelections }
-        : undefined;
-    const calc = calculateWeaponDps(weapon, hydratedSlots, vb, incarnonInput);
-    const { totalDamage, damageBreakdown } = calculateBuildDamage(
-      weapon,
-      hydratedSlots,
-      undefined,
-      vb,
-    );
-    addSnapshot({
-      id: crypto.randomUUID(),
-      label: buildName,
-      weaponName: weapon.name,
-      weaponImage: weapon.image_path,
-      equipmentType,
-      calc,
-      elementBreakdown: damageBreakdown,
-      totalElementDamage: totalDamage,
-      timestamp: Date.now(),
-    });
-    setCompareToast(true);
-    if (compareToastTimeoutRef.current !== null) {
-      clearTimeout(compareToastTimeoutRef.current);
-    }
-    compareToastTimeoutRef.current = setTimeout(() => {
-      setCompareToast(false);
-      compareToastTimeoutRef.current = null;
-    }, 1500);
-  };
 
   const confirmSave = async () => {
     if (!selectedEquipment) return;
@@ -2129,12 +2006,8 @@ export function ModBuilder() {
                   <button
                     className="btn btn-secondary text-sm"
                     onClick={addToCompare}
-                    disabled={readOnly || compareSnapshots.length >= 3}
-                    title={
-                      compareSnapshots.length >= 3
-                        ? 'Max 3 snapshots'
-                        : 'Add current build to comparison'
-                    }
+                    disabled={readOnly || compareFull}
+                    title={compareFull ? 'Max 3 snapshots' : 'Add current build to comparison'}
                   >
                     Compare
                   </button>
@@ -2524,52 +2397,17 @@ export function ModBuilder() {
         </Modal>
       ) : null}
 
-      {showSaveModal && (
-        <Modal
-          open
-          onClose={() => setShowSaveModal(false)}
-          ariaLabelledBy="save-build-title"
-          className="max-w-md"
-        >
-          <h3 id="save-build-title" className="text-foreground mb-4 text-lg font-semibold">
-            {!isOwnBuild ? 'Copy Build' : 'Save Build'}
-          </h3>
-          {saveError ? <p className="error-msg mb-3">{saveError}</p> : null}
-          <label className="text-muted mb-2 block text-xs tracking-[0.18em] uppercase">
-            Build Name
-          </label>
-          <input
-            type="text"
-            value={saveModalName}
-            onChange={(e) => setSaveModalName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                void confirmSave();
-              }
-            }}
-            className="form-input mb-4 w-full"
-            autoFocus
-          />
-          <div className="flex justify-end gap-2">
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowSaveModal(false)}
-              type="button"
-            >
-              Cancel
-            </button>
-            <button
-              className="btn btn-accent"
-              onClick={() => {
-                void confirmSave();
-              }}
-              type="button"
-            >
-              {!isOwnBuild ? 'Copy' : 'Save'}
-            </button>
-          </div>
-        </Modal>
-      )}
+      <BuildSaveModal
+        open={showSaveModal}
+        isCopy={!isOwnBuild}
+        name={saveModalName}
+        error={saveError}
+        onNameChange={setSaveModalName}
+        onClose={() => setShowSaveModal(false)}
+        onConfirm={() => {
+          void confirmSave();
+        }}
+      />
       {showShareModal && selectedEquipment ? (
         <Suspense fallback={<LazySuspenseFallback />}>
           <BuildShareModal
@@ -2594,16 +2432,13 @@ export function ModBuilder() {
         </Suspense>
       ) : null}
 
-      {saveToast ? (
-        <div className="toast-pill" data-tone={saveToast.tone} role="status" aria-live="polite">
-          {saveToast.message}
-        </div>
-      ) : null}
-      {compareToast && (
-        <div className="toast-pill" role="status" aria-live="polite">
-          Added to comparison ({compareSnapshots.length}/3)
-        </div>
-      )}
+      <ModBuilderToasts
+        saveToast={saveToast}
+        compareToast={compareToast}
+        compareCount={compareCount}
+        rivenToastMessage={rivenToastMessage}
+        pipToastMessage={pipToastMessage}
+      />
       {editingRivenSlot !== null && rivenWeaponType ? (
         <Suspense fallback={<LazySuspenseFallback />}>
           <RivenBuilder
@@ -2616,16 +2451,6 @@ export function ModBuilder() {
           />
         </Suspense>
       ) : null}
-      {rivenToastMessage && (
-        <div className="toast-pill" data-tone="warning" role="status" aria-live="polite">
-          {rivenToastMessage}
-        </div>
-      )}
-      {pipToastMessage && (
-        <div className="toast-pill" data-tone="warning" role="status" aria-live="polite">
-          {pipToastMessage}
-        </div>
-      )}
     </div>
   );
 }

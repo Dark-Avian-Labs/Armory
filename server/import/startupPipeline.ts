@@ -8,6 +8,7 @@ import { processExports, backfillModDescriptions } from '../db/queries.js';
 import { resetCatalogData } from '../db/resetCatalogData.js';
 import { createAppSchema } from '../db/schema.js';
 import { ensureOverframeFetchReady } from '../http/fetchOverframe.js';
+import { log as writeLog } from '../logger.js';
 import {
   countModsMissingAtragraphImages,
   syncAtragraphModsFromWiki,
@@ -244,8 +245,7 @@ async function runStartupPipelineInner(
     if (lockToken) renewImportLease(lockToken);
     const line = `${TAG} ${msg}`;
     options.reporter?.(line, level);
-    if (level === 'error') console.error(line);
-    else console.log(line);
+    writeLog(level, msg, { source: 'startupPipeline' });
   };
   const log = (msg: string) => emit('info', msg);
   const err = (msg: string, e?: unknown) => {

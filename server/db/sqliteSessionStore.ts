@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3';
 import { Store } from 'express-session';
 import type { SessionData } from 'express-session';
 
+import { log } from '../logger.js';
 import { createSessionSchema } from './sessionSchema.js';
 
 const DEFAULT_CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
@@ -36,7 +37,9 @@ export class SqliteSessionStore extends Store {
         } catch (error) {
           if (!loggedCleanupError) {
             loggedCleanupError = true;
-            console.error('[session-store] Failed to clear expired sessions', error);
+            log('error', 'Failed to clear expired sessions', {
+              err: error instanceof Error ? error.message : String(error),
+            });
           }
         }
       }, interval);

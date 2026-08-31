@@ -1,4 +1,5 @@
 import { hasMeaningfulArtifactSlotOverrides } from '../../shared/artifactSlotState.js';
+import { log } from '../logger.js';
 import { getCatalogDb } from './connection.js';
 
 function parseArtifactSlots(raw: string | null): string[] {
@@ -57,9 +58,7 @@ export function repairPlaceholderArtifactSlots(): number {
   }
 
   if (cleared > 0) {
-    console.log(
-      `[DB] Cleared ${cleared} placeholder artifact_slots row(s) (use export/wiki defaults again).`,
-    );
+    log('info', 'Cleared placeholder artifact_slots rows', { count: cleared });
   }
 
   return cleared;

@@ -9,6 +9,7 @@ import {
   fetchBounded,
   isAbortError,
 } from '../http/fetchWithTimeout.js';
+import { log } from '../logger.js';
 import { downloadAndParseManifest, type ManifestEntry } from './manifest.js';
 import { sanitizePathSegment } from './safeImagePath.js';
 
@@ -67,7 +68,7 @@ export interface ImportPipelineResult {
 export async function runImportPipeline(
   onStatus?: (status: ImportStatus) => void,
 ): Promise<ImportPipelineResult> {
-  const report = onStatus ?? ((s: ImportStatus) => console.log(`[Import] ${s.step}: ${s.message}`));
+  const report = onStatus ?? ((s: ImportStatus) => log('info', s.message, { importStep: s.step }));
   const results: ExportFileInfo[] = [];
   const pipeStats: ImportPipelineStats = {
     requiredCount: 0,
