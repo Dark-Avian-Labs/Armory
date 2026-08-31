@@ -5,9 +5,14 @@ import { getClerkAuthState, requireAuthApi } from '../auth/middleware.js';
 
 export const authRouter = Router();
 
-authRouter.get('/csrf', (_req, res) => {
+authRouter.get('/csrf', (req, res) => {
+  const generate = req.app.locals.generateCsrfToken as
+    | ((request: typeof req) => string)
+    | undefined;
+  const token = generate ? generate(req) : (req.session.csrfToken ?? '');
+  res.setHeader('Cache-Control', 'no-store');
   res.json({
-    csrfToken: (res.locals as { csrfToken?: string }).csrfToken || '',
+    csrfToken: token,
   });
 });
 

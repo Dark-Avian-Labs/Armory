@@ -42,7 +42,7 @@ Visibility: `private` (owner/admin), `public` (listed), `unlisted` (token in `?t
 
 ## Auth
 
-Clerk keys are required in production (`apps.armory === 'admin'` for admin). Placeholder keys (`pk_test_placeholder` / `sk_test_placeholder`) make the middleware throw 500 on every request; the server still listens. Missing `SESSION_SECRET` outside production needs `ALLOW_INSECURE_DEV=1` and a loopback `HOST`. Production `SECURE_COOKIES` requires `TRUST_PROXY`.
+Clerk keys are required in production (`apps.armory === 'admin'` for admin). Placeholder keys (`pk_test_placeholder` / `sk_test_placeholder`) make the middleware throw 500 on every request; the server still listens. Missing `SESSION_SECRET` outside production needs `ALLOW_INSECURE_DEV=1` and a loopback `HOST`. Production `SECURE_COOKIES` requires `TRUST_PROXY`. CSRF tokens rotate when the Clerk user id on the express session changes (`server/session/bindClerkUserSession.ts`).
 
 ## Toolchain
 

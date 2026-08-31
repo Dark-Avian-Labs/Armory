@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-import { apiFetch } from '../utils/api';
+import { apiFetch, readApiErrorMessage } from '../utils/api';
 
 interface ApiState<T> {
   data: T | null;
@@ -29,8 +29,10 @@ export function useApi<T>(url: string | null): ApiState<T> {
     setError(null);
 
     apiFetch(url, { signal: controller.signal, cache: 'no-store' })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(await readApiErrorMessage(res, `Request failed (${res.status})`));
+        }
         return res.json();
       })
       .then((json) => {

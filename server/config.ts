@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 
 import { config as loadEnv } from '@dotenvx/dotenvx';
 
-import { normalizeClerkEnv } from './clerkEnv.js';
+import { isEncryptedEnvValue, normalizeClerkEnv } from './clerkEnv.js';
 
 function resolveEnvFilePath(projectRoot: string): string | null {
   const normalizedNodeEnv = (process.env.NODE_ENV ?? '').trim().toLowerCase();
@@ -14,23 +14,26 @@ function resolveEnvFilePath(projectRoot: string): string | null {
     return fs.existsSync(testPath) ? testPath : null;
   }
 
-  const envFileByMode: Record<string, string> = {
-    production: '.env.production',
-    development: '.env.development',
-  };
-  const prioritizedFiles = [
-    envFileByMode[normalizedNodeEnv],
-    '.env.production',
-    '.env.development',
-  ].filter((value, index, values): value is string => {
-    return typeof value === 'string' && values.indexOf(value) === index;
-  });
+  if (
+    normalizedNodeEnv &&
+    normalizedNodeEnv !== 'production' &&
+    normalizedNodeEnv !== 'development'
+  ) {
+    throw new Error(
+      `[FATAL] Unsupported NODE_ENV "${process.env.NODE_ENV}". Use production, development, or test.`,
+    );
+  }
 
-  for (const fileName of prioritizedFiles) {
-    const candidatePath = path.join(projectRoot, fileName);
-    if (fs.existsSync(candidatePath)) {
-      return candidatePath;
-    }
+  const isProduction = normalizedNodeEnv === 'production';
+  const fileName = isProduction ? '.env.production' : '.env.development';
+  const candidatePath = path.join(projectRoot, fileName);
+  if (fs.existsSync(candidatePath)) {
+    return candidatePath;
+  }
+  if (isProduction) {
+    throw new Error(
+      `[FATAL] Missing ${fileName}. Refusing to start production without the matching env file.`,
+    );
   }
   return null;
 }
@@ -122,6 +125,11 @@ if (NODE_ENV === 'production' && !path.isAbsolute(USER_DB_PATH)) {
 const DEV_SESSION_SECRET = 'armory-dev-only-session-secret-32ch';
 const ALLOW_INSECURE_DEV = process.env.ALLOW_INSECURE_DEV?.trim() === '1';
 const envSessionSecret = process.env.SESSION_SECRET?.trim() || '';
+if (isEncryptedEnvValue(envSessionSecret)) {
+  throw new Error(
+    '[FATAL] SESSION_SECRET is still encrypted. Ensure DOTENV_PRIVATE_KEY_* is available (see .env.keys) or run via dotenvx.',
+  );
+}
 let usingInsecureDevSessionSecret = false;
 let rawSessionSecret = envSessionSecret;
 if (!rawSessionSecret) {

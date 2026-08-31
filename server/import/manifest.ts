@@ -10,6 +10,7 @@ import {
   fetchBounded,
   isAbortError,
 } from '../http/fetchWithTimeout.js';
+import { log } from '../logger.js';
 
 const MAX_MANIFEST_DECOMPRESSED_BYTES = 64 * 1024 * 1024;
 const LZMA_HEADER_SIZE = 13;
@@ -23,7 +24,7 @@ export interface ManifestEntry {
 }
 
 export async function downloadAndParseManifest(): Promise<ManifestEntry[]> {
-  console.log(`[Import] Downloading manifest from ${MANIFEST_URL}`);
+  log('info', 'Downloading manifest', { url: MANIFEST_URL });
 
   let response: Response;
   let compressedBuffer: Buffer;
@@ -46,13 +47,13 @@ export async function downloadAndParseManifest(): Promise<ManifestEntry[]> {
     throw new Error(`Failed to download manifest: ${response.status} ${response.statusText}`);
   }
 
-  console.log(`[Import] Downloaded ${compressedBuffer.length} bytes, decompressing...`);
+  log('info', 'Downloaded manifest bytes', { bytes: compressedBuffer.length });
 
   const text = await decompressLzma(compressedBuffer);
 
   const manifestPath = path.join(EXPORTS_DIR, 'manifest.txt');
   fs.writeFileSync(manifestPath, text, 'utf-8');
-  console.log(`[Import] Manifest saved to ${manifestPath}`);
+  log('info', 'Manifest saved', { path: manifestPath });
 
   return parseManifestText(text);
 }
@@ -118,6 +119,6 @@ export function parseManifestText(text: string): ManifestEntry[] {
     });
   }
 
-  console.log(`[Import] Parsed ${entries.length} manifest entries`);
+  log('info', 'Parsed manifest entries', { count: entries.length });
   return entries;
 }

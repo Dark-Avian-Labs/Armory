@@ -337,6 +337,13 @@ catalogRouter.get('/abilities', (req: Request, res: Response) => {
       typeof req.query.ability_names === 'string'
         ? req.query.ability_names.split(',').filter(Boolean)
         : [];
+    const MAX_ABILITY_NAMES = 50;
+    if (abilityNames.length > MAX_ABILITY_NAMES) {
+      res.status(400).json({
+        error: `ability_names is limited to ${MAX_ABILITY_NAMES} values`,
+      });
+      return;
+    }
 
     const cacheKey = `abilities:${warframe ?? ''}:${abilityNames.join(',')}`;
     sendCachedCatalogJson(req, res, cacheKey, () => {

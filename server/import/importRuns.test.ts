@@ -14,14 +14,19 @@ vi.mock('../db/connection.js', () => {
   };
 });
 
+import { getCatalogDb } from '../db/connection.js';
 import {
   createImportRun,
   ensureImportRunsSchema,
+  forceReleaseImportLease,
+  ImportLeaseLostError,
   isImportLeaseHeld,
   maskClerkUserId,
   recoverImportLeaseOnStartup,
   releaseImportLease,
   tryAcquireImportLease,
+  renewImportLease,
+  touchLiveImportLease,
 } from './importRuns.js';
 
 describe('importRuns', () => {
@@ -29,8 +34,7 @@ describe('importRuns', () => {
     ensureImportRunsSchema();
   });
 
-  afterEach(async () => {
-    const { getCatalogDb } = await import('../db/connection.js');
+  afterEach(() => {
     const db = getCatalogDb();
     db.exec('DELETE FROM import_runs');
     db.exec('UPDATE import_lease SET lock_token = NULL, run_id = NULL WHERE id = 1');
@@ -62,5 +66,41 @@ describe('importRuns', () => {
 
     expect(isImportLeaseHeld()).toBe(false);
     expect(tryAcquireImportLease(run.id + 1)).toBeTruthy();
+  });
+
+  it('renews acquired_at so a live lease is not treated as stale', () => {
+    const run = createImportRun('user_admin');
+    const token = tryAcquireImportLease(run.id);
+    expect(token).toBeTruthy();
+    expect(renewImportLease(token!)).toBe(true);
+    expect(renewImportLease('not-the-token')).toBe(false);
+    releaseImportLease(token!);
+  });
+
+  it('does not force-release a live lease held by another token', () => {
+    const run = createImportRun('user_admin');
+    const token = tryAcquireImportLease(run.id);
+    expect(token).toBeTruthy();
+    expect(forceReleaseImportLease()).toBe(false);
+    expect(renewImportLease(token!)).toBe(true);
+    releaseImportLease(token!);
+    expect(forceReleaseImportLease()).toBe(true);
+  });
+
+  it('does not run a later catalog write after the lease token is replaced', () => {
+    const writes: string[] = [];
+    const run = createImportRun('user_admin');
+    const token = tryAcquireImportLease(run.id);
+    expect(token).toBeTruthy();
+    const watch = { lost: false };
+    const write = (label: string) => {
+      touchLiveImportLease(token, watch);
+      writes.push(label);
+    };
+
+    write('first');
+    getCatalogDb().prepare('UPDATE import_lease SET lock_token = ? WHERE id = 1').run('stolen');
+    expect(() => write('second')).toThrow(ImportLeaseLostError);
+    expect(writes).toEqual(['first']);
   });
 });

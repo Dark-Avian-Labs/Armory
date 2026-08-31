@@ -8,6 +8,7 @@ import { processExports, backfillModDescriptions } from '../db/queries.js';
 import { resetCatalogData } from '../db/resetCatalogData.js';
 import { createAppSchema } from '../db/schema.js';
 import { ensureOverframeFetchReady } from '../http/fetchOverframe.js';
+import { log as writeLog } from '../logger.js';
 import {
   countModsMissingAtragraphImages,
   syncAtragraphModsFromWiki,
@@ -33,8 +34,11 @@ import { downloadImages } from './images.js';
 import {
   ImportAlreadyRunningError,
   isImportLeaseHeld,
+  noteImportLeaseHeartbeat,
   releaseImportLease,
+  touchLiveImportLease,
   tryAcquireImportLease,
+  type ImportLeaseWatch,
 } from './importRuns.js';
 import { runImportPipeline, listExportFiles } from './pipeline.js';
 import { isStepForced, shouldRunStep, usesOnlyMissingMode } from './pipelineStepControl.js';
@@ -191,6 +195,7 @@ export interface StartupPipelineOptions {
   reporter?: (line: string, level: 'info' | 'error') => void;
   importRunId?: number;
   skipLease?: boolean;
+  heldLockToken?: string;
 }
 
 export async function runStartupPipeline(
@@ -206,12 +211,28 @@ export async function runStartupPipeline(
     if (!lockToken) {
       throw new ImportAlreadyRunningError();
     }
+  } else {
+    lockToken = options.heldLockToken ?? null;
   }
 
+  const leaseWatch: ImportLeaseWatch = { lost: false };
   try {
-    return await runStartupPipelineInner(options);
+    const heartbeat = lockToken
+      ? setInterval(
+          () => {
+            noteImportLeaseHeartbeat(lockToken, leaseWatch);
+          },
+          5 * 60 * 1000,
+        )
+      : null;
+    heartbeat?.unref();
+    try {
+      return await runStartupPipelineInner(options, lockToken, leaseWatch);
+    } finally {
+      if (heartbeat) clearInterval(heartbeat);
+    }
   } finally {
-    if (lockToken) {
+    if (manageLease && lockToken) {
       releaseImportLease(lockToken);
     }
   }
@@ -219,6 +240,8 @@ export async function runStartupPipeline(
 
 async function runStartupPipelineInner(
   options: StartupPipelineOptions = {},
+  lockToken: string | null = null,
+  leaseWatch: ImportLeaseWatch = { lost: false },
 ): Promise<StartupPipelineSummary> {
   const startTime = Date.now();
   const cli = options.cliReport === true;
@@ -226,10 +249,10 @@ async function runStartupPipelineInner(
   const forceImages = options.forceImages === true;
 
   const emit = (level: 'info' | 'error', msg: string): void => {
+    touchLiveImportLease(lockToken, leaseWatch);
     const line = `${TAG} ${msg}`;
     options.reporter?.(line, level);
-    if (level === 'error') console.error(line);
-    else console.log(line);
+    writeLog(level, msg, { source: 'startupPipeline' });
   };
   const log = (msg: string) => emit('info', msg);
   const err = (msg: string, e?: unknown) => {

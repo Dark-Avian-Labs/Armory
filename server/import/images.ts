@@ -9,6 +9,7 @@ import {
   fetchBounded,
   isAbortError,
 } from '../http/fetchWithTimeout.js';
+import { log } from '../logger.js';
 import { safeImagePathUnderRoot, sanitizeUniqueNameSegments } from './safeImagePath.js';
 
 export interface ImageDownloadResult {
@@ -237,5 +238,5 @@ function updateDbImagePaths(pathMap: Map<string, string>): void {
   });
 
   tx();
-  console.log(`[Images] Updated image_path for ${pathMap.size} items in DB`);
+  log('info', 'Updated image_path values in DB', { count: pathMap.size });
 }

@@ -1,6 +1,7 @@
 import type { PipelineStepKey } from '../../shared/pipelineSteps.js';
 import { bustCatalogResponseCache } from '../cache/catalogResponseCache.js';
 import { bustModListCache } from '../cache/modListCache.js';
+import { log } from '../logger.js';
 import {
   createImportRun,
   forceReleaseImportLease,
@@ -9,9 +10,11 @@ import {
   getLatestImportRunRow,
   isImportLeaseHeld,
   maskClerkUserId,
+  noteImportLeaseHeartbeat,
   parseImportRunSteps,
   persistImportRunSteps,
   releaseImportLease,
+  touchLiveImportLease,
   tryAcquireImportLease,
   updateImportRun,
   type ImportLogLine,
@@ -129,10 +132,10 @@ function notify(): void {
     try {
       listener(snapshot);
     } catch (error) {
-      console.error(
-        `[AdminImport] Snapshot listener ${index} failed:`,
-        error instanceof Error ? error.message : String(error),
-      );
+      log('error', 'Admin import snapshot listener failed', {
+        index,
+        err: error instanceof Error ? error.message : String(error),
+      });
     }
     index += 1;
   }
@@ -161,7 +164,13 @@ export function resetAdminImportLock(): AdminImportResetResult {
       snapshot: getAdminImportSnapshot(),
     };
   }
-  forceReleaseImportLease();
+  if (!forceReleaseImportLease()) {
+    return {
+      cleared: false,
+      reason: 'Import lease is held by another process; wait for it to finish or expire.',
+      snapshot: getAdminImportSnapshot(),
+    };
+  }
   state.running = false;
   if (state.runId > 0 && !state.finishedAt) {
     state.finishedAt = nowIso();
@@ -267,35 +276,49 @@ export function startAdminImportJob(
     }
 
     try {
-      const summary = await runStartupPipeline({
-        cliReport: true,
-        forceImport: options.forceImport,
-        forceImages: options.forceImages,
-        forceSteps: options.forceSteps,
-        importRunId: run.id,
-        skipLease: true,
-        reporter: (line, level) => {
-          pushLine(level, line);
+      const leaseWatch = { lost: false };
+      const heartbeat = setInterval(
+        () => {
+          noteImportLeaseHeartbeat(lockToken, leaseWatch);
         },
-      });
-      state.summary = summary;
-      pushLine(
-        'info',
-        `[AdminImport] Run #${state.runId} finished in ${(summary.durationMs / 1000).toFixed(1)}s.`,
+        5 * 60 * 1000,
       );
-      updateImportRun(run.id, {
-        status: 'succeeded',
-        finished_at: nowIso(),
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      state.error = message;
-      pushLine('error', `[AdminImport] Run #${state.runId} failed: ${message}`);
-      updateImportRun(run.id, {
-        status: 'failed',
-        finished_at: nowIso(),
-        error_text: message,
-      });
+      heartbeat.unref();
+      try {
+        const summary = await runStartupPipeline({
+          cliReport: true,
+          forceImport: options.forceImport,
+          forceImages: options.forceImages,
+          forceSteps: options.forceSteps,
+          importRunId: run.id,
+          skipLease: true,
+          heldLockToken: lockToken,
+          reporter: (line, level) => {
+            touchLiveImportLease(lockToken, leaseWatch);
+            pushLine(level, line);
+          },
+        });
+        state.summary = summary;
+        pushLine(
+          'info',
+          `[AdminImport] Run #${state.runId} finished in ${(summary.durationMs / 1000).toFixed(1)}s.`,
+        );
+        updateImportRun(run.id, {
+          status: 'succeeded',
+          finished_at: nowIso(),
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        state.error = message;
+        pushLine('error', `[AdminImport] Run #${state.runId} failed: ${message}`);
+        updateImportRun(run.id, {
+          status: 'failed',
+          finished_at: nowIso(),
+          error_text: message,
+        });
+      } finally {
+        clearInterval(heartbeat);
+      }
     } finally {
       releaseImportLease(lockToken);
       state.running = false;

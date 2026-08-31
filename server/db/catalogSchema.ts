@@ -1,5 +1,6 @@
 import { ensureCodexModularWeaponsPopulated } from '../codexModularWeapons.js';
 import { ensureImportRunsSchema } from '../import/importRuns.js';
+import { log } from '../logger.js';
 import { backfillArchonBuffArmoryKeys, backfillHelminthArmoryKeys } from './catalogKeys.js';
 import { ensureCatalogKeyColumns } from './catalogMigrations.js';
 import { getCatalogDb } from './connection.js';
@@ -218,12 +219,13 @@ export function createCatalogSchema(): void {
   ensureImportRunsSchema(db);
   const codexModularCount = ensureCodexModularWeaponsPopulated(db);
   if (archonKeys > 0 || helminthKeys > 0) {
-    console.log(
-      `[DB] Catalog armory keys backfilled: ${archonKeys} archon buff(s), ${helminthKeys} helminth ability(s).`,
-    );
+    log('info', 'Catalog armory keys backfilled', {
+      archonBuffs: archonKeys,
+      helminthAbilities: helminthKeys,
+    });
   }
   if (codexModularCount > 0) {
-    console.log(`[DB] Codex modular weapons catalog: ${codexModularCount} active row(s).`);
+    log('info', 'Codex modular weapons catalog ready', { activeRows: codexModularCount });
   }
-  console.log('[DB] Catalog schema created/verified');
+  log('info', 'Catalog schema created/verified');
 }

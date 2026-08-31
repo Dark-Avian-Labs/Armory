@@ -10,6 +10,7 @@ import {
 import { getClerkUserId } from '../auth/clerkUser.js';
 import { getClerkAuthState } from '../auth/middleware.js';
 import { canReadBuild } from '../buildAccess.js';
+import { bustCatalogResponseCache, sendCachedCatalogJson } from '../cache/catalogResponseCache.js';
 import { getUserDb } from '../db/connection.js';
 import {
   buildReadAccessContext,
@@ -38,15 +39,23 @@ import {
   MAX_EQUIPMENT_UNIQUE_NAME_LENGTH,
   ModConfigSchema,
 } from './modConfigValidation.js';
+import { BuildUpdateBodySchema, UserContentNameSchema } from './userContentSchemas.js';
 
 const BuildCreateBodySchema = z.object({
-  name: z.string().trim().min(1).max(MAX_NAME_LENGTH),
+  name: UserContentNameSchema,
   equipment_type: EquipmentTypeSchema,
   equipment_unique_name: z.string().trim().min(1).max(MAX_EQUIPMENT_UNIQUE_NAME_LENGTH),
   mod_config: z.unknown(),
   visibility: z.unknown().optional(),
   description: z.unknown().optional(),
 });
+
+const PUBLIC_BUILDS_CATALOG_CACHE_KEY = 'builds:public-catalog';
+const PUBLIC_BUILDS_CATALOG_TTL_MS = 30_000;
+
+function notePublicBuildsCatalogChanged(): void {
+  bustCatalogResponseCache(PUBLIC_BUILDS_CATALOG_CACHE_KEY);
+}
 
 export const buildsRouter = Router();
 
@@ -117,24 +126,31 @@ buildsRouter.get('/builds', (req: Request, res: Response) => {
   }
 });
 
-buildsRouter.get('/builds/catalog', (_req: Request, res: Response) => {
+buildsRouter.get('/builds/catalog', (req: Request, res: Response) => {
   try {
-    const db = getUserDb();
-    const rows = db
-      .prepare(
-        `SELECT equipment_type, equipment_unique_name, COUNT(*) AS build_count
-         FROM builds
-         WHERE visibility = 'public'
-         GROUP BY equipment_type, equipment_unique_name
-         ORDER BY equipment_type ASC, equipment_unique_name ASC`,
-      )
-      .all() as Array<{
-      equipment_type: string;
-      equipment_unique_name: string;
-      build_count: number;
-    }>;
-
-    res.json({ entries: rows });
+    sendCachedCatalogJson(
+      req,
+      res,
+      PUBLIC_BUILDS_CATALOG_CACHE_KEY,
+      () => {
+        const db = getUserDb();
+        const rows = db
+          .prepare(
+            `SELECT equipment_type, equipment_unique_name, COUNT(*) AS build_count
+             FROM builds
+             WHERE visibility = 'public'
+             GROUP BY equipment_type, equipment_unique_name
+             ORDER BY equipment_type ASC, equipment_unique_name ASC`,
+          )
+          .all() as Array<{
+          equipment_type: string;
+          equipment_unique_name: string;
+          build_count: number;
+        }>;
+        return { entries: rows };
+      },
+      { ttlMs: PUBLIC_BUILDS_CATALOG_TTL_MS, cacheControl: 'public, max-age=30' },
+    );
   } catch (err) {
     sendInternalError(res, 'builds.catalog', err);
   }
@@ -512,6 +528,7 @@ buildsRouter.post('/builds', (req: Request, res: Response) => {
         shareToken,
       );
 
+    notePublicBuildsCatalogChanged();
     res.json({ success: true, id: result.lastInsertRowid });
   } catch (err) {
     sendInternalError(res, 'builds.create', err);
@@ -532,17 +549,14 @@ buildsRouter.put('/builds/:id', (req: Request, res: Response) => {
       res.status(400).json({ error: 'Invalid build id' });
       return;
     }
-    const { name, mod_config, visibility: visRaw } = req.body;
+    const bodyResult = BuildUpdateBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      const nameIssue = bodyResult.error.issues.some((issue) => issue.path[0] === 'name');
+      res.status(400).json({ error: nameIssue ? 'Invalid name' : 'Invalid build payload' });
+      return;
+    }
+    const { name: sanitizedName, mod_config, visibility: visRaw } = bodyResult.data;
     const modConfigResult = ModConfigSchema.safeParse(mod_config);
-    if (typeof name !== 'string') {
-      res.status(400).json({ error: 'Invalid build payload' });
-      return;
-    }
-    const sanitizedName = name.trim();
-    if (sanitizedName.length === 0 || sanitizedName.length > MAX_NAME_LENGTH) {
-      res.status(400).json({ error: 'Invalid name' });
-      return;
-    }
     if (!modConfigResult.success) {
       res.status(400).json({ error: 'Invalid mod_config' });
       return;
@@ -605,6 +619,7 @@ buildsRouter.put('/builds/:id', (req: Request, res: Response) => {
       return;
     }
 
+    notePublicBuildsCatalogChanged();
     res.json({ success: true });
   } catch (err) {
     sendInternalError(res, 'builds.update', err);
@@ -648,6 +663,7 @@ buildsRouter.delete('/builds/:id', (req: Request, res: Response) => {
       res.status(404).json({ error: 'Build not found' });
       return;
     }
+    notePublicBuildsCatalogChanged();
     res.json({ success: true });
   } catch (err) {
     sendInternalError(res, 'builds.delete', err);
@@ -711,6 +727,7 @@ buildsRouter.post('/builds/:id/copy', (req: Request, res: Response) => {
         normalizeUserDescription(source.description),
       );
 
+    notePublicBuildsCatalogChanged();
     res.json({ success: true, id: result.lastInsertRowid });
   } catch (err) {
     sendInternalError(res, 'builds.copy', err);

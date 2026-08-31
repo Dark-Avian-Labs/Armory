@@ -8,7 +8,7 @@ import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
 
-import { clerkMiddleware } from './auth/middleware.js';
+import { clerkMiddleware, getClerkAuthState } from './auth/middleware.js';
 import { stopModListCacheCleanup } from './cache/modListCache.js';
 import {
   APP_VERSION,
@@ -42,6 +42,7 @@ import { log } from './logger.js';
 import { apiRouter } from './routes/api.js';
 import { authRouter } from './routes/auth.js';
 import { clerkWebhookRouter } from './routes/webhooks.js';
+import { bindClerkUserSessionMiddleware } from './session/bindClerkUserSession.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -52,7 +53,7 @@ recoverImportLeaseOnStartup();
 
 const sessionDb = getSessionDb();
 createSessionSchema(sessionDb);
-console.log(`[${APP_NAME}] Session DB ready (${SESSION_DB_PATH})`);
+log('info', 'Session DB ready', { path: SESSION_DB_PATH });
 
 const app = express();
 
@@ -95,6 +96,11 @@ const writeApiLimiter = rateLimit({
   message: { error: 'Too many write requests, please try again later' },
 });
 
+const probeLimiter = rateLimit({
+  ...rateLimitDefaults,
+  max: 1200,
+});
+
 app.use(
   '/api/webhooks/clerk',
   appApiLimiter,
@@ -105,6 +111,25 @@ app.use(
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+app.get('/healthz', (_req, res) => {
+  res.json({ status: 'ok', app: APP_NAME });
+});
+
+app.get('/readyz', probeLimiter, (_req, res) => {
+  try {
+    sessionDb.prepare('SELECT 1').get();
+    getCatalogDb().prepare('SELECT 1').get();
+    getUserDb().prepare('SELECT 1').get();
+    res.json({ status: 'ready', app: APP_NAME });
+  } catch (err) {
+    log('error', 'Readiness check failed', {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    res.status(503).json({ status: 'not_ready', app: APP_NAME });
+  }
+});
+
 app.use(clerkMiddleware());
 
 const baselineLimiter = rateLimit({
@@ -112,6 +137,7 @@ const baselineLimiter = rateLimit({
   max: 1200,
   skip: (req) =>
     req.path === '/healthz' ||
+    req.path === '/readyz' ||
     req.path === '/api/version' ||
     req.path === '/favicon.ico' ||
     req.path === '/favicon.png' ||
@@ -173,11 +199,19 @@ const { csrfSynchronisedProtection, generateToken } = csrfSync({
 });
 
 app.use(csrfSynchronisedProtection);
-
-app.use((req, res, next) => {
-  (res.locals as { csrfToken?: string }).csrfToken = generateToken(req);
-  next();
-});
+app.locals.generateCsrfToken = generateToken;
+app.use(
+  '/api',
+  bindClerkUserSessionMiddleware(
+    (req) => getClerkAuthState(req).userId,
+    (req) => {
+      const generate = req.app.locals.generateCsrfToken as
+        | ((request: express.Request, overwrite?: boolean) => string)
+        | undefined;
+      generate?.(req, true);
+    },
+  ),
+);
 
 const CSRF_PROTECTED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 function isSameHostOrigin(req: express.Request, origin: string): boolean {
@@ -267,24 +301,6 @@ app.get('/favicon.ico', publicPageLimiter, (_req, res) => {
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Not found' });
-});
-
-app.get('/healthz', (_req, res) => {
-  res.json({ status: 'ok', app: APP_NAME });
-});
-
-app.get('/readyz', (_req, res) => {
-  try {
-    sessionDb.prepare('SELECT 1').get();
-    getCatalogDb().prepare('SELECT 1').get();
-    getUserDb().prepare('SELECT 1').get();
-    res.json({ status: 'ready', app: APP_NAME });
-  } catch (err) {
-    log('error', 'Readiness check failed', {
-      err: err instanceof Error ? err.message : String(err),
-    });
-    res.status(503).json({ status: 'not_ready', app: APP_NAME });
-  }
 });
 
 const clientDir = path.resolve(__dirname, '..', 'client');
@@ -433,6 +449,11 @@ function shutdown(baseExitCode = 0): void {
       }
       closeAndExit(baseExitCode);
     });
+    server.closeIdleConnections();
+    const forceCloseMs = Math.max(0, SHUTDOWN_TIMEOUT_MS - 500);
+    setTimeout(() => {
+      server.closeAllConnections();
+    }, forceCloseMs);
   })();
 }
 

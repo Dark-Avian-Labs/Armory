@@ -4,6 +4,7 @@ import { getClerkUserId } from '../auth/clerkUser.js';
 import { getClerkAuthState } from '../auth/middleware.js';
 import { canReadBuild } from '../buildAccess.js';
 import { getUserDb } from '../db/connection.js';
+import { timingSafeEqualString } from '../http/timingSafeEqual.js';
 import { canReadLoadout } from '../loadoutAccess.js';
 import {
   buildReadAccessContext,
@@ -28,6 +29,11 @@ import {
   type BuildRow,
 } from './apiShared.js';
 import { LoadoutSlotTypeSchema } from './modConfigValidation.js';
+import {
+  LoadoutCreateBodySchema,
+  LoadoutUpdateBodySchema,
+  loadoutUpdateErrorMessage,
+} from './userContentSchemas.js';
 
 export const loadoutsRouter = Router();
 
@@ -126,7 +132,8 @@ loadoutsRouter.get('/loadouts/:id', (req: Request, res: Response) => {
     const hasLoadoutTokenAccess =
       vis === 'unlisted' &&
       readContext.shareToken != null &&
-      loadoutAccessRow.share_token === readContext.shareToken;
+      loadoutAccessRow.share_token != null &&
+      timingSafeEqualString(loadoutAccessRow.share_token, readContext.shareToken);
 
     const linkRows = db
       .prepare('SELECT build_id, slot_type FROM loadout_builds WHERE loadout_id = ?')
@@ -187,17 +194,12 @@ loadoutsRouter.post('/loadouts', (req: Request, res: Response) => {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
-    const { name } = req.body;
-    if (typeof name !== 'string') {
+    const bodyResult = LoadoutCreateBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
       res.status(400).json({ error: 'Invalid name' });
       return;
     }
-
-    const sanitizedName = name.trim();
-    if (sanitizedName.length === 0 || sanitizedName.length > MAX_NAME_LENGTH) {
-      res.status(400).json({ error: 'Invalid name' });
-      return;
-    }
+    const sanitizedName = bodyResult.data.name;
 
     if (countUserLoadouts(db, clerkUserId) >= MAX_LOADOUTS_PER_USER) {
       res.status(403).json({
@@ -236,40 +238,30 @@ loadoutsRouter.put('/loadouts/:id', (req: Request, res: Response) => {
       return;
     }
 
-    const body = req.body as Record<string, unknown> | undefined;
-    const hasName = body != null && Object.prototype.hasOwnProperty.call(body, 'name');
-    const hasVisibility = body != null && Object.prototype.hasOwnProperty.call(body, 'visibility');
-    const hasDescription =
-      body != null && Object.prototype.hasOwnProperty.call(body, 'description');
-    if (!hasName && !hasVisibility && !hasDescription) {
-      res.status(400).json({ error: 'Provide at least name, visibility, or description' });
+    const bodyResult = LoadoutUpdateBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      res.status(400).json({ error: loadoutUpdateErrorMessage(bodyResult.error) });
       return;
     }
 
+    const hasName = bodyResult.data.name !== undefined;
+    const hasVisibility = bodyResult.data.visibility !== undefined;
+    const hasDescription = bodyResult.data.description !== undefined;
+
     let nextName = String(existing.name ?? '').trim();
-    if (hasName) {
-      const name = body?.name;
-      if (typeof name !== 'string' || name.trim().length === 0 || name.trim().length > 255) {
-        res.status(400).json({ error: 'Invalid name' });
-        return;
-      }
-      nextName = name.trim();
+    if (hasName && bodyResult.data.name !== undefined) {
+      nextName = bodyResult.data.name;
     }
 
     let nextVisibility = String(existing.visibility ?? 'private');
-    if (hasVisibility) {
-      const visRaw = body?.visibility;
-      if (visRaw !== 'public' && visRaw !== 'private' && visRaw !== 'unlisted') {
-        res.status(400).json({ error: 'Invalid visibility' });
-        return;
-      }
-      nextVisibility = visRaw;
+    if (hasVisibility && bodyResult.data.visibility !== undefined) {
+      nextVisibility = bodyResult.data.visibility;
     }
 
     let nextDescription: string | null =
       typeof existing.description === 'string' ? existing.description : null;
     if (hasDescription) {
-      nextDescription = normalizeUserDescription(body?.description);
+      nextDescription = normalizeUserDescription(bodyResult.data.description);
     }
 
     if (nextVisibility === 'public' || nextVisibility === 'unlisted') {
