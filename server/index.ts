@@ -96,6 +96,11 @@ const writeApiLimiter = rateLimit({
   message: { error: 'Too many write requests, please try again later' },
 });
 
+const probeLimiter = rateLimit({
+  ...rateLimitDefaults,
+  max: 1200,
+});
+
 app.use(
   '/api/webhooks/clerk',
   appApiLimiter,
@@ -111,7 +116,7 @@ app.get('/healthz', (_req, res) => {
   res.json({ status: 'ok', app: APP_NAME });
 });
 
-app.get('/readyz', (_req, res) => {
+app.get('/readyz', probeLimiter, (_req, res) => {
   try {
     sessionDb.prepare('SELECT 1').get();
     getCatalogDb().prepare('SELECT 1').get();
@@ -132,6 +137,7 @@ const baselineLimiter = rateLimit({
   max: 1200,
   skip: (req) =>
     req.path === '/healthz' ||
+    req.path === '/readyz' ||
     req.path === '/api/version' ||
     req.path === '/favicon.ico' ||
     req.path === '/favicon.png' ||
