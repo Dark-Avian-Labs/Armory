@@ -22,6 +22,7 @@ import {
   recoverImportLeaseOnStartup,
   releaseImportLease,
   tryAcquireImportLease,
+  renewImportLease,
 } from './importRuns.js';
 
 describe('importRuns', () => {
@@ -62,5 +63,14 @@ describe('importRuns', () => {
 
     expect(isImportLeaseHeld()).toBe(false);
     expect(tryAcquireImportLease(run.id + 1)).toBeTruthy();
+  });
+
+  it('renews acquired_at so a live lease is not treated as stale', () => {
+    const run = createImportRun('user_admin');
+    const token = tryAcquireImportLease(run.id);
+    expect(token).toBeTruthy();
+    expect(renewImportLease(token!)).toBe(true);
+    expect(renewImportLease('not-the-token')).toBe(false);
+    releaseImportLease(token!);
   });
 });

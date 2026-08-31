@@ -34,6 +34,7 @@ import {
   ImportAlreadyRunningError,
   isImportLeaseHeld,
   releaseImportLease,
+  renewImportLease,
   tryAcquireImportLease,
 } from './importRuns.js';
 import { runImportPipeline, listExportFiles } from './pipeline.js';
@@ -209,7 +210,20 @@ export async function runStartupPipeline(
   }
 
   try {
-    return await runStartupPipelineInner(options);
+    const heartbeat = lockToken
+      ? setInterval(
+          () => {
+            renewImportLease(lockToken);
+          },
+          5 * 60 * 1000,
+        )
+      : null;
+    heartbeat?.unref();
+    try {
+      return await runStartupPipelineInner(options, lockToken);
+    } finally {
+      if (heartbeat) clearInterval(heartbeat);
+    }
   } finally {
     if (lockToken) {
       releaseImportLease(lockToken);
@@ -219,6 +233,7 @@ export async function runStartupPipeline(
 
 async function runStartupPipelineInner(
   options: StartupPipelineOptions = {},
+  lockToken: string | null = null,
 ): Promise<StartupPipelineSummary> {
   const startTime = Date.now();
   const cli = options.cliReport === true;
@@ -226,6 +241,7 @@ async function runStartupPipelineInner(
   const forceImages = options.forceImages === true;
 
   const emit = (level: 'info' | 'error', msg: string): void => {
+    if (lockToken) renewImportLease(lockToken);
     const line = `${TAG} ${msg}`;
     options.reporter?.(line, level);
     if (level === 'error') console.error(line);

@@ -4,6 +4,7 @@ import { getClerkUserId } from '../auth/clerkUser.js';
 import { getClerkAuthState } from '../auth/middleware.js';
 import { canReadBuild } from '../buildAccess.js';
 import { getUserDb } from '../db/connection.js';
+import { timingSafeEqualString } from '../http/timingSafeEqual.js';
 import { canReadLoadout } from '../loadoutAccess.js';
 import {
   buildReadAccessContext,
@@ -126,7 +127,8 @@ loadoutsRouter.get('/loadouts/:id', (req: Request, res: Response) => {
     const hasLoadoutTokenAccess =
       vis === 'unlisted' &&
       readContext.shareToken != null &&
-      loadoutAccessRow.share_token === readContext.shareToken;
+      loadoutAccessRow.share_token != null &&
+      timingSafeEqualString(loadoutAccessRow.share_token, readContext.shareToken);
 
     const linkRows = db
       .prepare('SELECT build_id, slot_type FROM loadout_builds WHERE loadout_id = ?')

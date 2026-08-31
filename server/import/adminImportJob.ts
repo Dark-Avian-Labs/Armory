@@ -12,6 +12,7 @@ import {
   parseImportRunSteps,
   persistImportRunSteps,
   releaseImportLease,
+  renewImportLease,
   tryAcquireImportLease,
   updateImportRun,
   type ImportLogLine,
@@ -161,6 +162,13 @@ export function resetAdminImportLock(): AdminImportResetResult {
       snapshot: getAdminImportSnapshot(),
     };
   }
+  if (isImportLeaseHeld()) {
+    return {
+      cleared: false,
+      reason: 'Import lease is held by another process; wait for it to finish or expire.',
+      snapshot: getAdminImportSnapshot(),
+    };
+  }
   forceReleaseImportLease();
   state.running = false;
   if (state.runId > 0 && !state.finishedAt) {
@@ -267,35 +275,47 @@ export function startAdminImportJob(
     }
 
     try {
-      const summary = await runStartupPipeline({
-        cliReport: true,
-        forceImport: options.forceImport,
-        forceImages: options.forceImages,
-        forceSteps: options.forceSteps,
-        importRunId: run.id,
-        skipLease: true,
-        reporter: (line, level) => {
-          pushLine(level, line);
+      const heartbeat = setInterval(
+        () => {
+          renewImportLease(lockToken);
         },
-      });
-      state.summary = summary;
-      pushLine(
-        'info',
-        `[AdminImport] Run #${state.runId} finished in ${(summary.durationMs / 1000).toFixed(1)}s.`,
+        5 * 60 * 1000,
       );
-      updateImportRun(run.id, {
-        status: 'succeeded',
-        finished_at: nowIso(),
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      state.error = message;
-      pushLine('error', `[AdminImport] Run #${state.runId} failed: ${message}`);
-      updateImportRun(run.id, {
-        status: 'failed',
-        finished_at: nowIso(),
-        error_text: message,
-      });
+      heartbeat.unref();
+      try {
+        const summary = await runStartupPipeline({
+          cliReport: true,
+          forceImport: options.forceImport,
+          forceImages: options.forceImages,
+          forceSteps: options.forceSteps,
+          importRunId: run.id,
+          skipLease: true,
+          reporter: (line, level) => {
+            renewImportLease(lockToken);
+            pushLine(level, line);
+          },
+        });
+        state.summary = summary;
+        pushLine(
+          'info',
+          `[AdminImport] Run #${state.runId} finished in ${(summary.durationMs / 1000).toFixed(1)}s.`,
+        );
+        updateImportRun(run.id, {
+          status: 'succeeded',
+          finished_at: nowIso(),
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        state.error = message;
+        pushLine('error', `[AdminImport] Run #${state.runId} failed: ${message}`);
+        updateImportRun(run.id, {
+          status: 'failed',
+          finished_at: nowIso(),
+          error_text: message,
+        });
+      } finally {
+        clearInterval(heartbeat);
+      }
     } finally {
       releaseImportLease(lockToken);
       state.running = false;

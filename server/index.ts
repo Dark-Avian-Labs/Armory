@@ -105,6 +105,25 @@ app.use(
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+app.get('/healthz', (_req, res) => {
+  res.json({ status: 'ok', app: APP_NAME });
+});
+
+app.get('/readyz', (_req, res) => {
+  try {
+    sessionDb.prepare('SELECT 1').get();
+    getCatalogDb().prepare('SELECT 1').get();
+    getUserDb().prepare('SELECT 1').get();
+    res.json({ status: 'ready', app: APP_NAME });
+  } catch (err) {
+    log('error', 'Readiness check failed', {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    res.status(503).json({ status: 'not_ready', app: APP_NAME });
+  }
+});
+
 app.use(clerkMiddleware());
 
 const baselineLimiter = rateLimit({
@@ -173,11 +192,7 @@ const { csrfSynchronisedProtection, generateToken } = csrfSync({
 });
 
 app.use(csrfSynchronisedProtection);
-
-app.use((req, res, next) => {
-  (res.locals as { csrfToken?: string }).csrfToken = generateToken(req);
-  next();
-});
+app.locals.generateCsrfToken = generateToken;
 
 const CSRF_PROTECTED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 function isSameHostOrigin(req: express.Request, origin: string): boolean {
@@ -267,24 +282,6 @@ app.get('/favicon.ico', publicPageLimiter, (_req, res) => {
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Not found' });
-});
-
-app.get('/healthz', (_req, res) => {
-  res.json({ status: 'ok', app: APP_NAME });
-});
-
-app.get('/readyz', (_req, res) => {
-  try {
-    sessionDb.prepare('SELECT 1').get();
-    getCatalogDb().prepare('SELECT 1').get();
-    getUserDb().prepare('SELECT 1').get();
-    res.json({ status: 'ready', app: APP_NAME });
-  } catch (err) {
-    log('error', 'Readiness check failed', {
-      err: err instanceof Error ? err.message : String(err),
-    });
-    res.status(503).json({ status: 'not_ready', app: APP_NAME });
-  }
 });
 
 const clientDir = path.resolve(__dirname, '..', 'client');
@@ -433,6 +430,11 @@ function shutdown(baseExitCode = 0): void {
       }
       closeAndExit(baseExitCode);
     });
+    server.closeIdleConnections();
+    const forceCloseMs = Math.max(0, SHUTDOWN_TIMEOUT_MS - 500);
+    setTimeout(() => {
+      server.closeAllConnections();
+    }, forceCloseMs);
   })();
 }
 

@@ -223,6 +223,16 @@ export function releaseImportLease(lockToken: string): void {
   })();
 }
 
+export function renewImportLease(lockToken: string): boolean {
+  ensureImportRunsSchema();
+  const updated = getCatalogDb()
+    .prepare(
+      `UPDATE import_lease SET acquired_at = datetime('now') WHERE id = ? AND lock_token = ?`,
+    )
+    .run(LEASE_ROW_ID, lockToken);
+  return updated.changes === 1;
+}
+
 function getImportLeaseRow(): {
   lock_token: string | null;
   run_id: number | null;

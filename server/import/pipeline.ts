@@ -10,8 +10,37 @@ import {
   isAbortError,
 } from '../http/fetchWithTimeout.js';
 import { downloadAndParseManifest, type ManifestEntry } from './manifest.js';
+import { sanitizePathSegment } from './safeImagePath.js';
 
 export type { ImportPipelineStats };
+
+function assertUnderExportsRoot(candidatePath: string): string {
+  const root = path.resolve(EXPORTS_DIR);
+  const resolved = path.resolve(candidatePath);
+  if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+    throw new Error(`Path escapes exports directory: ${candidatePath}`);
+  }
+  return resolved;
+}
+
+function safeExportCategory(category: string): string {
+  const trimmed = category.trim();
+  if (
+    !trimmed ||
+    trimmed.includes('/') ||
+    trimmed.includes('\\') ||
+    trimmed.includes('..') ||
+    trimmed.includes('\0') ||
+    path.isAbsolute(trimmed)
+  ) {
+    throw new Error(`Invalid export category: ${category}`);
+  }
+  const sanitized = sanitizePathSegment(trimmed);
+  if (!sanitized || sanitized === '.' || sanitized === '..') {
+    throw new Error(`Invalid export category: ${category}`);
+  }
+  return sanitized;
+}
 
 export interface ImportStatus {
   step: string;
@@ -75,10 +104,25 @@ export async function runImportPipeline(
 
   for (let i = 0; i < needed.length; i++) {
     const entry = needed[i];
+    let safeCategory: string;
+    try {
+      safeCategory = safeExportCategory(entry.category);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      pipeStats.failed.push({ category: entry.category, error: msg });
+      report({
+        step: 'download',
+        message: `Rejected ${entry.category}: ${msg}`,
+        progress: i + 1,
+        total: needed.length,
+        error: msg,
+      });
+      continue;
+    }
     const url = `${CONTENT_BASE_URL}${entry.fullFilename}`;
-    const localFilename = `${entry.category}.json`;
-    const localPath = path.join(EXPORTS_DIR, localFilename);
-    const hashPath = path.join(EXPORTS_DIR, `${entry.category}.hash`);
+    const localFilename = `${safeCategory}.json`;
+    const localPath = assertUnderExportsRoot(path.join(EXPORTS_DIR, localFilename));
+    const hashPath = assertUnderExportsRoot(path.join(EXPORTS_DIR, `${safeCategory}.hash`));
 
     if (fs.existsSync(localPath) && fs.existsSync(hashPath)) {
       const existingHash = fs.readFileSync(hashPath, 'utf-8').trim();
