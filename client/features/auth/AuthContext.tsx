@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { apiFetch, API_UNAUTHORIZED_EVENT } from '../../utils/api';
+import { apiFetch, API_UNAUTHORIZED_EVENT, setClerkTokenGetter } from '../../utils/api';
 import type { AuthErrorDetail, AuthState } from './types';
 
 interface AuthContextValue {
@@ -40,9 +40,16 @@ function toAuthErrorDetail(error: unknown): AuthErrorDetail {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { isSignedIn, isLoaded } = useClerkAuth();
+  const { isSignedIn, isLoaded, getToken } = useClerkAuth();
   const [auth, setAuth] = useState<AuthState>(DEFAULT_AUTH_STATE);
   const refreshGenerationRef = useRef(0);
+
+  useEffect(() => {
+    setClerkTokenGetter((options) => getToken(options));
+    return () => {
+      setClerkTokenGetter(null);
+    };
+  }, [getToken]);
 
   const refresh = useCallback(async () => {
     if (!isLoaded) return;
