@@ -1,9 +1,31 @@
+export type ClerkTokenGetter = (options?: { skipCache?: boolean }) => Promise<string | null>;
+
 let cachedToken: string | null = null;
 let inFlightPromise: Promise<string | null> | null = null;
 let csrfTokenGeneration = 0;
+let getClerkToken: ClerkTokenGetter | null = null;
 export const API_UNAUTHORIZED_EVENT = 'armory:api-unauthorized';
 
+export function setClerkTokenGetter(getter: ClerkTokenGetter | null): void {
+  getClerkToken = getter;
+}
+
+async function resolveClerkToken(skipCache = false): Promise<string | null> {
+  if (!getClerkToken) {
+    return null;
+  }
+  try {
+    const token = await getClerkToken({ skipCache });
+    return token ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function emitUnauthorized(url: string): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
   window.dispatchEvent(
     new CustomEvent(API_UNAUTHORIZED_EVENT, {
       detail: { url },
@@ -23,7 +45,7 @@ async function getCsrfToken(): Promise<string | null> {
   const ref = { promise: null as Promise<string | null> | null };
   inFlightPromise = ref.promise = (async () => {
     try {
-      const res = await fetch('/api/auth/csrf', { credentials: 'include' });
+      const res = await fetch('/api/auth/csrf', { credentials: 'include', cache: 'no-store' });
       if (!res.ok) {
         return null;
       }
@@ -178,6 +200,37 @@ function injectCsrfIntoJsonBody(
   }
 }
 
+function withClerkAuthorization(headers: Headers, token: string | null): Headers {
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  } else {
+    headers.delete('Authorization');
+  }
+  return headers;
+}
+
+function send(
+  url: string,
+  init: RequestInit | undefined,
+  headers: Headers,
+  body: BodyInit | null | undefined,
+): Promise<Response> {
+  return fetch(url, {
+    ...init,
+    credentials: init?.credentials ?? 'include',
+    cache: init?.cache ?? 'no-store',
+    headers,
+    body,
+  });
+}
+
+function throwIfUnauthorized(url: string, response: Response): void {
+  if (response.status === 401) {
+    emitUnauthorized(url);
+    throw new UnauthorizedError(url, response);
+  }
+}
+
 export async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
   const method = (init?.method ?? 'GET').toUpperCase();
   const needsCsrf = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
@@ -195,17 +248,23 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
     requestBody = injectCsrfIntoJsonBody(requestBody, csrfToken);
   }
 
-  const response = await fetch(url, {
-    ...init,
-    credentials: init?.credentials ?? 'include',
-    cache: init?.cache ?? 'no-store',
-    headers,
-    body: requestBody,
-  });
-  if (response.status === 401) {
-    emitUnauthorized(url);
-    throw new UnauthorizedError(url, response);
+  let clerkToken = await resolveClerkToken(false);
+  withClerkAuthorization(headers, clerkToken);
+
+  let response = await send(url, init, headers, requestBody);
+  if (response.status === 401 && getClerkToken) {
+    const refreshed = await resolveClerkToken(true);
+    if (refreshed && refreshed !== clerkToken) {
+      clerkToken = refreshed;
+      response = await send(
+        url,
+        init,
+        withClerkAuthorization(new Headers(headers), clerkToken),
+        requestBody,
+      );
+    }
   }
+  throwIfUnauthorized(url, response);
   if (!needsCsrf || !(await isCsrfFailureResponse(response))) {
     return response;
   }
@@ -222,20 +281,11 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
     throw new DOMException('Request aborted before CSRF retry', 'AbortError');
   }
 
-  const retryHeaders = new Headers(init?.headers);
+  const retryHeaders = withClerkAuthorization(new Headers(init?.headers), clerkToken);
   setJsonContentType(retryHeaders, init);
   retryHeaders.set('X-CSRF-Token', freshCsrfToken);
   const retryBody = injectCsrfIntoJsonBody(init?.body, freshCsrfToken);
-  const retryResponse = await fetch(url, {
-    ...init,
-    credentials: init?.credentials ?? 'include',
-    cache: init?.cache ?? 'no-store',
-    headers: retryHeaders,
-    body: retryBody,
-  });
-  if (retryResponse.status === 401) {
-    emitUnauthorized(url);
-    throw new UnauthorizedError(url, retryResponse);
-  }
+  const retryResponse = await send(url, init, retryHeaders, retryBody);
+  throwIfUnauthorized(url, retryResponse);
   return retryResponse;
 }
