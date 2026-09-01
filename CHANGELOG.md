@@ -362,3 +362,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.70.4** `ci(deps)` [#493](https://github.com/Dark-Avian-Labs/Armory/pull/493): bump useblacksmith/checkout in the github-actions group
 - **v1.70.5** `chore` [#496](https://github.com/Dark-Avian-Labs/Armory/pull/496): chore/deps material symbols rounded
 - **v1.70.6** `chore` [#497](https://github.com/Dark-Avian-Labs/Armory/pull/497): audit/fable
+- **v1.70.7** `chore` [#498](https://github.com/Dark-Avian-Labs/Armory/pull/498): fix/clerk bearer token
