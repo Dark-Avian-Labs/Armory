@@ -363,3 +363,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.70.5** `chore` [#496](https://github.com/Dark-Avian-Labs/Armory/pull/496): chore/deps material symbols rounded
 - **v1.70.6** `chore` [#497](https://github.com/Dark-Avian-Labs/Armory/pull/497): audit/fable
 - **v1.70.7** `chore` [#498](https://github.com/Dark-Avian-Labs/Armory/pull/498): fix/clerk bearer token
+- **v1.70.8** `chore(deps)` [#499](https://github.com/Dark-Avian-Labs/Armory/pull/499): bump the production-dependencies group with 2 updates
