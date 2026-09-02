@@ -5,11 +5,7 @@ import { useApi } from '../../hooks/useApi';
 import { useHelminthReplacement } from '../../hooks/useHelminthReplacement';
 import type { Warframe, Ability, BuildConfig } from '../../types/warframe';
 import { parseWarframeAbilityRefs } from '../../utils/buildConfigPersist';
-import {
-  getDamageTypeIconPath,
-  sanitizeDisplayTextKeepDamageTokens,
-  splitDisplayTextByDamageTokens,
-} from '../../utils/damageTypeTokens';
+import { DamageTypeInlineText } from '../DamageTypeInlineText';
 import { GlassTooltip } from '../GlassTooltip';
 
 export interface ParsedAbility {
@@ -36,32 +32,6 @@ export function AbilityBar({
   onAbilityClick,
   readOnly = false,
 }: AbilityBarProps) {
-  const renderDamageSnippet = (raw: string): React.ReactNode => {
-    const cleaned = sanitizeDisplayTextKeepDamageTokens(raw);
-    return splitDisplayTextByDamageTokens(cleaned).map((segment, segmentIndex) => {
-      if (segment.kind === 'text') {
-        return <span key={`t-${segmentIndex}`}>{segment.value}</span>;
-      }
-      const iconPath = getDamageTypeIconPath(segment.value);
-      if (!iconPath) return <span key={`u-${segmentIndex}`}>{segment.value}</span>;
-      return (
-        <img
-          key={`i-${segmentIndex}`}
-          src={iconPath}
-          alt={segment.value}
-          className="mx-[0.08em] inline-block"
-          style={{
-            width: 12,
-            height: 12,
-            verticalAlign: '-0.12em',
-            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.7))',
-          }}
-          draggable={false}
-        />
-      );
-    });
-  };
-
   const warframeAbilityRefs = parseWarframeAbilityRefs(warframe);
   const { selectedReplacement } = useHelminthReplacement(helminthConfig, warframeAbilityRefs);
   const replacedAbilityIndex = helminthReplacedAbilityIndex(helminthConfig, warframeAbilityRefs);
@@ -166,12 +136,12 @@ export function AbilityBar({
                   )}
                   {ability.description && !isReplaced && (
                     <div className="text-muted mt-0.5 text-[10px] leading-relaxed break-words whitespace-normal">
-                      {renderDamageSnippet(ability.description)}
+                      <DamageTypeInlineText text={ability.description} />
                     </div>
                   )}
                   {isReplaced && selectedReplacement?.description && (
                     <div className="text-muted mt-0.5 text-[10px] leading-relaxed break-words whitespace-normal">
-                      {renderDamageSnippet(selectedReplacement.description)}
+                      <DamageTypeInlineText text={selectedReplacement.description} />
                     </div>
                   )}
                 </>

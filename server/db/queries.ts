@@ -167,8 +167,8 @@ function saveScrapedData(): {
 
   saved.abilities = db
     .prepare(
-      `SELECT unique_name, ability_stats, wiki_stats, energy_cost FROM abilities
-     WHERE ability_stats IS NOT NULL OR wiki_stats IS NOT NULL OR energy_cost IS NOT NULL`,
+      `SELECT unique_name, wiki_stats, energy_cost FROM abilities
+     WHERE wiki_stats IS NOT NULL OR energy_cost IS NOT NULL`,
     )
     .all() as ScrapedRow[];
 
@@ -226,10 +226,10 @@ function restoreScrapedData(saved: ReturnType<typeof saveScrapedData>): void {
     }
 
     const abStmt = db.prepare(
-      'UPDATE abilities SET ability_stats = ?, wiki_stats = ?, energy_cost = ? WHERE unique_name = ?',
+      'UPDATE abilities SET wiki_stats = ?, energy_cost = ? WHERE unique_name = ?',
     );
     for (const row of saved.abilities) {
-      abStmt.run(row.ability_stats, row.wiki_stats, row.energy_cost, row.unique_name);
+      abStmt.run(row.wiki_stats, row.energy_cost, row.unique_name);
     }
 
     const modStmt = db.prepare(

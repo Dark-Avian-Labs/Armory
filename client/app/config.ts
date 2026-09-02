@@ -38,15 +38,17 @@ export const LEGAL_ENTITY_NAME = readTrimmedEnv(
   'Dark Avian Labs',
 );
 
+const DEFAULT_LEGAL_PAGE_URL = 'https://darkavianlabs.com/legal/';
+
 const resolvedLegalPageUrl = readTrimmedEnv(
   import.meta.env.VITE_LEGAL_PAGE_URL as string | undefined,
-  'https://darkavianlabs.com/legal/',
+  DEFAULT_LEGAL_PAGE_URL,
 );
 
 export const LEGAL_PAGE_URL =
   isSafeRelativePath(resolvedLegalPageUrl) || isSafeAbsoluteLegalUrl(resolvedLegalPageUrl)
     ? resolvedLegalPageUrl
-    : '/auth/legal';
+    : DEFAULT_LEGAL_PAGE_URL;
 
 export const APP_VERSION = readTrimmedEnv(
   import.meta.env.VITE_APP_VERSION as string | undefined,

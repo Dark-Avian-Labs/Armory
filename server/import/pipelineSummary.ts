@@ -148,8 +148,7 @@ export function printStartupPipelineSummary(summary: StartupPipelineSummary): vo
   if (ov.merge) {
     ovLines.push(
       `Merged: ${ov.merge.warframesUpdated} warframes, ${ov.merge.weaponsUpdated} weapons, ` +
-        `${ov.merge.companionsUpdated} companions, ${ov.merge.abilitiesUpdated} abilities, ` +
-        `${ov.merge.helminthUpdated} helminth flags.`,
+        `${ov.merge.companionsUpdated} companions, ${ov.merge.helminthUpdated} helminth flags.`,
     );
   }
   if (ov.error) ovLines.push(`Error: ${ov.error}`);

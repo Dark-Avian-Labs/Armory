@@ -1,11 +1,7 @@
 import type { IncarnonData, IncarnonEvolutionTier, IncarnonPerkOption } from '../../types/incarnon';
 import type { IncarnonSelection } from '../../types/incarnon';
-import {
-  getDamageTypeIconPath,
-  sanitizeDisplayTextKeepDamageTokens,
-  splitDisplayTextByDamageTokens,
-} from '../../utils/damageTypeTokens';
 import { getSelectedPerk } from '../../utils/incarnonSelections';
+import { DamageTypeInlineText } from '../DamageTypeInlineText';
 import { GlassTooltip } from '../GlassTooltip';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
@@ -16,32 +12,6 @@ interface IncarnonUpgradeBarProps {
   activeTier: number | null;
   onTierClick: (tier: number) => void;
   readOnly?: boolean;
-}
-
-function renderDamageSnippet(raw: string): React.ReactNode {
-  const cleaned = sanitizeDisplayTextKeepDamageTokens(raw);
-  return splitDisplayTextByDamageTokens(cleaned).map((segment, segmentIndex) => {
-    if (segment.kind === 'text') {
-      return <span key={`t-${segmentIndex}`}>{segment.value}</span>;
-    }
-    const iconPath = getDamageTypeIconPath(segment.value);
-    if (!iconPath) return <span key={`u-${segmentIndex}`}>{segment.value}</span>;
-    return (
-      <img
-        key={`i-${segmentIndex}`}
-        src={iconPath}
-        alt={segment.value}
-        className="mx-[0.08em] inline-block"
-        style={{
-          width: 12,
-          height: 12,
-          verticalAlign: '-0.12em',
-          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.7))',
-        }}
-        draggable={false}
-      />
-    );
-  });
 }
 
 function perkImageUrl(option: IncarnonPerkOption | null): string | undefined {
@@ -117,7 +87,7 @@ export function IncarnonUpgradeBar({
                     </div>
                     {selectedPerk?.description && (
                       <div className="text-muted mt-1 text-xs leading-relaxed">
-                        {renderDamageSnippet(selectedPerk.description)}
+                        <DamageTypeInlineText text={selectedPerk.description} />
                       </div>
                     )}
                   </>

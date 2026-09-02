@@ -2,11 +2,7 @@ import { useState } from 'react';
 
 import { useApi } from '../../hooks/useApi';
 import type { Ability } from '../../types/warframe';
-import {
-  getDamageTypeIconPath,
-  sanitizeDisplayTextKeepDamageTokens,
-  splitDisplayTextByDamageTokens,
-} from '../../utils/damageTypeTokens';
+import { DamageTypeInlineText } from '../DamageTypeInlineText';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface HelminthPickerPanelProps {
@@ -29,27 +25,6 @@ export function HelminthPickerPanel({
   const filtered = helminthAbilities.filter((a) =>
     a.name.toLowerCase().includes(search.toLowerCase()),
   );
-
-  const renderDamageSnippet = (raw: string): React.ReactNode => {
-    const cleaned = sanitizeDisplayTextKeepDamageTokens(raw);
-    return splitDisplayTextByDamageTokens(cleaned).map((segment, segmentIndex) => {
-      const key = `${segment.kind}:${segment.value}:${segmentIndex}`;
-      if (segment.kind === 'text') {
-        return <span key={key}>{segment.value}</span>;
-      }
-      const iconPath = getDamageTypeIconPath(segment.value);
-      if (!iconPath) return <span key={key}>{segment.value}</span>;
-      return (
-        <img
-          key={key}
-          src={iconPath}
-          alt={segment.value}
-          className="mx-[0.08em] inline-block size-[12px] align-[-0.12em] drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
-          draggable={false}
-        />
-      );
-    });
-  };
 
   return (
     <div className="mod-builder-side-panel flex min-h-0 flex-col">
@@ -126,7 +101,7 @@ export function HelminthPickerPanel({
                   <div className="text-foreground text-sm font-medium">{ability.name}</div>
                   {ability.description && (
                     <div className="text-muted/60 mt-0.5 text-[11px] leading-relaxed break-words whitespace-normal">
-                      {renderDamageSnippet(ability.description)}
+                      <DamageTypeInlineText text={ability.description} />
                     </div>
                   )}
                 </div>

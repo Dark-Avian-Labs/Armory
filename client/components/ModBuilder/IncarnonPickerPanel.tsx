@@ -1,9 +1,5 @@
 import type { IncarnonData, IncarnonPerkOption } from '../../types/incarnon';
-import {
-  getDamageTypeIconPath,
-  sanitizeDisplayTextKeepDamageTokens,
-  splitDisplayTextByDamageTokens,
-} from '../../utils/damageTypeTokens';
+import { DamageTypeInlineText } from '../DamageTypeInlineText';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface IncarnonPickerPanelProps {
@@ -12,27 +8,6 @@ interface IncarnonPickerPanelProps {
   onSelectPerk: (perkName: string) => void;
   onTurnOff: () => void;
   onClose: () => void;
-}
-
-function renderDamageSnippet(raw: string): React.ReactNode {
-  const cleaned = sanitizeDisplayTextKeepDamageTokens(raw);
-  return splitDisplayTextByDamageTokens(cleaned).map((segment, segmentIndex) => {
-    const key = `${segment.kind}:${segment.value}:${segmentIndex}`;
-    if (segment.kind === 'text') {
-      return <span key={key}>{segment.value}</span>;
-    }
-    const iconPath = getDamageTypeIconPath(segment.value);
-    if (!iconPath) return <span key={key}>{segment.value}</span>;
-    return (
-      <img
-        key={key}
-        src={iconPath}
-        alt={segment.value}
-        className="mx-[0.08em] inline-block size-[12px] align-[-0.12em] drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
-        draggable={false}
-      />
-    );
-  });
 }
 
 function PerkRow({ option, onClick }: { option: IncarnonPerkOption; onClick: () => void }) {
@@ -57,7 +32,7 @@ function PerkRow({ option, onClick }: { option: IncarnonPerkOption; onClick: () 
       <div className="min-w-0 pt-0.5">
         <div className="text-foreground text-sm font-medium">{option.name}</div>
         <div className="text-muted/60 mt-0.5 text-[11px] leading-relaxed break-words whitespace-normal">
-          {renderDamageSnippet(option.description)}
+          <DamageTypeInlineText text={option.description} />
         </div>
       </div>
     </button>

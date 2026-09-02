@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import type { HTMLAttributes } from 'react';
 
 export function MaterialSymbol({
@@ -13,7 +12,7 @@ export function MaterialSymbol({
 } & Omit<HTMLAttributes<HTMLSpanElement>, 'children'>) {
   return (
     <span
-      className={clsx('material-symbol-rounded', className)}
+      className={['material-symbol-rounded', className].filter(Boolean).join(' ')}
       style={{
         fontVariationSettings: `'FILL' ${filled ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
         ...style,

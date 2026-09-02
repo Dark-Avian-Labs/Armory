@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import type { CSSProperties } from 'react';
 
 import { getSlotIconPath, getSlotIconRarityColor, type SlotTypeName } from '../../utils/slotIcons';
@@ -28,7 +27,7 @@ export function SlotTypeIcon({
   if (variant === 'card') {
     return (
       <span
-        className={clsx('inline-block shrink-0', className)}
+        className={['inline-block shrink-0', className].filter(Boolean).join(' ')}
         role="img"
         aria-label={type}
         style={{
@@ -56,7 +55,9 @@ export function SlotTypeIcon({
       src={src}
       alt=""
       aria-hidden
-      className={clsx('invert-on-light pointer-events-none object-contain', className)}
+      className={['invert-on-light pointer-events-none object-contain', className]
+        .filter(Boolean)
+        .join(' ')}
       style={{
         width: size,
         height: size,

@@ -45,7 +45,8 @@
     "pnpm-lock.yaml",
     "**/pnpm-lock.yaml",
     "final-audit-report.html",
-    "security-audit-report.html"
+    "security-audit-report.html",
+    "cleanup-audit.html"
   ],
 
   "overrides": [
