@@ -64,7 +64,6 @@ export interface StartupPipelineSummary {
       warframesUpdated: number;
       weaponsUpdated: number;
       companionsUpdated: number;
-      abilitiesUpdated: number;
       helminthUpdated: number;
     };
   };

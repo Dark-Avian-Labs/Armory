@@ -11,7 +11,6 @@ export interface MergeResult {
   warframesUpdated: number;
   weaponsUpdated: number;
   companionsUpdated: number;
-  abilitiesUpdated: number;
   helminthUpdated: number;
 }
 
@@ -24,7 +23,6 @@ export function mergeScrapedData(
     warframesUpdated: 0,
     weaponsUpdated: 0,
     companionsUpdated: 0,
-    abilitiesUpdated: 0,
     helminthUpdated: 0,
   };
 
@@ -37,7 +35,6 @@ export function mergeScrapedData(
   const updateCompanion = db.prepare(
     'UPDATE companions SET artifact_slots = ? WHERE unique_name = ?',
   );
-  const updateAbility = db.prepare('UPDATE abilities SET ability_stats = ? WHERE unique_name = ?');
   const updateAbilityHelminth = db.prepare(
     'UPDATE abilities SET is_helminth_extractable = MAX(is_helminth_extractable, ?) WHERE unique_name = ?',
   );
@@ -85,25 +82,13 @@ export function mergeScrapedData(
           | undefined;
 
         if (abilityTypes) {
-          for (let i = 0; i < abilityTypes.length; i++) {
-            const abilityType = abilityTypes[i];
+          for (const abilityType of abilityTypes) {
             const abilityPath = abilityType.path;
-            const scrapedAbility = item.abilities[i];
             if (!abilityPath) continue;
 
             const isHelminth = Number(abilityType.IsHelminth) === 1 ? 1 : 0;
             const helminthChanges = updateAbilityHelminth.run(isHelminth, abilityPath);
             if (helminthChanges.changes > 0) result.helminthUpdated++;
-
-            if (!scrapedAbility) continue;
-
-            const statsJson =
-              scrapedAbility.stats.length > 0 ? JSON.stringify(scrapedAbility.stats) : null;
-
-            if (statsJson) {
-              const changes = updateAbility.run(statsJson, abilityPath);
-              if (changes.changes > 0) result.abilitiesUpdated++;
-            }
           }
         }
       }

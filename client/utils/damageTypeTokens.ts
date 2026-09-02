@@ -79,35 +79,3 @@ export function splitDisplayTextByDamageTokens(text: string): DisplayTextSegment
 
   return segments;
 }
-
-export function truncateDamageTokenText(text: string, maxVisibleChars: number): string {
-  if (maxVisibleChars <= 0 || !text) return '';
-
-  let visibleChars = 0;
-  let out = '';
-  let truncated = false;
-
-  for (const segment of splitDisplayTextByDamageTokens(text)) {
-    if (visibleChars >= maxVisibleChars) {
-      truncated = true;
-      break;
-    }
-
-    if (segment.kind === 'token') {
-      out += segment.value;
-      visibleChars += 1;
-      continue;
-    }
-
-    for (const char of segment.value) {
-      if (visibleChars >= maxVisibleChars) {
-        truncated = true;
-        break;
-      }
-      out += char;
-      visibleChars += 1;
-    }
-  }
-
-  return truncated ? `${out}...` : out;
-}

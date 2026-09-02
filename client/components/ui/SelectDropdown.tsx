@@ -32,8 +32,8 @@ interface SelectDropdownProps {
   className?: string;
   id?: string;
   buttonAriaLabel?: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
   triggerClassName?: string;
   placement?: 'attached' | 'floating';
@@ -52,7 +52,7 @@ export function SelectDropdown({
   className = '',
   id,
   buttonAriaLabel,
-  open,
+  open: controlledOpen,
   onOpenChange,
   disabled,
   triggerClassName = 'form-input select-dropdown-trigger flex w-full cursor-pointer items-center justify-between gap-2 py-2 text-left text-xs disabled:cursor-not-allowed disabled:opacity-50',
@@ -64,6 +64,16 @@ export function SelectDropdown({
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [menuRect, setMenuRect] = useState<MenuRect | null>(null);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!isControlled) setUncontrolledOpen(next);
+      onOpenChange?.(next);
+    },
+    [isControlled, onOpenChange],
+  );
 
   const displayOptions = useMemo(() => {
     const selectedIdx = options.findIndex((o) => o.value === value);
@@ -123,11 +133,11 @@ export function SelectDropdown({
       const t = e.target as Node;
       if (rootRef.current?.contains(t)) return;
       if (menuRef.current?.contains(t)) return;
-      onOpenChange(false);
+      setOpen(false);
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
-  }, [open, onOpenChange]);
+  }, [open, setOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -170,14 +180,14 @@ export function SelectDropdown({
       const opt = displayOptions[focusedIndex];
       if (opt) {
         onChange(opt.value);
-        onOpenChange(false);
+        setOpen(false);
       }
       return;
     }
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
-      onOpenChange(false);
+      setOpen(false);
     }
   };
 
@@ -226,7 +236,7 @@ export function SelectDropdown({
                 }}
                 onClick={() => {
                   onChange(opt.value);
-                  onOpenChange(false);
+                  setOpen(false);
                 }}
               >
                 {opt.label}
@@ -251,13 +261,13 @@ export function SelectDropdown({
         aria-label={buttonAriaLabel ?? placeholder}
         disabled={disabled}
         onClick={() => {
-          if (!disabled) onOpenChange(!open);
+          if (!disabled) setOpen(!open);
         }}
         onKeyDown={(e) => {
           if (open && e.key === 'Escape') {
             e.preventDefault();
             e.stopPropagation();
-            onOpenChange(false);
+            setOpen(false);
           }
         }}
       >

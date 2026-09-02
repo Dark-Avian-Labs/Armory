@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -100,7 +99,7 @@ export function Modal({ open, onClose, children, className, ariaLabelledBy }: Mo
     return null;
   }
 
-  const modalClass = clsx('modal', className);
+  const modalClass = ['modal', className].filter(Boolean).join(' ');
 
   const stopPropagation = (event: MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();

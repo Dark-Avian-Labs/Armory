@@ -1,4 +1,4 @@
-import { EQUIPMENT_SLOT_CONFIGS, type EquipmentType, type Mod } from '../types/warframe';
+import type { EquipmentType, Mod } from '../types/warframe';
 
 export const ARMORY_STANCE_WIKI_IMAGE_PREFIX = '/ArmoryWiki/StanceMod/' as const;
 
@@ -28,8 +28,6 @@ const MELEE_EXALTED_NAMES_SHARED = [
   'Whipclaw Prime',
 ] as const;
 
-const MELEE_WEAPON_NAMES_WITHOUT_EXILUS = new Set<string>(MELEE_EXALTED_NAMES_SHARED);
-
 const SPECIAL_MELEE_NAMES = new Set<string>([
   'Desert Wind',
   'Desert Wind Prime',
@@ -54,36 +52,14 @@ const SPECIAL_NECRAMECH_SELECTION_TYPE: Record<string, EquipmentType> = {
   Ironbride: 'archmelee',
 };
 
-const REQUIRED_EXALTED_STANCES_BY_EQUIPMENT: Record<string, string> = {
-  'desert wind': 'Serene Storm',
-  'desert wind prime': 'Serene Storm',
-  diwata: 'Razorwing',
-  'diwata prime': 'Razorwing',
-  'exalted blade': 'Exalted Blade',
-  'exalted prime blade': 'Exalted Blade',
-  'exalted umbra blade': 'Exalted Blade',
-  'garuda talons': 'Garuda Talons',
-  'garuda prime talons': 'Garuda Talons',
-  'iron staff': 'Primal Fury',
-  'iron staff prime': 'Primal Fury',
-  'shadow claws': 'Ravenous Wraith',
-  'shadow claws prime': 'Ravenous Wraith',
-  'shadow clones': 'Shadow Clones',
-  'shadow clones prime': 'Shadow Clones',
-  'shattered lash': 'Shattered Lash',
-  'shattered lash prime': 'Shattered Lash',
-  'valkyr talons': 'Hysteria',
-  'valkyr prime talons': 'Hysteria',
-  whipclaw: 'Whipclaw',
-  'whipclaw prime': 'Whipclaw',
-};
+export {
+  getRequiredExaltedStanceName,
+  equipmentHasStanceSlot,
+  weaponOmitsExilusSlot,
+} from '../../shared/specialEquipmentSlots.js';
 
 export function normalizeEquipmentName(name: string): string {
   return name.replace(/^<[^>]+>\s*/i, '').trim();
-}
-
-function normalizeLookupName(name: string): string {
-  return normalizeEquipmentName(name).replace(/\s+/g, ' ').toLowerCase();
 }
 
 export function getSpecialItemSelectionType(
@@ -125,21 +101,6 @@ export function isTomeWeapon(equipment?: { unique_name?: string; name?: string |
   if (TOME_WEAPON_NAMES.has(normalized)) return true;
   const path = (equipment.unique_name ?? '').replace(/\\/g, '/').toLowerCase();
   return path.includes('/grimoire/') || path.includes('exaltedbook');
-}
-
-export function getRequiredExaltedStanceName(equipmentName?: string | null): string | null {
-  if (!equipmentName) return null;
-  const lookupName = normalizeLookupName(equipmentName);
-  return REQUIRED_EXALTED_STANCES_BY_EQUIPMENT[lookupName] ?? null;
-}
-
-export function equipmentHasStanceSlot(
-  equipmentType: EquipmentType,
-  equipmentName?: string | null,
-): boolean {
-  if (getRequiredExaltedStanceName(equipmentName)) return true;
-  const config = EQUIPMENT_SLOT_CONFIGS[equipmentType as keyof typeof EQUIPMENT_SLOT_CONFIGS];
-  return config?.hasStance === true;
 }
 
 const EXALTED_STANCE_CARD_FALLBACK: Record<string, string> = {
@@ -187,25 +148,6 @@ export function augmentExaltedStanceModForDisplay(
     ...(missingDescription ? { description: JSON.stringify([fallback]) } : {}),
     ...(equipmentArt ? { image_path: equipmentArt } : {}),
   };
-}
-
-export function weaponOmitsExilusSlot(
-  name: string | undefined | null,
-  equipmentType: EquipmentType,
-): boolean {
-  if (!name) return false;
-  const normalized = normalizeEquipmentName(name);
-  if (equipmentType === 'melee' && MELEE_WEAPON_NAMES_WITHOUT_EXILUS.has(normalized)) {
-    return true;
-  }
-  const necramechMappedType = SPECIAL_NECRAMECH_SELECTION_TYPE[normalized];
-  if (
-    (equipmentType === 'archgun' || equipmentType === 'archmelee') &&
-    necramechMappedType === equipmentType
-  ) {
-    return true;
-  }
-  return false;
 }
 
 export function weaponOmitsRivenMod(

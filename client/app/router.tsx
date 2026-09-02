@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router';
 import { App } from '../App';
 import { Layout } from '../components/Layout/Layout';
 import { NotFoundPage } from '../components/NotFoundPage/NotFoundPage';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { SignInPage } from '../features/auth/SignInPage';
 import { SignUpPage } from '../features/auth/SignUpPage';
 import { APP_PATHS } from './paths';
@@ -24,20 +25,22 @@ import {
 export const router = createBrowserRouter([
   {
     element: (
-      <App>
-        <ChunkErrorBoundary>
-          <Suspense fallback={<RouteFallback />}>
-            <Outlet />
-          </Suspense>
-        </ChunkErrorBoundary>
-      </App>
+      <ErrorBoundary>
+        <App>
+          <ChunkErrorBoundary>
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
+          </ChunkErrorBoundary>
+        </App>
+      </ErrorBoundary>
     ),
     children: [
       {
         element: <Layout />,
         children: [
           { path: APP_PATHS.legal, element: <LegalPage /> },
-          { path: '/auth/legal', element: <LegalPage /> },
+          { path: '/auth/legal', element: <Navigate to={APP_PATHS.legal} replace /> },
           { path: '/', element: <Navigate to={APP_PATHS.home} replace /> },
           { path: '/builder', element: <Navigate to={APP_PATHS.home} replace /> },
           {

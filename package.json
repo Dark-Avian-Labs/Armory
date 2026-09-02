@@ -32,7 +32,6 @@
     "@napi-rs/lzma": "^1.5.1",
     "better-sqlite3": "^13.0.3",
     "cheerio": "^1.2.0",
-    "clsx": "^2.1.1",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "csrf-sync": "^4.2.1",
@@ -67,7 +66,6 @@
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/coverage-v8": "4.1.11",
     "domhandler": "^6.0.1",
-    "globals": "^17.11.0",
     "oxfmt": "^0.65.0",
     "oxlint": "^1.80.0",
     "semantic-release": "25.0.9",
@@ -81,5 +79,5 @@
     "node": ">=26.0.0",
     "pnpm": ">=11.0.0"
   },
-  "packageManager": "pnpm@11.24.0"
+  "packageManager": "pnpm@11.25.0"
 }

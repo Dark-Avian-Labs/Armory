@@ -1,11 +1,8 @@
-import { useState } from 'react';
-
 import { UI_STYLES, UI_STYLE_LABELS, useTheme } from '../../context/ThemeContext';
 import { SelectDropdown } from './SelectDropdown';
 
 export function UiStyleSelector() {
   const { uiStyle, setUiStyle } = useTheme();
-  const [open, setOpen] = useState(false);
 
   const options = UI_STYLES.map((style) => ({
     value: style,
@@ -29,8 +26,6 @@ export function UiStyleSelector() {
           const style = UI_STYLES.find((candidate) => candidate === value);
           if (style) setUiStyle(style);
         }}
-        open={open}
-        onOpenChange={setOpen}
         buttonAriaLabel="UI style"
         triggerClassName="user-menu-select-trigger flex w-full cursor-pointer items-center justify-between gap-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50"
       />

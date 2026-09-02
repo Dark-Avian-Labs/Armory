@@ -2,7 +2,6 @@ import {
   abilitySlugFromDisplayName,
   buildAbilityKey,
   buildAbilityKeyFromDePath,
-  parseAbilityKey,
 } from './abilitySlugRegistry.js';
 import {
   ARCHON_COLORS,
@@ -143,26 +142,4 @@ export function helminthReplacedAbilityIndex(
 export function helminthReplacementLookupRef(config: HelminthConfigInput): string {
   if (isHelminthConfigV2(config)) return config.replacement_ability_key;
   return config.replacement_ability_unique_name;
-}
-
-export function nativeAbilitySlugFromWarframeJson(
-  warframeAbilitiesJson: string | null | undefined,
-  index: number,
-): string | null {
-  if (!warframeAbilitiesJson) return null;
-  try {
-    const parsed = JSON.parse(warframeAbilitiesJson) as WarframeAbilityRef[];
-    const row = parsed[index];
-    if (!row) return null;
-    const name = row.abilityName ?? row.name;
-    const unique = row.abilityUniqueName ?? row.uniqueName;
-    if (unique) {
-      const key = buildAbilityKeyFromDePath(unique, name);
-      return parseAbilityKey(key);
-    }
-    if (name) return abilitySlugFromDisplayName(name);
-    return null;
-  } catch {
-    return null;
-  }
 }
