@@ -366,3 +366,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.70.8** `chore(deps)` [#499](https://github.com/Dark-Avian-Labs/Armory/pull/499): bump the production-dependencies group with 2 updates
 - **v1.70.9** `chore` [#501](https://github.com/Dark-Avian-Labs/Armory/pull/501): fix/clear acrylic control radius
 - **v1.70.10** `chore` [#502](https://github.com/Dark-Avian-Labs/Armory/pull/502): fix/rarity purple hue
+- **v1.70.11** `chore(deps)` [#503](https://github.com/Dark-Avian-Labs/Armory/pull/503): bump @clerk/express in the production-dependencies group
