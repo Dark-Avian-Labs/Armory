@@ -368,3 +368,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.70.10** `chore` [#502](https://github.com/Dark-Avian-Labs/Armory/pull/502): fix/rarity purple hue
 - **v1.70.11** `chore(deps)` [#503](https://github.com/Dark-Avian-Labs/Armory/pull/503): bump @clerk/express in the production-dependencies group
 - **v1.70.12** `chore` [#506](https://github.com/Dark-Avian-Labs/Armory/pull/506): ci/rightsize selected runners
+- **v1.70.13** `ci` [#508](https://github.com/Dark-Avian-Labs/Armory/pull/508): run Node jobs on 2 vCPU
