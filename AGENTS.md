@@ -46,6 +46,6 @@ Clerk keys are required in production (`apps.armory === 'admin'` for admin). Pla
 
 ## Toolchain
 
-Node **26+**, pnpm **11.x**, exact `packageManager` (Corepack rejects dist-tags). Encrypted `.env.development` / `.env.production` need `DOTENV_PRIVATE_KEY_*` or `.env.keys`. `pnpm run dev:client` decrypts `.env.development` with dotenvx (`--strict`) before Vite. `pnpm run validate` is the quality gate.
+Node **26+**, pnpm **12.x**, exact `packageManager` (Corepack rejects dist-tags). Encrypted `.env.development` / `.env.production` need `DOTENV_PRIVATE_KEY_*` or `.env.keys`. `pnpm run dev:client` decrypts `.env.development` with dotenvx (`--strict`) before Vite. `pnpm run validate` is the quality gate.
 
 On Windows, Cursor agent shells may prepend bundled Node 22. After changing Node versions, run `pnpm rebuild better-sqlite3`.

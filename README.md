@@ -15,7 +15,7 @@ Armory is a Warframe mod builder and planner. The UI tries to feel like the in-g
 ## Requirements
 
 - Node.js 26+
-- pnpm 11+
+- pnpm 12+
 
 ## Quick start
 
