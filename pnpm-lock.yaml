@@ -18,8 +18,8 @@ importers:
         specifier: ^2.1.66
         version: 2.1.66(express@5.2.1(supports-color@7.2.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@clerk/react':
-        specifier: ^6.15.0
-        version: 6.15.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^6.15.1
+        version: 6.15.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@dotenvx/dotenvx':
         specifier: ^2.23.0
         version: 2.23.0
@@ -85,7 +85,7 @@ importers:
         version: 8.3.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       undici:
         specifier: ^8.10.0
-        version: 8.10.1
+        version: 8.10.2
       zod:
         specifier: ^4.5.4
         version: 4.5.4
@@ -218,8 +218,8 @@ packages:
     peerDependencies:
       express: ^4.17.0 || ^5.0.0
 
-  '@clerk/react@6.15.0':
-    resolution: {integrity: sha512-IOJmbf4wPqkR2sa9zmhChJ9pLOYY6H6zNjeOra0n+/f3G1FoZ7hayaQybzG52O11Lk/VJSUsLL+3beO7P0P2qg==}
+  '@clerk/react@6.15.1':
+    resolution: {integrity: sha512-zzlLSjsSls+hH4qU6OX+vPeQizroSGo5xzWe5Ez2O6phwjgN+3a2x8ifevjwbbLRKVU86q+LoLMoctZT3eH5zQ==}
     engines: {node: '>=20.9.0'}
     peerDependencies:
       react: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
@@ -3048,8 +3048,8 @@ packages:
   undici-types@8.3.0:
     resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
 
-  undici@8.10.1:
-    resolution: {integrity: sha512-YQ3WlbqjYMmNpdvDH64jAgLjxuAR9+649calDWhbshYaeQGO2bR4nI94ORJmwI3J9YhoKQnpyGOK+0zlWS5N5Q==}
+  undici@8.10.2:
+    resolution: {integrity: sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ==}
     engines: {node: '>=22.19.0'}
 
   unicode-emoji-modifier-base@1.0.0:
@@ -3275,7 +3275,7 @@ snapshots:
   '@actions/http-client@4.0.1':
     dependencies:
       tunnel: 0.0.6
-      undici: 8.10.1
+      undici: 8.10.2
 
   '@actions/io@3.0.2': {}
 
@@ -3319,7 +3319,7 @@ snapshots:
       - react
       - react-dom
 
-  '@clerk/react@6.15.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@clerk/react@6.15.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@clerk/shared': 4.31.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react: 19.2.8
@@ -3795,7 +3795,7 @@ snapshots:
       p-filter: 4.1.0
       semantic-release: 25.0.9(supports-color@7.2.0)(typescript@7.0.2)
       tinyglobby: 0.2.17
-      undici: 8.10.1
+      undici: 8.10.2
       url-join: 5.0.0
     transitivePeerDependencies:
       - kerberos
@@ -4266,7 +4266,7 @@ snapshots:
       parse5: 7.3.0
       parse5-htmlparser2-tree-adapter: 7.1.0
       parse5-parser-stream: 7.1.2
-      undici: 8.10.1
+      undici: 8.10.2
       whatwg-mimetype: 4.0.0
 
   chownr@3.0.0: {}
@@ -5896,7 +5896,7 @@ snapshots:
 
   undici-types@8.3.0: {}
 
-  undici@8.10.1: {}
+  undici@8.10.2: {}
 
   unicode-emoji-modifier-base@1.0.0: {}
 
