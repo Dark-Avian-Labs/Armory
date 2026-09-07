@@ -196,7 +196,7 @@ export function SearchBar() {
           id={searchResultsId}
           role="region"
           aria-label="Search results"
-          className="border-glass-border bg-surface-modal absolute top-full right-0 z-50 mt-1 w-96 overflow-hidden rounded-xl border shadow-lg backdrop-blur-xl"
+          className="search-results absolute top-full right-0 z-50 mt-1 w-96"
         >
           {loading ? (
             <div className="text-muted p-3 text-center text-sm">Searching...</div>
