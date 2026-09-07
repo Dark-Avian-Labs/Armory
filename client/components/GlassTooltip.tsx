@@ -83,7 +83,7 @@ export function GlassTooltip({ children, content, width = 'w-56', disabled }: Gl
         createPortal(
           <div
             ref={tooltipRef}
-            className={`glass-tooltip-surface pointer-events-none fixed z-[9999] mb-1 ${width} rounded-lg p-2`}
+            className={`glass-tooltip-surface pointer-events-none fixed z-[9999] mb-1 ${width} p-2`}
             style={{
               left: pos.left,
               top: pos.top,

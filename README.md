@@ -92,6 +92,7 @@ Client `VITE_*` variables are listed in `.env.example`.
 | ----------------------- | ------------------------------------------------ |
 | `pnpm run validate`     | Format check, lint, typecheck, and tests.        |
 | `pnpm run build`        | Compile server TypeScript and Vite client build. |
+| `pnpm run dev:client`   | Vite with decrypted `.env.development`.          |
 | `pnpm start`            | Run production server from `dist/`.              |
 | `pnpm run typecheck`    | Typecheck server and client.                     |
 | `pnpm run data:import`  | Run manual data import pipeline (built server).  |
