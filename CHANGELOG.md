@@ -370,3 +370,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.70.12** `chore` [#506](https://github.com/Dark-Avian-Labs/Armory/pull/506): ci/rightsize selected runners
 - **v1.70.13** `ci` [#508](https://github.com/Dark-Avian-Labs/Armory/pull/508): run Node jobs on 2 vCPU
 - **v1.70.14** `ci(deps)` [#509](https://github.com/Dark-Avian-Labs/Armory/pull/509): bump the github-actions group with 2 updates
+- **v1.70.15** `chore` [#512](https://github.com/Dark-Avian-Labs/Armory/pull/512): fix/theme chrome consistency
