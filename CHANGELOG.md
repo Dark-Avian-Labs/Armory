@@ -372,3 +372,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.70.14** `ci(deps)` [#509](https://github.com/Dark-Avian-Labs/Armory/pull/509): bump the github-actions group with 2 updates
 - **v1.70.15** `chore` [#512](https://github.com/Dark-Avian-Labs/Armory/pull/512): fix/theme chrome consistency
 - **v1.70.16** `chore` [#513](https://github.com/Dark-Avian-Labs/Armory/pull/513): ci/pnpm 12 setup
+- **v1.70.17** `ci(deps)` [#514](https://github.com/Dark-Avian-Labs/Armory/pull/514): bump iShark5060/actions-discord-status
