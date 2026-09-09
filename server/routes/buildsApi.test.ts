@@ -1,10 +1,11 @@
-import Database from 'better-sqlite3';
+import type Database from 'better-sqlite3';
 import express from 'express';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __catalogResponseCacheTest } from '../cache/catalogResponseCache.js';
-import { MAX_NAME_LENGTH } from './apiShared.js';
+import { createMemoryUserDb, insertTestBuild } from '../testing/memoryUserDb.js';
+import { MAX_BUILDS_PER_USER, MAX_NAME_LENGTH } from './apiShared.js';
 import { minimalModConfig } from './modConfigValidation.js';
 
 const authState = vi.hoisted(() => ({
@@ -52,30 +53,6 @@ vi.mock('../db/connection.js', () => ({
 
 import { apiRouter } from './api.js';
 
-function createTestBuildsSchema(db: Database.Database): void {
-  db.exec(`
-    CREATE TABLE builds (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      clerk_user_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      visibility TEXT NOT NULL DEFAULT 'private',
-      equipment_type TEXT NOT NULL,
-      equipment_unique_name TEXT NOT NULL,
-      mod_config TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      description TEXT,
-      share_token TEXT
-    );
-    CREATE TABLE build_favorites (
-      clerk_user_id TEXT NOT NULL,
-      build_id INTEGER NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      PRIMARY KEY (clerk_user_id, build_id)
-    );
-  `);
-}
-
 function createTestApp() {
   const app = express();
   app.use(express.json());
@@ -88,8 +65,7 @@ describe('builds API routes', () => {
     authState.userId = null;
     authState.isArmoryAdmin = false;
     dbState.db?.close();
-    dbState.db = new Database(':memory:');
-    createTestBuildsSchema(dbState.db);
+    dbState.db = createMemoryUserDb();
   });
 
   afterEach(() => {
@@ -136,39 +112,15 @@ describe('builds API routes', () => {
     expect(res.body.id).toBeGreaterThan(0);
   });
 
-  it('hides private builds from non-owners', async () => {
-    dbState
-      .db!.prepare(
-        `INSERT INTO builds (clerk_user_id, name, visibility, equipment_type, equipment_unique_name, mod_config)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        'user_owner',
-        'Private',
-        'private',
-        'warframe',
-        '/Lotus/Powersuits/Excalibur/Excalibur',
-        JSON.stringify(minimalModConfig()),
-      );
+  it('hides private builds from non-owners with 404', async () => {
+    insertTestBuild(dbState.db!, { name: 'Private', visibility: 'private' });
     authState.userId = 'user_other';
     const res = await request(createTestApp()).get('/api/builds/1');
     expect(res.status).toBe(404);
   });
 
   it('allows reading public builds from non-owners', async () => {
-    dbState
-      .db!.prepare(
-        `INSERT INTO builds (clerk_user_id, name, visibility, equipment_type, equipment_unique_name, mod_config)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        'user_owner',
-        'Public',
-        'public',
-        'warframe',
-        '/Lotus/Powersuits/Excalibur/Excalibur',
-        JSON.stringify(minimalModConfig()),
-      );
+    insertTestBuild(dbState.db!, { name: 'Public', visibility: 'public' });
     authState.userId = 'user_other';
     const res = await request(createTestApp()).get('/api/builds/1');
     expect(res.status).toBe(200);
@@ -177,40 +129,22 @@ describe('builds API routes', () => {
   });
 
   it('denies unlisted builds without share token', async () => {
-    dbState
-      .db!.prepare(
-        `INSERT INTO builds (clerk_user_id, name, visibility, share_token, equipment_type, equipment_unique_name, mod_config)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        'user_owner',
-        'Unlisted',
-        'unlisted',
-        'share-abc123',
-        'warframe',
-        '/Lotus/Powersuits/Excalibur/Excalibur',
-        JSON.stringify(minimalModConfig()),
-      );
+    insertTestBuild(dbState.db!, {
+      name: 'Unlisted',
+      visibility: 'unlisted',
+      shareToken: 'share-abc123',
+    });
     authState.userId = 'user_other';
     const denied = await request(createTestApp()).get('/api/builds/1');
     expect(denied.status).toBe(404);
   });
 
   it('allows unlisted builds with matching share token', async () => {
-    dbState
-      .db!.prepare(
-        `INSERT INTO builds (clerk_user_id, name, visibility, share_token, equipment_type, equipment_unique_name, mod_config)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        'user_owner',
-        'Unlisted',
-        'unlisted',
-        'share-abc123',
-        'warframe',
-        '/Lotus/Powersuits/Excalibur/Excalibur',
-        JSON.stringify(minimalModConfig()),
-      );
+    insertTestBuild(dbState.db!, {
+      name: 'Unlisted',
+      visibility: 'unlisted',
+      shareToken: 'share-abc123',
+    });
     authState.userId = 'user_other';
     const allowed = await request(createTestApp()).get('/api/builds/1?token=share-abc123');
     expect(allowed.status).toBe(200);
@@ -219,20 +153,11 @@ describe('builds API routes', () => {
   });
 
   it('returns share_token to owners for unlisted builds', async () => {
-    dbState
-      .db!.prepare(
-        `INSERT INTO builds (clerk_user_id, name, visibility, share_token, equipment_type, equipment_unique_name, mod_config)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        'user_owner',
-        'Unlisted',
-        'unlisted',
-        'share-abc123',
-        'warframe',
-        '/Lotus/Powersuits/Excalibur/Excalibur',
-        JSON.stringify(minimalModConfig()),
-      );
+    insertTestBuild(dbState.db!, {
+      name: 'Unlisted',
+      visibility: 'unlisted',
+      shareToken: 'share-abc123',
+    });
     authState.userId = 'user_owner';
     const res = await request(createTestApp()).get('/api/builds/1');
     expect(res.status).toBe(200);
@@ -240,19 +165,7 @@ describe('builds API routes', () => {
   });
 
   it('rejects build updates whose name exceeds MAX_NAME_LENGTH', async () => {
-    dbState
-      .db!.prepare(
-        `INSERT INTO builds (clerk_user_id, name, visibility, equipment_type, equipment_unique_name, mod_config)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        'user_owner',
-        'Public',
-        'public',
-        'warframe',
-        '/Lotus/Powersuits/Excalibur/Excalibur',
-        JSON.stringify(minimalModConfig()),
-      );
+    insertTestBuild(dbState.db!, { name: 'Public', visibility: 'public' });
     authState.userId = 'user_owner';
     const res = await request(createTestApp())
       .put('/api/builds/1')
@@ -264,20 +177,31 @@ describe('builds API routes', () => {
     expect(res.body.error).toBe('Invalid name');
   });
 
+  it('rejects create when the per-user build cap is reached', async () => {
+    dbState.db!.transaction(() => {
+      for (let i = 0; i < MAX_BUILDS_PER_USER; i += 1) {
+        insertTestBuild(dbState.db!, {
+          name: `Build ${i}`,
+          equipmentUniqueName: `/Lotus/Powersuits/Excalibur/Excalibur${i}`,
+        });
+      }
+    })();
+    authState.userId = 'user_owner';
+    const res = await request(createTestApp()).post('/api/builds').send({
+      name: 'Overflow',
+      equipment_type: 'warframe',
+      equipment_unique_name: '/Lotus/Powersuits/Excalibur/Overflow',
+      mod_config: minimalModConfig(),
+    });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe(`Build limit reached (max ${MAX_BUILDS_PER_USER} per user)`);
+  });
+
   it('caches public build catalog responses and busts on create', async () => {
-    dbState
-      .db!.prepare(
-        `INSERT INTO builds (clerk_user_id, name, visibility, equipment_type, equipment_unique_name, mod_config)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        'user_owner',
-        'Public',
-        'public',
-        'warframe',
-        '/Lotus/Powersuits/Excalibur/Excalibur',
-        JSON.stringify(minimalModConfig()),
-      );
+    insertTestBuild(dbState.db!, {
+      name: 'Public',
+      visibility: 'public',
+    });
 
     const first = await request(createTestApp()).get('/api/builds/catalog');
     expect(first.status).toBe(200);

@@ -23,6 +23,9 @@ on:
       - 'run-quality-checks.mjs'
       - 'tests/**'
       - 'scripts/**'
+      - 'shared/**'
+      - 'e2e/**'
+      - 'playwright.config.ts'
       - 'favicon.png'
       - 'public/**'
       - 'background.txt'
@@ -158,7 +161,7 @@ jobs:
 
   validate:
     runs-on: blacksmith-2vcpu-ubuntu-2404
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     needs: [deployment-check, version]
     if: needs.deployment-check.outputs.deploy == 'true'
@@ -184,7 +187,7 @@ jobs:
 
   build-and-deploy:
     runs-on: blacksmith-2vcpu-ubuntu-2404
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     needs: [deployment-check, version, validate]
     if: needs.deployment-check.outputs.deploy == 'true'
@@ -211,6 +214,12 @@ jobs:
             exit 1
           fi
           pnpm exec dotenvx run --strict -f .env.production -- pnpm run build
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run end-to-end tests
+        run: pnpm run test:e2e
 
       - name: Setup SSH
         env:

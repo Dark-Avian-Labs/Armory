@@ -42,10 +42,20 @@ Visibility: `private` (owner/admin), `public` (listed), `unlisted` (token in `?t
 
 ## Auth
 
-Clerk keys are required in production (`apps.armory === 'admin'` for admin). Placeholder keys (`pk_test_placeholder` / `sk_test_placeholder`) make the middleware throw 500 on every request; the server still listens. Missing `SESSION_SECRET` outside production needs `ALLOW_INSECURE_DEV=1` and a loopback `HOST`. Production `SECURE_COOKIES` requires `TRUST_PROXY`. CSRF tokens rotate when the Clerk user id on the express session changes (`server/session/bindClerkUserSession.ts`).
+Clerk keys are required in production (`apps.armory === 'admin'` for admin). Empty keys are fine outside production: `isClerkConfigured()` skips Clerk and treats every request as signed out (Vitest and Playwright rely on this). Placeholder keys (`pk_test_placeholder` / `sk_test_placeholder`) are fatal at boot — leave both keys empty instead of faking values. Missing `SESSION_SECRET` outside production needs `ALLOW_INSECURE_DEV=1` and a loopback `HOST`. Production `SECURE_COOKIES` requires `TRUST_PROXY`. CSRF tokens rotate when the Clerk user id on the express session changes (`server/session/bindClerkUserSession.ts`). Signed-in Playwright is later: decrypt `.env.development` and use a dedicated CI Clerk user (testing tokens). Do not invent local fake keys.
 
 ## Toolchain
 
 Node **26+**, pnpm **12.x**, exact `packageManager` (Corepack rejects dist-tags). Encrypted `.env.development` / `.env.production` need `DOTENV_PRIVATE_KEY_*` or `.env.keys`. `pnpm run dev:client` decrypts `.env.development` with dotenvx (`--strict`) before Vite. `pnpm run validate` is the quality gate.
 
 On Windows, Cursor agent shells may prepend bundled Node 22. After changing Node versions, run `pnpm rebuild better-sqlite3`.
+
+## Tests
+
+`pnpm run validate` is the quality gate: preflight, oxfmt, oxlint, typecheck, Vitest. In CI that Vitest step is instrumented (`pnpm run test:coverage`); locally `pnpm test` stays uninstrumented. Use `pnpm run test:watch` while iterating.
+
+HTTP tests that need the real stack (health, CSRF, Helmet, `/api/version`) go through `createApp()` in `server/app.ts`. `server/index.ts` only migrates schema, recovers the import lease, then listens. Route tests may mount `apiRouter` with mocked Clerk, but user tables must come from `applyUserSchema` / `server/testing/memoryUserDb.ts` — do not hand-roll `CREATE TABLE builds`.
+
+Vitest runs two projects: Node for `*.test.ts`, happy-dom for `client/**/*.test.tsx`. Coverage includes `server/`, `client/utils/`, `shared/`, and `scripts/`.
+
+Playwright (`pnpm run test:e2e`) is **not** inside validate. It boots the compiled server (`dist/server/index.js`) on port 3102 with throwaway sqlite files and hits Chromium smokes (probes, CSRF, API 404, SPA-not-served in non-production). Run `pnpm run build` first, and `pnpm run test:e2e:install` once per machine. The runner and browser downloads are Apache-2.0 / free; no cloud grid.
