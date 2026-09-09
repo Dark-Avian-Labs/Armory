@@ -1,110 +1,32 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Dark-Avian-Labs/.github/refs/heads/main/banner.png" alt="Dark Avian Labs">
+</p>
+
 # Armory
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI](https://github.com/Dark-Avian-Labs/Armory/actions/workflows/ci.yml/badge.svg)](https://github.com/Dark-Avian-Labs/Armory/actions/workflows/ci.yml)
-[![PR](https://github.com/Dark-Avian-Labs/Armory/actions/workflows/pr.yml/badge.svg)](https://github.com/Dark-Avian-Labs/Armory/actions/workflows/pr.yml)
-![Node](https://img.shields.io/badge/Node-%3E%3D26-339933?logo=node.js&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6?logo=typescript&logoColor=white)
-![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react&logoColor=black)
-![Vite](https://img.shields.io/badge/Vite-8.x-646CFF?logo=vite&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?logo=tailwindcss&logoColor=white)
-[![Cursor](https://img.shields.io/badge/Cursor-IDE-141414?logo=cursor&logoColor=white)](https://cursor.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/Dark-Avian-Labs/Armory/ci.yml?style=flat-square&label=CI)](https://github.com/Dark-Avian-Labs/Armory/actions/workflows/ci.yml)
+[![PR](https://img.shields.io/github/actions/workflow/status/Dark-Avian-Labs/Armory/pr.yml?style=flat-square&label=PR)](https://github.com/Dark-Avian-Labs/Armory/actions/workflows/pr.yml)
+![Node](https://img.shields.io/badge/Node-%3E%3D26-339933?logo=node.js&logoColor=white&style=flat-square)
+![TypeScript](https://img.shields.io/badge/TypeScript-7.x-3178C6?logo=typescript&logoColor=white&style=flat-square)
+![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react&logoColor=black&style=flat-square)
+![Vite](https://img.shields.io/badge/Vite-8.x-646CFF?logo=vite&logoColor=white&style=flat-square)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?logo=tailwindcss&logoColor=white&style=flat-square)
+[![Cursor](https://img.shields.io/badge/Cursor-IDE-141414?logo=cursor&logoColor=white&style=flat-square)](https://cursor.com)
 
-Armory is a Warframe mod builder and planner. The UI tries to feel like the in-game arsenal, then adds the extra stats you want at a desk. Equipment and mods come from Digital Extremes' public export, with wiki and other sources filling gaps. You can configure Helminth, Archon shards, and Incarnon options, then save named builds and loadouts. Codex reads the same catalog for Warframe collection tracking. Sign-in uses [Clerk](https://clerk.com).
+Warframe mod builder and planner. Catalog comes from Digital Extremes' public export, with wiki and other sources filling gaps. Helminth, Archon shards, Incarnon, named builds and loadouts. Codex reads this catalog for Warframe collection tracking. Sign-in uses [Clerk](https://clerk.com).
 
-## Requirements
+Live: [armory.darkavianlabs.com](https://armory.darkavianlabs.com)
 
-- Node.js 26+
-- pnpm 12+
+Default API port is **3002**. In development the API runs alone (root URL 404s); use Vite for the client.
 
-## Quick start
+## Gotchas
 
-1. Install Node.js and pnpm using your preferred method for your OS.
-
-2. Install dependencies:
-
-   ```bash
-   pnpm install
-   ```
-
-3. Copy and edit the environment file:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-4. Build and run:
-
-   ```bash
-   pnpm run build
-   pnpm start
-   ```
-
-## Examples
-
-```bash
-curl -sS http://127.0.0.1:3002/healthz
-curl -sS http://127.0.0.1:3002/readyz
-```
-
-After deploy, smoke-check `GET /healthz` and `GET /readyz` on the public host (expect `200` when databases are reachable).
-
-## dotenvx and encrypted env files
-
-This project supports `dotenvx` for local `.env` loading and can optionally use encrypted env artifacts.
-
-- Use `pnpm dlx dotenvx encrypt` to encrypt your local `.env` file when you want it safe to commit.
-- That flow also creates a `.env.keys` file with your private encryption key, which must **never** be committed.
-- To change variables, use `pnpm dlx dotenvx decrypt` with the key in `.env.keys` to restore a plain `.env`.
-- Re-encrypt afterward (keys are reused) and commit only the encrypted artifacts.
-- Store private keys in your secrets manager the same way you would an SSH deploy key.
-
-Suggested secret naming when vault is enabled:
-
-- `DOTENV_PRIVATE_KEY_DEVELOPMENT`
-- `DOTENV_PRIVATE_KEY_PRODUCTION`
-
-Use one key per environment to reduce blast radius.
-
-## Environment
-
-| Variable                | Description                                                                        |
-| ----------------------- | ---------------------------------------------------------------------------------- |
-| `PORT`, `HOST`          | Server bind address (defaults: `3002`, `127.0.0.1`).                               |
-| `NODE_ENV`              | `development`, `test`, or `production`.                                            |
-| `APP_PUBLIC_BASE_URL`   | **Required.** Public site base URL (Clerk sign-in redirects); `https` in prod.     |
-| `CLERK_SECRET_KEY`      | **Required in production.** Clerk secret key for server-side session verification. |
-| `CLERK_PUBLISHABLE_KEY` | Clerk publishable key for the server (falls back to `VITE_CLERK_PUBLISHABLE_KEY`). |
-| `SESSION_SECRET`        | Required in production; dev uses a non-prod default if unset.                      |
-| `TRUST_PROXY`           | Set to `1` behind a reverse proxy.                                                 |
-| `SECURE_COOKIES`        | Set to `1` for HTTPS-only cookie behavior (defaults follow `NODE_ENV`).            |
-| `SESSION_DB_PATH`       | App-local SQLite session store for CSRF (default `./data/session.db`).             |
-| `ARMORY_DB_PATH`        | Optional override for the main app SQLite file (default `./data/armory.db`).       |
-| `COOKIE_DOMAIN`         | Optional cross-subdomain cookie domain.                                            |
-| `SESSION_COOKIE_NAME`   | Session cookie name.                                                               |
-| `WIKI_USER_AGENT`       | Required `User-Agent` for wiki fetches (Helminth, Incarnon, stance images).        |
-
-Client `VITE_*` variables are listed in `.env.example`.
-
-## Scripts
-
-| Script                  | Description                                      |
-| ----------------------- | ------------------------------------------------ |
-| `pnpm run validate`     | Format check, lint, typecheck, and tests.        |
-| `pnpm run build`        | Compile server TypeScript and Vite client build. |
-| `pnpm run dev:client`   | Vite with decrypted `.env.development`.          |
-| `pnpm start`            | Run production server from `dist/`.              |
-| `pnpm run typecheck`    | Typecheck server and client.                     |
-| `pnpm run data:import`  | Run manual data import pipeline (built server).  |
-| `pnpm run lint`         | Run Oxlint.                                      |
-| `pnpm run lint:fix`     | Run Oxlint with `--fix`.                         |
-| `pnpm run format`       | Run Oxfmt.                                       |
-| `pnpm run check-format` | Verify Oxfmt formatting.                         |
-| `pnpm run test`         | Run Vitest once.                                 |
-
-## Development
-
-Design system: AppBase `AGENTS.md`. Org standards: AppBase `docs/org-standards/`.
+- Three SQLite files — catalog (`ARMORY_DB_PATH`), user (`USER_DB_PATH`), session (`SESSION_DB_PATH`). Do not point any two at the same path, and do not reuse Codex or BudgetPlanner files. `USER_DB_PATH` must be absolute in production.
+- Boot creates schema. It does **not** fill the catalog. An empty database after first start is normal until `pnpm run data:import` or Admin Force Full Re-import. Codex needs a populated catalog before Warframe sync works.
+- Wiki fetches need `WIKI_USER_AGENT`. Encrypted env files need `.env.keys` or `DOTENV_PRIVATE_KEY_*`. Never encrypt `VITE_*`.
+- Empty Clerk keys skip auth. Placeholder keys are fatal. Production needs `APP_PUBLIC_BASE_URL` and, with `SECURE_COOKIES`, `TRUST_PROXY`.
+- After changing Node versions on Windows, `pnpm rebuild better-sqlite3`.
 
 ## License
 
