@@ -1,9 +1,10 @@
-import Database from 'better-sqlite3';
+import type Database from 'better-sqlite3';
 import express from 'express';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { MAX_NAME_LENGTH } from './apiShared.js';
+import { createMemoryUserDb, insertTestBuild, insertTestLoadout, linkLoadoutBuild } from '../testing/memoryUserDb.js';
+import { MAX_LOADOUTS_PER_USER, MAX_NAME_LENGTH } from './apiShared.js';
 
 const authState = vi.hoisted(() => ({
   userId: null as string | null,
@@ -39,40 +40,6 @@ vi.mock('../db/connection.js', () => ({
 
 import { apiRouter } from './api.js';
 
-function createTestLoadoutsSchema(db: Database.Database): void {
-  db.exec(`
-    CREATE TABLE loadouts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      clerk_user_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      description TEXT,
-      visibility TEXT NOT NULL DEFAULT 'private',
-      share_token TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    );
-    CREATE TABLE builds (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      clerk_user_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      visibility TEXT NOT NULL DEFAULT 'private',
-      equipment_type TEXT NOT NULL,
-      equipment_unique_name TEXT NOT NULL,
-      mod_config TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      description TEXT,
-      share_token TEXT
-    );
-    CREATE TABLE loadout_builds (
-      loadout_id INTEGER NOT NULL,
-      build_id INTEGER NOT NULL,
-      slot_type TEXT NOT NULL,
-      PRIMARY KEY (loadout_id, slot_type)
-    );
-  `);
-}
-
 function createTestApp() {
   const app = express();
   app.use(express.json());
@@ -80,13 +47,12 @@ function createTestApp() {
   return app;
 }
 
-describe('loadouts write validation', () => {
+describe('loadouts API routes', () => {
   beforeEach(() => {
     authState.userId = null;
     authState.isArmoryAdmin = false;
     dbState.db?.close();
-    dbState.db = new Database(':memory:');
-    createTestLoadoutsSchema(dbState.db);
+    dbState.db = createMemoryUserDb();
   });
 
   afterEach(() => {
@@ -102,7 +68,7 @@ describe('loadouts write validation', () => {
   });
 
   it('rejects loadout updates whose name exceeds MAX_NAME_LENGTH', async () => {
-    dbState.db!.prepare('INSERT INTO loadouts (clerk_user_id, name) VALUES (?, ?)').run('user_owner', 'Squad');
+    insertTestLoadout(dbState.db!);
     authState.userId = 'user_owner';
     const res = await request(createTestApp())
       .put('/api/loadouts/1')
@@ -112,10 +78,94 @@ describe('loadouts write validation', () => {
   });
 
   it('rejects loadout updates with no writable fields', async () => {
-    dbState.db!.prepare('INSERT INTO loadouts (clerk_user_id, name) VALUES (?, ?)').run('user_owner', 'Squad');
+    insertTestLoadout(dbState.db!);
     authState.userId = 'user_owner';
     const res = await request(createTestApp()).put('/api/loadouts/1').send({});
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Provide at least name, visibility, or description');
+  });
+
+  it('rejects create when the per-user loadout cap is reached', async () => {
+    dbState.db!.transaction(() => {
+      for (let i = 0; i < MAX_LOADOUTS_PER_USER; i += 1) {
+        insertTestLoadout(dbState.db!, { name: `Loadout ${i}` });
+      }
+    })();
+    authState.userId = 'user_owner';
+    const res = await request(createTestApp()).post('/api/loadouts').send({ name: 'Overflow' });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe(`Loadout limit reached (max ${MAX_LOADOUTS_PER_USER} per user)`);
+  });
+
+  it('hides private loadouts from non-owners with 404', async () => {
+    insertTestLoadout(dbState.db!, { visibility: 'private' });
+    authState.userId = 'user_other';
+    const res = await request(createTestApp()).get('/api/loadouts/1');
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('Loadout not found');
+  });
+
+  it('refuses public visibility while a linked build is private', async () => {
+    const loadoutId = insertTestLoadout(dbState.db!);
+    const buildId = insertTestBuild(dbState.db!, { visibility: 'private' });
+    linkLoadoutBuild(dbState.db!, loadoutId, buildId);
+    authState.userId = 'user_owner';
+    const res = await request(createTestApp()).put('/api/loadouts/1').send({ visibility: 'public' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe(
+      'Every build in this loadout must be public or unlisted before the loadout can be public or unlisted.',
+    );
+  });
+
+  it('allows public visibility when every linked build is public or unlisted', async () => {
+    const loadoutId = insertTestLoadout(dbState.db!);
+    const publicId = insertTestBuild(dbState.db!, { name: 'Public', visibility: 'public' });
+    const unlistedId = insertTestBuild(dbState.db!, {
+      name: 'Unlisted',
+      visibility: 'unlisted',
+      shareToken: 'build-token',
+      equipmentUniqueName: '/Lotus/Weapons/Tenno/Rifle/Rifle',
+    });
+    linkLoadoutBuild(dbState.db!, loadoutId, publicId, 'warframe');
+    linkLoadoutBuild(dbState.db!, loadoutId, unlistedId, 'primary');
+    authState.userId = 'user_owner';
+    const res = await request(createTestApp()).put('/api/loadouts/1').send({ visibility: 'public' });
+    expect(res.status).toBe(200);
+    expect(res.body.visibility).toBe('public');
+  });
+
+  it('lets an unlisted loadout token reveal the owner public and unlisted builds', async () => {
+    const loadoutId = insertTestLoadout(dbState.db!, {
+      visibility: 'unlisted',
+      shareToken: 'loadout-token',
+    });
+    const publicId = insertTestBuild(dbState.db!, { name: 'Public Frame', visibility: 'public' });
+    const unlistedId = insertTestBuild(dbState.db!, {
+      name: 'Unlisted Rifle',
+      visibility: 'unlisted',
+      shareToken: 'build-only-token',
+      equipmentType: 'primary',
+      equipmentUniqueName: '/Lotus/Weapons/Tenno/Rifle/Rifle',
+    });
+    const privateId = insertTestBuild(dbState.db!, {
+      name: 'Private Melee',
+      visibility: 'private',
+      equipmentType: 'melee',
+      equipmentUniqueName: '/Lotus/Weapons/Tenno/Melee/Sword',
+    });
+    linkLoadoutBuild(dbState.db!, loadoutId, publicId, 'warframe');
+    linkLoadoutBuild(dbState.db!, loadoutId, unlistedId, 'primary');
+    linkLoadoutBuild(dbState.db!, loadoutId, privateId, 'melee');
+
+    authState.userId = 'user_other';
+    const denied = await request(createTestApp()).get('/api/loadouts/1');
+    expect(denied.status).toBe(404);
+
+    const allowed = await request(createTestApp()).get('/api/loadouts/1?token=loadout-token');
+    expect(allowed.status).toBe(200);
+    const names = (allowed.body.loadout.builds as Array<{ build: { name: string } }>).map((row) => row.build.name);
+    expect(names).toEqual(expect.arrayContaining(['Public Frame', 'Unlisted Rifle']));
+    expect(names).toHaveLength(2);
+    expect(allowed.body.loadout.share_token).toBeUndefined();
   });
 });

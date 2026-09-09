@@ -1,55 +1,38 @@
 import Database from 'better-sqlite3';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-const dbState = vi.hoisted(() => ({
-  db: null as Database.Database | null,
-}));
-
-vi.mock('./connection.js', () => ({
-  getUserDb: () => {
-    if (!dbState.db) throw new Error('Test DB not initialized');
-    return dbState.db;
-  },
-}));
-
-import { createUserSchema } from './userSchema.js';
+import { applyUserSchema } from './userSchema.js';
 
 describe('user schema', () => {
-  beforeEach(() => {
-    dbState.db?.close();
-    dbState.db = new Database(':memory:');
-  });
+  let db: Database.Database | null = null;
 
   afterEach(() => {
-    dbState.db?.close();
-    dbState.db = null;
+    db?.close();
+    db = null;
   });
 
   it('creates a partial index for public build discovery', () => {
-    createUserSchema();
-    const row = dbState
-      .db!.prepare(
+    db = new Database(':memory:');
+    applyUserSchema(db);
+    const row = db
+      .prepare(
         `SELECT sql FROM sqlite_master
         WHERE type = 'index' AND name = 'idx_builds_public_discovery'`,
       )
       .get() as { sql: string } | undefined;
     expect(row?.sql).toMatch(/visibility = 'public'/);
 
-    dbState
-      .db!.prepare(
-        `INSERT INTO builds (clerk_user_id, name, visibility, equipment_type, equipment_unique_name, mod_config)
+    db.prepare(
+      `INSERT INTO builds (clerk_user_id, name, visibility, equipment_type, equipment_unique_name, mod_config)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run('user_a', 'Public', 'public', 'warframe', '/wf/A', '{}');
-    dbState
-      .db!.prepare(
-        `INSERT INTO builds (clerk_user_id, name, visibility, equipment_type, equipment_unique_name, mod_config)
+    ).run('user_a', 'Public', 'public', 'warframe', '/wf/A', '{}');
+    db.prepare(
+      `INSERT INTO builds (clerk_user_id, name, visibility, equipment_type, equipment_unique_name, mod_config)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run('user_a', 'Private', 'private', 'warframe', '/wf/B', '{}');
+    ).run('user_a', 'Private', 'private', 'warframe', '/wf/B', '{}');
 
-    const plan = dbState
-      .db!.prepare(
+    const plan = db
+      .prepare(
         `EXPLAIN QUERY PLAN
        SELECT equipment_type, equipment_unique_name, COUNT(*) AS build_count
          FROM builds

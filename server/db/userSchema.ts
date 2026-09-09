@@ -1,3 +1,5 @@
+import type Database from 'better-sqlite3';
+
 import { log } from '../logger.js';
 import { getUserDb } from './connection.js';
 
@@ -48,8 +50,7 @@ const USER_SCHEMA_SQL = `
     CREATE INDEX IF NOT EXISTS idx_build_favorites_user ON build_favorites(clerk_user_id);
   `;
 
-export function createUserSchema(): void {
-  const db = getUserDb();
+export function applyUserSchema(db: Database.Database): void {
   db.exec(USER_SCHEMA_SQL);
 
   const hasColumn = db.prepare(
@@ -82,6 +83,9 @@ export function createUserSchema(): void {
      WHERE visibility = 'public'`,
   );
   db.exec('CREATE INDEX IF NOT EXISTS idx_loadout_builds_build ON loadout_builds(build_id)');
+}
 
+export function createUserSchema(): void {
+  applyUserSchema(getUserDb());
   log('info', 'User schema created/verified');
 }
