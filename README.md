@@ -14,19 +14,16 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?logo=tailwindcss&logoColor=white&style=flat-square)
 [![Cursor](https://img.shields.io/badge/Cursor-IDE-141414?logo=cursor&logoColor=white&style=flat-square)](https://cursor.com)
 
-Warframe mod builder and planner. Catalog comes from Digital Extremes' public export, with wiki and other sources filling gaps. Helminth, Archon shards, Incarnon, named builds and loadouts. Codex reads this catalog for Warframe collection tracking. Sign-in uses [Clerk](https://clerk.com).
+Armory is where Warframe builds get assembled for real. Pick a frame, stack mods, Helminth, Archon shards, and Incarnon, then save the loadout so the next mission is a click away instead of another trip through the Arsenal.
+
+The catalog follows Digital Extremes' public export and fills gaps from the wiki, so names and stats stay close to what you see in game. Codex reads that same catalog when it tracks your collection.
 
 Live: [armory.darkavianlabs.com](https://armory.darkavianlabs.com)
 
-Default API port is **3002**. In development the API runs alone (root URL 404s); use Vite for the client.
-
 ## Gotchas
 
-- Three SQLite files — catalog (`ARMORY_DB_PATH`), user (`USER_DB_PATH`), session (`SESSION_DB_PATH`). Do not point any two at the same path, and do not reuse Codex or BudgetPlanner files. `USER_DB_PATH` must be absolute in production.
-- Boot creates schema. It does **not** fill the catalog. An empty database after first start is normal until `pnpm run data:import` or Admin Force Full Re-import. Codex needs a populated catalog before Warframe sync works.
-- Wiki fetches need `WIKI_USER_AGENT`. Encrypted env files need `.env.keys` or `DOTENV_PRIVATE_KEY_*`. Never encrypt `VITE_*`.
-- Empty Clerk keys skip auth. Placeholder keys are fatal. Production needs `APP_PUBLIC_BASE_URL` and, with `SECURE_COOKIES`, `TRUST_PROXY`.
-- After changing Node versions on Windows, `pnpm rebuild better-sqlite3`.
+- Three SQLite files: catalog, user builds, and sessions. They must be different paths.
+- First boot is an empty catalog on purpose. Import data (or Admin Force Full Re-import) before Codex can sync Warframe.
 
 ## License
 
