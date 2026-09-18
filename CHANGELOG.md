@@ -376,3 +376,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.70.18** `ci` [#517](https://github.com/Dark-Avian-Labs/Armory/pull/517): cache Playwright Chromium and move pnpm audit off the critical path
 - **v1.70.19** `ci(deps)` [#520](https://github.com/Dark-Avian-Labs/Armory/pull/520): bump the github-actions group with 2 updates
 - **v1.70.20** `chore(deps)` [#524](https://github.com/Dark-Avian-Labs/Armory/pull/524): bump the production-dependencies group with 4 updates
+- **v1.70.21** `chore(deps)` [#526](https://github.com/Dark-Avian-Labs/Armory/pull/526): bump @dotenvx/dotenvx in the production-dependencies group
