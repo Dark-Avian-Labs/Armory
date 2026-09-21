@@ -377,3 +377,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.70.19** `ci(deps)` [#520](https://github.com/Dark-Avian-Labs/Armory/pull/520): bump the github-actions group with 2 updates
 - **v1.70.20** `chore(deps)` [#524](https://github.com/Dark-Avian-Labs/Armory/pull/524): bump the production-dependencies group with 4 updates
 - **v1.70.21** `chore(deps)` [#526](https://github.com/Dark-Avian-Labs/Armory/pull/526): bump @dotenvx/dotenvx in the production-dependencies group
+- **v1.70.22** `chore` [#530](https://github.com/Dark-Avian-Labs/Armory/pull/530): chore/deps dotenvx pnpm
