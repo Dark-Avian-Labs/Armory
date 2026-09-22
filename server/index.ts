@@ -16,14 +16,25 @@ import { createAppSchema } from './db/schema.js';
 import { isAdminImportRunning, waitForAdminImportIdle } from './import/adminImportJob.js';
 import { recoverImportLeaseOnStartup } from './import/importRuns.js';
 import { log } from './logger.js';
+import { createAppSentinelAgent } from './sentinelAgent.js';
 
 ensureDataDirs();
 createAppSchema();
 repairPlaceholderArtifactSlots();
 recoverImportLeaseOnStartup();
 
-const { app, sessionStore } = createApp();
+const sentinelAgent = createAppSentinelAgent({
+  appId: 'armory',
+  displayName: APP_NAME,
+  nodeEnv: NODE_ENV,
+});
+
+const { app, sessionStore } = createApp({
+  metricsMiddleware: sentinelAgent?.middleware,
+});
 log('info', 'Session DB ready', { path: SESSION_DB_PATH });
+
+sentinelAgent?.start();
 
 const server = app.listen(PORT, HOST, () => {
   log('info', `${APP_NAME} server listening`, { host: HOST, port: PORT, nodeEnv: NODE_ENV });
@@ -47,7 +58,11 @@ const server = app.listen(PORT, HOST, () => {
 server.headersTimeout = 65_000;
 server.requestTimeout = 120_000;
 
-function shutdown(baseExitCode = 0): void {
+function shutdown(baseExitCode = 0, signal?: string): void {
+  if (baseExitCode === 0) sentinelAgent?.noteGracefulExit(signal);
+  else sentinelAgent?.noteCrash(new Error(`shutdown exit ${baseExitCode}`));
+  sentinelAgent?.stop();
+
   let done = false;
   function closeAndExit(exitCode: number): void {
     if (done) return;
@@ -99,13 +114,14 @@ function shutdown(baseExitCode = 0): void {
   })();
 }
 
-process.on('SIGINT', () => shutdown(0));
-process.on('SIGTERM', () => shutdown(0));
+process.on('SIGINT', () => shutdown(0, 'SIGINT'));
+process.on('SIGTERM', () => shutdown(0, 'SIGTERM'));
 
 process.on('unhandledRejection', (reason) => {
   log('error', 'Unhandled promise rejection; shutting down', {
     err: reason instanceof Error ? (reason.stack ?? reason.message) : String(reason),
   });
+  sentinelAgent?.noteCrash(reason);
   shutdown(1);
 });
 
@@ -113,6 +129,7 @@ process.on('uncaughtException', (err) => {
   log('error', 'Uncaught exception; shutting down', {
     err: err.stack ?? err.message,
   });
+  sentinelAgent?.noteCrash(err);
   shutdown(1);
 });
 

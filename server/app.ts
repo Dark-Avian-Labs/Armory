@@ -5,7 +5,7 @@ import type Database from 'better-sqlite3';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { csrfSync } from 'csrf-sync';
-import express from 'express';
+import express, { type RequestHandler } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
 
@@ -47,6 +47,7 @@ export interface CreateAppOptions {
   catalogDb?: Database.Database;
   userDb?: Database.Database;
   sessionCleanupIntervalMs?: number;
+  metricsMiddleware?: RequestHandler;
 }
 
 export function createApp(options: CreateAppOptions = {}): AppBundle {
@@ -67,6 +68,9 @@ export function createApp(options: CreateAppOptions = {}): AppBundle {
 
   app.use(createAppHelmet());
   app.use(requestIdMiddleware);
+  if (options.metricsMiddleware) {
+    app.use(options.metricsMiddleware);
+  }
   app.use(
     compression({
       filter: (req, res) => {
