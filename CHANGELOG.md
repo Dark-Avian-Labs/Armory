@@ -381,3 +381,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.70.23** `ci(deps)` [#531](https://github.com/Dark-Avian-Labs/Armory/pull/531): bump useblacksmith/checkout in the github-actions group
 - **v1.71.0** `chore` [#532](https://github.com/Dark-Avian-Labs/Armory/pull/532): feat/sentinel agent
 - **v1.72.0** `chore` [#534](https://github.com/Dark-Avian-Labs/Armory/pull/534): feat/dal app nav v2
+- **v1.72.1** `chore` [#535](https://github.com/Dark-Avian-Labs/Armory/pull/535): fix/dal app nav proxy
