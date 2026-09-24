@@ -383,3 +383,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.72.0** `chore` [#534](https://github.com/Dark-Avian-Labs/Armory/pull/534): feat/dal app nav v2
 - **v1.72.1** `chore` [#535](https://github.com/Dark-Avian-Labs/Armory/pull/535): fix/dal app nav proxy
 - **v1.72.2** `chore(deps)` [#536](https://github.com/Dark-Avian-Labs/Armory/pull/536): bump @dotenvx/dotenvx in the production-dependencies group
+- **v1.72.3** `fix(env)` [#540](https://github.com/Dark-Avian-Labs/Armory/pull/540): bump dotenvx to 2.30.0 and load config via default export
