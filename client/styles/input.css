@@ -702,7 +702,6 @@ html.ui-acrylic:not(.dark) {
     position: relative;
     box-sizing: border-box;
     width: 14px;
-    min-height: 10.5rem;
     align-self: stretch;
     padding: 0;
     border: none;
