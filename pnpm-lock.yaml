@@ -180,8 +180,8 @@ importers:
         specifier: https://github.com/Dark-Avian-Labs/Sentinel/releases/download/agent-v0.1.0/dark-avian-labs-sentinel-agent-0.1.0.tgz
         version: https://github.com/Dark-Avian-Labs/Sentinel/releases/download/agent-v0.1.0/dark-avian-labs-sentinel-agent-0.1.0.tgz(express@5.2.1(supports-color@7.2.0))
       '@dotenvx/dotenvx':
-        specifier: ^2.29.0
-        version: 2.29.0
+        specifier: ^2.30.0
+        version: 2.30.0
       '@fontsource-variable/cascadia-mono':
         specifier: ^5.3.0
         version: 5.3.0
@@ -244,7 +244,7 @@ importers:
         version: 8.4.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       undici:
         specifier: ^8.10.2
-        version: 8.10.2
+        version: 8.11.0
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -423,12 +423,12 @@ packages:
     peerDependencies:
       express: '>=4'
 
-  '@dotenvx/dotenvx@2.29.0':
-    resolution: {integrity: sha512-D3JRlTMcM9ucQyrd+uhDanGCsWo0BQ3pnICtlivHnbblLtzqnGxB/9I8udRwqh77vpvQXnuesOGqQQtUQMGpKA==}
+  '@dotenvx/dotenvx@2.30.0':
+    resolution: {integrity: sha512-+Rk8UhaD3WIREKJBPmH9HHUvKO+ggb4tJhzAoXiZNBjQv6nAiJmI953MQ6sC7msHjAvhRIFlyZT7Oe6bQPslAA==}
     hasBin: true
 
-  '@dotenvx/primitives@3.0.2':
-    resolution: {integrity: sha512-qhddO125donMnxDZRK7Wvw1Oyd5744wJD5j7a8U5254IKwpnAxcpFcjwiUHhmIfGYnAuGBoCRIK5Rlm3bd6y7Q==}
+  '@dotenvx/primitives@3.0.3':
+    resolution: {integrity: sha512-KodBtwW8IgXhDiic04+cMvMKGjGLLew3jJq2JUGmh7c0M7u+twSylCkygkixzDvIvXrugKcCUQLkvDhgK7RN2g==}
 
   '@dotenvx/tooling@1.0.3':
     resolution: {integrity: sha512-Gd6qQol/ICb4MPRWpiIH56y+pR9AVB7kPBkbhrLSGLtAiF4Qgy+k651/f2pze0Xbm3H5XewbPfIm4y9K+ic30Q==}
@@ -3344,8 +3344,8 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  undici@8.10.2:
-    resolution: {integrity: sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ==}
+  undici@8.11.0:
+    resolution: {integrity: sha512-AdzuGcAkzhbha3GgCSoUBx2P0quwym6qdFNCQz/fDGZc8w9XJ741wHUbt2kTmfPz+ZIOMkySFkiY7RXmiDDC8w==}
     engines: {node: '>=22.19.0'}
 
   unicode-emoji-modifier-base@1.0.0:
@@ -3587,7 +3587,7 @@ snapshots:
   '@actions/http-client@4.0.1':
     dependencies:
       tunnel: 0.0.6
-      undici: 8.10.2
+      undici: 8.11.0
 
   '@actions/io@3.0.2': {}
 
@@ -3657,16 +3657,16 @@ snapshots:
     dependencies:
       express: 5.2.1(supports-color@7.2.0)
 
-  '@dotenvx/dotenvx@2.29.0':
+  '@dotenvx/dotenvx@2.30.0':
     dependencies:
-      '@dotenvx/primitives': 3.0.2
+      '@dotenvx/primitives': 3.0.3
       '@dotenvx/tooling': 1.0.3
       global-agent: 3.0.0
       node-forge: 1.4.0
-      undici: 8.10.2
+      undici: 8.11.0
       yocto-spinner: 1.2.2
 
-  '@dotenvx/primitives@3.0.2': {}
+  '@dotenvx/primitives@3.0.3': {}
 
   '@dotenvx/tooling@1.0.3': {}
 
@@ -4122,7 +4122,7 @@ snapshots:
       p-filter: 4.1.0
       semantic-release: 25.0.9(supports-color@7.2.0)(typescript@7.0.2)
       tinyglobby: 0.2.17
-      undici: 8.10.2
+      undici: 8.11.0
       url-join: 5.0.0
     transitivePeerDependencies:
       - kerberos
@@ -4606,7 +4606,7 @@ snapshots:
       parse5: 7.3.0
       parse5-htmlparser2-tree-adapter: 7.1.0
       parse5-parser-stream: 7.1.2
-      undici: 8.10.2
+      undici: 8.11.0
       whatwg-mimetype: 4.0.0
 
   chownr@3.0.0: {}
@@ -6317,7 +6317,7 @@ snapshots:
 
   undici-types@8.9.0: {}
 
-  undici@8.10.2: {}
+  undici@8.11.0: {}
 
   unicode-emoji-modifier-base@1.0.0: {}
 
