@@ -2,9 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { config as loadEnv } from '@dotenvx/dotenvx';
+import dotenvx from '@dotenvx/dotenvx';
 
 import { isEncryptedEnvValue, normalizeClerkEnv } from './clerkEnv.js';
+
+const { config: loadEnv } = dotenvx;
 
 function resolveEnvFilePath(projectRoot: string): string | null {
   const normalizedNodeEnv = (process.env.NODE_ENV ?? '').trim().toLowerCase();
