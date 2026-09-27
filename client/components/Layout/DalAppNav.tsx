@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { appIdsMatch, loadDalAppNav, type DalAppNavEntry } from '../../lib/dalAppNav';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
-import { CLOSED_RAIL_MIN_HEIGHT } from './dalAppNavRail';
+import { CLOSED_RAIL_MIN_HEIGHT } from './dalAppNavRailGeometry';
 import { DalAppNavRail } from './DalAppNavRail';
 
 const COLLAPSE_DELAY_MS = 300;
