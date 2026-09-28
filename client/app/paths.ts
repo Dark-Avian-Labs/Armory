@@ -9,6 +9,8 @@ export const APP_PATHS = {
   loadoutView: '/builder/loadouts/:loadoutId',
   admin: '/admin',
   login: '/login',
+  signIn: '/sign-in',
+  signUp: '/sign-up',
   legal: '/legal',
 } as const;
 

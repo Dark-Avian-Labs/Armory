@@ -18,6 +18,7 @@ import {
   LEGAL_PAGE_URL,
 } from '../../app/config';
 import { APP_PATHS, buildNewPath } from '../../app/paths';
+import { ChunkErrorBoundary, RouteFallback } from '../../app/routes';
 import feathers from '../../assets/feathers.svg';
 import { useCompare } from '../../context/CompareContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -40,6 +41,16 @@ import { StaleClientUpdateBanner } from './StaleClientUpdateBanner';
 const EquipmentGridModal = lazy(() =>
   import('./EquipmentGridModal').then((m) => ({ default: m.EquipmentGridModal })),
 );
+
+function PageOutlet() {
+  return (
+    <ChunkErrorBoundary>
+      <Suspense fallback={<RouteFallback />}>
+        <Outlet />
+      </Suspense>
+    </ChunkErrorBoundary>
+  );
+}
 
 function isCompactModBuilderRoute(pathname: string): boolean {
   if (pathname.startsWith('/builder/new/')) return true;
@@ -209,7 +220,7 @@ export function Layout() {
               </button>
             </div>
           ) : null}
-          <Outlet />
+          <PageOutlet />
         </main>
         <StaleClientUpdateBanner appVersion={APP_VERSION} />
         {sessionNotice ? (
@@ -361,7 +372,7 @@ export function Layout() {
                           role="menuitem"
                           onClick={() => {
                             setUserMenuOpen(false);
-                            void clerk.signOut({ redirectUrl: '/builder/builds' });
+                            void clerk.signOut({ redirectUrl: APP_PATHS.home });
                           }}
                         >
                           Logout
@@ -370,7 +381,7 @@ export function Layout() {
                     ) : (
                       <>
                         <Link
-                          to="/sign-in"
+                          to={APP_PATHS.signIn}
                           className="user-menu-item"
                           role="menuitem"
                           onClick={() => setUserMenuOpen(false)}
@@ -402,7 +413,7 @@ export function Layout() {
             </button>
           </div>
         ) : null}
-        <Outlet />
+        <PageOutlet />
       </main>
 
       <CompareBar />
@@ -450,7 +461,7 @@ function SessionExpiredModal({ message, onClose }: { message: string; onClose: (
         </h2>
         <p className="text-muted text-sm">{message}</p>
         <div className="modal-actions">
-          <Link to="/sign-in" className="btn btn-accent text-sm" onClick={onClose}>
+          <Link to={APP_PATHS.signIn} className="btn btn-accent text-sm" onClick={onClose}>
             Sign in
           </Link>
           <button type="button" className="btn btn-cancel text-sm" onClick={onClose}>

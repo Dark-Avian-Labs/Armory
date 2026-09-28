@@ -1,13 +1,14 @@
 import { ClerkProvider } from '@clerk/react';
-import type { ReactNode } from 'react';
+import { Outlet } from 'react-router';
 
+import { APP_PATHS } from './app/paths';
 import { BuildStorageProvider } from './context/BuildStorageContext';
 import { CompareProvider } from './context/CompareContext';
 import { AuthProvider } from './features/auth/AuthContext';
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
 
-export function App({ children }: { children: ReactNode }) {
+export function App() {
   if (!publishableKey) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6 text-center" role="alert">
@@ -19,10 +20,12 @@ export function App({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ClerkProvider publishableKey={publishableKey} afterSignOutUrl="/builder/builds">
+    <ClerkProvider publishableKey={publishableKey} afterSignOutUrl={APP_PATHS.home}>
       <AuthProvider>
         <BuildStorageProvider>
-          <CompareProvider>{children}</CompareProvider>
+          <CompareProvider>
+            <Outlet />
+          </CompareProvider>
         </BuildStorageProvider>
       </AuthProvider>
     </ClerkProvider>

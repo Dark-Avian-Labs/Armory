@@ -1,3 +1,4 @@
+import { APP_PATHS } from '@/app/paths';
 import { ClerkAuthShell } from '@/components/ClerkAuthShell';
 import { useTheme } from '@/context/ThemeContext';
 import { buildClerkAppearance } from '@/lib/clerkAppearance';
@@ -10,7 +11,7 @@ export function SignUpPage() {
   const { mode } = useTheme();
 
   if (!publishableKey) {
-    return <Navigate to="/builder/builds" replace />;
+    return <Navigate to={APP_PATHS.home} replace />;
   }
 
   return (
@@ -20,8 +21,8 @@ export function SignUpPage() {
     >
       <SignUp
         routing="hash"
-        signInUrl="/sign-in"
-        fallbackRedirectUrl="/builder/builds"
+        signInUrl={APP_PATHS.signIn}
+        fallbackRedirectUrl={APP_PATHS.home}
         appearance={buildClerkAppearance(mode)}
       />
     </ClerkAuthShell>

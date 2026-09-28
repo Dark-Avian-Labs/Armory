@@ -13,10 +13,7 @@
       if (!part) return '';
       try {
         return decodeURIComponent(part.slice(name.length + 1));
-      } catch (e) {
-        if (typeof console !== 'undefined' && console && typeof console.warn === 'function') {
-          console.warn('Unable to decode cookie value; falling back to default.', e);
-        }
+      } catch {
         return '';
       }
     }
@@ -34,13 +31,7 @@
     if (theme !== 'light' && theme !== 'dark') {
       try {
         theme = (localStorage.getItem('armory.theme.mode') || '').trim();
-      } catch (e) {
-        if (typeof console !== 'undefined' && console && typeof console.warn === 'function') {
-          console.warn(
-            'Unable to read armory theme from localStorage; falling back to default.',
-            e,
-          );
-        }
+      } catch {
         theme = '';
       }
     }
@@ -69,7 +60,5 @@
       root.classList.remove('ui-' + uiStyles[i]);
     }
     root.classList.add('ui-' + ui);
-  } catch {
-    // ignore
-  }
+  } catch {}
 })();

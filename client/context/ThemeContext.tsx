@@ -28,9 +28,6 @@ interface ThemeContextValue {
   uiStyle: UiStyle;
   setUiStyle: (style: UiStyle) => void;
   cycleUiStyle: () => void;
-  atragraphModsEnabled: boolean;
-  setAtragraphModsEnabled: (enabled: boolean) => void;
-  toggleAtragraphMods: () => void;
 }
 
 const THEME_STORAGE_KEY = 'armory.theme.mode';
@@ -40,7 +37,6 @@ const SHARED_THEME_COOKIE_DOMAIN =
   (import.meta.env.VITE_SHARED_THEME_COOKIE_DOMAIN as string | undefined) ?? '';
 const UI_STYLE_STORAGE_KEY = 'dal.ui.style';
 const UI_STYLE_COOKIE = 'dal.ui.style';
-const ATRAGRAPH_MODS_STORAGE_KEY = 'armory.atragraphMods.enabled';
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -105,14 +101,6 @@ function resolveInitialUiStyle(): UiStyle {
   return 'prism';
 }
 
-function resolveInitialAtragraphModsEnabled(): boolean {
-  if (typeof window === 'undefined') return true;
-  const stored = safeReadStorage(ATRAGRAPH_MODS_STORAGE_KEY);
-  if (stored === 'false') return false;
-  if (stored === 'true') return true;
-  return true;
-}
-
 function writeThemeCookie(mode: ThemeMode): void {
   const secure = window.location.protocol === 'https:' ? '; Secure' : '';
   const base = `${SHARED_THEME_COOKIE}=${mode}; Max-Age=${ONE_YEAR_SECONDS}; Path=/; SameSite=Lax${secure}`;
@@ -139,9 +127,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const hasMountedRef = useRef(false);
   const [mode, setMode] = useState<ThemeMode>(resolveInitialMode);
   const [uiStyle, setUiStyle] = useState<UiStyle>(resolveInitialUiStyle);
-  const [atragraphModsEnabled, setAtragraphModsEnabled] = useState(
-    resolveInitialAtragraphModsEnabled,
-  );
 
   useEffect(() => {
     const root = document.documentElement;
@@ -180,17 +165,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [uiStyle]);
 
   useEffect(() => {
-    if (!hasMountedRef.current) {
-      return;
-    }
-    try {
-      window.localStorage.setItem(ATRAGRAPH_MODS_STORAGE_KEY, String(atragraphModsEnabled));
-    } catch (error) {
-      console.warn('Failed to persist Atragraph mods preference to localStorage.', error);
-    }
-  }, [atragraphModsEnabled]);
-
-  useEffect(() => {
     hasMountedRef.current = true;
   }, []);
 
@@ -206,11 +180,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           const index = UI_STYLES.indexOf(prev);
           return UI_STYLES[(index + 1) % UI_STYLES.length] ?? 'prism';
         }),
-      atragraphModsEnabled,
-      setAtragraphModsEnabled,
-      toggleAtragraphMods: () => setAtragraphModsEnabled((prev) => !prev),
     }),
-    [mode, uiStyle, atragraphModsEnabled],
+    [mode, uiStyle],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

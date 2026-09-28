@@ -1,8 +1,8 @@
-import { useTheme } from '../../context/ThemeContext';
+import { useAtragraphMods } from '../../context/AtragraphModsContext';
 import { MaterialSymbol } from './MaterialSymbol';
 
 export function AtragraphModsToggle() {
-  const { atragraphModsEnabled, toggleAtragraphMods } = useTheme();
+  const { atragraphModsEnabled, toggleAtragraphMods } = useAtragraphMods();
 
   return (
     <button
