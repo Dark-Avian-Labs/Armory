@@ -58,9 +58,9 @@ export const router = createBrowserRouter([
           { path: '/sign-in/*', element: <SignInPage /> },
           { path: '/sign-up/*', element: <SignUpPage /> },
           { path: APP_PATHS.login, element: <Navigate to="/sign-in" replace /> },
+          { path: '*', element: <NotFoundPage /> },
         ],
       },
-      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ]);

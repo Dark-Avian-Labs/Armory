@@ -71,7 +71,7 @@ export function Layout() {
   const navigate = useNavigate();
   const { snapshots } = useCompare();
   const { mode, toggleMode } = useTheme();
-  const { auth } = useAuth();
+  const { auth, refresh } = useAuth();
   const clerk = useClerk();
   const compareBarVisible = snapshots.length > 0;
   const currentYear = new Date().getFullYear();
@@ -197,6 +197,18 @@ export function Layout() {
           tabIndex={-1}
           className="relative z-10 mx-auto flex min-h-0 w-full flex-1 flex-col p-3"
         >
+          {auth.status === 'error' ? (
+            <div className="glass-panel mb-4 p-4" role="alert">
+              <p className="text-sm">Could not verify your session.</p>
+              <button
+                type="button"
+                className="btn btn-secondary mt-3"
+                onClick={() => void refresh()}
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
           <Outlet />
         </main>
         <StaleClientUpdateBanner appVersion={APP_VERSION} />
@@ -382,6 +394,14 @@ export function Layout() {
         tabIndex={-1}
         className={`relative z-10 flex-1 px-6 ${compareBarVisible ? 'pb-24' : 'pb-6'}`}
       >
+        {auth.status === 'error' ? (
+          <div className="glass-panel mb-4 p-4" role="alert">
+            <p className="text-sm">Could not verify your session.</p>
+            <button type="button" className="btn btn-secondary mt-3" onClick={() => void refresh()}>
+              Retry
+            </button>
+          </div>
+        ) : null}
         <Outlet />
       </main>
 

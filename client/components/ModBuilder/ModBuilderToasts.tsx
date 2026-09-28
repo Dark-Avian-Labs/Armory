@@ -20,7 +20,12 @@ export const ModBuilderToasts = memo(function ModBuilderToasts({
   return (
     <>
       {saveToast ? (
-        <div className="toast-pill" data-tone={saveToast.tone} role="status" aria-live="polite">
+        <div
+          className="toast-pill"
+          data-tone={saveToast.tone}
+          role={saveToast.tone === 'error' ? 'alert' : 'status'}
+          aria-live={saveToast.tone === 'error' ? 'assertive' : 'polite'}
+        >
           {saveToast.message}
         </div>
       ) : null}

@@ -118,6 +118,11 @@ export function BuildStorageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (auth.status === 'loading') return;
+    if (auth.status === 'error') {
+      setLoading(false);
+      return;
+    }
     if (auth.status !== 'ok') {
       refreshGenerationRef.current += 1;
       setBuilds([]);
