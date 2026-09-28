@@ -75,8 +75,8 @@ export function Layout() {
   const clerk = useClerk();
   const compareBarVisible = snapshots.length > 0;
   const currentYear = new Date().getFullYear();
-  const isLoggedIn = auth.status === 'ok';
-  const isAdmin = auth.status === 'ok' && auth.isArmoryAdmin;
+  const isLoggedIn = auth.status === 'authenticated';
+  const isAdmin = auth.status === 'authenticated' && auth.isAdmin;
   const compactModBuilderUi =
     searchParams.get('compact') === '1' && isCompactModBuilderRoute(location.pathname);
 
@@ -97,7 +97,7 @@ export function Layout() {
   }, []);
 
   useEffect(() => {
-    if (auth.status === 'ok') {
+    if (auth.status === 'authenticated') {
       setSessionNotice(null);
     }
   }, [auth.status]);

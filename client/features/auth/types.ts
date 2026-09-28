@@ -1,7 +1,9 @@
 export type AuthErrorDetail = Error | string | { message: string; code?: string };
 
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
+
 export type AuthState =
-  | { status: 'loading'; userId: null; isArmoryAdmin: false }
-  | { status: 'unauthenticated'; userId: null; isArmoryAdmin: false }
-  | { status: 'ok'; userId: string; isArmoryAdmin: boolean }
-  | { status: 'error'; userId: null; isArmoryAdmin: false; error: AuthErrorDetail };
+  | { status: 'loading'; userId: null; isAdmin: false }
+  | { status: 'unauthenticated'; userId: null; isAdmin: false }
+  | { status: 'authenticated'; userId: string; isAdmin: boolean }
+  | { status: 'error'; userId: null; isAdmin: false; error: AuthErrorDetail };

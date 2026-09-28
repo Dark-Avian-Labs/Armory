@@ -31,7 +31,7 @@ import { createAppHelmet } from './http/helmetCsp.js';
 import { getRequestId, requestIdMiddleware } from './http/requestId.js';
 import { log } from './logger.js';
 import { apiRouter } from './routes/api.js';
-import { authRouter } from './routes/auth.js';
+import { authRouter, issueCsrfToken } from './routes/auth.js';
 import { clerkWebhookRouter } from './routes/webhooks.js';
 import { bindClerkUserSessionMiddleware } from './session/bindClerkUserSession.js';
 
@@ -278,6 +278,7 @@ export function createApp(options: CreateAppOptions = {}): AppBundle {
   });
 
   app.use('/api/auth', authRouter);
+  app.get('/api/csrf', issueCsrfToken);
   app.use('/api', appApiLimiter, apiRouter);
 
   app.use('/images', (req, res, next) => {

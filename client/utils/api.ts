@@ -45,7 +45,7 @@ async function getCsrfToken(): Promise<string | null> {
   const ref = { promise: null as Promise<string | null> | null };
   inFlightPromise = ref.promise = (async () => {
     try {
-      const res = await fetch('/api/auth/csrf', { credentials: 'include', cache: 'no-store' });
+      const res = await fetch('/api/csrf', { credentials: 'include', cache: 'no-store' });
       if (!res.ok) {
         return null;
       }
@@ -288,4 +288,36 @@ export async function apiFetch(url: string, init?: RequestInit): Promise<Respons
   const retryResponse = await send(url, init, retryHeaders, retryBody);
   throwIfUnauthorized(url, retryResponse);
   return retryResponse;
+}
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly fields: string[];
+
+  constructor(message: string, status: number, fields: string[] = []) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.fields = fields;
+  }
+}
+
+export async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await apiFetch(url, init);
+  if (!res.ok) {
+    let message = 'Request failed';
+    let fields: string[] = [];
+    try {
+      const data = (await res.json()) as { error?: unknown; fields?: unknown };
+      if (typeof data.error === 'string' && data.error) message = data.error;
+      if (Array.isArray(data.fields)) {
+        fields = data.fields.filter((field): field is string => typeof field === 'string');
+      }
+    } catch {
+      // The body was not JSON. Keep the shared fallback.
+    }
+    throw new ApiError(message, res.status, fields);
+  }
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
 }

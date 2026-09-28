@@ -38,7 +38,7 @@ export const LEGAL_ENTITY_NAME = readTrimmedEnv(
   'Dark Avian Labs',
 );
 
-const DEFAULT_LEGAL_PAGE_URL = 'https://darkavianlabs.com/legal/';
+const DEFAULT_LEGAL_PAGE_URL = 'https://darkavianlabs.com/legal';
 
 const resolvedLegalPageUrl = readTrimmedEnv(
   import.meta.env.VITE_LEGAL_PAGE_URL as string | undefined,
