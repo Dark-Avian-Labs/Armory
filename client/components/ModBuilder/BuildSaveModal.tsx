@@ -24,11 +24,20 @@ export const BuildSaveModal = memo(function BuildSaveModal({
   if (!open) return null;
 
   return (
-    <Modal open onClose={onClose} ariaLabelledBy="save-build-title" className="max-w-md">
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabelledBy="save-build-title"
+      className="glass-modal-surface max-w-md"
+    >
       <h3 id="save-build-title" className="text-foreground mb-4 text-lg font-semibold">
         {isCopy ? 'Copy Build' : 'Save Build'}
       </h3>
-      {error ? <p className="error-msg mb-3">{error}</p> : null}
+      {error ? (
+        <p className="error-msg mb-3" role="alert">
+          {error}
+        </p>
+      ) : null}
       <label
         htmlFor="save-build-name"
         className="text-muted mb-2 block text-xs tracking-[0.18em] uppercase"

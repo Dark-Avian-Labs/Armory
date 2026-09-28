@@ -113,13 +113,11 @@ export const SESSION_DB_PATH = resolveProjectPath(
   path.join('data', 'session.db'),
 );
 
-/** Read-only Codex Warframe catalog DB (written by Codex `warframe:import`). */
 export const CODEX_WARFRAME_CATALOG_DB_PATH = resolveProjectPath(
   process.env.CODEX_WARFRAME_CATALOG_DB_PATH,
   path.join('..', 'Codex', 'data', 'warframe-catalog.db'),
 );
 
-/** Codex Warframe catalog images; mirrored into IMAGES_DIR on sync. */
 export const CODEX_WARFRAME_IMAGES_DIR = resolveProjectPath(
   process.env.CODEX_WARFRAME_IMAGES_DIR,
   path.join('..', 'Codex', 'data', 'warframe-images'),
@@ -210,7 +208,9 @@ export const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN;
 export const SESSION_COOKIE_NAME =
   process.env.SESSION_COOKIE_NAME?.trim() || 'darkavianlabs.armory.sid';
 export const LEGAL_PAGE_URL =
-  process.env.LEGAL_PAGE_URL?.trim() || 'https://darkavianlabs.com/legal/';
+  process.env.LEGAL_PAGE_URL?.trim() ||
+  process.env.VITE_LEGAL_PAGE_URL?.trim() ||
+  'https://darkavianlabs.com/legal';
 export const CLERK_WEBHOOK_SIGNING_SECRET = process.env.CLERK_WEBHOOK_SIGNING_SECRET?.trim() || '';
 if (NODE_ENV === 'production' && !CLERK_WEBHOOK_SIGNING_SECRET) {
   throw new Error('[FATAL] CLERK_WEBHOOK_SIGNING_SECRET must be set in production.');

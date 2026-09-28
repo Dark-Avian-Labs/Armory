@@ -107,7 +107,7 @@ export class ChunkErrorBoundary extends Component<
 export function RouteFallback() {
   return (
     <div
-      className="flex min-h-screen items-center justify-center"
+      className="flex min-h-[120px] items-center justify-center p-6"
       role="status"
       aria-live="polite"
       aria-busy="true"

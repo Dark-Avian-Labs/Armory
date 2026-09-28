@@ -31,7 +31,7 @@ import { createAppHelmet } from './http/helmetCsp.js';
 import { getRequestId, requestIdMiddleware } from './http/requestId.js';
 import { log } from './logger.js';
 import { apiRouter } from './routes/api.js';
-import { authRouter } from './routes/auth.js';
+import { authRouter, issueCsrfToken } from './routes/auth.js';
 import { clerkWebhookRouter } from './routes/webhooks.js';
 import { bindClerkUserSessionMiddleware } from './session/bindClerkUserSession.js';
 
@@ -278,6 +278,7 @@ export function createApp(options: CreateAppOptions = {}): AppBundle {
   });
 
   app.use('/api/auth', authRouter);
+  app.get('/api/csrf', issueCsrfToken);
   app.use('/api', appApiLimiter, apiRouter);
 
   app.use('/images', (req, res, next) => {
@@ -391,11 +392,24 @@ export function createApp(options: CreateAppOptions = {}): AppBundle {
         res.status(403).json({ error: 'Invalid CSRF token', code: 'CSRF_INVALID' });
         return;
       }
+      const maybe = err as { status?: unknown; statusCode?: unknown; expose?: unknown };
+      const statusFromError =
+        typeof maybe.statusCode === 'number'
+          ? maybe.statusCode
+          : typeof maybe.status === 'number'
+            ? maybe.status
+            : undefined;
+      const status =
+        statusFromError && statusFromError >= 400 && statusFromError < 600 ? statusFromError : 500;
       log('error', 'Unhandled request error', {
         requestId: getRequestId(res),
+        status,
         err: err.stack ?? message,
       });
-      res.status(500).json({ error: 'Internal server error' });
+      const expose = maybe.expose === true && status < 500;
+      res.status(status).json({
+        error: expose ? message : status === 500 ? 'Internal server error' : 'Request failed',
+      });
     },
   );
 

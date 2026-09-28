@@ -23,7 +23,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const DEFAULT_AUTH_STATE: AuthState = {
   status: 'loading',
   userId: null,
-  isArmoryAdmin: false,
+  isAdmin: false,
 };
 
 function toAuthErrorDetail(error: unknown): AuthErrorDetail {
@@ -60,34 +60,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
     if (!isSignedIn) {
-      applyAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
+      applyAuth({ status: 'unauthenticated', userId: null, isAdmin: false });
       return;
     }
     try {
       const response = await apiFetch('/api/auth/me');
       if (!response.ok) {
-        applyAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
+        applyAuth({ status: 'unauthenticated', userId: null, isAdmin: false });
         return;
       }
       const body = (await response.json()) as {
         authenticated?: boolean;
         userId?: string;
-        isArmoryAdmin?: boolean;
+        isAdmin?: boolean;
       };
       if (!body.authenticated || !body.userId) {
-        applyAuth({ status: 'unauthenticated', userId: null, isArmoryAdmin: false });
+        applyAuth({ status: 'unauthenticated', userId: null, isAdmin: false });
         return;
       }
       applyAuth({
-        status: 'ok',
+        status: 'authenticated',
         userId: body.userId,
-        isArmoryAdmin: body.isArmoryAdmin === true,
+        isAdmin: body.isAdmin === true,
       });
     } catch (error) {
       applyAuth({
         status: 'error',
         userId: null,
-        isArmoryAdmin: false,
+        isAdmin: false,
         error: toAuthErrorDetail(error),
       });
     }

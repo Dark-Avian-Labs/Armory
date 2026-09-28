@@ -264,6 +264,7 @@ export function RivenBuilder({
                 <SelectDropdown
                   id={`riven-stat-${i}`}
                   className="flex-1"
+                  triggerClassName="form-input select-dropdown-trigger flex w-full cursor-pointer items-center justify-between gap-2 py-2 text-left text-xs disabled:cursor-not-allowed disabled:opacity-50"
                   value={stat.stat}
                   options={[
                     { value: '', label: 'None' },

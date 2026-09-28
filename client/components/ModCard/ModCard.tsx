@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useTheme } from '../../context/ThemeContext';
+import { useAtragraphMods } from '../../context/AtragraphModsContext';
 import type { Mod, SlotType } from '../../types/warframe';
 import { calculateEffectiveDrain, polarityMatchForUi } from '../../utils/drain';
 import { getModCardDisplayTexts } from '../../utils/modDisplayText';
@@ -168,7 +168,7 @@ export function ModCard({
 }: ModCardProps) {
   const [hovered, setHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
-  const { atragraphModsEnabled } = useTheme();
+  const { atragraphModsEnabled } = useAtragraphMods();
 
   const {
     layout,

@@ -26,6 +26,8 @@ import {
   type EquipmentPickerTab,
 } from '../BuildsCatalog/buildsCatalogUtils';
 import { FormaMetricChips } from '../shared/FormaMetricChips';
+import { ConfirmModal } from '../ui/ConfirmModal';
+import { LoadErrorBanner } from '../ui/LoadErrorBanner';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { Modal } from '../ui/Modal';
 
@@ -195,6 +197,12 @@ export function BuildOverview({
   );
   const [showNewLoadout, setShowNewLoadout] = useState(false);
   const [newLoadoutName, setNewLoadoutName] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    kind: 'loadout' | 'build';
+    id: string;
+    name: string;
+  } | null>(null);
   const [newLoadoutError, setNewLoadoutError] = useState<string | null>(null);
   const [linkingBuild, setLinkingBuild] = useState<StoredBuild | null>(null);
   const [linkingLoadout, setLinkingLoadout] = useState<Loadout | null>(null);
@@ -287,7 +295,7 @@ export function BuildOverview({
     try {
       const slotType = getSlotTypeForBuild(linkingBuild, equipmentLookup);
       if (!slotType) {
-        window.alert('This build type is not supported in loadouts yet.');
+        setActionError('This build type is not supported in loadouts yet.');
         return;
       }
       await linkBuild(loadoutId, linkingBuild.id, slotType);
@@ -295,7 +303,7 @@ export function BuildOverview({
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to link build to loadout';
       console.error('Failed to link build to loadout', error);
-      window.alert(message);
+      setActionError(message);
     }
   };
 
@@ -305,7 +313,7 @@ export function BuildOverview({
     try {
       const slotType = getSlotTypeForBuild(build, equipmentLookup);
       if (!slotType) {
-        window.alert('This build type is not supported in loadouts yet.');
+        setActionError('This build type is not supported in loadouts yet.');
         return;
       }
       await linkBuild(linkingLoadout.id, build.id, slotType);
@@ -314,7 +322,7 @@ export function BuildOverview({
       const message =
         error instanceof Error ? error.message : 'Failed to link build to loadout slot';
       console.error('Failed to link build to loadout slot', error);
-      window.alert(message);
+      setActionError(message);
     }
   };
 
@@ -349,6 +357,32 @@ export function BuildOverview({
 
   return (
     <div className="mx-auto flex max-w-[2000px] flex-col gap-4">
+      {actionError ? <LoadErrorBanner message={actionError} /> : null}
+      <ConfirmModal
+        open={pendingDelete !== null}
+        title={pendingDelete?.kind === 'loadout' ? 'Delete loadout' : 'Delete build'}
+        message={
+          pendingDelete
+            ? `Delete "${pendingDelete.name}"? This cannot be undone.`
+            : 'Delete this item?'
+        }
+        confirmLabel="Delete"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const target = pendingDelete;
+          setPendingDelete(null);
+          if (!target) return;
+          const run =
+            target.kind === 'loadout'
+              ? deleteLoadout(target.id)
+              : Promise.resolve(deleteBuild(target.id));
+          void run.catch((error: unknown) => {
+            const message = error instanceof Error ? error.message : 'Failed to delete';
+            console.error('Failed to delete', error);
+            setActionError(message);
+          });
+        }}
+      />
       {favoritesMode && (
         <div className="glass-shell px-4 py-3 sm:px-5">
           <h1 className="display-title text-foreground text-2xl">Favorites</h1>
@@ -416,18 +450,12 @@ export function BuildOverview({
                     updateLoadout={updateLoadout}
                     publishLoadout={publishLoadout}
                     refreshBuilds={refreshBuilds}
-                    onDelete={async () => {
-                      if (!confirm(`Delete loadout "${loadout.name}"?`)) {
-                        return;
-                      }
-                      try {
-                        await deleteLoadout(loadout.id);
-                      } catch (error) {
-                        const message =
-                          error instanceof Error ? error.message : 'Failed to delete loadout';
-                        console.error('Failed to delete loadout', error);
-                        window.alert(message);
-                      }
+                    onDelete={() => {
+                      setPendingDelete({
+                        kind: 'loadout',
+                        id: loadout.id,
+                        name: loadout.name,
+                      });
                     }}
                     onNavigate={(buildId) => navigate(buildEditPath(buildId))}
                     onUnlink={async (slotType) => {
@@ -439,7 +467,7 @@ export function BuildOverview({
                             ? error.message
                             : 'Failed to unlink build from loadout';
                         console.error('Failed to unlink build from loadout', error);
-                        window.alert(message);
+                        setActionError(message);
                       }
                     }}
                     onAddBuild={() => {
@@ -493,7 +521,7 @@ export function BuildOverview({
                       }
                       onClick={() => openBuild(build.id)}
                       onDelete={() => {
-                        if (confirm(`Delete "${build.name}"?`)) void deleteBuild(build.id);
+                        setPendingDelete({ kind: 'build', id: build.id, name: build.name });
                       }}
                       onLink={() => setLinkingBuild(build)}
                       hasLoadouts={!viewingUserBuilds && !favoritesMode && loadouts.length > 0}
@@ -806,6 +834,7 @@ function LoadoutRow({
   const [descriptionDraft, setDescriptionDraft] = useState('');
   const [descriptionBusy, setDescriptionBusy] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
 
   const privateLinkedBuilds = useMemo(() => {
     return loadout.builds
@@ -822,7 +851,7 @@ function LoadoutRow({
       try {
         await updateLoadout(loadout.id, { visibility: 'private' });
       } catch (e) {
-        window.alert(e instanceof Error ? e.message : 'Failed to update loadout');
+        setRowError(e instanceof Error ? e.message : 'Failed to update loadout');
       } finally {
         setPublicBusy(false);
       }
@@ -833,7 +862,7 @@ function LoadoutRow({
       try {
         await updateLoadout(loadout.id, { visibility: 'public' });
       } catch (e) {
-        window.alert(e instanceof Error ? e.message : 'Failed to update loadout');
+        setRowError(e instanceof Error ? e.message : 'Failed to update loadout');
       } finally {
         setPublicBusy(false);
       }
@@ -873,6 +902,7 @@ function LoadoutRow({
 
   return (
     <div>
+      {rowError ? <LoadErrorBanner message={rowError} /> : null}
       <div
         className="group hover:bg-glass-hover flex cursor-pointer items-center gap-3 px-4 py-3 transition-[background-color,color] duration-200"
         onClick={() => setExpanded(!expanded)}

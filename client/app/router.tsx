@@ -1,5 +1,4 @@
-import { Suspense } from 'react';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 
 import { App } from '../App';
 import { Layout } from '../components/Layout/Layout';
@@ -15,24 +14,16 @@ import {
   FavoritesPage,
   BuildsByEquipmentPage,
   BuildsCatalogPage,
-  ChunkErrorBoundary,
   LegalPage,
   LoadoutDetailPage,
   ModBuilder,
-  RouteFallback,
 } from './routes';
 
 export const router = createBrowserRouter([
   {
     element: (
       <ErrorBoundary>
-        <App>
-          <ChunkErrorBoundary>
-            <Suspense fallback={<RouteFallback />}>
-              <Outlet />
-            </Suspense>
-          </ChunkErrorBoundary>
-        </App>
+        <App />
       </ErrorBoundary>
     ),
     children: [
@@ -55,12 +46,12 @@ export const router = createBrowserRouter([
           { path: APP_PATHS.buildNew, element: <ModBuilder /> },
           { path: APP_PATHS.buildEdit, element: <ModBuilder /> },
           { path: APP_PATHS.admin, element: <AdminPage /> },
-          { path: '/sign-in/*', element: <SignInPage /> },
-          { path: '/sign-up/*', element: <SignUpPage /> },
-          { path: APP_PATHS.login, element: <Navigate to="/sign-in" replace /> },
+          { path: `${APP_PATHS.signIn}/*`, element: <SignInPage /> },
+          { path: `${APP_PATHS.signUp}/*`, element: <SignUpPage /> },
+          { path: APP_PATHS.login, element: <Navigate to={APP_PATHS.signIn} replace /> },
+          { path: '*', element: <NotFoundPage /> },
         ],
       },
-      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ]);

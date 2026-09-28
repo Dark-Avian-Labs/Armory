@@ -10,7 +10,6 @@ import {
 } from '../config.js';
 import { getCatalogDb } from '../db/connection.js';
 
-/** Catalog tables copied from Codex. Order is parent-first for FK-friendly inserts. */
 export const CODEX_CATALOG_TABLES = [
   'mod_sets',
   'warframes',
@@ -121,10 +120,6 @@ function copyImageTree(
   return { copied, skipped };
 }
 
-/**
- * Replace Armory catalog tables with a copy of Codex's warframe-catalog.db.
- * Preserves `armory_users`. Skips `import_runs` / `import_lease`.
- */
 export function syncCodexWarframeCatalog(options?: {
   onLog?: CatalogSyncLogFn;
 }): CatalogSyncSummary {
@@ -141,7 +136,6 @@ export function syncCodexWarframeCatalog(options?: {
   const dest = getCatalogDb();
   const attachAlias = 'codex';
 
-  // Escape single quotes for ATTACH path literal.
   const escapedPath = sourcePath.replace(/'/g, "''");
   dest.exec(`ATTACH DATABASE '${escapedPath}' AS ${attachAlias}`);
 

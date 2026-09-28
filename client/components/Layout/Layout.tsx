@@ -18,6 +18,7 @@ import {
   LEGAL_PAGE_URL,
 } from '../../app/config';
 import { APP_PATHS, buildNewPath } from '../../app/paths';
+import { ChunkErrorBoundary, RouteFallback } from '../../app/routes';
 import feathers from '../../assets/feathers.svg';
 import { useCompare } from '../../context/CompareContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -40,6 +41,16 @@ import { StaleClientUpdateBanner } from './StaleClientUpdateBanner';
 const EquipmentGridModal = lazy(() =>
   import('./EquipmentGridModal').then((m) => ({ default: m.EquipmentGridModal })),
 );
+
+function PageOutlet() {
+  return (
+    <ChunkErrorBoundary>
+      <Suspense fallback={<RouteFallback />}>
+        <Outlet />
+      </Suspense>
+    </ChunkErrorBoundary>
+  );
+}
 
 function isCompactModBuilderRoute(pathname: string): boolean {
   if (pathname.startsWith('/builder/new/')) return true;
@@ -71,12 +82,12 @@ export function Layout() {
   const navigate = useNavigate();
   const { snapshots } = useCompare();
   const { mode, toggleMode } = useTheme();
-  const { auth } = useAuth();
+  const { auth, refresh } = useAuth();
   const clerk = useClerk();
   const compareBarVisible = snapshots.length > 0;
   const currentYear = new Date().getFullYear();
-  const isLoggedIn = auth.status === 'ok';
-  const isAdmin = auth.status === 'ok' && auth.isArmoryAdmin;
+  const isLoggedIn = auth.status === 'authenticated';
+  const isAdmin = auth.status === 'authenticated' && auth.isAdmin;
   const compactModBuilderUi =
     searchParams.get('compact') === '1' && isCompactModBuilderRoute(location.pathname);
 
@@ -97,7 +108,7 @@ export function Layout() {
   }, []);
 
   useEffect(() => {
-    if (auth.status === 'ok') {
+    if (auth.status === 'authenticated') {
       setSessionNotice(null);
     }
   }, [auth.status]);
@@ -197,7 +208,19 @@ export function Layout() {
           tabIndex={-1}
           className="relative z-10 mx-auto flex min-h-0 w-full flex-1 flex-col p-3"
         >
-          <Outlet />
+          {auth.status === 'error' ? (
+            <div className="glass-panel mb-4 p-4" role="alert">
+              <p className="text-sm">Could not verify your session.</p>
+              <button
+                type="button"
+                className="btn btn-secondary mt-3"
+                onClick={() => void refresh()}
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
+          <PageOutlet />
         </main>
         <StaleClientUpdateBanner appVersion={APP_VERSION} />
         {sessionNotice ? (
@@ -349,7 +372,7 @@ export function Layout() {
                           role="menuitem"
                           onClick={() => {
                             setUserMenuOpen(false);
-                            void clerk.signOut({ redirectUrl: '/builder/builds' });
+                            void clerk.signOut({ redirectUrl: APP_PATHS.home });
                           }}
                         >
                           Logout
@@ -358,7 +381,7 @@ export function Layout() {
                     ) : (
                       <>
                         <Link
-                          to="/sign-in"
+                          to={APP_PATHS.signIn}
                           className="user-menu-item"
                           role="menuitem"
                           onClick={() => setUserMenuOpen(false)}
@@ -382,7 +405,15 @@ export function Layout() {
         tabIndex={-1}
         className={`relative z-10 flex-1 px-6 ${compareBarVisible ? 'pb-24' : 'pb-6'}`}
       >
-        <Outlet />
+        {auth.status === 'error' ? (
+          <div className="glass-panel mb-4 p-4" role="alert">
+            <p className="text-sm">Could not verify your session.</p>
+            <button type="button" className="btn btn-secondary mt-3" onClick={() => void refresh()}>
+              Retry
+            </button>
+          </div>
+        ) : null}
+        <PageOutlet />
       </main>
 
       <CompareBar />
@@ -430,7 +461,7 @@ function SessionExpiredModal({ message, onClose }: { message: string; onClose: (
         </h2>
         <p className="text-muted text-sm">{message}</p>
         <div className="modal-actions">
-          <Link to="/sign-in" className="btn btn-accent text-sm" onClick={onClose}>
+          <Link to={APP_PATHS.signIn} className="btn btn-accent text-sm" onClick={onClose}>
             Sign in
           </Link>
           <button type="button" className="btn btn-cancel text-sm" onClick={onClose}>

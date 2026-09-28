@@ -20,11 +20,6 @@ The catalog is synced from Codex's Warframe catalog DB (Codex runs the DE/wiki i
 
 Live: [armory.darkavianlabs.com](https://armory.darkavianlabs.com)
 
-## Gotchas
-
-- Three SQLite files: catalog, user builds, and sessions. They must be different paths.
-- First boot syncs from Codex when `warframes` is empty and `CODEX_WARFRAME_CATALOG_DB_PATH` exists. Otherwise run `pnpm run catalog:sync` (or Admin → Sync catalog from Codex) after Codex has imported.
-
 ## License
 
 MIT

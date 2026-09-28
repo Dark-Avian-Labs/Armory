@@ -118,7 +118,12 @@ export function BuildStorageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (auth.status !== 'ok') {
+    if (auth.status === 'loading') return;
+    if (auth.status === 'error') {
+      setLoading(false);
+      return;
+    }
+    if (auth.status !== 'authenticated') {
       refreshGenerationRef.current += 1;
       setBuilds([]);
       setLoading(false);
@@ -128,7 +133,7 @@ export function BuildStorageProvider({ children }: { children: ReactNode }) {
   }, [auth.status, auth.userId, refresh]);
 
   useEffect(() => {
-    if (auth.status !== 'ok') return undefined;
+    if (auth.status !== 'authenticated') return undefined;
     const onVisibility = (): void => {
       if (document.visibilityState === 'visible') {
         void refresh();

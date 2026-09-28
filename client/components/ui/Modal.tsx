@@ -1,4 +1,4 @@
-import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 interface ModalProps {
@@ -9,17 +9,100 @@ interface ModalProps {
   ariaLabelledBy?: string;
 }
 
-const FOCUSABLE_SELECTOR =
-  'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
-
 export function Modal({ open, onClose, children, className, ariaLabelledBy }: ModalProps) {
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    const previousActiveElement = document.activeElement;
+    const modalElement = modalRef.current;
+    if (!modalElement) {
+      return undefined;
+    }
+
+    const focusableSelector =
+      'a[href]:not([tabindex="-1"]), area[href]:not([tabindex="-1"]), input:not([disabled]):not([type="hidden"]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), [contenteditable="true"]:not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])';
+
+    const getFocusableElements = () =>
+      Array.from(modalElement.querySelectorAll<HTMLElement>(focusableSelector));
+
+    const initialFocusable = getFocusableElements();
+    if (initialFocusable.length > 0) {
+      initialFocusable[0].focus();
+    } else {
+      modalElement.focus();
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onCloseRef.current();
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const focusableElements = getFocusableElements();
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        modalElement.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement as HTMLElement | null;
+
+      if (event.shiftKey) {
+        if (
+          !activeElement ||
+          activeElement === firstElement ||
+          !modalElement.contains(activeElement)
+        ) {
+          event.preventDefault();
+          lastElement.focus();
+        }
+        return;
+      }
+
+      if (
+        !activeElement ||
+        activeElement === lastElement ||
+        !modalElement.contains(activeElement)
+      ) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (
+        previousActiveElement instanceof HTMLElement &&
+        document.contains(previousActiveElement) &&
+        previousActiveElement !== document.body &&
+        !previousActiveElement.hasAttribute('disabled')
+      ) {
+        previousActiveElement.focus();
+      }
+    };
+  }, [open, mounted]);
 
   useEffect(() => {
     if (!open || typeof document === 'undefined' || !document.body) {
@@ -45,83 +128,33 @@ export function Modal({ open, onClose, children, className, ariaLabelledBy }: Mo
     };
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    previousFocusRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const dialog = dialogRef.current;
-    if (!dialog) {
-      return () => {
-        document.body.style.overflow = previousBodyOverflow;
-        previousFocusRef.current?.focus();
-      };
-    }
-
-    const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-    (focusables[0] ?? dialog).focus();
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onCloseRef.current();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const nodes = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-      if (nodes.length === 0) {
-        event.preventDefault();
-        dialog.focus();
-        return;
-      }
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      } else if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last.focus();
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = previousBodyOverflow;
-      previousFocusRef.current?.focus();
-    };
-  }, [open]);
-
   if (!open) {
     return null;
   }
 
-  const modalClass = ['modal', className].filter(Boolean).join(' ');
+  const modalClassName = className ? `modal ${className}` : 'modal';
 
   const stopPropagation = (event: MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
   };
 
   const modalContent = (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay active" onClick={onClose}>
       <div
-        className={modalClass}
-        ref={dialogRef}
-        onClick={stopPropagation}
+        ref={modalRef}
+        className={modalClassName}
         role="dialog"
         aria-modal="true"
         aria-labelledby={ariaLabelledBy}
         tabIndex={-1}
+        onClick={stopPropagation}
       >
         {children}
       </div>
     </div>
   );
 
-  if (typeof document === 'undefined' || !document.body) {
+  if (!mounted || typeof document === 'undefined' || !document.body) {
     return null;
   }
 

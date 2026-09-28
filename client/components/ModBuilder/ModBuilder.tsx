@@ -511,7 +511,7 @@ export function ModBuilder() {
   );
 
   const viewOwnerUserId =
-    buildOwnerUserId ?? (isBuildOwner && auth.status === 'ok' ? auth.userId : null);
+    buildOwnerUserId ?? (isBuildOwner && auth.status === 'authenticated' ? auth.userId : null);
   const deletedOwnerLabel = '[Deleted User]';
   const viewOwnerUsername =
     buildOwnerUsername &&
@@ -1642,7 +1642,7 @@ export function ModBuilder() {
   };
 
   const handleToggleFavorite = async () => {
-    if (!currentBuildId || auth.status !== 'ok') return;
+    if (!currentBuildId || auth.status !== 'authenticated') return;
     const nextFavorited = !isFavorited;
     const ok = await toggleFavorite(currentBuildId, isFavorited);
     if (ok) {

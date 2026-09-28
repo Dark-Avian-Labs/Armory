@@ -78,7 +78,7 @@ describe('security headers', () => {
   });
 
   it('emits rate limit headers on API routes', async () => {
-    const res = await request(bundle!.app).get('/api/auth/csrf');
+    const res = await request(bundle!.app).get('/api/csrf');
     const hasRateLimitHeader = Boolean(res.headers['ratelimit'] ?? res.headers['ratelimit-limit']);
     expect(hasRateLimitHeader).toBe(true);
   });
@@ -98,8 +98,8 @@ describe('request IDs', () => {
 });
 
 describe('CSRF protection', () => {
-  it('GET /api/auth/csrf issues a token and a session cookie', async () => {
-    const res = await request(bundle!.app).get('/api/auth/csrf');
+  it('GET /api/csrf issues a token and a session cookie', async () => {
+    const res = await request(bundle!.app).get('/api/csrf');
     expect(res.status).toBe(200);
     expect(res.body.csrfToken).toBeTruthy();
     expect(res.headers['set-cookie']?.[0]).toContain(SESSION_COOKIE_NAME);
@@ -115,7 +115,7 @@ describe('CSRF protection', () => {
 
   it('accepts state-changing requests with a valid token', async () => {
     const agent = request.agent(bundle!.app);
-    const csrfRes = await agent.get('/api/auth/csrf');
+    const csrfRes = await agent.get('/api/csrf');
     const token = csrfRes.body.csrfToken as string;
 
     const res = await agent.post('/api/nope').set('X-CSRF-Token', token).send({});
@@ -125,7 +125,7 @@ describe('CSRF protection', () => {
 
   it('blocks cross-site state-changing requests', async () => {
     const agent = request.agent(bundle!.app);
-    const csrfRes = await agent.get('/api/auth/csrf');
+    const csrfRes = await agent.get('/api/csrf');
     const token = csrfRes.body.csrfToken as string;
 
     const res = await agent.post('/api/nope').set('X-CSRF-Token', token).set('Sec-Fetch-Site', 'cross-site').send({});

@@ -1237,7 +1237,12 @@ export function BuildShareModal({
     ) : null;
 
   return (
-    <Modal open onClose={onClose} ariaLabelledBy="share-build-title" className="max-w-[1120px]">
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabelledBy="share-build-title"
+      className="glass-modal-surface max-w-[1120px]"
+    >
       <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
         <section className="space-y-4">
           <h3 id="share-build-title" className="text-foreground text-lg font-semibold">
@@ -1350,7 +1355,11 @@ export function BuildShareModal({
             ) : null}
           </div>
 
-          {error ? <p className="error-msg">{error}</p> : null}
+          {error ? (
+            <p className="error-msg" role="alert">
+              {error}
+            </p>
+          ) : null}
 
           <div className="flex gap-2">
             <button type="button" className="btn btn-secondary flex-1" onClick={onClose}>
