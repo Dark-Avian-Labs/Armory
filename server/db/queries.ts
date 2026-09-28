@@ -11,8 +11,20 @@ import { classifyArcaneCompatTags } from '../arcaneCompat.js';
 import { syncCodexModularWeaponsTable } from '../codexModularWeapons.js';
 import { EXPORTS_DIR } from '../config.js';
 import { log } from '../logger.js';
-import { restoreModAtragraphPaths, saveModAtragraphPaths } from '../scraping/atragraphModsWiki.js';
 import { getCatalogDb } from './connection.js';
+
+/** Legacy atragraph preserve hooks (Codex owns import; left as no-ops). */
+function saveModAtragraphPaths(): Map<
+  string,
+  { atragraph_card_path: string | null; foil_overlay_path: string | null }
+> {
+  return new Map();
+}
+function restoreModAtragraphPaths(
+  _saved: Map<string, { atragraph_card_path: string | null; foil_overlay_path: string | null }>,
+): void {
+  // no-op: catalog sync replaces mods wholesale
+}
 
 export function processExports(options?: { skipPreserve?: boolean }): {
   warframes: number;

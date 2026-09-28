@@ -89,28 +89,41 @@ export const APP_VERSION = readPackageVersion(PROJECT_ROOT);
 export const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 export const EXPORTS_DIR = path.join(DATA_DIR, 'exports');
 export const IMAGES_DIR = path.join(DATA_DIR, 'images');
-export const ARMORY_DB_PATH =
-  process.env.ARMORY_DB_PATH?.trim() || path.join(DATA_DIR, 'armory.db');
 
-function resolveUserDbPath(): string {
-  const configured = process.env.USER_DB_PATH?.trim();
-  if (configured) {
-    return path.isAbsolute(configured) ? configured : path.resolve(PROJECT_ROOT, configured);
+function resolveProjectPath(configured: string | undefined, fallbackRelative: string): string {
+  const value = configured?.trim();
+  if (value) {
+    return path.isAbsolute(value) ? value : path.resolve(PROJECT_ROOT, value);
   }
-  return path.join(DATA_DIR, 'builds.db');
+  return path.resolve(PROJECT_ROOT, fallbackRelative);
 }
 
-export const USER_DB_PATH = resolveUserDbPath();
+export const ARMORY_DB_PATH = resolveProjectPath(
+  process.env.ARMORY_DB_PATH,
+  path.join('data', 'armory.db'),
+);
 
-function resolveSessionDbPath(): string {
-  const configured = process.env.SESSION_DB_PATH?.trim();
-  if (configured) {
-    return path.isAbsolute(configured) ? configured : path.resolve(PROJECT_ROOT, configured);
-  }
-  return path.join(DATA_DIR, 'session.db');
-}
+export const USER_DB_PATH = resolveProjectPath(
+  process.env.USER_DB_PATH,
+  path.join('data', 'builds.db'),
+);
 
-export const SESSION_DB_PATH = resolveSessionDbPath();
+export const SESSION_DB_PATH = resolveProjectPath(
+  process.env.SESSION_DB_PATH,
+  path.join('data', 'session.db'),
+);
+
+/** Read-only Codex Warframe catalog DB (written by Codex `warframe:import`). */
+export const CODEX_WARFRAME_CATALOG_DB_PATH = resolveProjectPath(
+  process.env.CODEX_WARFRAME_CATALOG_DB_PATH,
+  path.join('..', 'Codex', 'data', 'warframe-catalog.db'),
+);
+
+/** Codex Warframe catalog images; mirrored into IMAGES_DIR on sync. */
+export const CODEX_WARFRAME_IMAGES_DIR = resolveProjectPath(
+  process.env.CODEX_WARFRAME_IMAGES_DIR,
+  path.join('..', 'Codex', 'data', 'warframe-images'),
+);
 
 const _port = parseInt(process.env.PORT || '3002', 10);
 export const PORT = Number.isFinite(_port) && _port > 0 ? _port : 3002;

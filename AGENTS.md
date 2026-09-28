@@ -6,7 +6,7 @@ Shared Dark Avian Labs engineering conventions (README shape, CI/PR runners, val
 
 ## Overview
 
-Armory is a Warframe mod builder. Catalog data comes from Digital Extremes' public exports, with wiki and other sources filling gaps. Clerk handles sign-in. Codex reads Armory's catalog SQLite for Warframe collection sync.
+Armory is a Warframe mod builder. **Codex owns the Warframe DE/wiki catalog import** (`warframe:import` → `WARFRAME_CATALOG_DB_PATH`). Armory keeps a local copy at `ARMORY_DB_PATH` via catalog sync (`pnpm run catalog:sync` or Admin → Sync catalog from Codex). Clerk handles sign-in.
 
 The React SPA is served only when `NODE_ENV=production`. In development the API runs alone (root URL 404s); use Vite for the client. Default listen port is **3002**. See `README.md` for scripts and env.
 
@@ -14,23 +14,24 @@ The React SPA is served only when `NODE_ENV=production`. In development the API 
 
 Three SQLite files. Do not point any two at the same path, and do not reuse Codex or BudgetPlanner files.
 
-| File    | Env               | Role                                                               |
-| ------- | ----------------- | ------------------------------------------------------------------ |
-| Catalog | `ARMORY_DB_PATH`  | Equipment, mods, users-for-public-URLs. Codex reads this file.     |
-| User    | `USER_DB_PATH`    | Builds, loadouts, favorites. Absolute path required in production. |
-| Session | `SESSION_DB_PATH` | CSRF only, not Clerk login.                                        |
+| File    | Env               | Role                                                                 |
+| ------- | ----------------- | -------------------------------------------------------------------- |
+| Catalog | `ARMORY_DB_PATH`  | Local copy of Codex catalog tables + `armory_users` for public URLs. |
+| User    | `USER_DB_PATH`    | Builds, loadouts, favorites. Absolute path required in production.   |
+| Session | `SESSION_DB_PATH` | CSRF only, not Clerk login.                                          |
 
-Boot creates/migrates schema and recovers the import lease. It does **not** fill the catalog. An empty catalog after first start is normal until `pnpm run data:import` or Admin Force Full Re-import. Codex needs a populated catalog, so import (or start Armory after an import) before expecting Warframe sync to work.
+Codex source (read-only for Armory):
 
-Force Full Re-import downloads and verifies required DE exports first, then resets catalog tables. User DB is untouched. Reset also leaves `armory_users` and `codex_modular_weapons` in the catalog DB, and refuses if user tables are accidentally present there. `armory_users` (Clerk id → username) lives in the catalog DB so public profile URLs work without the user DB.
+| Env                              | Default                             |
+| -------------------------------- | ----------------------------------- |
+| `CODEX_WARFRAME_CATALOG_DB_PATH` | `../Codex/data/warframe-catalog.db` |
+| `CODEX_WARFRAME_IMAGES_DIR`      | `../Codex/data/warframe-images`     |
 
-## Catalog that Codex depends on
+Boot creates/migrates schema. If `warframes` is empty and the Codex catalog path exists, boot syncs once (failures log and do **not** crash). Admin sync returns **202** with an on-page live log. Sync copies catalog tables only (not `import_runs` / `import_lease`) and mirrors images into `IMAGES_DIR` so existing `/images{image_path}` URLs keep working. `armory_users` is never overwritten.
 
-After weapons export processing, Armory fills `codex_modular_weapons` for Codex's Modular Weapons worksheet (MR-style parts; scaffolds/grips/braces excluded). Sync is display-name deduped. Codex falls back to path heuristics on `weapons` if the table is empty; keep this table authoritative. DE flags `codex_secret` / `exclude_from_codex` are stored but Codex does not filter on them today.
+## Catalog tables
 
-`warframe_market_links` is also catalog-side. Codex is the primary consumer; Armory has no first-class HTTP API for these rows. Market-link failures are recorded and do not abort the rest of import. Catalog reset **does** clear this table.
-
-Overframe artifact-slot scrape is force-only. Prefer the Admin slot editor for polarity fixes; a normal import will not rewrite slots.
+Synced from Codex: `warframes`, `abilities`, `weapons`, `companions`, `mod_sets`, `mods`, `mod_level_stats`, `mod_set_members`, `arcanes`, `archon_shard_types`, `archon_shard_buffs`, `warframe_market_links`, `codex_modular_weapons`. Prefer the Admin artifact-slot editor for polarity fixes; those edits live in Armory's local catalog until the next full sync replaces the table.
 
 ## Builds and sharing
 
@@ -56,7 +57,7 @@ On Windows, Cursor agent shells may prepend bundled Node 22. After changing Node
 
 `pnpm run validate` is the quality gate: preflight, oxfmt, oxlint, typecheck, Vitest. In CI that Vitest step is instrumented (`pnpm run test:coverage`); locally `pnpm test` stays uninstrumented. Use `pnpm run test:watch` while iterating.
 
-HTTP tests that need the real stack (health, CSRF, Helmet, `/api/version`) go through `createApp()` in `server/app.ts`. `server/index.ts` only migrates schema, recovers the import lease, then listens. Route tests may mount `apiRouter` with mocked Clerk, but user tables must come from `applyUserSchema` / `server/testing/memoryUserDb.ts` — do not hand-roll `CREATE TABLE builds`.
+HTTP tests that need the real stack (health, CSRF, Helmet, `/api/version`) go through `createApp()` in `server/app.ts`. `server/index.ts` migrates schema, optionally boot-syncs an empty catalog from Codex, then listens. Route tests may mount `apiRouter` with mocked Clerk, but user tables must come from `applyUserSchema` / `server/testing/memoryUserDb.ts` — do not hand-roll `CREATE TABLE builds`.
 
 Vitest runs two projects: Node for `*.test.ts`, happy-dom for `client/**/*.test.tsx`. Coverage includes `server/`, `client/utils/`, `shared/`, and `scripts/`.
 

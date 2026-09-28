@@ -2,6 +2,7 @@ import { createApp } from './app.js';
 import { stopModListCacheCleanup } from './cache/modListCache.js';
 import {
   APP_NAME,
+  CODEX_WARFRAME_CATALOG_DB_PATH,
   HOST,
   NODE_ENV,
   PORT,
@@ -13,16 +14,41 @@ import {
 import { closeAll } from './db/connection.js';
 import { repairPlaceholderArtifactSlots } from './db/repairArtifactSlots.js';
 import { createAppSchema } from './db/schema.js';
-import { isAdminImportRunning, waitForAdminImportIdle } from './import/adminImportJob.js';
-import { recoverImportLeaseOnStartup } from './import/importRuns.js';
+import {
+  isAdminCatalogSyncRunning,
+  waitForAdminCatalogSyncIdle,
+} from './import/adminCatalogSyncJob.js';
+import {
+  catalogWarframeCount,
+  codexCatalogDbExists,
+  syncCodexWarframeCatalog,
+} from './import/codexCatalog.js';
 import { log } from './logger.js';
 import { createAppSentinelAgent } from './sentinelAgent.js';
 
 ensureDataDirs();
 createAppSchema();
 repairPlaceholderArtifactSlots();
-recoverImportLeaseOnStartup();
 
+try {
+  if (catalogWarframeCount() === 0 && codexCatalogDbExists()) {
+    const summary = syncCodexWarframeCatalog({
+      onLog: (message, level = 'info') => {
+        log(level === 'error' ? 'error' : 'info', message, { source: 'catalogSync' });
+      },
+    });
+    log('info', 'Boot-synced Codex Warframe catalog', {
+      source: CODEX_WARFRAME_CATALOG_DB_PATH,
+      tables: summary.tables,
+      imagesCopied: summary.imagesCopied,
+    });
+  }
+} catch (error) {
+  log('warn', 'Codex catalog sync skipped on boot', {
+    error: error instanceof Error ? error.message : String(error),
+    source: CODEX_WARFRAME_CATALOG_DB_PATH,
+  });
+}
 const sentinelAgent = createAppSentinelAgent({
   appId: 'armory',
   displayName: APP_NAME,
@@ -86,12 +112,12 @@ function shutdown(baseExitCode = 0, signal?: string): void {
   }, SHUTDOWN_TIMEOUT_MS);
 
   void (async () => {
-    if (isAdminImportRunning()) {
-      log('info', 'Waiting for admin import job before shutdown');
-      const importWaitMs = Math.max(SHUTDOWN_TIMEOUT_MS - 2000, 1000);
-      const finished = await waitForAdminImportIdle(importWaitMs);
+    if (isAdminCatalogSyncRunning()) {
+      log('info', 'Waiting for admin catalog sync before shutdown');
+      const syncWaitMs = Math.max(SHUTDOWN_TIMEOUT_MS - 2000, 1000);
+      const finished = await waitForAdminCatalogSyncIdle(syncWaitMs);
       if (!finished) {
-        log('warn', 'Admin import still running; proceeding with shutdown');
+        log('warn', 'Admin catalog sync still running; proceeding with shutdown');
       }
     }
 
