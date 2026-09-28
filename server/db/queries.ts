@@ -13,7 +13,6 @@ import { EXPORTS_DIR } from '../config.js';
 import { log } from '../logger.js';
 import { getCatalogDb } from './connection.js';
 
-/** Legacy atragraph preserve hooks (Codex owns import; left as no-ops). */
 function saveModAtragraphPaths(): Map<
   string,
   { atragraph_card_path: string | null; foil_overlay_path: string | null }
@@ -23,7 +22,7 @@ function saveModAtragraphPaths(): Map<
 function restoreModAtragraphPaths(
   _saved: Map<string, { atragraph_card_path: string | null; foil_overlay_path: string | null }>,
 ): void {
-  // no-op: catalog sync replaces mods wholesale
+  // ignore
 }
 
 export function processExports(options?: { skipPreserve?: boolean }): {

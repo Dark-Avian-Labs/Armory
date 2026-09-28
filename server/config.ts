@@ -113,13 +113,11 @@ export const SESSION_DB_PATH = resolveProjectPath(
   path.join('data', 'session.db'),
 );
 
-/** Read-only Codex Warframe catalog DB (written by Codex `warframe:import`). */
 export const CODEX_WARFRAME_CATALOG_DB_PATH = resolveProjectPath(
   process.env.CODEX_WARFRAME_CATALOG_DB_PATH,
   path.join('..', 'Codex', 'data', 'warframe-catalog.db'),
 );
 
-/** Codex Warframe catalog images; mirrored into IMAGES_DIR on sync. */
 export const CODEX_WARFRAME_IMAGES_DIR = resolveProjectPath(
   process.env.CODEX_WARFRAME_IMAGES_DIR,
   path.join('..', 'Codex', 'data', 'warframe-images'),

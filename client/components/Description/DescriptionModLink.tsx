@@ -66,7 +66,7 @@ export function DescriptionModLink({ name }: DescriptionModLinkProps) {
     if (!trimmed) return;
     const requestedName = name;
     void lookupModByName(trimmed).then((result) => {
-      // Ignore stale responses if the name prop changed mid-flight.
+      // ignore
       if (aliveRef.current && nameRef.current === requestedName) {
         setMod(result);
       }

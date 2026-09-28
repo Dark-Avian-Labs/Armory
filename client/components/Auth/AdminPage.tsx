@@ -96,7 +96,7 @@ function CodexCatalogSyncAdmin() {
         const next = parseSnapshot(JSON.parse((event as MessageEvent).data));
         if (next) applySnapshot(next);
       } catch {
-        // ignore malformed events
+        // ignore
       }
     });
     stream.onerror = () => {
@@ -119,7 +119,7 @@ function CodexCatalogSyncAdmin() {
 
     const poll = window.setInterval(() => {
       void loadStatus().catch(() => {
-        // ignore transient poll errors
+        // ignore
       });
     }, 2000);
 

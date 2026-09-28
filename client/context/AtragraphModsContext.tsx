@@ -25,7 +25,7 @@ function readInitialAtragraphModsEnabled(): boolean {
     if (stored === 'false') return false;
     if (stored === 'true') return true;
   } catch {
-    // The preference still applies for this session.
+    // ignore
   }
   return true;
 }
@@ -39,7 +39,7 @@ export function AtragraphModsProvider({ children }: { children: ReactNode }) {
     try {
       window.localStorage.setItem(ATRAGRAPH_MODS_STORAGE_KEY, String(atragraphModsEnabled));
     } catch {
-      // The preference still applies for this session.
+      // ignore
     }
   }, [atragraphModsEnabled]);
 
