@@ -16,14 +16,14 @@
 
 Armory is where Warframe builds get assembled for real. Pick a frame, stack mods, Helminth, Archon shards, and Incarnon, then save the loadout so the next mission is a click away instead of another trip through the Arsenal.
 
-The catalog follows Digital Extremes' public export and fills gaps from the wiki, so names and stats stay close to what you see in game. Codex reads that same catalog when it tracks your collection.
+The catalog is synced from Codex's Warframe catalog DB (Codex runs the DE/wiki import). Armory keeps a local copy for the mod builder.
 
 Live: [armory.darkavianlabs.com](https://armory.darkavianlabs.com)
 
 ## Gotchas
 
 - Three SQLite files: catalog, user builds, and sessions. They must be different paths.
-- First boot is an empty catalog on purpose. Import data (or Admin Force Full Re-import) before Codex can sync Warframe.
+- First boot syncs from Codex when `warframes` is empty and `CODEX_WARFRAME_CATALOG_DB_PATH` exists. Otherwise run `pnpm run catalog:sync` (or Admin → Sync catalog from Codex) after Codex has imported.
 
 ## License
 

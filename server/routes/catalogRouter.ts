@@ -2,7 +2,6 @@ import { Router, type Request, type Response } from 'express';
 
 import { ARTIFACT_SLOT_STORAGE_VALUES } from '../../shared/artifactSlotState.js';
 import { MAX_ARTIFACT_SLOTS_STORAGE_LENGTH } from '../../shared/equipmentSlotConfig.js';
-import { parseForceSteps } from '../../shared/pipelineSteps.js';
 import { ARCANE_PUBLIC_LIST_SQL, bindArcanePublicListParams } from '../arcaneCatalog.js';
 import {
   classifyArcaneCompatTags,
@@ -17,11 +16,10 @@ import { getCatalogDb, getUserDb } from '../db/connection.js';
 import { reconcileBuildsForArtifactSlotChange } from '../db/reconcileBuildsForArtifactSlots.js';
 import { dedupeHelminthAbilityRows } from '../helminthAbilityDedupe.js';
 import {
-  getAdminImportSnapshot,
-  resetAdminImportLock,
-  startAdminImportJob,
-  subscribeAdminImportSnapshot,
-} from '../import/adminImportJob.js';
+  getAdminCatalogSyncSnapshot,
+  startAdminCatalogSyncJob,
+  subscribeAdminCatalogSyncSnapshot,
+} from '../import/adminCatalogSyncJob.js';
 import { log } from '../logger.js';
 import { buildAbilitiesListQuery } from './abilitiesListQuery.js';
 import {
@@ -501,45 +499,29 @@ catalogRouter.patch(
   },
 );
 
-catalogRouter.get('/admin/import/state', requireArmoryAdmin, (_req: Request, res: Response) => {
-  try {
-    res.json(getAdminImportSnapshot());
-  } catch (err) {
-    sendInternalError(res, 'admin.import.state', err);
-  }
-});
-
-catalogRouter.post('/admin/import/reset', requireArmoryAdmin, (_req: Request, res: Response) => {
-  try {
-    const result = resetAdminImportLock();
-    if (!result.cleared) {
-      res.status(409).json({
-        error: result.reason ?? 'Import job is still running.',
-        snapshot: result.snapshot,
-      });
-      return;
+catalogRouter.get(
+  '/admin/catalog/sync/status',
+  requireArmoryAdmin,
+  (_req: Request, res: Response) => {
+    try {
+      res.json(getAdminCatalogSyncSnapshot());
+    } catch (err) {
+      sendInternalError(res, 'admin.catalog.sync.status', err);
     }
-    res.json({ ok: true, snapshot: result.snapshot });
-  } catch (err) {
-    sendInternalError(res, 'admin.import.reset', err);
-  }
-});
+  },
+);
 
-catalogRouter.post('/admin/import/run', requireArmoryAdmin, (req: Request, res: Response) => {
+catalogRouter.post('/admin/catalog/sync', requireArmoryAdmin, (req: Request, res: Response) => {
   try {
     const userId = getClerkUserId(req);
     if (!userId) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
-    const body = req.body as Record<string, unknown> | undefined;
-    const forceImport = body?.forceImport === true;
-    const forceImages = body?.forceImages === true;
-    const forceSteps = parseForceSteps(body?.forceSteps);
-    const result = startAdminImportJob(userId, { forceImport, forceImages, forceSteps });
+    const result = startAdminCatalogSyncJob(userId);
     if (!result.started) {
       res.status(409).json({
-        error: result.reason ?? 'Import job is already running.',
+        error: result.reason ?? 'Catalog sync job is already running.',
         snapshot: result.snapshot,
       });
       return;
@@ -549,63 +531,67 @@ catalogRouter.post('/admin/import/run', requireArmoryAdmin, (req: Request, res: 
       snapshot: result.snapshot,
     });
   } catch (err) {
-    sendInternalError(res, 'admin.import.run', err);
+    sendInternalError(res, 'admin.catalog.sync', err);
   }
 });
 
-catalogRouter.get('/admin/import/stream', requireArmoryAdmin, (req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
+catalogRouter.get(
+  '/admin/catalog/sync/stream',
+  requireArmoryAdmin,
+  (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
 
-  let closed = false;
-  let heartbeat: ReturnType<typeof setInterval> | null = null;
+    let closed = false;
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
 
-  const cleanup = () => {
-    if (closed) return;
-    closed = true;
-    if (heartbeat) {
-      clearInterval(heartbeat);
-      heartbeat = null;
-    }
-    unsubscribe();
-  };
+    const cleanup = () => {
+      if (closed) return;
+      closed = true;
+      if (heartbeat) {
+        clearInterval(heartbeat);
+        heartbeat = null;
+      }
+      unsubscribe();
+    };
 
-  const canWrite = () => !closed && !res.writableEnded && !res.writableFinished && res.writable;
+    const canWrite = () => !closed && !res.writableEnded && !res.writableFinished && res.writable;
 
-  const sendSnapshot = () => {
-    if (!canWrite()) {
-      cleanup();
-      return;
-    }
-    try {
-      const payload = JSON.stringify(getAdminImportSnapshot());
-      res.write(`event: snapshot\n`);
-      res.write(`data: ${payload}\n\n`);
-    } catch {
-      cleanup();
-    }
-  };
+    const sendSnapshot = () => {
+      if (!canWrite()) {
+        cleanup();
+        return;
+      }
+      try {
+        const payload = JSON.stringify(getAdminCatalogSyncSnapshot());
+        res.write(`event: snapshot\n`);
+        res.write(`data: ${payload}\n\n`);
+      } catch {
+        cleanup();
+      }
+    };
 
-  const unsubscribe = subscribeAdminImportSnapshot(() => {
+    const unsubscribe = subscribeAdminCatalogSyncSnapshot(() => {
+      sendSnapshot();
+    });
+
     sendSnapshot();
-  });
+    heartbeat = setInterval(() => {
+      if (!canWrite()) {
+        cleanup();
+        return;
+      }
+      try {
+        res.write(': ping\n\n');
+      } catch {
+        cleanup();
+      }
+    }, 15_000);
 
-  sendSnapshot();
-  heartbeat = setInterval(() => {
-    if (!canWrite()) {
+    req.on('close', () => {
       cleanup();
-      return;
-    }
-    try {
-      res.write(': ping\n\n');
-    } catch {
-      cleanup();
-    }
-  }, 15_000);
-
-  req.on('close', () => {
-    cleanup();
-  });
-});
+    });
+  },
+);

@@ -1,5 +1,4 @@
 import { ensureCodexModularWeaponsPopulated } from '../codexModularWeapons.js';
-import { ensureImportRunsSchema } from '../import/importRuns.js';
 import { log } from '../logger.js';
 import { backfillArchonBuffArmoryKeys, backfillHelminthArmoryKeys } from './catalogKeys.js';
 import { ensureCatalogKeyColumns } from './catalogMigrations.js';
@@ -216,7 +215,6 @@ export function createCatalogSchema(): void {
   ensureCatalogKeyColumns(db);
   const archonKeys = backfillArchonBuffArmoryKeys(db);
   const helminthKeys = backfillHelminthArmoryKeys(db);
-  ensureImportRunsSchema(db);
   const codexModularCount = ensureCodexModularWeaponsPopulated(db);
   if (archonKeys > 0 || helminthKeys > 0) {
     log('info', 'Catalog armory keys backfilled', {
