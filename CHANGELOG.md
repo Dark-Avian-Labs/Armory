@@ -388,3 +388,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.72.5** `chore` [#543](https://github.com/Dark-Avian-Labs/Armory/pull/543): fix/app nav rail windows
 - **v1.73.0** `chore` [#544](https://github.com/Dark-Avian-Labs/Armory/pull/544): feat/sync warframe catalog from codex
 - **v1.73.1** `chore` [#545](https://github.com/Dark-Avian-Labs/Armory/pull/545): fix/platform audit shell
+- **v1.73.2** `chore(deps)` [#546](https://github.com/Dark-Avian-Labs/Armory/pull/546): bump the production-dependencies group with 2 updates
