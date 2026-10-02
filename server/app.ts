@@ -149,6 +149,7 @@ export function createApp(options: CreateAppOptions = {}): AppBundle {
       req.path === '/api/version' ||
       req.path === '/favicon.ico' ||
       req.path === '/favicon.png' ||
+      req.path === '/favicon.svg' ||
       req.path.startsWith('/images/') ||
       req.path.startsWith('/icons/') ||
       /^\/assets\/.+\.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?)$/i.test(req.path),
