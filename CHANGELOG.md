@@ -390,3 +390,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.73.1** `chore` [#545](https://github.com/Dark-Avian-Labs/Armory/pull/545): fix/platform audit shell
 - **v1.73.2** `chore(deps)` [#546](https://github.com/Dark-Avian-Labs/Armory/pull/546): bump the production-dependencies group with 2 updates
 - **v1.73.3** `chore`: Merge pull request 'ci: run checks on Forgejo' (#548) from ci/forgejo-workflows into main
+- **v1.74.0** `chore`: Merge pull request 'Replace the header feather and the soft wordmark glow' (#552) from feat/header-mark into main
