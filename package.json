@@ -26,10 +26,10 @@
     "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
-    "@clerk/express": "^2.1.72",
-    "@clerk/react": "^6.17.2",
+    "@clerk/express": "^2.1.74",
+    "@clerk/react": "^6.17.4",
     "@dark-avian-labs/sentinel-agent": "https://git.darkavianlabs.com/Dark-Avian-Labs/Sentinel/releases/download/agent-v0.1.0/dark-avian-labs-sentinel-agent-0.1.0.tgz",
-    "@dotenvx/dotenvx": "^2.31.1",
+    "@dotenvx/dotenvx": "^2.32.3",
     "@fontsource-variable/cascadia-mono": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
