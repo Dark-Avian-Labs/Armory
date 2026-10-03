@@ -1,8 +1,8 @@
 # Armory
 
-Shell, auth, env, and validate are in AppBase `AGENTS.md`. Port 3002. Playwright 3102.
+Shell, auth, env, and validate are in AppBase `AGENTS.md`. Port 3002. Playwright 3102. Signed-in Playwright 4102.
 
-Warframe mod builder. Codex owns the DE and wiki import. Armory copies that catalog into `ARMORY_DB_PATH` with `pnpm run catalog:sync` or Admin. In development the API does not serve the SPA.
+Warframe mod builder. Codex owns the DE and wiki import. Armory copies that catalog into `ARMORY_DB_PATH` with `pnpm run catalog:sync` or Admin. In development the API does not serve the SPA. Test and production serve `dist/client` when `index.html` exists, and return 503 when it does not.
 
 Three SQLite files, and they must be different paths. `ARMORY_DB_PATH` is the catalog plus `armory_users`. `USER_DB_PATH` is builds, and it must be absolute in production. `SESSION_DB_PATH` is CSRF only. Codex is read-only here: `CODEX_WARFRAME_CATALOG_DB_PATH` and `CODEX_WARFRAME_IMAGES_DIR`.
 

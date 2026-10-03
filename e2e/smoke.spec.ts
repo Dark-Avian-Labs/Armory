@@ -32,7 +32,8 @@ test('unknown API routes return JSON 404', async ({ request }) => {
   await expect(res.json()).resolves.toMatchObject({ error: 'Not found' });
 });
 
-test('SPA is not served outside production', async ({ request }) => {
+test('SPA is served when the client build exists', async ({ request }) => {
   const res = await request.get('/');
-  expect(res.status()).toBe(404);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toMatch(/html/);
 });
