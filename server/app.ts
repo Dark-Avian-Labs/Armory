@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -306,7 +307,7 @@ export function createApp(options: CreateAppOptions = {}): AppBundle {
     '/icons',
     express.static(path.join(PROJECT_ROOT, 'icons'), { maxAge: GAME_ASSET_MAX_AGE_MS }),
   );
-  const faviconPng = path.join(PROJECT_ROOT, 'favicon.png');
+  const faviconPng = path.join(PROJECT_ROOT, 'public', 'favicon.png');
   app.get('/favicon.png', publicPageLimiter, (_req, res) => {
     res.sendFile(faviconPng);
   });
@@ -318,7 +319,10 @@ export function createApp(options: CreateAppOptions = {}): AppBundle {
     res.status(404).json({ error: 'Not found' });
   });
 
-  const clientDir = path.resolve(__dirname, '..', 'client');
+  const clientDir =
+    NODE_ENV !== 'production' && process.env.E2E_CLIENT_DIR?.trim()
+      ? path.resolve(process.env.E2E_CLIENT_DIR.trim())
+      : path.resolve(__dirname, '..', 'client');
 
   function sendLegalRedirect(res: express.Response): void {
     res.redirect(LEGAL_PAGE_URL);
@@ -334,10 +338,15 @@ export function createApp(options: CreateAppOptions = {}): AppBundle {
     sendLegalRedirect(res);
   });
 
-  if (NODE_ENV === 'production') {
+  if (NODE_ENV !== 'development') {
+    const indexPath = path.join(clientDir, 'index.html');
     const sendSpaIndex = (res: express.Response): void => {
+      if (!fs.existsSync(indexPath)) {
+        res.status(503).json({ error: 'Client build missing. Run `pnpm run build` first.' });
+        return;
+      }
       res.setHeader('Cache-Control', 'no-cache');
-      res.sendFile(path.join(clientDir, 'index.html'));
+      res.sendFile(indexPath);
     };
 
     app.use(
