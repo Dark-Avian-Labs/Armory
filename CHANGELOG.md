@@ -392,3 +392,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.73.3** `chore`: Merge pull request 'ci: run checks on Forgejo' (#548) from ci/forgejo-workflows into main
 - **v1.74.0** `chore`: Merge pull request 'Replace the header feather and the soft wordmark glow' (#552) from feat/header-mark into main
 - **v1.74.1** `chore`: Merge pull request 'chore(deps): update dependencies to latest' (#557) from chore/deps-latest into main
+- **v1.74.2** `chore`: Merge pull request 'chore(deps): update production dependencies' (#558) from deps/production into main
