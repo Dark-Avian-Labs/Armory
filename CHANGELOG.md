@@ -395,3 +395,4 @@ Historical entries through the current release were **backfilled from merged PR 
 - **v1.74.2** `chore`: Merge pull request 'chore(deps): update production dependencies' (#558) from deps/production into main
 - **v1.74.3** `chore`: Merge pull request 'ci: rebuild dependency pull requests from an @actions rebase comment' (#562) from ci/actions-rebase into main
 - **v1.74.4** `chore`: Merge pull request 'ci: rebase dependency pull requests as Sayori' (#563) from ci/sayori-rebase into main
+- **v1.74.5** `chore`: Merge pull request 'chore(deps): update production dependencies' (#560) from deps/production into main
