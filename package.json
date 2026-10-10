@@ -75,7 +75,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "@vitest/coverage-v8": "5.0.3",
     "domhandler": "^6.0.1",
-    "happy-dom": "^20.14.5",
+    "happy-dom": "^20.14.6",
     "oxfmt": "^0.72.0",
     "oxlint": "^1.87.0",
     "semantic-release": "25.0.9",
